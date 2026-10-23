@@ -204,6 +204,7 @@ function readBundle(buf: ArrayBuffer): { name: string; bytes: Uint8Array }[] {
     const o = offset as number;
     const n = length as number;
     if (o < 0 || n <= 0 || o + n > payload) throw new Error(`mesh bundle entry ${name} out of bounds`);
+    if (!(SO101_MESHES as readonly string[]).includes(name)) throw new Error(`mesh bundle has an unexpected entry ${name}`);
     if (seen.has(name)) throw new Error(`mesh bundle lists ${name} twice`);
     seen.add(name);
     return { name, bytes: new Uint8Array(buf.slice(base + o, base + o + n)) };
