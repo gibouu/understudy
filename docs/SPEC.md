@@ -254,3 +254,16 @@ Critics: S schedule-breaker, G stage-one-gatekeeper, R robotics-skeptic, D demo-
 - **No batch sweep on AI Cloud.** It went with the Python interpreter; the AI Cloud story is the validation Job or an honest "none".
 - **Thinking on Super VL.** If `enable_thinking` passthrough fails, Label runs with default thinking under a `max_tokens` budget.
 - **Scene file and binding exports** come from the critic's read of the sources (UNVERIFIED by us), confirmed in Friday's spike.
+
+## 22. How it improves: baseline, iterations, playbook, sweep
+
+Decided 23 October after the first review of the pitch: a judge needs to see a curve, not a single fail-patch-pass moment, and a credible account of what "learning" means here.
+
+**Iterations on one clip (issue #55).** The same 12 scenarios, sensed and blind, run after every version of the program. Iteration 0 is the standard approach, the program compiled from the raw label with defaults and the via-points straight from the human trajectory: retarget and replay. Iteration 1 is after the interview. Iteration 2 and later follow each Notes patch. Every iteration records its pass count out of 24, its perception budget per axis, its tokens and seconds, and the changes that produced it, in `understudy/iterations.json` and in `QUALITY.md`. The stage shows one bar per iteration, sensed and blind stacked. This is the measurement of "improved compared to the standard": same clip, same rollouts, three numbers.
+
+**Learning across clips (issue #56).** Each patch that turned a failing scenario into a passing one becomes a playbook rule: fixture type, failure class, axis, the condition it applies under, the patch, and the evidence (clip, scenario, before and after). The compile step for the next clip receives the matching rules, so its iteration 0 starts higher; the program marks what it applied with `source: playbook#<id>`; the UI lists rules with their evidence and lets the user disable one. The three sample clips run in sequence in the video so the third clip's starting score is visibly higher than the first's. Rules are inspectable text, not weights; the README says so.
+
+**Search instead of guesswork (issue #57, stretch).** Super proposes five candidate patches for the worst failure; a Nebius Serverless Job runs the same TypeScript interpreter under Node with MuJoCo across all 24 rollouts per candidate and returns the ranking; the best candidate becomes the next iteration. This is the project's Nebius AI Cloud usage and a genuine fit for the Physical AI track (simulation at scale off the browser). It falls back to the single-patch loop.
+
+**The honest reinforcement story.** No policy is trained in this week and the README says so. The loop is closed-loop optimisation with the simulator as the reward signal and the model as the policy editor, and the exported episodes carry pass and fail labels per scenario, which is the success signal a reinforcement or imitation fine-tune needs later.
+

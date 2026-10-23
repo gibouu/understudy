@@ -87,6 +87,10 @@ pnpm test && pnpm typecheck && pnpm lint
 
 Credits for the hackathon: promo code `NEBIUS-DEVPOST-GLOBAL26` on Token Factory, plus the Nebius Builder Program (more Token Factory and Tavily credits). Both need a card on the account.
 
+## How it improves
+
+Every version of the program is scored on the same 24 rollouts, so improvement is a number next to its cost. Iteration 0 is the standard approach: the human trajectory retargeted and replayed, no interview. Iteration 1 is the interviewed spec. Each Notes patch adds an iteration. The scoreboard on the stage and `understudy/iterations.json` in the export keep the whole curve, pass counts, perception budget per axis, tokens and seconds. Patches that fixed a failure become playbook rules with their evidence, and the next clip's program starts from them, so later clips start higher than earlier ones did. No policy is trained here; the simulator is the reward signal and the model is the policy editor, and the exported episodes carry the pass and fail labels a fine-tune would need. The measured curve for the three sample clips lands here with the day-five build (issues #55 and #56).
+
 ## Simulated versus real
 
 The rehearsal proves that the clarified spec is executable by a scripted SO-101 program across the stated band, in rigid-body physics with a geometric grasp, and that its success criteria are computable. It does not prove a learned policy would succeed or that a real grasp holds. The export is a format-valid skeleton for GR00T's loader, not training data, and its quality report says so. Details: [docs/LIMITATIONS.md](docs/LIMITATIONS.md) (three documented failing rollouts land with issue #24).

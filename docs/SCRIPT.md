@@ -1,6 +1,6 @@
 # Demo video script (three minutes or less)
 
-Recorded on the live path with the cost ledger visible. Plain-text captions naming each model ID as it is used. No logos, no music, no third-party trademarks. Five moments a judge should lean in for: the tokens blooming over the human, a question changing the spec live, the robot rehearsing on the stage, the grid lighting up blind versus sensed, and fail, patch, pass.
+Recorded on the live path with the cost ledger visible. Plain-text captions naming each model ID as it is used. No logos, no music, no third-party trademarks. Five moments a judge should lean in for: the tokens blooming over the human, a question changing the spec live, the robot rehearsing on the stage, the scoreboard climbing from the standard approach through the interview and the patch, and the second clip starting higher because of the playbook.
 
 Recorded on the live path with the ledger strip visible; plain-text captions, no logos, no music.
 
@@ -9,7 +9,8 @@ Recorded on the live path with the ledger strip visible; plain-text captions, no
 - **0:35-0:55** Labels land on chips; caption `nvidia/Nemotron-3.5-Super-VL` on Nebius Token Factory; ledger visible.
 - **0:55-1:30** Nano's program with red `ask` slots; question one cites "aperture 61 mm at t=1.3 s"; a chip click flashes the changed path; an opt-in Tavily card. VO: "Nano plays the robot. What it cannot execute, Super asks the person who did it."
 - **1:30-1:50** SO-101 runs the program with the via-point ghost line. VO: "Rehearsed on a real robot model in MuJoCo, in the browser."
-- **1:50-2:25** 2x12 grid: blind row fails at 6 mm rack error, sensed row survives 25 mm. Edit a scenario, re-run: tube hits the pocket wall. Super proposes "raise the pre-insert via-point"; Nano recompiles; pass. VO: "Blind, four millimetres. With a pose estimate, the whole tray. That is the perception budget."
+- **1:50-2:15** The scoreboard: iteration 0 (retarget and replay, no interview) scores a handful of the 24 rollouts; iteration 1 (after the interview) climbs; a scenario is edited and re-run, the tube hits the pocket wall; Super proposes "raise the pre-insert via-point", Nano recompiles, iteration 2 climbs again. VO: "Same clip, same 24 rollouts. The standard approach, the interviewed spec, the patched program. Blind, a few millimetres. With a pose estimate, the whole tray. That is the perception budget."
+- **2:15-2:25** The second clip starts: its iteration 0 is already higher, and the playbook panel shows the rule learned on the first clip with its evidence. VO: "What fixed the first task is now a rule the next one starts from."
 - **2:25-2:45** Ultra's reshoot list; the zip; Job log if produced. Caption `nvidia/Nemotron-3-Ultra-550b-a55b`.
 - **2:45-3:00** Limits card; model credits.
 
