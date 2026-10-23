@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Static assets copied from node_modules (MuJoCo loader) and third-party models.
+    "public/**",
   ]),
 ]);
 
