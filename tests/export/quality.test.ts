@@ -89,6 +89,7 @@ describe("QUALITY.md", () => {
     const md = renderQualityMarkdown(report, episodes, { origin: "synthetic" });
     expect(md).toContain("no physics, no grasp, no rendering");
     expect(md).not.toContain("rigid-body");
+    expect(md).not.toContain("MuJoCo");
   });
 
   it("claims loader validation only when told", () => {

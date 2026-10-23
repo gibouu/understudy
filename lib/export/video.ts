@@ -56,7 +56,7 @@ export async function createBrowserVideoEncoder({
 } = {}): Promise<EpisodeVideoEncoder> {
   let chosen: (typeof CANDIDATES)[number] | undefined;
   for (const c of CANDIDATES) {
-    if (await canEncodeVideo(c.mediabunny, { width, height, quality: QUALITY })) {
+    if (await canEncodeVideo(c.mediabunny, { width, height, frameRate: fps, quality: QUALITY })) {
       chosen = c;
       break;
     }

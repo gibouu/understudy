@@ -13,14 +13,16 @@ export const DEGENERATE_RANGE = 1e-6;
 /** rehearsal: rollouts of the simulated arm; synthetic: lib/export/synthetic, joint keyframes and no physics. */
 export type EpisodeOrigin = "rehearsal" | "synthetic";
 
-const ORIGIN_TEXT: Record<EpisodeOrigin, { kind: string; how: string }> = {
+const ORIGIN_TEXT: Record<EpisodeOrigin, { kind: string; how: string; units: string }> = {
   rehearsal: {
     kind: "scripted, primitive-rendered",
     how: "These episodes come from a scripted SO-101 program rehearsed in rigid-body simulation with a geometric grasp, rendered from primitives.",
+    units: "radians (MuJoCo joint positions)",
   },
   synthetic: {
     kind: "synthetic, scripted",
     how: "These episodes are a scripted joint-space trajectory interpolated between keyframes: no physics, no grasp, no rendering.",
+    units: "radians (scripted SO-101 joint keyframes)",
   },
 };
 
@@ -113,7 +115,7 @@ export type QualityMarkdownOptions = {
 export function renderQualityMarkdown(
   report: QualityReport,
   episodes: EpisodeRecord[],
-  { jointUnits = "radians (MuJoCo joint positions)", origin = "rehearsal" }: QualityMarkdownOptions = {},
+  { origin = "rehearsal", jointUnits = ORIGIN_TEXT[origin].units }: QualityMarkdownOptions = {},
 ): string {
   const lines: string[] = ["# Quality report", "", `**${report.headline}.**`, ""];
 
