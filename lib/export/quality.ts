@@ -4,7 +4,7 @@
  * dimension that never moves, since a model trained on it would learn nothing
  * there.
  */
-import type { Envelope, TaskSpec } from "@/lib/spec/schema";
+import type { Envelope, SignedBand, TaskSpec } from "@/lib/spec/schema";
 import { SO101_JOINTS, type EpisodeRecord, type QualityReport } from "@/lib/export/types";
 
 /** A dimension whose range is at or below this is degenerate. */
@@ -102,7 +102,17 @@ export function buildQualityReport({
 }
 
 const unitOf = (axis: string) => (axis.endsWith("_deg") ? "deg" : axis.endsWith("_mm") ? "mm" : "");
-const cell = (v: number | null, unit: string) => (v === null ? "none passed" : `±${v} ${unit}`.trim());
+/** "-4 to +8 mm (fails at -6 / +10)": the passing range per side, then the first failures seen. */
+const band = (b: SignedBand, unit: string) => {
+  if (b.pass_neg === null && b.pass_pos === null) return "none passed";
+  const lo = b.pass_neg === null ? "?" : `${b.pass_neg}`;
+  const hi = b.pass_pos === null ? "?" : `+${b.pass_pos}`;
+  const fails =
+    b.fail_neg !== null || b.fail_pos !== null
+      ? ` (fails at ${b.fail_neg ?? "?"} / ${b.fail_pos === null ? "?" : `+${b.fail_pos}`})`
+      : "";
+  return `${lo} to ${hi} ${unit}`.trim() + fails;
+};
 
 export type QualityMarkdownOptions = {
   /** what the joint values are, as the rehearsal recorded them */
@@ -149,7 +159,7 @@ export function renderQualityMarkdown(
   }
   lines.push("");
 
-  lines.push("## Envelope per axis", "", "The largest offset that still passed, per mode.", "");
+  lines.push("## Envelope per axis", "", "Sampled evidence: the largest offset that still passed and the smallest that failed, per side and per mode. A symmetric band exists only where both sides were sampled.", "");
   const axes = Object.entries(report.envelope_per_axis);
   if (axes.length === 0) {
     lines.push("No perturbation scenarios were run.", "");
@@ -157,7 +167,7 @@ export function renderQualityMarkdown(
     lines.push("| axis | sensed | blind |", "|---|---|---|");
     for (const [axis, { sensed, blind }] of axes) {
       const unit = unitOf(axis);
-      lines.push(`| ${axis} | ${cell(sensed, unit)} | ${cell(blind, unit)} |`);
+      lines.push(`| ${axis} | ${band(sensed, unit)} | ${band(blind, unit)} |`);
     }
     lines.push("");
   }
