@@ -48,3 +48,6 @@ next-env.d.ts
 /public/so101/
 /public/mediapipe/wasm/
 /public/mediapipe/models/
+
+# the template is public; real values live in .env.local (ignored above)
+!.env.example

@@ -24,8 +24,8 @@ Collecting human demonstrations is an industry now: recorders at about $15 an ho
 
 | Stage | What happens | Runs on |
 |---|---|---|
-| **Watch** | Pose and hand landmarks become motion tokens drawn over the clip; the grasp moment becomes the anchor; 12 to 16 keyframes are picked. Nothing but those keyframes leaves the browser. | browser, MediaPipe |
-| **Label** | Keyframes become a task spec: steps with timestamps, objects as primitives with size and symmetry, each target as a `pocket`, `zone` or `stack`. | `nvidia/Nemotron-3.5-Super-VL` on Nebius Token Factory |
+| **Watch** | Pose and hand landmarks become motion tokens drawn over the clip; the grasp moment becomes the anchor; a 480p proxy is encoded. Nothing but that proxy leaves the browser. | browser, MediaPipe |
+| **Label** | A small video proxy of the clip (480p, 4 fps, about 150 KB per 30 s) becomes a task spec: steps with timestamps, objects as primitives with size and symmetry, each target as a `pocket`, `zone` or `stack`. Keyframes are the fallback. | `nvidia/Nemotron-3.5-Super-VL` on Nebius Token Factory |
 | **Compile** | The spec becomes a robot program: `move_to`, `grasp`, `release`, `wait_until`, `assert`. Whatever the compiler cannot execute becomes an `ask` slot. | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` |
 | **Interview** | The `ask` slots are the questionnaire. Each question cites a measurement from this clip; each answer patches the spec and the program recompiles. | `nvidia/nemotron-3-super-120b-a12b` |
 | **Ground** (opt-in) | Hazards and preconditions for the task, with their source URLs. | Tavily search + extract, filtered by Nano |
@@ -41,7 +41,7 @@ Task-agnostic by construction: the code never names a task. Three sample clips s
 
 | Model on Nebius Token Factory | Job | Why this tier |
 |---|---|---|
-| `nvidia/Nemotron-3.5-Super-VL` | watches keyframes, labels segments, objects, sizes, symmetry | the hosted NVIDIA model that takes images and video |
+| `nvidia/Nemotron-3.5-Super-VL` | watches the video proxy (keyframes as fallback), labels segments, objects, sizes, symmetry | the hosted NVIDIA model that takes images and video |
 | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` | compiles the spec to a program after every answer; filters grounding; health probe | fast and cheap, called most often |
 | `nvidia/nemotron-3-super-120b-a12b` | interviews, writes the saboteur scenarios, proposes patches | reasoning with chips streamed as they close |
 | `nvidia/Nemotron-3-Ultra-550b-a55b` | failure classes, reshoot list, open risks | the deep pass, once per session, in the background |

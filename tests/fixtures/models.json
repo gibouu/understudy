@@ -1,0 +1,179 @@
+{
+  "fetched": "2026-10-23",
+  "source": "GET https://api.tokenfactory.nebius.com/v1/models?verbose=true",
+  "models": [
+    {
+      "id": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+      "name": "Nemotron-3-Nano-30B-A3B",
+      "created": 1792768956,
+      "description": "Compact MoE model optimized for efficient reasoning, chat, and coding with strong multilingual support and long-context RAG/agent workflows.",
+      "context_length": 262144,
+      "architecture": {
+        "modality": "text->text",
+        "tokenizer": "Other"
+      },
+      "quantization": "fp8",
+      "pricing": {
+        "prompt": "0.00000006",
+        "completion": "0.00000024",
+        "image": "0",
+        "price_per_video_second": "0",
+        "request": "0",
+        "price_per_minute": "0",
+        "input_cache_read": null
+      },
+      "per_request_limits": {
+        "tokens_per_minute": 800000.0,
+        "requests_per_minute": 100.0,
+        "burst_ratio": 1.0
+      },
+      "object": "model",
+      "regions": [
+        {
+          "country_code": "FI",
+          "name": "eu-north1"
+        }
+      ],
+      "supported_features": [
+        "tools",
+        "reasoning"
+      ],
+      "supported_sampling_parameters": [
+        "temperature",
+        "top_p",
+        "top_k",
+        "repetition_penalty",
+        "frequency_penalty",
+        "presence_penalty"
+      ]
+    },
+    {
+      "id": "nvidia/Nemotron-3-Ultra-550b-a55b",
+      "name": "Nemotron-3-Ultra-550b-a55b",
+      "created": 1780531200,
+      "description": "Nemotron 3 Ultra is a 550B hybrid MoE model from NVIDIA, optimized for the most demanding multi-agent AI and complex reasoning tasks.",
+      "context_length": 1048576,
+      "architecture": {
+        "modality": "text->text",
+        "tokenizer": "Other"
+      },
+      "quantization": "fp4",
+      "pricing": {
+        "prompt": "0.000001",
+        "input_cache_read": "0.00000012",
+        "completion": "0.000003",
+        "image": "0",
+        "price_per_video_second": "0",
+        "request": "0",
+        "price_per_minute": "0"
+      },
+      "per_request_limits": {
+        "tokens_per_minute": 200000.0,
+        "requests_per_minute": 300.0,
+        "burst_ratio": 1.0
+      },
+      "object": "model",
+      "regions": [
+        {
+          "country_code": "US",
+          "name": "us-central1"
+        }
+      ],
+      "supported_features": [
+        "tools",
+        "reasoning"
+      ],
+      "supported_sampling_parameters": [
+        "temperature",
+        "top_p",
+        "top_k",
+        "repetition_penalty",
+        "frequency_penalty",
+        "presence_penalty"
+      ]
+    },
+    {
+      "id": "nvidia/nemotron-3-super-120b-a12b",
+      "name": "Nemotron-3-Super-120b-a12b",
+      "created": 1773187200,
+      "description": "Nemotron 3 Super is a 120B hybrid MoE model optimized for efficient multi-agent AI and complex reasoning tasks.",
+      "context_length": 262144,
+      "architecture": {
+        "modality": "text->text",
+        "tokenizer": "Other"
+      },
+      "quantization": "fp4",
+      "pricing": {
+        "prompt": "0.0000003",
+        "input_cache_read": "0.00000006",
+        "completion": "0.0000009",
+        "image": "0",
+        "price_per_video_second": "0",
+        "request": "0",
+        "price_per_minute": "0"
+      },
+      "per_request_limits": {
+        "tokens_per_minute": 200000.0,
+        "requests_per_minute": 300.0,
+        "burst_ratio": 1.0
+      },
+      "object": "model",
+      "regions": [
+        {
+          "country_code": "US",
+          "name": "us-central1"
+        }
+      ],
+      "supported_features": [
+        "tools",
+        "reasoning"
+      ],
+      "supported_sampling_parameters": [
+        "temperature",
+        "top_p",
+        "top_k",
+        "repetition_penalty",
+        "frequency_penalty",
+        "presence_penalty"
+      ]
+    },
+    {
+      "id": "nvidia/Nemotron-3.5-Super-VL",
+      "name": "Nemotron 3.5 Super VL",
+      "created": 1791841710,
+      "description": "NVIDIA's multimodal model for visual understanding, coding, reasoning, and tool use. It processes text, images, and video to generate text responses.",
+      "context_length": 1048576,
+      "architecture": {
+        "modality": "text+image->text",
+        "tokenizer": "Other"
+      },
+      "quantization": "bf16",
+      "pricing": {
+        "prompt": "0.0000003",
+        "input_cache_read": "0.00000006",
+        "completion": "0.0000009",
+        "image": "0",
+        "price_per_video_second": "0",
+        "request": "0",
+        "price_per_minute": "0"
+      },
+      "per_request_limits": {
+        "tokens_per_minute": 2000000.0,
+        "requests_per_minute": 300.0,
+        "burst_ratio": 1.0
+      },
+      "object": "model",
+      "regions": [
+        {
+          "country_code": "US",
+          "name": "us-north1"
+        }
+      ],
+      "supported_features": [
+        "tools",
+        "reasoning"
+      ],
+      "supported_sampling_parameters": []
+    }
+  ]
+}
