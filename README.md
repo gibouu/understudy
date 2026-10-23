@@ -41,7 +41,7 @@ Task-agnostic by construction: the code never names a task. Three sample clips s
 
 | Model on Nebius Token Factory | Job | Why this tier |
 |---|---|---|
-| `nvidia/Nemotron-3.5-Super-VL` | watches keyframes, labels segments, objects, sizes, symmetry | the hosted NVIDIA model that takes images and video |
+| `nvidia/Nemotron-3.5-Super-VL` | watches the video proxy (keyframes as fallback), labels segments, objects, sizes, symmetry | the hosted NVIDIA model that takes images and video |
 | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` | compiles the spec to a program after every answer; filters grounding; health probe | fast and cheap, called most often |
 | `nvidia/nemotron-3-super-120b-a12b` | interviews, writes the saboteur scenarios, proposes patches | reasoning with chips streamed as they close |
 | `nvidia/Nemotron-3-Ultra-550b-a55b` | failure classes, reshoot list, open risks | the deep pass, once per session, in the background |

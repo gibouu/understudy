@@ -38,10 +38,11 @@ export const MAX_KEYFRAMES = MAX_IMAGES_PER_REQUEST - 1;
  * Request parameters that turn hidden reasoning off. Measured 23 Oct 2026:
  * `chat_template_kwargs.enable_thinking: false` works on all three models;
  * `reasoning_effort: "none"` also works on Super and Super VL but returns
- * EMPTY content on Nano, so it is never used. With thinking on, Nano and the
- * vision model spend the whole output budget on reasoning (finish "length",
- * empty content). Reasoning, when on, comes back in `reasoning_content`, not
- * inside the text.
+ * EMPTY content on Nano for the tested compile prompt, so it is never used.
+ * With thinking on, output length varied several-fold between runs: one of
+ * two Nano runs and the vision-model run hit their 1,200 and 1,500 token
+ * budgets with empty content (finish "length"). Reasoning, when on, comes
+ * back in `reasoning_content`, not inside the text.
  */
 export function thinkingOff(): { extra_body: { chat_template_kwargs: { enable_thinking: false } } } {
   return { extra_body: { chat_template_kwargs: { enable_thinking: false } } };

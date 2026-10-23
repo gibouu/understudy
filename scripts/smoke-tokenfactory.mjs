@@ -10,8 +10,17 @@ import path from "node:path";
 import OpenAI from "openai";
 
 process.loadEnvFile(".env.local");
-const args = Object.fromEntries(process.argv.slice(2).map((a, i, all) => (a.startsWith("--") ? [a.slice(2), all[i + 1]] : [])).filter((p) => p.length));
+// --flag value, or --flag alone (boolean) when the next token is another flag or missing
+const args = {};
+const argv = process.argv.slice(2);
+for (let i = 0; i < argv.length; i++) {
+  if (!argv[i].startsWith("--")) continue;
+  const next = argv[i + 1];
+  args[argv[i].slice(2)] = next === undefined || next.startsWith("--") ? true : next;
+}
 if (!process.env.NEBIUS_API_KEY) throw new Error("NEBIUS_API_KEY missing from .env.local");
+/** never let the key reach stdout or the results file, whatever an error message contains */
+const redact = (s) => String(s).split(process.env.NEBIUS_API_KEY).join("<redacted>");
 
 const client = new OpenAI({ apiKey: process.env.NEBIUS_API_KEY, baseURL: "https://api.tokenfactory.nebius.com/v1/", timeout: 120_000, maxRetries: 0 });
 const MODELS = {
@@ -51,7 +60,7 @@ async function run(name, model, params) {
     results.push(r);
     console.log(`✓ ${name}: ${r.ms} ms, in ${res.usage?.prompt_tokens} / out ${res.usage?.completion_tokens}${res.usage?.completion_tokens_details?.reasoning_tokens ? ` (reasoning ${res.usage.completion_tokens_details.reasoning_tokens})` : ""}, json ${r.json_ok}, think-tag ${r.has_think_tag}`);
   } catch (err) {
-    const r = { name, model, ok: false, ms: Math.round(performance.now() - started), status: err?.status, error: String(err?.message ?? err).slice(0, 300) };
+    const r = { name, model, ok: false, ms: Math.round(performance.now() - started), status: err?.status, error: redact(err?.message ?? err).slice(0, 300) };
     results.push(r);
     console.log(`✗ ${name}: HTTP ${r.status ?? "?"} ${r.error}`);
   }

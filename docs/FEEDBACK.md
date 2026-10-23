@@ -27,7 +27,7 @@ Run with `node scripts/smoke-tokenfactory.mjs` against the 30 s dev clip (`sampl
 | compile prompt, unknown parameter | Super | accepted silently | 4.0 s | |
 | `GET /v1/models?verbose=true` | | 30 models, our four present with `pricing`, `per_request_limits`, `supported_features` | | saved as `tests/fixtures/models.json` |
 
-Decisions frozen in `lib/providers/tokenfactory.ts`: Label input is a 480p 4 fps H.264 proxy of the whole clip (under 2 minutes) as a `video_url` data URI with thinking off, keyframes (7 plus a montage) as the fallback; every call to the three models passes `chat_template_kwargs.enable_thinking: false` unless it wants reasoning; `reasoning_effort` is never used because it empties Nano's answer. Reasoning, when on, arrives in `reasoning_content`, not inside the text, so the parser's think-tag handling is a safety net only.
+Decisions frozen in `lib/providers/tokenfactory.ts`: Label input is a 480p 4 fps H.264 proxy of the whole clip (under 2 minutes) as a `video_url` data URI with thinking off, keyframes (7 plus a montage) as the fallback; every call to the three models passes `chat_template_kwargs.enable_thinking: false` unless it wants reasoning; `reasoning_effort` is never used because, for this prompt and budget, it emptied Nano's answer. With thinking on, output length varied several-fold between runs of the same prompt (one Nano run finished at 983 tokens, another hit the 1,200 budget), which is the second reason to turn it off for the fast calls. Reasoning, when on, arrives in `reasoning_content`, not inside the text, so the parser's think-tag handling is a safety net only.
 
 ## Per tool
 

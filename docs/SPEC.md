@@ -18,7 +18,7 @@ Audience: teams bootstrapping a task on an SO-101 or UMI rig from phone clips; v
 
 ## 3. Input to output contract
 
-**Upload:** one H.264 MP4, 10 s to 2 min (longer clips are trimmed, said on screen), one person, one tabletop task, fixed phone, side or front view. HEVC or MOV is rejected with the fix printed ("iPhone: Settings > Camera > Formats > Most Compatible") beside a "Try the sample clip" button. Nothing is uploaded by default: frames are decoded in the browser and only 12 to 16 JPEG keyframes (under 1 MB) leave it, inside the Label request, stored nowhere. No account. The session persists in IndexedDB keyed by the clip's SHA-256 and resumes after a refresh; the same structure is the replay fixture.
+**Upload:** one H.264 MP4, 10 s to 2 min (longer clips are trimmed, said on screen), one person, one tabletop task, fixed phone, side or front view. HEVC or MOV is rejected with the fix printed ("iPhone: Settings > Camera > Formats > Most Compatible") beside a "Try the sample clip" button. Nothing is stored anywhere: the clip is decoded in the browser, which encodes a 480p 4 fps proxy (about 150 KB per 30 s) that leaves it only inside the Label request as a data URI; the fallback sends 7 JPEG keyframes plus a montage (Token Factory caps a request at 8 images). No account. The session persists in IndexedDB keyed by the clip's SHA-256 and resumes after a refresh; the same structure is the replay fixture.
 
 **Download:** `understudy-<slug>.zip`: `lerobot/` (LeRobot v2.1 layout, up to four passing episodes, `so101_follower`, `modality.json`) and `understudy/` (spec, program, interview transcript, rehearsal report, reshoot list, ledger, grounding, warnings, `QUALITY.md`, keyframes, pose, tokens).
 
@@ -159,7 +159,7 @@ Cut order if the schedule slips: reactive turn, `video_url` flag, validation job
 
 ## 12. Risks
 
-1. **Label input:** keyframes and montage are the documented default; `video_url` only behind a passing Friday test.
+1. **Label input:** the video proxy is the measured default (23 Oct: 30 s = 5,024 input tokens, 3.3 s); 7 keyframes plus a montage is the fallback when the browser cannot encode the proxy.
 2. **MuJoCo WASM and IK:** assets loaded Friday; Sunday go/no-go; five-constraint IK with reachability pre-check; kinematic fallback with the physics wording removed.
 3. **Structured output and thinking:** lenient parse only; `json_schema` per model after a passing test; 400 retried; `<think>` stripped.
 4. **Clip variety:** codec reject with the fix; person selection; hand gaps; 2D mode; touch task; sample clip one click away.
