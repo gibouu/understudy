@@ -179,6 +179,20 @@ describe("layoutMissingPoses", () => {
     });
     expect(() => layoutMissingPoses(many)).toThrow(/no room/);
   });
+  it("reserves the children a laid-out parent makes resolvable before placing the next object", () => {
+    const cubes = TaskSpec.parse({
+      ...spec,
+      objects: [
+        { id: "parent", name: "parent", shape: "box", size_mm: [40, 40, 40], symmetry: "none", role: "manipulated", source: "vl#seg1" },
+        { id: "child", name: "child", shape: "box", size_mm: [40, 40, 40], symmetry: "none", role: "obstacle", pose: { xyz_mm: [0, 96.5685425, 0], frame: "parent" }, source: "vl#seg1" },
+        { id: "third", name: "third", shape: "box", size_mm: [40, 40, 40], symmetry: "none", role: "obstacle", source: "vl#seg1" },
+      ],
+      steps: [],
+    });
+    const b = buildScene(cubes);
+    const dy = Math.abs(b.frames.third.xyz_m[1] - b.frames.child.xyz_m[1]) * 1000;
+    expect(dy).toBeGreaterThanOrEqual(Math.hypot(40, 40) + 40 - 1e-6);
+  });
   it("never places a new object inside a placed one", () => {
     const crowded = TaskSpec.parse({
       ...spec,

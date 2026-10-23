@@ -216,17 +216,22 @@ export function layoutMissingPoses(spec: TaskSpec): { spec: TaskSpec; laidOut: s
   const out = structuredClone(spec);
   const missing = out.objects.filter((o) => !o.pose);
   if (missing.length === 0) return { spec: out, laidOut: [], warnings: [] };
-  const placed = worldPoses(out, {}, { partial: true });
   const widest = Math.max(...out.objects.map(discRadiusMm)) * 2;
   // y intervals already occupied in the layout band, each widened by the gap
   const occupied: [number, number][] = [];
-  for (const o of out.objects) {
-    const p = placed[o.id];
-    if (!p) continue;
-    const r = discRadiusMm(o);
-    if (Math.abs(p.xyz_mm[0] - LAYOUT_X_MM) > r + widest / 2) continue;
-    occupied.push([p.xyz_mm[1] - r - LAYOUT_GAP_MM, p.xyz_mm[1] + r + LAYOUT_GAP_MM]);
-  }
+  const reserved = new Set<string>();
+  const reserveResolved = () => {
+    const placed = worldPoses(out, {}, { partial: true });
+    for (const o of out.objects) {
+      const p = placed[o.id];
+      if (!p || reserved.has(o.id)) continue;
+      reserved.add(o.id);
+      const r = discRadiusMm(o);
+      if (Math.abs(p.xyz_mm[0] - LAYOUT_X_MM) > r + widest / 2) continue;
+      occupied.push([p.xyz_mm[1] - r - LAYOUT_GAP_MM, p.xyz_mm[1] + r + LAYOUT_GAP_MM]);
+    }
+  };
+  reserveResolved();
   const warnings: string[] = [];
   for (const o of missing) {
     const w = 2 * discRadiusMm(o);
@@ -237,8 +242,9 @@ export function layoutMissingPoses(spec: TaskSpec): { spec: TaskSpec; laidOut: s
     if (y === undefined) throw new SceneError(`no room to lay out "${o.id}" in front of the robot`);
     o.pose = { xyz_mm: [LAYOUT_X_MM, y + w / 2, heightMm(o) / 2], yaw_deg: 0, frame: "world" };
     o.sources = { ...o.sources, pose: "default" };
-    occupied.push([y - LAYOUT_GAP_MM, y + w + LAYOUT_GAP_MM]);
     warnings.push(`object "${o.id}" had no pose; laid out at (${LAYOUT_X_MM}, ${Math.round(y + w / 2)}) mm in front of the robot`);
+    // the new object and any children it just made resolvable now count as occupied
+    reserveResolved();
   }
   return { spec: out, laidOut: missing.map((o) => o.id), warnings };
 }
