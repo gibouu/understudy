@@ -62,6 +62,26 @@ describe("QUALITY.md", () => {
     expect(specCoverageBySource(spec)).toEqual({ vl: 2, interview: 1, pose: 1, default: 1 });
   });
 
+  it("prints one-sided, zero and unsampled bands honestly", () => {
+    const episodes = syntheticEpisodes();
+    const report = buildQualityReport({
+      episodes,
+      envelope: {
+        clearance_mm: {
+          sensed: { pass_neg: null, pass_pos: 0, fail_neg: null, fail_pos: 2 },
+          blind: { pass_neg: -3, pass_pos: null, fail_neg: null, fail_pos: null },
+        },
+        tilt_deg: {
+          sensed: { pass_neg: 0, pass_pos: 0, fail_neg: -1, fail_pos: 1 },
+          blind: { pass_neg: null, pass_pos: null, fail_neg: null, fail_pos: null },
+        },
+      },
+    });
+    const md = renderQualityMarkdown(report, episodes);
+    expect(md).toContain("| clearance_mm | ? to +0 mm (fails at ? / +2) | -3 to ? mm |");
+    expect(md).toContain("| tilt_deg | 0 to +0 deg (fails at -1 / +1) | none passed |");
+  });
+
   it("prints the headline, envelope, coverage and validation status", () => {
     const episodes = syntheticEpisodes();
     const report = buildQualityReport({
