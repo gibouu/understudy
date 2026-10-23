@@ -87,8 +87,10 @@ export default function WatchPage() {
     let lm: Detector | null = null;
     (async () => {
       setStage(running("Loading MediaPipe"));
-      detector.current ??= startDetector();
-      const ready = await detector.current;
+      // reuse the worker only while it is alive; a dead one never answers
+      const reuse = await detector.current?.catch(() => null);
+      if (!reuse?.alive()) detector.current = startDetector();
+      const ready = await detector.current!;
       lm = ready;
       if (abort.signal.aborted) return;
       setDelegate(ready.delegate);
@@ -161,6 +163,8 @@ export default function WatchPage() {
       detector.current?.then((d) => d.close()).catch(() => {});
       detector.current = null;
       if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
+      // a dev-clip download still in flight must not create a URL after this
+      pick.current++;
     },
     [],
   );
