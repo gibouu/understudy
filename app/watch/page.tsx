@@ -89,6 +89,7 @@ export default function WatchPage() {
       setStage(running("Loading MediaPipe"));
       // reuse the worker only while it is alive; a dead one never answers
       const reuse = await detector.current?.catch(() => null);
+      if (abort.signal.aborted) return;
       if (!reuse?.alive()) detector.current = startDetector();
       const ready = await detector.current!;
       lm = ready;
