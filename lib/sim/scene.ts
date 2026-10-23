@@ -12,17 +12,21 @@
  * Units: the spec is millimetres and degrees, MJCF is metres and radians (the
  * included SO-101 sets angle="radian" for the whole model). The world frame
  * is the robot base on the table surface, z up. Object poses may be given in
- * another object's frame; chains are composed here, so every emitted body
- * carries a world pose. Names are namespaced and injective (`obj_` plus an
- * encoding of the id), so they cannot collide with the arm or each other.
- * Objects without a pose are laid out in a row in front of the robot, around
- * whatever is already placed, and reported so the compiler can ask. World
- * perturbations (a scenario's axis offset, given in world axes) move the
- * object's nominal pose or change a pocket's clearance; a perturbation that
- * cannot apply is reported with `applied: false` so no rollout counts it as
- * tested; observation noise is left to the interpreter's sensed mode.
- * Geometry that cannot exist (a pocket wider than its fixture, a fixture too
- * shallow for a floor, a non-finite coordinate) is an error, not a guess.
+ * another object's frame; chains are composed here as full 3D transforms
+ * (position and rotation), so a tilted parent carries its children, and
+ * every emitted body gets a world position and quaternion. Names are
+ * namespaced and injective (`obj_` plus an encoding of the id), so they
+ * cannot collide with the arm or each other. Objects without a pose are laid
+ * out in a row in front of the robot, in free slots around whatever is
+ * already placed (yaw-safe: each placed object is treated as a disc of its
+ * diagonal), and reported so the compiler can ask. World perturbations (a
+ * scenario's axis offset, given in world axes) move the object's nominal
+ * pose or change a pocket's clearance; a perturbation that cannot apply is
+ * reported with `applied: false` so no rollout counts it as tested; a
+ * scenario perturbs one object, so a parent's own tilt is never in play when
+ * an offset is converted into its frame. Geometry that cannot exist (a
+ * pocket wider than its fixture, a fixture too shallow for a floor, a
+ * non-finite coordinate, no room on the table) is an error, not a guess.
  */
 import type { Scenario, SpecObject, TaskSpec } from "@/lib/spec/schema";
 
@@ -36,6 +40,7 @@ export const DEFAULT_CLEARANCE_MM = 3;
 export const NAME_PREFIX = "obj_";
 const LAYOUT_X_MM = 250;
 const LAYOUT_Y_START_MM = -250;
+const LAYOUT_Y_END_MM = 800;
 const LAYOUT_GAP_MM = 40;
 
 export class SceneError extends Error {
@@ -45,8 +50,13 @@ export class SceneError extends Error {
   }
 }
 
-export type WorldPose = { xyz_m: [number, number, number]; euler_rad: [number, number, number] };
+export type Vec3 = [number, number, number];
+export type Quat = [number, number, number, number];
+/** row-major 3x3 */
+export type Mat3 = [number, number, number, number, number, number, number, number, number];
+export type WorldPose = { xyz_m: Vec3; quat: Quat; yaw_rad: number };
 export type Tilt = { axis: "x" | "y"; deg: number };
+export type Pose3 = { xyz_mm: Vec3; R: Mat3; yaw_deg: number };
 export type SceneBuild = {
   /** MJCF fragment to place inside <worldbody> */
   worldbody: string;
@@ -69,6 +79,61 @@ export const COLORS: Record<SpecObject["role"], string> = {
 };
 
 const dict = <T>(): Record<string, T> => Object.create(null) as Record<string, T>;
+
+// --- rotations ---------------------------------------------------------------
+export const I3: Mat3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+export const rotX = (deg: number): Mat3 => {
+  const c = Math.cos(deg * DEG);
+  const s = Math.sin(deg * DEG);
+  return [1, 0, 0, 0, c, -s, 0, s, c];
+};
+export const rotY = (deg: number): Mat3 => {
+  const c = Math.cos(deg * DEG);
+  const s = Math.sin(deg * DEG);
+  return [c, 0, s, 0, 1, 0, -s, 0, c];
+};
+export const rotZ = (deg: number): Mat3 => {
+  const c = Math.cos(deg * DEG);
+  const s = Math.sin(deg * DEG);
+  return [c, -s, 0, s, c, 0, 0, 0, 1];
+};
+export const mul = (a: Mat3, b: Mat3): Mat3 => {
+  const r = new Array<number>(9) as Mat3;
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) r[3 * i + j] = a[3 * i] * b[j] + a[3 * i + 1] * b[3 + j] + a[3 * i + 2] * b[6 + j];
+  return r;
+};
+export const transpose = (a: Mat3): Mat3 => [a[0], a[3], a[6], a[1], a[4], a[7], a[2], a[5], a[8]];
+export const apply = (a: Mat3, v: Vec3): Vec3 => [
+  a[0] * v[0] + a[1] * v[1] + a[2] * v[2],
+  a[3] * v[0] + a[4] * v[1] + a[5] * v[2],
+  a[6] * v[0] + a[7] * v[1] + a[8] * v[2],
+];
+/** unit quaternion [w, x, y, z] of a rotation matrix */
+export function matToQuat(m: Mat3): Quat {
+  const t = m[0] + m[4] + m[8];
+  let w: number, x: number, y: number, z: number;
+  if (t > 0) {
+    const s = Math.sqrt(t + 1) * 2;
+    w = s / 4; x = (m[7] - m[5]) / s; y = (m[2] - m[6]) / s; z = (m[3] - m[1]) / s;
+  } else if (m[0] > m[4] && m[0] > m[8]) {
+    const s = Math.sqrt(1 + m[0] - m[4] - m[8]) * 2;
+    w = (m[7] - m[5]) / s; x = s / 4; y = (m[1] + m[3]) / s; z = (m[2] + m[6]) / s;
+  } else if (m[4] > m[8]) {
+    const s = Math.sqrt(1 + m[4] - m[0] - m[8]) * 2;
+    w = (m[2] - m[6]) / s; x = (m[1] + m[3]) / s; y = s / 4; z = (m[5] + m[7]) / s;
+  } else {
+    const s = Math.sqrt(1 + m[8] - m[0] - m[4]) * 2;
+    w = (m[3] - m[1]) / s; x = (m[2] + m[6]) / s; y = (m[5] + m[7]) / s; z = s / 4;
+  }
+  const n = Math.hypot(w, x, y, z);
+  return [w / n, x / n, y / n, z / n];
+}
+/** an object's own rotation: yaw first, then a world-axis tilt (MuJoCo's intrinsic xyz with euler [tx, ty, yaw]) */
+const ownRotation = (yawDeg: number, tilt?: Tilt): Mat3 => {
+  const yaw = rotZ(yawDeg);
+  if (!tilt) return yaw;
+  return mul(tilt.axis === "x" ? rotX(tilt.deg) : rotY(tilt.deg), yaw);
+};
 
 /** Injective MJCF-safe body name: letters, digits and '-' pass, '_' becomes '__', anything else '_<hex>_'. */
 export function mjcfName(id: string): string {
@@ -96,39 +161,50 @@ export function footprintMm(o: SpecObject): [number, number] {
 export function heightMm(o: SpecObject): number {
   return o.size_mm[2];
 }
+/** Radius of the disc that contains the footprint under any yaw, mm. */
+const discRadiusMm = (o: SpecObject) => Math.hypot(...footprintMm(o)) / 2;
 
-type Flat = { xyz_mm: [number, number, number]; yaw_deg: number };
-
-function rotZ(x: number, y: number, deg: number): [number, number] {
-  const c = Math.cos(deg * DEG);
-  const s = Math.sin(deg * DEG);
-  return [c * x - s * y, s * x + c * y];
-}
-
-/** World poses of every posed object, composing frame chains. Throws on unknown or cyclic frames. */
-export function worldPoses(spec: TaskSpec): Record<string, Flat> {
+/**
+ * World poses, composing frame chains as full transforms. In strict mode an
+ * object whose chain reaches an unposed object is an error; in partial mode
+ * it is left out (layout fills those first).
+ */
+export function worldPoses(spec: TaskSpec, tilts: Record<string, Tilt> = {}, options: { partial?: boolean } = {}): Record<string, Pose3> {
   const byId = new Map(spec.objects.map((o) => [o.id, o]));
-  const out = dict<Flat>();
+  const out = dict<Pose3>();
+  const skipped = new Set<string>();
   const visiting = new Set<string>();
-  const resolve = (id: string): Flat => {
+  const resolve = (id: string): Pose3 | undefined => {
     if (id in out) return out[id];
+    if (skipped.has(id)) return undefined;
     const o = byId.get(id);
-    if (!o?.pose) throw new SceneError(`object "${id}" has no pose to resolve`);
+    if (!o) throw new SceneError(`unknown frame "${id}"`);
+    if (!o.pose) {
+      if (options.partial) {
+        skipped.add(id);
+        return undefined;
+      }
+      throw new SceneError(`object "${id}" has no pose to resolve`);
+    }
     if (visiting.has(id)) throw new SceneError(`object "${id}" has a cyclic pose frame`);
     visiting.add(id);
-    let flat: Flat;
-    if (o.pose.frame === "world") flat = { xyz_mm: [...o.pose.xyz_mm], yaw_deg: o.pose.yaw_deg };
+    const R_local = ownRotation(o.pose.yaw_deg, Object.hasOwn(tilts, id) ? tilts[id] : undefined); // own property: an id like __proto__ must not read the prototype
+    let pose: Pose3 | undefined;
+    if (o.pose.frame === "world") pose = { xyz_mm: [...o.pose.xyz_mm], R: R_local, yaw_deg: o.pose.yaw_deg };
     else {
       if (!byId.has(o.pose.frame)) throw new SceneError(`object "${id}" is posed in unknown frame "${o.pose.frame}"`);
       const p = resolve(o.pose.frame);
-      const [x, y] = rotZ(o.pose.xyz_mm[0], o.pose.xyz_mm[1], p.yaw_deg);
-      flat = { xyz_mm: [p.xyz_mm[0] + x, p.xyz_mm[1] + y, p.xyz_mm[2] + o.pose.xyz_mm[2]], yaw_deg: p.yaw_deg + o.pose.yaw_deg };
+      if (p) {
+        const t = apply(p.R, o.pose.xyz_mm);
+        pose = { xyz_mm: [p.xyz_mm[0] + t[0], p.xyz_mm[1] + t[1], p.xyz_mm[2] + t[2]], R: mul(p.R, R_local), yaw_deg: p.yaw_deg + o.pose.yaw_deg };
+      }
     }
     visiting.delete(id);
-    out[id] = flat;
-    return flat;
+    if (pose) out[id] = pose;
+    else skipped.add(id);
+    return pose;
   };
-  for (const o of spec.objects) if (o.pose) resolve(o.id);
+  for (const o of spec.objects) resolve(o.id);
   return out;
 }
 
@@ -140,23 +216,25 @@ export function layoutMissingPoses(spec: TaskSpec): { spec: TaskSpec; laidOut: s
   const out = structuredClone(spec);
   const missing = out.objects.filter((o) => !o.pose);
   if (missing.length === 0) return { spec: out, laidOut: [], warnings: [] };
-  const placed = worldPoses(out);
-  const widest = Math.max(...out.objects.map((o) => Math.max(...footprintMm(o))));
+  const placed = worldPoses(out, {}, { partial: true });
+  const widest = Math.max(...out.objects.map(discRadiusMm)) * 2;
   // y intervals already occupied in the layout band, each widened by the gap
   const occupied: [number, number][] = [];
   for (const o of out.objects) {
     const p = placed[o.id];
     if (!p) continue;
-    const half = Math.max(...footprintMm(o)) / 2; // yaw-safe square footprint
-    if (Math.abs(p.xyz_mm[0] - LAYOUT_X_MM) > half + widest / 2) continue;
-    occupied.push([p.xyz_mm[1] - half - LAYOUT_GAP_MM, p.xyz_mm[1] + half + LAYOUT_GAP_MM]);
+    const r = discRadiusMm(o);
+    if (Math.abs(p.xyz_mm[0] - LAYOUT_X_MM) > r + widest / 2) continue;
+    occupied.push([p.xyz_mm[1] - r - LAYOUT_GAP_MM, p.xyz_mm[1] + r + LAYOUT_GAP_MM]);
   }
   const warnings: string[] = [];
   for (const o of missing) {
-    const w = Math.max(...footprintMm(o));
-    const starts = [LAYOUT_Y_START_MM, ...occupied.map(([, end]) => end)].sort((a, b) => a - b);
+    const w = 2 * discRadiusMm(o);
+    const starts = [LAYOUT_Y_START_MM, ...occupied.map(([, end]) => end)]
+      .filter((s) => s >= LAYOUT_Y_START_MM && s + w <= LAYOUT_Y_END_MM)
+      .sort((a, b) => a - b);
     const y = starts.find((s) => occupied.every(([a, b]) => s + w <= a || s >= b));
-    if (y === undefined) throw new SceneError(`no room to lay out "${o.id}"`);
+    if (y === undefined) throw new SceneError(`no room to lay out "${o.id}" in front of the robot`);
     o.pose = { xyz_mm: [LAYOUT_X_MM, y + w / 2, heightMm(o) / 2], yaw_deg: 0, frame: "world" };
     o.sources = { ...o.sources, pose: "default" };
     occupied.push([y - LAYOUT_GAP_MM, y + w + LAYOUT_GAP_MM]);
@@ -186,21 +264,21 @@ export function perturb(
   if (!o) throw new SceneError(`scenario ${scenario.id}: unknown object "${scenario.object}"`);
   const pose = o.pose!;
   const world = worldPoses(out);
-  const parentYaw = pose.frame === "world" ? 0 : world[pose.frame].yaw_deg;
-  const shift = (dx: number, dy: number, dz: number) => {
-    const [lx, ly] = rotZ(dx, dy, -parentYaw);
-    pose.xyz_mm = [pose.xyz_mm[0] + lx, pose.xyz_mm[1] + ly, pose.xyz_mm[2] + dz];
+  const parentR = pose.frame === "world" ? I3 : world[pose.frame].R;
+  const shift = (offset: Vec3) => {
+    const local = apply(transpose(parentR), offset);
+    pose.xyz_mm = [pose.xyz_mm[0] + local[0], pose.xyz_mm[1] + local[1], pose.xyz_mm[2] + local[2]];
   };
   let applied = true;
   switch (scenario.axis) {
     case "x_mm":
-      shift(scenario.offset, 0, 0);
+      shift([scenario.offset, 0, 0]);
       break;
     case "y_mm":
-      shift(0, scenario.offset, 0);
+      shift([0, scenario.offset, 0]);
       break;
     case "z_mm":
-      shift(0, 0, scenario.offset);
+      shift([0, 0, scenario.offset]);
       break;
     case "yaw_deg":
       if (o.symmetry !== "none") warnings.push(`scenario ${scenario.id}: yaw on "${o.id}" (${o.symmetry} symmetry) changes nothing measurable`);
@@ -280,7 +358,7 @@ export function buildScene(spec: TaskSpec, tilts: Record<string, Tilt> = {}): Sc
     seen.add(o.id);
   }
   const warnings = [...laid.warnings];
-  const world = worldPoses(s);
+  const world = worldPoses(s, tilts);
   const frames = dict<WorldPose>();
   const names = dict<string>();
   const pockets = dict<{ inner_m: [number, number]; depth_m: number }>();
@@ -290,12 +368,10 @@ export function buildScene(spec: TaskSpec, tilts: Record<string, Tilt> = {}): Sc
     const name = mjcfName(o.id);
     names[o.id] = name;
     const w = world[o.id];
-    const tilt = tilts[o.id];
-    const xyz: [number, number, number] = [w.xyz_mm[0] * MM, w.xyz_mm[1] * MM, w.xyz_mm[2] * MM];
-    // intrinsic xyz: yaw is applied first, then the tilt about a world axis
-    const euler: [number, number, number] = [tilt?.axis === "x" ? tilt.deg * DEG : 0, tilt?.axis === "y" ? tilt.deg * DEG : 0, w.yaw_deg * DEG];
-    frames[o.id] = { xyz_m: xyz, euler_rad: euler };
-    const lines = [`<body name="${name}" pos="${v(xyz)}" euler="${v(euler)}">`];
+    const xyz: Vec3 = [w.xyz_mm[0] * MM, w.xyz_mm[1] * MM, w.xyz_mm[2] * MM];
+    const quat = matToQuat(w.R);
+    frames[o.id] = { xyz_m: xyz, quat, yaw_rad: w.yaw_deg * DEG };
+    const lines = [`<body name="${name}" pos="${v(xyz)}" quat="${v(quat)}">`];
     const rgba = COLORS[o.role];
     const pocket = o.role === "fixture" ? pocketFor(s, o) : null;
     if (o.role === "manipulated") lines.push(`  <freejoint name="${name}_free"/>`);

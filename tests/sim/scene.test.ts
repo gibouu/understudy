@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { TaskSpec, type Scenario } from "@/lib/spec/schema";
-import { buildScene, layoutMissingPoses, mjcfName, perturb, SceneError, standaloneXml, WALL_M, worldPoses } from "@/lib/sim/scene";
+import { apply, buildScene, layoutMissingPoses, matToQuat, mjcfName, perturb, SceneError, standaloneXml, WALL_M, worldPoses } from "@/lib/sim/scene";
 import { stageXml, SO101_XML } from "@/lib/sim/so101";
 
 const spec = TaskSpec.parse({
@@ -50,12 +50,59 @@ describe("buildScene", () => {
     expect(build.laidOut).toEqual(["saucer"]);
     expect(build.warnings[0]).toMatch(/saucer.*no pose/);
     expect(build.frames.saucer.xyz_m[2]).toBeCloseTo(0.005, 6); // resting on the table
-    // the first free 140 mm slot after the marker (y -100) and the rack (y 100, 120 mm wide) with 40 mm gaps
-    expect(build.frames.saucer.xyz_m[1]).toBeCloseTo(0.27, 6);
+    // the first free slot after the rack (y 100, disc radius of a 120 x 80 box) with a 40 mm gap, yaw-safe discs throughout
+    const rackRadius = Math.hypot(120, 80) / 2;
+    const saucerWidth = Math.hypot(140, 140);
+    expect(build.frames.saucer.xyz_m[1]).toBeCloseTo((100 + rackRadius + 40 + saucerWidth / 2) / 1000, 6);
     expect(build.worldbody).toContain('name="obj_saucer_zone"');
   });
-  it("converts yaw to radians in the body frame", () => {
-    expect(build.frames.rack.euler_rad[2]).toBeCloseTo((10 * Math.PI) / 180, 6);
+  it("converts yaw to radians and emits a quaternion", () => {
+    expect(build.frames.rack.yaw_rad).toBeCloseTo((10 * Math.PI) / 180, 6);
+    const [w, x, y, z] = build.frames.rack.quat;
+    expect([w, x, y, z]).toEqual([expect.closeTo(Math.cos((5 * Math.PI) / 180), 6), expect.closeTo(0, 6), expect.closeTo(0, 6), expect.closeTo(Math.sin((5 * Math.PI) / 180), 6)]);
+    expect(build.worldbody).toMatch(/<body name="obj_rack" pos="0.25 0.1 0.02" quat="0.996195 0 0 0.087156">/);
+  });
+  it("carries a parent's tilt into its children", () => {
+    const chain = TaskSpec.parse({
+      ...spec,
+      objects: [
+        ...spec.objects,
+        { id: "tray", name: "tray", shape: "box", size_mm: [200, 200, 40], symmetry: "none", role: "surface", pose: { xyz_mm: [250, 0, 20] }, source: "vl#seg1" },
+        { id: "cap", name: "cap", shape: "box", size_mm: [20, 20, 10], symmetry: "none", role: "obstacle", pose: { xyz_mm: [0, 0, 40], frame: "tray" }, source: "vl#seg1" },
+      ],
+    });
+    const w = worldPoses(chain, { tray: { axis: "y", deg: 90 } }, { partial: true });
+    expect(w.cap.xyz_mm[0]).toBeCloseTo(290, 6); // +z of the tray now points along +x
+    expect(w.cap.xyz_mm[2]).toBeCloseTo(20, 6);
+    const zAxis = apply(w.cap.R, [0, 0, 1]);
+    expect(zAxis[0]).toBeCloseTo(1, 6);
+    expect(matToQuat(w.cap.R)[2]).toBeCloseTo(Math.sin(Math.PI / 4), 6);
+  });
+  it("lays out an unposed parent before resolving its posed child", () => {
+    const orphan = TaskSpec.parse({
+      ...spec,
+      objects: [
+        spec.objects[0],
+        { id: "tray", name: "tray", shape: "box", size_mm: [200, 200, 40], symmetry: "none", role: "surface", source: "vl#seg1" },
+        { id: "cap", name: "cap", shape: "box", size_mm: [20, 20, 10], symmetry: "none", role: "obstacle", pose: { xyz_mm: [0, 0, 25], frame: "tray" }, source: "vl#seg1" },
+      ],
+      steps: [spec.steps[0]],
+    });
+    const b = buildScene(orphan);
+    expect(b.laidOut).toEqual(["tray"]);
+    expect(b.frames.cap.xyz_m[2]).toBeCloseTo(0.02 + 0.025, 6);
+  });
+  it("reports cycles, unknown frames and duplicate ids as errors", () => {
+    const cyc = structuredClone(spec);
+    cyc.objects[0].pose = { xyz_mm: [0, 0, 0], yaw_deg: 0, frame: "rack" };
+    cyc.objects[1].pose = { xyz_mm: [0, 0, 0], yaw_deg: 0, frame: "marker" };
+    expect(() => buildScene(cyc)).toThrow(/cyclic/);
+    const unk = structuredClone(spec);
+    unk.objects[0].pose = { xyz_mm: [0, 0, 0], yaw_deg: 0, frame: "ghost" };
+    expect(() => buildScene(unk)).toThrow(/unknown frame/);
+    const dup = structuredClone(spec);
+    dup.objects.push({ ...dup.objects[0] });
+    expect(() => buildScene(dup)).toThrow(/twice/);
   });
   it("composes pose chains into world poses", () => {
     const child = TaskSpec.parse({
@@ -66,7 +113,7 @@ describe("buildScene", () => {
         { id: "rack2", name: "rack2", shape: "box", size_mm: [120, 80, 40], symmetry: "none", role: "fixture", pose: { xyz_mm: [250, 100, 20], yaw_deg: 90 }, source: "vl#seg1" },
       ],
     });
-    const w = worldPoses(child);
+    const w = worldPoses(child, {}, { partial: true });
     expect(w.lid.xyz_mm[0]).toBeCloseTo(250, 6);
     expect(w.lid.xyz_mm[1]).toBeCloseTo(130, 6);
     expect(w.lid.xyz_mm[2]).toBeCloseTo(30, 6);
@@ -100,6 +147,37 @@ describe("layoutMissingPoses", () => {
     expect(laidOut).toEqual(["saucer"]);
     expect(out.objects[0].pose?.xyz_mm).toEqual([250, -100, 70]);
     expect(out.objects[2].sources.pose).toBe("default");
+  });
+  it("treats a yawed box as the disc of its diagonal", () => {
+    const yawed = TaskSpec.parse({
+      ...spec,
+      objects: [
+        { id: "big", name: "big", shape: "box", size_mm: [200, 200, 40], symmetry: "none", role: "manipulated", pose: { xyz_mm: [250, 0, 20], yaw_deg: 45 }, source: "vl#seg1" },
+        { id: "other", name: "other", shape: "box", size_mm: [200, 200, 40], symmetry: "none", role: "obstacle", source: "vl#seg1" },
+      ],
+      steps: [],
+    });
+    const y = layoutMissingPoses(yawed).spec.objects[1].pose!.xyz_mm[1];
+    expect(Math.abs(y)).toBeGreaterThanOrEqual(Math.hypot(200, 200) + 40 - 1e-6); // two diagonal radii plus the gap
+  });
+  it("does not let a far-away object pull a new one below the layout start", () => {
+    const far = TaskSpec.parse({
+      ...spec,
+      objects: [
+        { id: "far", name: "far", shape: "box", size_mm: [40, 40, 40], symmetry: "none", role: "manipulated", pose: { xyz_mm: [250, -1000, 20] }, source: "vl#seg1" },
+        { id: "new", name: "new", shape: "box", size_mm: [100, 100, 40], symmetry: "none", role: "obstacle", source: "vl#seg1" },
+      ],
+      steps: [],
+    });
+    expect(layoutMissingPoses(far).spec.objects[1].pose!.xyz_mm[1]).toBeGreaterThanOrEqual(-250);
+  });
+  it("runs out of room instead of spilling off the table", () => {
+    const many = TaskSpec.parse({
+      ...spec,
+      objects: Array.from({ length: 6 }, (_, i) => ({ id: `b${i}`, name: `b${i}`, shape: "box" as const, size_mm: [200, 200, 40] as [number, number, number], symmetry: "none" as const, role: i === 0 ? ("manipulated" as const) : ("obstacle" as const), source: "vl#seg1" })),
+      steps: [],
+    });
+    expect(() => layoutMissingPoses(many)).toThrow(/no room/);
   });
   it("never places a new object inside a placed one", () => {
     const crowded = TaskSpec.parse({
@@ -149,7 +227,9 @@ describe("perturb", () => {
   it("records a tilt for the scene and warns about yaw on a symmetric object", () => {
     const t = perturb(spec, scenario("tilt_deg", 5, "rack", { tilt_axis: "y" }));
     expect(t.tilts.rack).toEqual({ axis: "y", deg: 5 });
-    expect(buildScene(t.spec, t.tilts).frames.rack.euler_rad[1]).toBeCloseTo((5 * Math.PI) / 180, 6);
+    const level = structuredClone(t.spec);
+    level.objects[1].pose!.yaw_deg = 0;
+    expect(buildScene(level, t.tilts).frames.rack.quat).toEqual([expect.closeTo(Math.cos((2.5 * Math.PI) / 180), 6), expect.closeTo(0, 6), expect.closeTo(Math.sin((2.5 * Math.PI) / 180), 6), expect.closeTo(0, 6)]);
     const y = perturb(spec, scenario("yaw_deg", 20, "marker"));
     expect(y.warnings.join()).toMatch(/changes nothing/);
   });
