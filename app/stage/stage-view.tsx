@@ -25,6 +25,7 @@ export function StageView() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    let alive = true; // Strict Mode disposes and re-runs this effect; the first client must stay silent
     const renderer = new StageRenderer(canvas);
     rendererRef.current = renderer;
     const client = new SimClient()
@@ -50,8 +51,11 @@ export function StageView() {
         }
       });
     clientRef.current = client;
-    client.load().catch((err: Error) => setError(err.message));
+    client.load().catch((err: Error) => {
+      if (alive) setError(err.message);
+    });
     return () => {
+      alive = false;
       client.dispose();
       renderer.dispose();
     };
