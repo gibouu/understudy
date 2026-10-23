@@ -1,6 +1,6 @@
-# Critics' findings on spec v1
+# Adversarial design review of spec v1
 
-Four adversarial reviews of the first synthesis (23 October 2026). Spec v2 (`docs/SPEC.md`, sections 20 and 21) records what changed and which risks were accepted.
+Before the build, the first version of the spec went through four independent adversarial reviews (schedule, track fit, robotics claims, demo-day failure modes) on 23 October 2026. Spec v2 (`docs/SPEC.md`, sections 20 and 21) records what changed and which risks were accepted. Kept here because the review shaped the design as much as the research did.
 
 ## Critic attack:schedule-breaker: FAIL
 - [critical] gib's demo-critical path as scheduled is about 90 engineer-hours, not 50; the day table hides 12-16 hour days and no hour of integration or prompt iteration.

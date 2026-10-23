@@ -12,13 +12,17 @@
 
 ---
 
-> **Status, day one of seven (23 October 2026):** repository, shared contract, docs and task board. The stages below are the design; each one links to its issue until it ships. Built for the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/), Physical AI track.
+> **Status (hackathon week, 23 to 30 October 2026):** the rehearsal stage, the watch page, the shared contract, the scene builder and the LeRobot export writer are merged; the Token Factory path is live and its behaviour measured (`docs/FEEDBACK.md`). The label, compile, interview, saboteur and notes routes are the week's remaining work; the task board is the GitHub issues, tracker [#45](https://github.com/gibouu/understudy/issues/45). Built for the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/), Physical AI track.
 
 An understudy learns a role by watching the lead, then rehearses it on stage. Understudy does that for robots. One phone clip of a person doing a tabletop task goes in; what comes out is a task spec the person has been interviewed about, a robot program that a simulated arm has rehearsed under perturbation, one number per axis saying how much pose error the task tolerates, a reshoot list, and a dataset skeleton in the layout GR00T reads.
 
 ## Why
 
 Collecting human demonstrations is an industry now: recorders at about $15 an hour, data factories, teleoperation farms. The waste comes after collection: a fifth to a third of demos get discarded, re-collection eats a third to a half of a campaign budget, and nobody asks the person who did the task what mattered. Understudy is the briefing and QA layer in front of collection. It answers two questions before anyone buys five hundred repetitions: *what exactly is this task*, and *what does a robot need to perceive to do it*.
+
+## Where this comes from
+
+Understudy was a month of internal research before it was a hackathon project. The question we kept coming back to: everyone films people doing tasks to train robots, so why is so much of that footage never used, and what would a buyer need to know before paying for five hundred more repetitions? The answer we converged on is the loop this repository implements: ask the person who did the task, rehearse the clarified task in simulation under perturbation, and report what a robot would need to perceive to do it. The notes behind that design are in [docs/research/](docs/research/). The hackathon week, 23 to 30 October 2026, is where the research became working software on Nebius Token Factory with NVIDIA's Nemotron models.
 
 ## What it does
 

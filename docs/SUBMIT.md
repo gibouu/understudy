@@ -16,7 +16,17 @@ Hackathon: Nebius x NVIDIA Global AI Hackathon. Submission closes Friday 30 Octo
 
 ## Description (what, why, how)
 
-To be written on day five from the README's opening and `docs/SPEC.md` sections 2, 4 and 13. Keep the honesty line from `docs/LIMITATIONS.md`.
+Draft, to be finished on day five with the measured numbers:
+
+**What.** Understudy turns one phone clip of a person doing a tabletop task into an interviewed task specification, a robot program rehearsed by a simulated SO-101 arm in the browser, a perception budget per axis (how much pose error the task survives blind versus with a pose estimate), a reshoot list, and a LeRobot v2.1 dataset skeleton in the layout GR00T reads.
+
+**Why.** It started as a month of internal research into robot demonstration data. Collection is cheap and industrialised; the waste comes after: a fifth to a third of demos discarded, re-collection eating a third to a half of a campaign budget, and nobody asking the person who did the task what mattered. Understudy is the briefing and QA layer in front of collection. The hackathon week is where that research became software.
+
+**How.** Nemotron 3.5 Super VL watches a 480p proxy of the clip and labels steps, objects and their sizes; Nemotron 3 Nano compiles the spec into a robot program and turns whatever it cannot execute into questions; Nemotron 3 Super asks them, citing measurements from the clip, and writes twelve perturbation scenarios; MuJoCo WebAssembly rehearses the program in a Web Worker, blind and sensed; Super patches the worst failure and Nano recompiles; Nemotron 3 Ultra writes the failure classes and the reshoot list. All calls go through Nebius Token Factory; the export loads in Isaac-GR00T's dataset loader.
+
+## Pre-existing work (Devpost field)
+
+The concept and the research behind Understudy come from a month of internal work that began in late September 2026, inside the Submission Period; no code existed before it. Everything in this repository was written from 23 October 2026 (see the commit history) on Nebius Token Factory with NVIDIA's Nemotron models.
 
 ## Testing instructions for judges
 
