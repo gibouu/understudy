@@ -25,7 +25,7 @@ export default function Home() {
         </div>
         <p className="text-lg text-neutral-700">
           Watch a person do a task once. Interview them. Rehearse it on a simulated robot. Export the
-          training data.
+          dataset.
         </p>
       </header>
 

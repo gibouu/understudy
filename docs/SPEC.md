@@ -43,7 +43,7 @@ The code never names a task. The vision model labels each object as a primitive 
 | 7 | Rehearsal | reachability pre-check → 12 × {sensed, blind} rollouts in a Web Worker | `@mujoco/mujoco` 3.17.0 + three.js, 1-3 s each |
 | 8 | Notes | worst failure as text (metrics, failing predicate, joint-log excerpt) → one `changes[]` patch → Nano recompile → re-run | Super |
 | 9 | Reshoot | failure classes (spec gap, footage gap, embodiment limit, simulator artefact with evidence); reshoot items only for video- or interview-sourced fields | `nvidia/Nemotron-3-Ultra-550b-a55b`, `max_tokens` 16k, background; Export after 90 s |
-| 10 | Export | up to four passing episodes at 480x360, 15 fps (`avc1` probe, else VP9/WebM) → parquet, `modality.json`, templated captions, degenerate-dimension assert, ledger, zip | browser |
+| 10 | Export | up to four passing episodes at 480x360, 15 fps (`avc1` probe, else VP9/WebM, which GR00T's loader does not read and `QUALITY.md` must flag as not loader-compatible) → parquet, `modality.json`, templated captions, degenerate-dimension assert, ledger, zip | browser |
 | 11 (S) | Validate | `validate_groot.py` loads the export with Isaac-GR00T's loader | Serverless Job, Python file submitted directly (UNVERIFIED; fallback `python:3.12` container) |
 
 `/api/health` at page load (a 5-token Nano call plus `GET /v1/models`) switches the page to replay with a banner on failure or a missing ID. Every route: `maxDuration = 300`, explicit `max_tokens`, `?replay=1`, model IDs from env. About 18 requests and under $0.10 per session.
@@ -75,6 +75,8 @@ Row 1: the video with a canvas skeleton of the selected person and the anchor ma
 ## 8. Data product
 
 `lerobot/` is LeRobot v2.1, the flavour GR00T N1.7 reads: parquet with `observation.state` and `action` (6 floats, `shoulder_pan.pos` to `gripper.pos`), `timestamp`, `frame_index`, `episode_index`, `task_index`; `observation.images.workspace` at 15 fps; `tasks.jsonl` with one instruction string per task; scenario, mode and pass flag in `episodes.jsonl` extra fields; `stats.json` with an assert that every state and action dimension has a non-degenerate range, otherwise listed in `QUALITY.md` as "do not train"; units declared in `info.json` (match to `cube_to_bowl_5` UNVERIFIED); `modality.json` with `single_arm` 0-5, `gripper` 5-6, `annotation.human.task_description`.
+
+Units: the simulator works in metres and radians, the spec in millimetres and degrees; the dataset's state and action units are declared in `info.json` after checking the value ranges of the GR00T demo dataset (export, issue #13). Frames: the world frame sits where the robot base meets the table (x away from the robot, y to its left, z up); an object frame sits at the object's centre with its yaw; via-points and `move_to` offsets name their frame.
 
 `QUALITY.md` prints "N scripted, primitive-rendered episodes; a format-valid skeleton, not training data", the per-axis envelope, spec coverage by source, and "loader-validated with Isaac-GR00T" only if `validate_groot.py` ran. `ledger.json` holds measured tokens per model, Tavily credits, rollouts and seconds, priced from `/v1/models?verbose=true`; never a savings figure.
 

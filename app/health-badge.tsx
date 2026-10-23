@@ -9,7 +9,7 @@ export function HealthBadge() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/health")
+    fetch("/api/health", { signal: AbortSignal.timeout(25_000) })
       .then((r) => r.json() as Promise<Health>)
       .then((h) => {
         if (!cancelled) setHealth(h);
@@ -37,7 +37,7 @@ export function HealthBadge() {
       className="rounded-full border border-amber-600 px-3 py-1 text-xs text-amber-700"
       title={health.reason}
     >
-      replay mode · recorded sessions
+      replay mode
     </span>
   );
 }

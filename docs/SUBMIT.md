@@ -5,7 +5,7 @@ Hackathon: Nebius x NVIDIA Global AI Hackathon. Submission closes Friday 30 Octo
 ## Fields
 
 - Project name: Understudy
-- Tagline: Watch a person do a task once, interview them, rehearse it on a simulated robot, export the training data.
+- Tagline: Watch a person do a task once, interview them, rehearse it on a simulated robot, export the dataset.
 - Track: Physical AI
 - Demo URL: (Vercel production URL)
 - Repository: https://github.com/gibouu/understudy

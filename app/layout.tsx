@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Understudy",
-  description: "Watch a person do a task once, interview them, rehearse it on a simulated robot, export the training data.",
+  description: "Watch a person do a task once, interview them, rehearse it on a simulated robot, export the dataset.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
