@@ -1,10 +1,14 @@
 /**
  * The SO-101 follower arm from MuJoCo Menagerie (robotstudio_so101, Apache-2.0,
- * licence file in public/so101/LICENSE). Served from /so101; the worker puts the
- * MJCF and the meshes into MuJoCo's virtual file system.
+ * licence file next to the model under assets/so101). scripts/copy-assets.mjs
+ * publishes the MJCF, a gzipped mesh bundle and the raw meshes (fallback) under
+ * /so101; the worker puts them into MuJoCo's virtual file system.
  */
 export const SO101_ASSET_BASE = "/so101";
 export const SO101_XML = "so101.xml";
+/** 4-byte little-endian header length, a JSON index [{name, offset, length}], then the bytes; gzipped. */
+export const SO101_MESH_BUNDLE = "meshes.bin.gz";
+/** The meshes the MJCF references, for the per-file fallback. */
 export const SO101_MESHES = [
   "base_motor_holder_so101_v1.stl",
   "base_so101_v2.stl",
@@ -22,7 +26,6 @@ export const SO101_MESHES = [
   "waveshare_mounting_plate_so101_v2.stl",
   "wrist_roll_follower_so101_camera_mount.stl",
   "wrist_roll_follower_so101_gripper_part0_v1.stl",
-  "wrist_roll_follower_so101_gripper_v1.stl",
   "wrist_roll_follower_so101_v1.stl",
   "wrist_roll_pitch_so101_v2.stl",
 ] as const;
@@ -44,12 +47,13 @@ export const SO101_TIP_SITE = "gripperframe";
 export const SO101_HOME: number[] = [0, -1.3, 1.2, 0.6, 0, 0.3];
 
 /**
- * The stage: floor, light and the arm. Task objects are appended by the scene
- * builder (issue #18); this spike only needs the arm.
+ * The stage: floor, light and the arm. The arm's own <option> (timestep
+ * 0.005 s, tuned by Menagerie for its actuators) wins over anything set here;
+ * the worker reads the compiled timestep. Task objects are appended by the
+ * scene builder (issue #18); this spike only needs the arm.
  */
 export function stageXml(extraWorldbody = ""): string {
   return `<mujoco model="understudy-stage">
-  <option timestep="0.002" gravity="0 0 -9.81"/>
   <include file="${SO101_XML}"/>
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>

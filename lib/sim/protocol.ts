@@ -1,6 +1,7 @@
 /**
  * Messages between the main thread and the MuJoCo worker. The worker owns the
- * physics; the main thread only renders what it is told.
+ * physics; the main thread only renders what it is told. Requests that expect
+ * an answer carry an `id` so errors reach the right caller.
  */
 
 /** mjtGeom values we render. */
@@ -52,6 +53,8 @@ export type SimMeta = {
 export type Frame = {
   /** simulated seconds since reset */
   t: number;
+  /** simulated seconds the worker had to drop to catch up (tab in the background) */
+  dropped_s: number;
   qpos: Float64Array;
   ctrl: Float64Array;
   /** ngeom x 3 world positions */
@@ -65,16 +68,16 @@ export type Frame = {
 export type Waypoint = { t: number; q: number[] };
 
 export type ToWorker =
-  | { type: "load"; mujocoBase: string; assetBase: string }
+  | { type: "load"; id: number; mujocoBase: string; assetBase: string }
   | { type: "setCtrl"; ctrl: number[] }
   | { type: "play"; waypoints: Waypoint[]; loop?: boolean }
   | { type: "stop" }
   | { type: "reset" }
-  | { type: "jacobian"; site: string };
+  | { type: "jacobian"; id: number; site: string };
 
 export type FromWorker =
   | { type: "status"; message: string; progress?: number }
-  | { type: "loaded"; meta: SimMeta }
+  | { type: "loaded"; id: number; meta: SimMeta }
   | { type: "frame"; frame: Frame }
-  | { type: "jacobian"; site: string; nv: number; jacp: Float64Array; jacr: Float64Array }
-  | { type: "error"; message: string };
+  | { type: "jacobian"; id: number; site: string; nv: number; jacp: Float64Array; jacr: Float64Array }
+  | { type: "error"; id?: number; message: string };

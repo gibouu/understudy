@@ -18,6 +18,7 @@ export function StageView() {
   const [ctrl, setCtrl] = useState<number[]>(SO101_HOME);
   const [tip, setTip] = useState<[number, number, number] | null>(null);
   const [simT, setSimT] = useState(0);
+  const [dropped, setDropped] = useState(0);
   const [jac, setJac] = useState<Jac>(null);
   const lastUi = useRef(0);
 
@@ -40,6 +41,7 @@ export function StageView() {
         if (now - lastUi.current > 100) {
           lastUi.current = now;
           setSimT(frame.t);
+          setDropped(frame.dropped_s);
           const site = client.meta?.sites.find((s) => s.name === SO101_TIP_SITE);
           if (site) {
             const i = 3 * site.id;
@@ -48,7 +50,7 @@ export function StageView() {
         }
       });
     clientRef.current = client;
-    client.load();
+    client.load().catch((err: Error) => setError(err.message));
     return () => {
       client.dispose();
       renderer.dispose();
@@ -72,7 +74,13 @@ export function StageView() {
   };
 
   const checkJacobian = async () => {
-    const r = await clientRef.current?.jacobian(SO101_TIP_SITE);
+    let r: Awaited<ReturnType<SimClient["jacobian"]>> | undefined;
+    try {
+      r = await clientRef.current?.jacobian(SO101_TIP_SITE);
+    } catch (err) {
+      setError((err as Error).message);
+      return;
+    }
     if (!r) return;
     let norm = 0;
     for (const v of r.jacp) norm += v * v;
@@ -96,7 +104,7 @@ export function StageView() {
         </div>
         {meta && (
           <div className="pointer-events-none absolute bottom-3 left-3 rounded bg-white/80 px-2 py-1 font-mono text-[11px] text-neutral-700">
-            t={simT.toFixed(2)}s · dof {meta.nq} · geoms {meta.ngeom} · {SO101_TIP_SITE}{" "}
+            t={simT.toFixed(2)}s{dropped > 0 ? ` (dropped ${dropped.toFixed(1)}s)` : ""} · dof {meta.nq} · geoms {meta.ngeom} · {SO101_TIP_SITE}{" "}
             {tip ? `(${tip.map((v) => (v * 1000).toFixed(0)).join(", ")}) mm` : ""}
           </div>
         )}

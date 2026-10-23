@@ -66,7 +66,10 @@ export class StageRenderer {
   }
 
   setMeta(meta: SimMeta) {
-    for (const o of this.objects.values()) this.scene.remove(o);
+    for (const o of this.objects.values()) {
+      this.scene.remove(o);
+      disposeObject(o);
+    }
     this.objects.clear();
     const meshById = new Map(meta.meshes.map((m) => [m.id, m]));
     for (const g of meta.geoms) {
@@ -149,8 +152,8 @@ export class StageRenderer {
       );
       obj.matrixAutoUpdate = false;
       obj.matrix.copy(m);
-      // keep ellipsoid scale
-      if (obj instanceof THREE.Mesh && obj.scale.x !== 1) obj.matrix.scale(obj.scale);
+      // ellipsoids carry their radii as a scale on a unit sphere
+      if (obj.scale.x !== 1 || obj.scale.y !== 1 || obj.scale.z !== 1) obj.matrix.scale(obj.scale);
     }
   }
 
@@ -158,6 +161,22 @@ export class StageRenderer {
     cancelAnimationFrame(this.raf);
     this.resizeObserver.disconnect();
     this.controls.dispose();
+    for (const o of this.objects.values()) {
+      this.scene.remove(o);
+      disposeObject(o);
+    }
+    this.objects.clear();
     this.renderer.dispose();
   }
+}
+
+/** Free GPU buffers of a geom's object tree (meshes, grid lines); three.js never does it for us. */
+function disposeObject(root: THREE.Object3D) {
+  root.traverse((o) => {
+    const g = (o as { geometry?: { dispose(): void } }).geometry;
+    g?.dispose();
+    const mat = (o as { material?: THREE.Material | THREE.Material[] }).material;
+    if (Array.isArray(mat)) mat.forEach((m) => m.dispose());
+    else mat?.dispose();
+  });
 }

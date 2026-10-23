@@ -1,9 +1,15 @@
 /**
- * The MuJoCo worker: loads the WebAssembly engine, puts the SO-101 MJCF and
- * meshes into the virtual file system, builds the model and steps it in real
- * time. The main thread gets geometry once (loaded) and poses every tick.
+ * The MuJoCo worker: loads the WebAssembly engine once, puts the SO-101 MJCF
+ * and meshes into the virtual file system, builds the model and steps it in
+ * real time. The main thread gets geometry once (loaded) and poses every tick.
+ *
+ * Ownership rules (Embind objects live on the wasm heap and are never
+ * garbage-collected): the engine is created once per worker; a load builds
+ * its model and data in local variables and swaps them in atomically, then
+ * deletes what it replaced; the VFS is deleted in `finally`; loads are
+ * serialized, a second load while one is running is refused.
  */
-import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
+import type { MainModule, MjData, MjModel, MjVFS } from "@mujoco/mujoco";
 import { decodeName, sampleWaypoints, toNumbers } from "./names";
 import {
   GEOM_MESH,
@@ -15,7 +21,7 @@ import {
   type ToWorker,
   type Waypoint,
 } from "./protocol";
-import { SO101_MESHES, SO101_XML, stageXml } from "./so101";
+import { SO101_MESH_BUNDLE, SO101_MESHES, SO101_XML, stageXml } from "./so101";
 
 type WorkerCtx = {
   postMessage: (message: FromWorker, transfer?: Transferable[]) => void;
@@ -23,21 +29,28 @@ type WorkerCtx = {
 };
 const ctx = self as unknown as WorkerCtx;
 
-let mujoco: MainModule | null = null;
-let model: MjModel | null = null;
-let data: MjData | null = null;
-let meta: SimMeta | null = null;
+type Runtime = { mujoco: MainModule; model: MjModel; data: MjData; meta: SimMeta };
+
+/** Simulated seconds of backlog we are willing to catch up per tick; beyond it time is dropped and reported. */
+const MAX_BACKLOG_S = 0.25;
+const TICK_MS = 1000 / 60;
+
+let enginePromise: Promise<MainModule> | null = null;
+let loading: Promise<void> | null = null;
+let runtime: Runtime | null = null;
 let playing: { waypoints: Waypoint[]; loop: boolean; start: number } | null = null;
 let simTime = 0;
+let backlog = 0;
+let dropped = 0;
 let lastWall = 0;
 let timer: ReturnType<typeof setInterval> | null = null;
 
 const post = (m: FromWorker, transfer?: Transferable[]) => ctx.postMessage(m, transfer);
 const status = (message: string, progress?: number) => post({ type: "status", message, progress });
 
-function errorText(err: unknown): string {
+function errorText(err: unknown, mujoco?: MainModule | null): string {
   if (err instanceof Error) return err.message;
-  const m = mujoco as unknown as { getExceptionMessage?: (e: unknown) => string[] } | null;
+  const m = mujoco as unknown as { getExceptionMessage?: (e: unknown) => string[] } | undefined;
   if (typeof err === "number" && m?.getExceptionMessage) {
     try {
       return m.getExceptionMessage(err).join(": ");
@@ -50,10 +63,15 @@ function errorText(err: unknown): string {
 
 ctx.onmessage = async (e) => {
   const msg = e.data;
+  const id = "id" in msg ? msg.id : undefined;
   try {
     switch (msg.type) {
       case "load":
-        await load(msg.mujocoBase, msg.assetBase);
+        if (loading) throw new Error("a load is already in progress");
+        loading = load(msg.id, msg.mujocoBase, msg.assetBase).finally(() => {
+          loading = null;
+        });
+        await loading;
         break;
       case "setCtrl":
         playing = null;
@@ -69,29 +87,86 @@ ctx.onmessage = async (e) => {
         reset();
         break;
       case "jacobian":
-        jacobian(msg.site);
+        jacobian(msg.id, msg.site);
         break;
     }
   } catch (err) {
-    post({ type: "error", message: errorText(err) });
+    post({ type: "error", id, message: errorText(err, runtime?.mujoco) });
   }
 };
 
-async function load(mujocoBase: string, assetBase: string) {
-  status("loading MuJoCo WebAssembly");
-  // The Emscripten loader carries Node-only branches (import('module'), require('fs'))
-  // that bundlers cannot resolve, so it is served as a static file and imported at runtime.
-  const loader = (await import(
-    /* webpackIgnore: true */ /* turbopackIgnore: true */ `${mujocoBase}/mujoco.js`
-  )) as { default: (options?: { locateFile?: (p: string) => string }) => Promise<MainModule> };
-  mujoco = await loader.default({
-    locateFile: (p: string) => `${mujocoBase}/${p}`,
-  });
-  status(`MuJoCo ${String((mujoco as unknown as { mjVERSION_HEADER?: number }).mjVERSION_HEADER ?? "")} ready; fetching the SO-101`, 0.05);
+async function engine(mujocoBase: string): Promise<MainModule> {
+  enginePromise ??= (async () => {
+    status("loading MuJoCo WebAssembly");
+    // The Emscripten loader carries Node-only branches (import('module'), require('fs'))
+    // that bundlers cannot resolve, so it is served as a static file and imported at runtime.
+    const loader = (await import(
+      /* webpackIgnore: true */ /* turbopackIgnore: true */ `${mujocoBase}/mujoco.js`
+    )) as { default: (options?: { locateFile?: (p: string) => string }) => Promise<MainModule> };
+    return loader.default({ locateFile: (p: string) => `${mujocoBase}/${p}` });
+  })();
+  return enginePromise;
+}
 
+async function load(id: number, mujocoBase: string, assetBase: string) {
+  const mujoco = await engine(mujocoBase);
+  status("engine ready; fetching the SO-101", 0.05);
   const vfs = new mujoco.MjVFS();
-  const xml = await (await fetch(`${assetBase}/${SO101_XML}`)).text();
-  vfs.addBuffer(SO101_XML, new TextEncoder().encode(xml));
+  let model: MjModel | null = null;
+  let data: MjData | null = null;
+  try {
+    const res = await fetch(`${assetBase}/${SO101_XML}`);
+    if (!res.ok) throw new Error(`${SO101_XML}: HTTP ${res.status}`);
+    vfs.addBuffer(SO101_XML, new TextEncoder().encode(await res.text()));
+    await loadMeshes(vfs, assetBase, mujoco);
+
+    status("compiling the model", 0.7);
+    model = mujoco.MjModel.from_xml_string(stageXml(), vfs);
+    data = new mujoco.MjData(model);
+    mujoco.mj_forward(model, data);
+    const meta = extractMeta(model);
+
+    const previous = runtime;
+    runtime = { mujoco, model, data, meta: { ...meta, meshes: [] } };
+    model = null; // ownership moved into runtime
+    data = null;
+    if (previous) {
+      previous.data.delete();
+      previous.model.delete();
+    }
+    playing = null;
+    simTime = 0;
+    backlog = 0;
+    dropped = 0;
+    lastWall = performance.now();
+
+    status(`model ready: ${meta.nq} dof, ${meta.ngeom} geoms, ${meta.meshes.length} meshes`, 1);
+    post({ type: "loaded", id, meta }, meta.meshes.flatMap((m) => [m.vertices.buffer, m.faces.buffer]));
+    timer ??= setInterval(tick, TICK_MS);
+  } finally {
+    vfs.delete();
+    if (data) data.delete(); // only on failure: a partial allocation
+    if (model) model.delete();
+  }
+}
+
+/** Mesh bundle first (one gzipped request, decompressed here), per-file fallback. */
+async function loadMeshes(vfs: MjVFS, assetBase: string, mujoco: MainModule) {
+  if (typeof DecompressionStream === "function") {
+    try {
+      const res = await fetch(`${assetBase}/${SO101_MESH_BUNDLE}`);
+      if (res.ok && res.body) {
+        const buf = await new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
+        const entries = readBundle(buf);
+        for (const entry of entries) vfs.addBuffer(entry.name, entry.bytes);
+        status(`meshes ready: ${entries.length} files, ${(buf.byteLength / 1e6).toFixed(1)} MB unpacked`, 0.65);
+        return;
+      }
+      status(`mesh bundle HTTP ${res.status}; fetching files`, 0.1);
+    } catch (err) {
+      status(`mesh bundle unavailable (${errorText(err, mujoco)}); fetching files`, 0.1);
+    }
+  }
   let fetched = 0;
   await Promise.all(
     SO101_MESHES.map(async (file) => {
@@ -102,23 +177,18 @@ async function load(mujocoBase: string, assetBase: string) {
       status(`fetched ${fetched}/${SO101_MESHES.length} meshes`, 0.05 + 0.6 * (fetched / SO101_MESHES.length));
     }),
   );
+}
 
-  status("compiling the model", 0.7);
-  model = mujoco.MjModel.from_xml_string(stageXml(), vfs);
-  data = new mujoco.MjData(model);
-  mujoco.mj_forward(model, data);
-  meta = extractMeta(model);
-  vfs.delete();
-
-  status(`model ready: ${meta.nq} dof, ${meta.ngeom} geoms, ${meta.meshes.length} meshes`, 1);
-  const transfer = meta.meshes.flatMap((m) => [m.vertices.buffer, m.faces.buffer]);
-  post({ type: "loaded", meta }, transfer);
-  // Buffers were transferred; keep a copy-free reference count sane by dropping them here.
-  meta = { ...meta, meshes: [] };
-
-  lastWall = performance.now();
-  if (timer) clearInterval(timer);
-  timer = setInterval(tick, 1000 / 60);
+function readBundle(buf: ArrayBuffer): { name: string; bytes: Uint8Array }[] {
+  const view = new DataView(buf);
+  const headerLength = view.getUint32(0, true);
+  const index = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, headerLength))) as {
+    name: string;
+    offset: number;
+    length: number;
+  }[];
+  const base = 4 + headerLength;
+  return index.map((e) => ({ name: e.name, bytes: new Uint8Array(buf.slice(base + e.offset, base + e.offset + e.length)) }));
 }
 
 function extractMeta(m: MjModel): SimMeta {
@@ -159,8 +229,9 @@ function extractMeta(m: MjModel): SimMeta {
   const matRgba = toNumbers((m as unknown as { mat_rgba?: unknown }).mat_rgba);
   const rgbaOf = (i: number): [number, number, number, number] => {
     const mat = gMat[i] ?? -1;
-    const src = mat >= 0 && matRgba.length >= 4 * mat + 4 ? matRgba : gRgba;
-    const o = mat >= 0 && src === matRgba ? 4 * mat : 4 * i;
+    const useMat = mat >= 0 && matRgba.length >= 4 * mat + 4;
+    const src = useMat ? matRgba : gRgba;
+    const o = useMat ? 4 * mat : 4 * i;
     return [src[o], src[o + 1], src[o + 2], src[o + 3]];
   };
   const geoms: GeomMeta[] = Array.from({ length: ngeom }, (_, i) => ({
@@ -199,8 +270,8 @@ function extractMeta(m: MjModel): SimMeta {
 }
 
 function setCtrl(values: number[]) {
-  if (!data) return;
-  const ctrl = data.ctrl as unknown;
+  if (!runtime) return;
+  const ctrl = runtime.data.ctrl as unknown;
   if (ArrayBuffer.isView(ctrl)) {
     const view = ctrl as unknown as Float64Array;
     for (let i = 0; i < Math.min(values.length, view.length); i++) view[i] = values[i];
@@ -211,20 +282,32 @@ function setCtrl(values: number[]) {
 }
 
 function reset() {
-  if (!mujoco || !model || !data) return;
+  if (!runtime) return;
   playing = null;
-  mujoco.mj_resetData(model, data);
-  mujoco.mj_forward(model, data);
+  runtime.mujoco.mj_resetData(runtime.model, runtime.data);
+  runtime.mujoco.mj_forward(runtime.model, runtime.data);
   simTime = 0;
+  backlog = 0;
 }
 
+/**
+ * Real-time pacing with an accumulator: fractional timesteps carry over, so
+ * three 5 ms steps per 16.7 ms tick do not drift. A backlog beyond
+ * MAX_BACKLOG_S (a backgrounded tab) is dropped and reported in the frame.
+ */
 function tick() {
-  if (!mujoco || !model || !data || !meta) return;
+  if (!runtime) return;
+  const { mujoco, model, data, meta } = runtime;
   const now = performance.now();
-  const wallDt = Math.min((now - lastWall) / 1000, 0.1);
+  backlog += (now - lastWall) / 1000;
   lastWall = now;
-  const steps = Math.max(1, Math.round(wallDt / meta.timestep));
-  for (let s = 0; s < steps; s++) {
+  if (backlog > MAX_BACKLOG_S) {
+    dropped += backlog - MAX_BACKLOG_S;
+    backlog = MAX_BACKLOG_S;
+  }
+  const dt = meta.timestep;
+  let steps = 0;
+  while (backlog >= dt) {
     if (playing) {
       const wp = playing.waypoints;
       const span = wp.length ? wp[wp.length - 1].t : 0;
@@ -234,10 +317,16 @@ function tick() {
       if (!playing.loop && t >= span) playing = null;
     }
     mujoco.mj_step(model, data);
-    simTime += meta.timestep;
+    simTime += dt;
+    backlog -= dt;
+    steps++;
   }
+  // mj_step integrates qpos after computing poses; refresh derived state so the
+  // published geometry and any later Jacobian match the joint state.
+  if (steps > 0) mujoco.mj_forward(model, data);
   const frame: Frame = {
     t: simTime,
+    dropped_s: dropped,
     qpos: Float64Array.from(toNumbers(data.qpos)),
     ctrl: Float64Array.from(toNumbers(data.ctrl)),
     geomXpos: Float64Array.from(toNumbers(data.geom_xpos)),
@@ -253,8 +342,9 @@ function tick() {
   ]);
 }
 
-function jacobian(site: string) {
-  if (!mujoco || !model || !data || !meta) throw new Error("model not loaded");
+function jacobian(id: number, site: string) {
+  if (!runtime) throw new Error("model not loaded");
+  const { mujoco, model, data, meta } = runtime;
   const s = meta.sites.find((x) => x.name === site);
   if (!s) throw new Error(`no site named ${site}`);
   const nv = meta.nv;
@@ -264,6 +354,7 @@ function jacobian(site: string) {
     mujoco.mj_jacSite(model, data, jacp, jacr, s.id);
     post({
       type: "jacobian",
+      id,
       site,
       nv,
       jacp: Float64Array.from(toNumbers(jacp.GetView())),
