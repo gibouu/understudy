@@ -67,14 +67,23 @@ describe("QUALITY.md", () => {
     const report = buildQualityReport({
       episodes,
       spec,
-      envelope: { x_mm: { sensed: 8, blind: null }, yaw_deg: { sensed: 15, blind: 15 } },
+      envelope: {
+        x_mm: {
+          sensed: { pass_neg: -4, pass_pos: 8, fail_neg: -6, fail_pos: 10 },
+          blind: { pass_neg: null, pass_pos: null, fail_neg: -2, fail_pos: 2 },
+        },
+        yaw_deg: {
+          sensed: { pass_neg: -15, pass_pos: 15, fail_neg: null, fail_pos: null },
+          blind: { pass_neg: -15, pass_pos: 15, fail_neg: null, fail_pos: null },
+        },
+      },
     });
     expect(report.headline).toBe("4 scripted, primitive-rendered episodes; a format-valid skeleton, not training data");
     expect(report.loader_validated).toBe(false);
     const md = renderQualityMarkdown(report, episodes);
     expect(md).toContain(`**${report.headline}.**`);
-    expect(md).toContain("| x_mm | ±8 mm | none passed |");
-    expect(md).toContain("| yaw_deg | ±15 deg | ±15 deg |");
+    expect(md).toContain("| x_mm | -4 to +8 mm (fails at -6 / +10) | none passed |");
+    expect(md).toContain("| yaw_deg | -15 to +15 deg | -15 to +15 deg |");
     expect(md).toContain("| vl | 2 | 40% |");
     expect(md).toContain("Not loader-validated");
     expect(md).not.toContain("Loader-validated with Isaac-GR00T");

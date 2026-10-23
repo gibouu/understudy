@@ -3,7 +3,7 @@
  * writer consumes. Field names mirror Isaac-GR00T's demo dataset
  * `cube_to_bowl_5` (robot `so101_follower`, six floats per frame).
  */
-import type { Mode } from "@/lib/spec/schema";
+import type { Mode, SignedBand } from "@/lib/spec/schema";
 
 /** Joint order of the SO-101 follower as GR00T's demo names them. */
 export const SO101_JOINTS = [
@@ -50,7 +50,8 @@ export type ExportBundle = {
 export type QualityReport = {
   /** "N scripted, primitive-rendered episodes; a format-valid skeleton, not training data" */
   headline: string;
-  envelope_per_axis: Record<string, { sensed: number | null; blind: number | null }>;
+  /** sampled evidence per axis and mode: largest passing and smallest failing offset on each side */
+  envelope_per_axis: Record<string, { sensed: SignedBand; blind: SignedBand }>;
   spec_coverage_by_source: Record<string, number>;
   degenerate_dimensions: string[];
   loader_validated: boolean;
