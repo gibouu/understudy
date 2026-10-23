@@ -5,14 +5,19 @@
  *   1. Leading reasoning (`<think>…</think>` at the very start, repeated) is
  *      removed. A leading `<think>` that never closes means the model was
  *      cut off while reasoning: nothing in it is trusted.
- *   2. Every `{` or `[` in what remains starts a candidate; the candidate ends
- *      at its balanced close, string-aware. Prose braces, examples before the
- *      answer and reasoning tags inside JSON strings are survived because the
- *      first candidate that both parses and validates wins.
+ *   2. A single string-aware pass finds the balanced JSON values at the top
+ *      level of what remains. Values nested inside an unfinished outer value
+ *      (a truncated draft) are not candidates. Prose braces that do not parse
+ *      are skipped. Among candidates that parse and validate, the LAST one
+ *      wins: models put examples first and the answer last.
  *   3. An optional `normalize` hook rewrites near-misses (aliases, degraded
- *      fixtures) and returns warnings before validation.
+ *      fixtures) and returns warnings before validation. A normalizer that
+ *      throws only disqualifies that candidate.
  */
 import type { z } from "zod";
+
+/** Larger outputs are refused before any scanning. */
+export const MAX_MODEL_OUTPUT_CHARS = 2_000_000;
 
 export class ModelOutputError extends Error {
   constructor(
@@ -35,7 +40,7 @@ export function stripLeadingThink(text: string): string {
   return s;
 }
 
-/** Balanced close index for a candidate starting at `start`, or -1. */
+/** Index of the close bracket balancing the one at `start`, or -1 when the text ends first. */
 function balancedEnd(text: string, start: number): number {
   let depth = 0;
   let inString = false;
@@ -59,27 +64,38 @@ function balancedEnd(text: string, start: number): number {
   return -1;
 }
 
-/** Every balanced candidate in order of its start offset. */
+/**
+ * Top-level balanced candidates in order, found in one pass. An unbalanced
+ * top-level opener swallows the rest of the text (nothing inside an
+ * unfinished value is offered).
+ */
 export function* jsonCandidates(text: string): Generator<string> {
-  for (let i = 0; i < text.length; i++) {
+  let i = 0;
+  while (i < text.length) {
     const c = text[i];
-    if (c !== "{" && c !== "[") continue;
+    if (c !== "{" && c !== "[") {
+      i++;
+      continue;
+    }
     const end = balancedEnd(text, i);
-    if (end > i) yield text.slice(i, end + 1);
+    if (end < 0) return;
+    yield text.slice(i, end + 1);
+    i = end + 1;
   }
 }
 
-/** The first candidate that is valid JSON, after leading-think removal, or null. */
+/** The last top-level candidate that is valid JSON, after leading-think removal, or null. */
 export function extractJson(text: string): string | null {
+  let last: string | null = null;
   for (const candidate of jsonCandidates(stripLeadingThink(text))) {
     try {
       JSON.parse(candidate);
-      return candidate;
+      last = candidate;
     } catch {
-      /* try the next start */
+      /* prose braces */
     }
   }
-  return null;
+  return last;
 }
 
 export type Parsed<T> = { value: T; warnings: string[] };
@@ -95,7 +111,7 @@ function describe(error: z.ZodError): string {
 /**
  * Parse and validate model text against a Zod schema. Throws
  * ModelOutputError when no candidate parses and validates; the message
- * carries the first validation failure so the caller can retry, keep the
+ * carries the last validation failure so the caller can retry, keep the
  * previous value or fall back.
  */
 export function parseModelJson<T>(
@@ -103,8 +119,12 @@ export function parseModelJson<T>(
   schema: z.ZodType<T>,
   options: { normalize?: Normalizer } = {},
 ): Parsed<T> {
+  if (text.length > MAX_MODEL_OUTPUT_CHARS) {
+    throw new ModelOutputError(`model output too long (${text.length} chars)`, text.slice(0, 1000));
+  }
   const body = stripLeadingThink(text);
-  let firstFailure: string | null = null;
+  let best: Parsed<T> | null = null;
+  let lastFailure: string | null = null;
   let sawJson = false;
   for (const candidate of jsonCandidates(body)) {
     let raw: unknown;
@@ -114,11 +134,18 @@ export function parseModelJson<T>(
       continue;
     }
     sawJson = true;
-    const normalized = options.normalize ? options.normalize(raw) : { data: raw, warnings: [] };
+    let normalized: { data: unknown; warnings: string[] };
+    try {
+      normalized = options.normalize ? options.normalize(raw) : { data: raw, warnings: [] };
+    } catch (err) {
+      lastFailure = `normalization failed: ${err instanceof Error ? err.message : String(err)}`;
+      continue;
+    }
     const result = schema.safeParse(normalized.data);
-    if (result.success) return { value: result.data, warnings: normalized.warnings };
-    firstFailure ??= describe(result.error);
+    if (result.success) best = { value: result.data, warnings: normalized.warnings };
+    else lastFailure = describe(result.error);
   }
-  if (!sawJson) throw new ModelOutputError("no JSON object in model output", text);
-  throw new ModelOutputError(`schema validation failed: ${firstFailure}`, text);
+  if (best) return best;
+  if (!sawJson) throw new ModelOutputError("no complete JSON value in model output", text);
+  throw new ModelOutputError(`schema validation failed: ${lastFailure}`, text);
 }

@@ -34,6 +34,16 @@ describe("validateSpec", () => {
     expect(codes).toContain("unknown_frame");
     expect(codes).toContain("unknown_predicate_target");
   });
+  it("checks pose frames: unknown, self and cycles", () => {
+    const spec = structuredClone(base);
+    spec.objects[0].pose = { xyz_mm: [0, 0, 0], yaw_deg: 0, frame: "ghost" };
+    expect(validateSpec(spec).map((i) => i.code)).toContain("unknown_pose_frame");
+    spec.objects[0].pose.frame = "cup";
+    expect(validateSpec(spec).map((i) => i.code)).toContain("unknown_pose_frame");
+    spec.objects[0].pose.frame = "saucer";
+    spec.objects[1].pose = { xyz_mm: [0, 0, 0], yaw_deg: 0, frame: "cup" };
+    expect(validateSpec(spec).map((i) => i.code)).toContain("pose_frame_cycle");
+  });
   it("warns on a pocket without clearance and on overlapping steps", () => {
     const spec = structuredClone(base);
     spec.steps[1].target = { fixture: "pocket", frame: "saucer" };
@@ -50,15 +60,26 @@ describe("validateSpec", () => {
 });
 
 describe("validateProgram", () => {
-  it("checks step ids, frames and grasp objects against the spec", () => {
+  it("checks step ids, frames, grasp objects and predicate targets against the spec", () => {
     const program = Program.parse({
       spec_title: "x",
       steps: [
         { step_id: "s9", ops: [{ op: "move_to", frame: "mars", offset_mm: [0, 0, 0] }, { op: "grasp", object: "plate", aperture_mm: 60 }] },
-        { step_id: "s1", ops: [{ op: "assert", predicate: { kind: "contact_both_pads", object: "cup" } }] },
+        { step_id: "s1", ops: [{ op: "assert", predicate: { kind: "inside_zone", object: "cup", target: "ghost" } }] },
+        { step_id: "s2", ops: [] },
       ],
     });
     const codes = validateProgram(program, base).map((i) => i.code);
-    expect(codes).toEqual(["unknown_step", "unknown_frame", "unknown_grasp_object"]);
+    expect(codes).toEqual(["unknown_step", "unknown_frame", "unknown_grasp_object", "unknown_predicate_target"]);
+  });
+  it("requires every spec step exactly once, in order", () => {
+    const twice = Program.parse({ spec_title: "x", steps: [{ step_id: "s1", ops: [] }, { step_id: "s1", ops: [] }] });
+    expect(validateProgram(twice, base).map((i) => i.code)).toEqual(["duplicate_program_step", "missing_program_step"]);
+    const empty = Program.parse({ spec_title: "x", steps: [] });
+    expect(validateProgram(empty, base).map((i) => i.code)).toEqual(["missing_program_step", "missing_program_step"]);
+    const swapped = Program.parse({ spec_title: "x", steps: [{ step_id: "s2", ops: [] }, { step_id: "s1", ops: [] }] });
+    expect(validateProgram(swapped, base).map((i) => i.code)).toEqual(["program_step_order"]);
+    const good = Program.parse({ spec_title: "x", steps: [{ step_id: "s1", ops: [] }, { step_id: "s2", ops: [] }] });
+    expect(validateProgram(good, base)).toEqual([]);
   });
 });

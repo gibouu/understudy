@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { extractJson, jsonCandidates, ModelOutputError, parseModelJson, stripLeadingThink } from "@/lib/spec/parse";
 import { normalizeProgram, normalizeSpec } from "@/lib/spec/normalize";
-import { InterviewTurn, Program, TaskSpec } from "@/lib/spec/schema";
+import { Envelope, InterviewTurn, Program, TaskSpec } from "@/lib/spec/schema";
 
 const minimalSpec = {
   version: 1,
@@ -47,8 +47,16 @@ describe("extractJson and candidates", () => {
     const s = '{"a":"[{]}","b":"q\\"uote","c":"\\u007b"}';
     expect(JSON.parse(extractJson(s)!)).toEqual({ a: "[{]}", b: 'q"uote', c: "{" });
   });
-  it("lists candidates in start order", () => {
-    expect([...jsonCandidates("x {1} y [2]")]).toEqual(["{1}", "[2]"]);
+  it("lists top-level candidates in order and ignores nested ones", () => {
+    expect([...jsonCandidates('x {"a":[1]} y [2]')]).toEqual(['{"a":[1]}', "[2]"]);
+  });
+  it("offers nothing from inside an unfinished value", () => {
+    expect([...jsonCandidates('{"draft":{"question":"DRAFT","done":true},"answer":')]).toEqual([]);
+  });
+  it("scans pathological input in linear time", () => {
+    const t0 = performance.now();
+    expect(extractJson("{".repeat(80_000))).toBeNull();
+    expect(performance.now() - t0).toBeLessThan(500);
   });
 });
 
@@ -63,9 +71,17 @@ describe("parseModelJson", () => {
     expect(value.question).toBe("What does <think>foo</think> mean?");
     expect(parseModelJson('{"question":"What does <think> mean?"}', InterviewTurn).value.question).toBe("What does <think> mean?");
   });
-  it("prefers the first candidate that validates over an earlier example", () => {
-    const text = 'Example: {"question": 3}\nAnswer: {"question":"real"}';
-    expect(parseModelJson(text, InterviewTurn).value.question).toBe("real");
+  it("prefers the last valid candidate, so an example before the answer loses", () => {
+    expect(parseModelJson('Example: {"question": 3}\nAnswer: {"question":"real"}', InterviewTurn).value.question).toBe("real");
+    const v = parseModelJson('Example: {"question":"EXAMPLE","done":true}\nAnswer: {"question":"REAL"}', InterviewTurn).value;
+    expect(v.question).toBe("REAL");
+    expect(v.done).toBe(false);
+  });
+  it("refuses a truncated draft instead of answering from its inside", () => {
+    expect(() => parseModelJson('{"draft":{"question":"DRAFT","done":true},"answer":', InterviewTurn)).toThrow(/no complete JSON/);
+  });
+  it("refuses oversized output", () => {
+    expect(() => parseModelJson("x".repeat(2_000_001), InterviewTurn)).toThrow(/too long/);
   });
   it("throws a ModelOutputError with the path on a schema miss", () => {
     expect(() => parseModelJson('{"question": 3}', InterviewTurn)).toThrow(ModelOutputError);
@@ -77,12 +93,10 @@ describe("parseModelJson", () => {
     expect(value.steps[0].via_points).toEqual([]);
     expect(value.objects[0].confidence).toBe(0.5);
     expect(value.objects[0].sources).toEqual({});
+    expect(value.sources).toEqual({});
   });
   it("rejects a predicate outside the closed enum", () => {
-    const program = {
-      spec_title: "x",
-      steps: [{ step_id: "s1", ops: [{ op: "assert", predicate: { kind: "levitates" } }] }],
-    };
+    const program = { spec_title: "x", steps: [{ step_id: "s1", ops: [{ op: "assert", predicate: { kind: "levitates" } }] }] };
     expect(() => parseModelJson(JSON.stringify(program), Program)).toThrow(/kind/);
   });
   it("rejects predicates without their operands", () => {
@@ -97,18 +111,15 @@ describe("parseModelJson", () => {
     reversed.steps[0].t_end_s = 0.1;
     expect(() => parseModelJson(JSON.stringify(reversed), TaskSpec)).toThrow(/t_end_s/);
   });
+  it("rejects signed bands with the wrong signs", () => {
+    const empty = { pass_neg: null, pass_pos: null, fail_neg: null, fail_pos: null };
+    expect(Envelope.safeParse({ x_mm: { sensed: { pass_neg: -4, pass_pos: 6, fail_neg: null, fail_pos: 8 }, blind: empty } }).success).toBe(true);
+    expect(Envelope.safeParse({ x_mm: { sensed: { pass_neg: 10, pass_pos: -10, fail_neg: 100, fail_pos: -100 }, blind: empty } }).success).toBe(false);
+  });
   it("accepts a program with an ask slot", () => {
     const program = {
       spec_title: "x",
-      steps: [
-        {
-          step_id: "s2",
-          ops: [
-            { op: "move_to", frame: "rack", offset_mm: [0, 0, 60] },
-            { op: "ask", slot: "steps[1].tolerances.x_mm", question: "How much can the rack move before insertion fails?", why: "no clearance measured" },
-          ],
-        },
-      ],
+      steps: [{ step_id: "s2", ops: [{ op: "move_to", frame: "rack", offset_mm: [0, 0, 60] }, { op: "ask", slot: "steps[1].tolerances.x_mm", question: "How much can the rack move before insertion fails?", why: "no clearance measured" }] }],
     };
     const { value } = parseModelJson(JSON.stringify(program), Program);
     const first = value.steps[0].ops[0];
@@ -126,6 +137,29 @@ describe("parseModelJson", () => {
     expect(value.open_questions.length).toBe(1);
     expect(warnings.join("\n")).toMatch(/degraded to zone/);
     expect(warnings.join("\n")).toMatch(/glows/);
+  });
+  it("surfaces malformed checks and ambiguous spellings instead of dropping them silently", () => {
+    const raw = structuredClone(minimalSpec) as unknown as { steps: Record<string, unknown>[] };
+    raw.steps[0].success = [null, "avoid collisions", { kind: "contact", object: "marker", target: "table" }, { kind: "constructor", object: "marker" }];
+    raw.steps[1].preconditions = "none";
+    const { value, warnings } = parseModelJson(JSON.stringify(raw), TaskSpec, { normalize: normalizeSpec });
+    expect(value.steps[0].success).toEqual([]);
+    expect(value.steps[1].preconditions).toEqual([]);
+    expect(value.open_questions).toHaveLength(5);
+    expect(warnings.filter((w) => /dropped/.test(w))).toHaveLength(5);
+    expect(warnings.join("\n")).not.toMatch(/read as/);
+  });
+  it("survives a normalizer that throws on one candidate", () => {
+    const boom = (raw: unknown) => {
+      if ((raw as { question?: string }).question === "bad") throw new Error("nope");
+      return { data: raw, warnings: [] };
+    };
+    expect(parseModelJson('{"question":"ok"} {"question":"bad"}', InterviewTurn, { normalize: boom }).value.question).toBe("ok");
+  });
+  it("does not throw on malformed alias inputs", () => {
+    const raw = structuredClone(minimalSpec) as unknown as { objects: Record<string, unknown>[] };
+    raw.objects[0].shape = { toString: null };
+    expect(() => normalizeSpec(raw)).not.toThrow();
   });
   it("turns an unknown program predicate into an ask", () => {
     const program = { spec_title: "x", steps: [{ step_id: "s1", ops: [{ op: "assert", predicate: { kind: "levitates", object: "marker" } }] }] };

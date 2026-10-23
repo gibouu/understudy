@@ -11,7 +11,7 @@ const spec = TaskSpec.parse({
     { id: "rack", name: "rack", shape: "box", size_mm: [120, 80, 40], symmetry: "none", role: "fixture", source: "vl#seg1" },
   ],
   steps: [
-    { id: "s1", verb: "grasp", object: "marker", t_start_s: 0.8, t_end_s: 1.6, source: "vl#seg1" },
+    { id: "s1", verb: "grasp", object: "marker", t_start_s: 0.8, t_end_s: 1.6, source: "vl#seg1", via_points: [{ frame: "marker", xyz_mm: [0, 0, 60], source: "pose#seg1" }] },
     { id: "s2", verb: "insert", object: "marker", target: { fixture: "pocket", frame: "rack" }, t_start_s: 1.6, t_end_s: 3.1, source: "vl#seg2" },
   ],
 });
@@ -21,29 +21,47 @@ describe("parsePath", () => {
     expect(parsePath("objects[rack].pocket_clearance_mm")).toEqual(["objects", "rack", "pocket_clearance_mm"]);
     expect(parsePath("steps[1].tolerances.x_mm")).toEqual(["steps", "1", "tolerances", "x_mm"]);
     expect(parsePath("anchor.t_s")).toEqual(["anchor", "t_s"]);
+    expect(parsePath("objects[a.b].name")).toEqual(["objects", "a.b", "name"]);
   });
 });
 
 describe("applyChanges", () => {
-  it("sets a field by id and records its provenance", () => {
+  it("sets fields by id and records provenance per leaf", () => {
     const { spec: next, warnings } = applyChanges(spec, [
       { path: "objects[rack].pocket_clearance_mm", value: 3, source: "interview#2" },
       { path: "steps[s2].tolerances.x_mm", value: 2, source: "interview#2" },
+      { path: "steps[s2].tolerances.y_mm", value: 4, source: "interview#3" },
+      { path: "steps[s1].via_points[0].xyz_mm", value: [0, 0, 80], source: "user#edit" },
+      { path: "title", value: "marker into the rack", source: "interview#1" },
     ]);
     expect(warnings).toEqual([]);
     expect(next.objects[1].pocket_clearance_mm).toBe(3);
     expect(next.objects[1].sources).toEqual({ pocket_clearance_mm: "interview#2" });
-    expect(next.steps[1].tolerances.x_mm).toBe(2);
-    expect(next.steps[1].sources).toEqual({ tolerances: "interview#2" });
+    expect(next.steps[1].tolerances).toEqual({ x_mm: 2, y_mm: 4 });
+    expect(next.steps[1].sources).toEqual({ "tolerances.x_mm": "interview#2", "tolerances.y_mm": "interview#3" });
+    expect(next.steps[0].sources).toEqual({ "via_points.0.xyz_mm": "user#edit" });
+    expect(next.sources).toEqual({ title: "interview#1" });
     expect(spec.objects[1].pocket_clearance_mm).toBeUndefined(); // input untouched
   });
-  it("sets a field by index and a top-level field", () => {
+  it("sets a field by index and a top-level object", () => {
     const { spec: next } = applyChanges(spec, [
       { path: "objects[0].size_mm", value: [16, 16, 140], source: "user#edit" },
       { path: "anchor", value: { t_s: 1.2, confidence: 0.9 }, source: "pose#seg1" },
     ]);
     expect(next.objects[0].size_mm).toEqual([16, 16, 140]);
     expect(next.anchor?.t_s).toBe(1.2);
+    expect(next.sources.anchor).toBe("pose#seg1");
+  });
+  it("applies interdependent changes as one transaction", () => {
+    const { spec: next, warnings } = applyChanges(spec, [
+      { path: "anchor.t_s", value: 1.2, source: "pose#seg1" },
+      { path: "anchor.confidence", value: 0.9, source: "pose#seg1" },
+      { path: "steps[s1].t_start_s", value: 2, source: "interview#2" },
+      { path: "steps[s1].t_end_s", value: 3, source: "interview#2" },
+    ]);
+    expect(warnings).toEqual([]);
+    expect(next.anchor).toEqual({ t_s: 1.2, confidence: 0.9 });
+    expect([next.steps[0].t_start_s, next.steps[0].t_end_s]).toEqual([2, 3]);
   });
   it("rejects a change that breaks an invariant and keeps the rest", () => {
     const { spec: next, warnings } = applyChanges(spec, [
@@ -55,8 +73,26 @@ describe("applyChanges", () => {
     expect(next.objects[0].size_mm).toEqual([15, 15, 140]);
     expect(next.steps[0].t_end_s).toBe(1.9);
   });
+  it("refuses unknown fields and forbidden paths", () => {
+    const { spec: next, warnings } = applyChanges(spec, [
+      { path: "objects[marker].material", value: "wood", source: "interview#3" },
+      { path: "__proto__.probe", value: true, source: "interview#1" },
+      { path: "objects[marker].constructor.prototype.x", value: 1, source: "interview#1" },
+    ]);
+    expect(warnings).toHaveLength(3);
+    expect(warnings[0]).toMatch(/unknown field/);
+    expect(warnings[1]).toMatch(/forbidden/);
+    expect(({} as { probe?: boolean }).probe).toBeUndefined();
+    expect(next.objects[0].sources).toEqual({});
+  });
   it("warns on an unknown path", () => {
     const { warnings } = applyChanges(spec, [{ path: "objects[plate].size_mm", value: [1, 1, 1], source: "x" }]);
     expect(warnings[0]).toMatch(/not found/);
+  });
+  it("matches an id before an index inside brackets", () => {
+    const withNumericId = TaskSpec.parse({ ...spec, objects: [spec.objects[0], { ...spec.objects[1], id: "0" }] });
+    const { spec: next } = applyChanges(withNumericId, [{ path: "objects[0].name", value: "zero", source: "user#edit" }]);
+    expect(next.objects[1].name).toBe("zero");
+    expect(next.objects[0].name).toBe("marker");
   });
 });

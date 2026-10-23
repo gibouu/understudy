@@ -171,6 +171,8 @@ export const TaskSpec = z.object({
   anchor: z.object({ t_s: z.number().nonnegative(), confidence: z.number().min(0).max(1) }).optional(),
   warnings: z.array(z.string()).default([]),
   open_questions: z.array(z.string()).default([]),
+  /** provenance of top-level fields (title, summary, anchor) changed after labelling */
+  sources: Sources,
   provenance: z
     .object({
       label_input: z.enum(["keyframes", "video"]),
@@ -276,10 +278,10 @@ export type RolloutResult = z.infer<typeof RolloutResult>;
  * the report shows the signed numbers, never a band it did not test.
  */
 export const SignedBand = z.object({
-  pass_neg: finite.nullable(),
-  pass_pos: finite.nullable(),
-  fail_neg: finite.nullable(),
-  fail_pos: finite.nullable(),
+  pass_neg: finite.max(0).nullable(),
+  pass_pos: finite.min(0).nullable(),
+  fail_neg: finite.max(0).nullable(),
+  fail_pos: finite.min(0).nullable(),
 });
 export type SignedBand = z.infer<typeof SignedBand>;
 export const Envelope = z.partialRecord(
