@@ -40,6 +40,10 @@ export default function WatchPage() {
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const detector = useRef<Promise<Detector> | null>(null);
   const frames = useRef<TokenFrame[]>([]);
+  /** the blob URL on screen, revoked when replaced or on unmount */
+  const blobUrl = useRef<string | null>(null);
+  /** bumped on every pick, so a slow dev-clip download cannot replace a newer pick */
+  const pick = useRef(0);
   const [src, setSrc] = useState<string | null>(null);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
   const [stage, setStage] = useState<StageResult<WatchTokens>>(idle());
@@ -80,25 +84,27 @@ export default function WatchPage() {
     setReadout(null);
     setElapsed(null);
     setProgress(null);
+    let lm: Detector | null = null;
     (async () => {
       setStage(running("Loading MediaPipe"));
       detector.current ??= startDetector();
-      const lm = await detector.current;
+      const ready = await detector.current;
+      lm = ready;
       if (abort.signal.aborted) return;
-      setDelegate(lm.delegate);
-      lm.newRun();
+      setDelegate(ready.delegate);
+      ready.newRun();
       setStage(running("Watching", 0));
       let track = TRACK_START;
       let lastSamples = -1;
       detectMs.current = null;
-      const started = performance.now();
+      const startedAt = performance.now();
       const result = await sampleVideo(video, {
         fps: FPS,
         signal: abort.signal,
         async onFrame(bitmap, t) {
           const { width, height } = bitmap;
           setSize((s) => (s?.width === width && s.height === height ? s : { width, height }));
-          const { poses, hands, ms } = await lm.detect(bitmap, t);
+          const { poses, hands, ms } = await ready.detect(bitmap, t);
           if (abort.signal.aborted) return;
           const next = selectFrame(t, poses, hands, track, width / height);
           detectMs.current =
@@ -118,7 +124,7 @@ export default function WatchPage() {
         },
       });
       if (result.aborted) return;
-      setElapsed((performance.now() - started) / 1000);
+      setElapsed((performance.now() - startedAt) / 1000);
       setProgress(result);
       setCost(detectMs.current);
       const filled = fillHandGaps(frames.current);
@@ -142,9 +148,8 @@ export default function WatchPage() {
       video.currentTime = 0;
     })().catch((e: unknown) => {
       if (abort.signal.aborted) return;
-      // a worker that failed to start is not reused: the next clip starts a fresh one
-      detector.current?.then((d) => d.close()).catch(() => {});
-      detector.current = null;
+      // a worker that failed is gone; the next clip starts a fresh one
+      if (!lm?.alive()) detector.current = null;
       setStage(failed(e instanceof Error ? e.message : String(e)));
     });
     return () => abort.abort();
@@ -155,6 +160,7 @@ export default function WatchPage() {
     () => () => {
       detector.current?.then((d) => d.close()).catch(() => {});
       detector.current = null;
+      if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
     },
     [],
   );
@@ -179,9 +185,24 @@ export default function WatchPage() {
     };
   }, [watched]);
 
-  function choose(next: string) {
-    if (src?.startsWith("blob:")) URL.revokeObjectURL(src);
-    setSrc(next);
+  function choose(clip: Blob, id: number) {
+    if (id !== pick.current) return;
+    if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
+    blobUrl.current = URL.createObjectURL(clip);
+    setSrc(blobUrl.current);
+  }
+
+  function loadDevClip() {
+    const id = ++pick.current;
+    fetch(DEV_CLIP)
+      .then((r) => {
+        if (!r.ok) throw new Error(`The dev clip did not load (HTTP ${r.status}).`);
+        return r.blob();
+      })
+      .then((b) => choose(b, id))
+      .catch((e: Error) => {
+        if (id === pick.current) setStage(failed(e.message));
+      });
   }
 
   const pct = progress && progress.duration_s ? (100 * progress.t_s) / progress.duration_s : 0;
@@ -205,7 +226,7 @@ export default function WatchPage() {
             className="sr-only"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) choose(URL.createObjectURL(file));
+              if (file) choose(file, ++pick.current);
               e.target.value = "";
             }}
           />
@@ -213,15 +234,7 @@ export default function WatchPage() {
         <button
           type="button"
           className="rounded-lg border px-3 py-2 hover:bg-neutral-500/10"
-          onClick={() =>
-            fetch(DEV_CLIP)
-              .then((r) => {
-                if (!r.ok) throw new Error(`The dev clip did not load (HTTP ${r.status}).`);
-                return r.blob();
-              })
-              .then((b) => choose(URL.createObjectURL(b)))
-              .catch((e: Error) => setStage(failed(e.message)))
-          }
+          onClick={loadDevClip}
         >
           Use the dev clip
         </button>
@@ -234,8 +247,9 @@ export default function WatchPage() {
 
       {stage.status === "failed" && (
         <p role="alert" className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {stage.message} If this is an iPhone clip, it may be HEVC: Settings &gt; Camera &gt;
-          Formats &gt; Most Compatible, then film again.
+          {stage.message}
+          {stage.message.includes("decoded") &&
+            " If this is an iPhone clip, it may be HEVC: Settings > Camera > Formats > Most Compatible, then film again."}
         </p>
       )}
 
@@ -264,7 +278,7 @@ export default function WatchPage() {
           muted
           controls={watched}
           onError={() =>
-            src && setStage(failed("This video could not be decoded.", false))
+            src && setStage(failed("The video could not be decoded.", false))
           }
         />
         <canvas

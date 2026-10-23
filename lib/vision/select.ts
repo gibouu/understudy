@@ -120,8 +120,10 @@ export function trackPerson(
 /**
  * Give the selected person their own hands. Every detected hand belongs to the
  * nearest wrist of any detected person, so a neighbour's hand reaching across
- * is not taken; then the selected person's wrists take their nearest hands one
- * to one, within half a torso height (at least 0.05 frame heights).
+ * is not taken. Then the selected person's two wrists take one hand each,
+ * within half a torso height (at least 0.05 frame heights): of all the
+ * one-to-one assignments, the one that matches the most hands, then the one
+ * with the shortest total distance (two wrists, so trying them all is cheap).
  * Handedness labels are not used: they assume a mirrored selfie image.
  */
 export function matchHands(
@@ -135,7 +137,7 @@ export function matchHands(
     { person, side: "right" as HandSide, at: p[POSE.RIGHT_WRIST] },
   ]);
   const limit = Math.max(0.05, torso(poses[selected], aspect).height / 2);
-  const pairs: { hand: number; side: HandSide; d: number }[] = [];
+  const own: { hand: number; left: number; right: number }[] = [];
   hands.forEach((hand, h) => {
     let owner = -1;
     let ownerDist = Infinity;
@@ -147,21 +149,26 @@ export function matchHands(
       }
     }
     if (owner !== selected) return;
-    for (const w of wrists) {
-      if (w.person !== selected) continue;
-      const d = dist(hand[0], w.at, aspect);
-      if (d <= limit) pairs.push({ hand: h, side: w.side, d });
-    }
+    own.push({
+      hand: h,
+      left: dist(hand[0], poses[selected][POSE.LEFT_WRIST], aspect),
+      right: dist(hand[0], poses[selected][POSE.RIGHT_WRIST], aspect),
+    });
   });
-  pairs.sort((a, b) => a.d - b.d);
-  const out: { left: number | null; right: number | null } = { left: null, right: null };
-  const used = new Set<number>();
-  for (const p of pairs) {
-    if (out[p.side] !== null || used.has(p.hand)) continue;
-    out[p.side] = p.hand;
-    used.add(p.hand);
+  let best = { left: null as number | null, right: null as number | null, count: 0, total: 0 };
+  const leftOptions = [null, ...own.filter((o) => o.left <= limit)];
+  const rightOptions = [null, ...own.filter((o) => o.right <= limit)];
+  for (const l of leftOptions) {
+    for (const r of rightOptions) {
+      if (l && r && l.hand === r.hand) continue;
+      const count = (l ? 1 : 0) + (r ? 1 : 0);
+      const total = (l?.left ?? 0) + (r?.right ?? 0);
+      if (count > best.count || (count === best.count && total < best.total)) {
+        best = { left: l?.hand ?? null, right: r?.hand ?? null, count, total };
+      }
+    }
   }
-  return out;
+  return { left: best.left, right: best.right };
 }
 
 /** One sampled frame from raw detections: track the person, match their hands. */

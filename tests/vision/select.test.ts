@@ -63,6 +63,20 @@ describe("matchHands", () => {
     expect(matchHands(hands.poses, 0, withoutOwnLeft, hands.aspect)).toEqual({ left: null, right: 0 });
   });
 
+  it("chooses the assignment that keeps both hands over the greedy nearest pair", () => {
+    // Wrists 0.1 apart; h0 is nearest the left wrist but also within reach of the
+    // right one, h1 only reaches the left one. Greedy gives {left: 0, right: null}.
+    const pose = hands.poses[0].map((p: Point3) => ({ ...p }));
+    pose[11] = { x: 0.55, y: 0.4, z: 0 };
+    pose[12] = { x: 0.45, y: 0.4, z: 0 };
+    pose[23] = { x: 0.54, y: 0.6, z: 0 };
+    pose[24] = { x: 0.46, y: 0.6, z: 0 };
+    pose[15] = { x: 0.45, y: 0.6, z: 0 };
+    pose[16] = { x: 0.55, y: 0.6, z: 0 };
+    const at = (x: number) => [{ x, y: 0.6, z: 0 }];
+    expect(matchHands([pose], 0, [at(0.49), at(0.38)], 1)).toEqual({ left: 1, right: 0 });
+  });
+
   it("measures distance in frame heights, not raw normalized x", () => {
     // A hand 0.06 to the side in normalized x is 0.107 frame heights away at 16:9
     // (over the 0.1 limit for a 0.2-high torso) but only 0.06 at 1:1.

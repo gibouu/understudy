@@ -42,13 +42,31 @@ export async function sampleVideo(
   if (!("requestVideoFrameCallback" in HTMLVideoElement.prototype)) {
     throw new Error("This browser cannot step through video frames; use a recent Chrome, Edge, Safari or Firefox.");
   }
+  const decodeError = () => new Error("The video could not be decoded.");
+  if (video.error) throw decodeError();
   if (video.readyState < HTMLMediaElement.HAVE_METADATA) {
     await new Promise<void>((resolve, reject) => {
-      video.addEventListener("loadedmetadata", () => resolve(), { once: true });
-      video.addEventListener("error", () => reject(new Error("The video could not be decoded.")), {
-        once: true,
-      });
+      const off = () => {
+        video.removeEventListener("loadedmetadata", onMeta);
+        video.removeEventListener("error", onError);
+        signal?.removeEventListener("abort", onMeta);
+      };
+      // an abort settles the wait too; the check below then leaves the video alone
+      const onMeta = () => {
+        off();
+        resolve();
+      };
+      const onError = () => {
+        off();
+        reject(decodeError());
+      };
+      video.addEventListener("loadedmetadata", onMeta);
+      video.addEventListener("error", onError);
+      signal?.addEventListener("abort", onMeta);
     });
+  }
+  if (signal?.aborted) {
+    return { t_s: 0, duration_s: 0, samples: 0, skipped: 0, waits: 0, width, height: 0, aborted: true };
   }
   const height = Math.round((width * video.videoHeight) / video.videoWidth);
   const canvas = new OffscreenCanvas(width, height);
@@ -80,6 +98,7 @@ export async function sampleVideo(
       settled = true;
       video.cancelVideoFrameCallback(handle);
       video.removeEventListener("ended", onEnded);
+      video.removeEventListener("error", onError);
       signal?.removeEventListener("abort", onAbort);
       video.pause();
       video.playbackRate = 1;
@@ -104,6 +123,7 @@ export async function sampleVideo(
       if (inFlight === 0) finish(false);
     };
     const onAbort = () => finish(true);
+    const onError = () => fail(decodeError());
     const done = () => {
       inFlight--;
       if (settled) return;
@@ -134,9 +154,9 @@ export async function sampleVideo(
       handle = video.requestVideoFrameCallback(onVideoFrame);
     };
 
-    if (signal?.aborted) return finish(true);
     signal?.addEventListener("abort", onAbort, { once: true });
     video.addEventListener("ended", onEnded, { once: true });
+    video.addEventListener("error", onError, { once: true });
     handle = video.requestVideoFrameCallback(onVideoFrame);
     play();
   });
