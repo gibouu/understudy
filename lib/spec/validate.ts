@@ -63,12 +63,14 @@ export function validateSpec(spec: TaskSpec): SpecIssue[] {
   const chain = new Map<string, "ok" | "cycle">();
   const resolveChain = (start: string) => {
     const path: string[] = [];
+    const visiting = new Set<string>();
     let f = start;
     while (f !== "world" && !chain.has(f)) {
-      if (path.includes(f)) {
+      if (visiting.has(f)) {
         for (const id of path) chain.set(id, "cycle");
         return;
       }
+      visiting.add(f);
       path.push(f);
       f = poseFrame.get(f) ?? "world";
     }

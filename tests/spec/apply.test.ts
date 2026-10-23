@@ -100,6 +100,20 @@ describe("applyChanges", () => {
     expect(warnings.join("\n")).toMatch(/forbidden/);
     expect(({} as { probe?: boolean }).probe).toBeUndefined();
   });
+  it("never aliases the caller's values, even on rollback", () => {
+    const viaPoints = spec.steps[0].via_points; // the input's own array, handed back as a value
+    const { spec: next, warnings } = applyChanges(spec, [
+      { path: "steps[s1].via_points", value: viaPoints, source: "interview#4" },
+      { path: "steps[s1].via_points[0].xyz_mm", value: [9, 9, 9], source: "interview#4" },
+      { path: "objects[marker].size_mm", value: [0, 15, 140], source: "interview#4" },
+    ]);
+    expect(warnings[0]).toMatch(/no change applied/);
+    expect(next).toEqual(spec);
+    expect(spec.steps[0].via_points[0].xyz_mm).toEqual([0, 0, 60]);
+    const ok = applyChanges(spec, [{ path: "steps[s1].via_points", value: viaPoints, source: "interview#4" }]).spec;
+    ok.steps[0].via_points[0].xyz_mm[0] = 42;
+    expect(spec.steps[0].via_points[0].xyz_mm[0]).toBe(0);
+  });
   it("warns on an unknown path", () => {
     const { warnings } = applyChanges(spec, [{ path: "objects[plate].size_mm", value: [1, 1, 1], source: "x" }]);
     expect(warnings.join("\n")).toMatch(/not found/);

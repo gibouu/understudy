@@ -96,10 +96,10 @@ function applyOne(draft: Rec, change: SpecChange): { ok: true; resolved: string[
     const idx = resolveIndex(node, last);
     if (idx < 0) return { ok: false, reason: "path not found" };
     resolved.push(String(idx));
-    node[idx] = change.value;
+    node[idx] = structuredClone(change.value); // never alias the caller's objects
   } else if (isRec(node)) {
     resolved.push(last);
-    node[last] = change.value;
+    node[last] = structuredClone(change.value);
   } else return { ok: false, reason: "path not found" };
 
   const leaf = tokens.slice(recordDepth).join(".");

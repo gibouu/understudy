@@ -48,7 +48,8 @@ describe("validateSpec", () => {
     const objects = Array.from({ length: 5000 }, (_, i) => ({
       id: `o${i}`, name: `o${i}`, shape: "box" as const, size_mm: [10, 10, 10] as [number, number, number], symmetry: "none" as const,
       role: i === 0 ? ("manipulated" as const) : ("obstacle" as const), source: "vl#seg1", sources: {}, confidence: 0.5,
-      pose: { xyz_mm: [0, 0, 0] as [number, number, number], yaw_deg: 0, frame: i === 0 ? "world" : `o${i - 1}` },
+      // o0 -> o1 -> ... -> o4999 -> world: validation meets the far end of the chain first
+      pose: { xyz_mm: [0, 0, 0] as [number, number, number], yaw_deg: 0, frame: i === 4999 ? "world" : `o${i + 1}` },
     }));
     const spec = TaskSpec.parse({ ...base, objects, steps: [] });
     const t0 = performance.now();
