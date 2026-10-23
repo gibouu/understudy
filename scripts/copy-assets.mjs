@@ -5,7 +5,9 @@
 //   public/so101/so101.xml + LICENSE        the Menagerie model
 //   public/so101/meshes.bin.gz              one gzipped bundle of the meshes the MJCF references
 //   public/so101/assets/*.stl               the same meshes, for browsers without DecompressionStream
-import { copyFileSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+//   public/mediapipe/wasm/, models/         MediaPipe tasks-vision wasm and the pose and hand models
+import { createHash } from "node:crypto";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
@@ -55,3 +57,41 @@ const bundle = Buffer.concat([headerLength, header, ...parts]);
 const gz = gzipSync(bundle, { level: 9 });
 writeFileSync(path.join(outDir, "meshes.bin.gz"), gz);
 console.log(`copy-assets: so101 ${referenced.length} meshes, ${mb(bundle.length)} MB raw -> meshes.bin.gz ${mb(gz.length)} MB`);
+
+// MediaPipe: the wasm from the installed @mediapipe/tasks-vision (so it always
+// matches the package), the two .task models downloaded once from their
+// published URLs and checked against pinned hashes. Sources and licences in
+// public/mediapipe/README.md.
+const tasksVisionDir = path.dirname(require.resolve("@mediapipe/tasks-vision"));
+const mediapipeDir = path.join(root, "public", "mediapipe");
+mkdirSync(path.join(mediapipeDir, "wasm"), { recursive: true });
+mkdirSync(path.join(mediapipeDir, "models"), { recursive: true });
+for (const file of ["vision_wasm_internal.js", "vision_wasm_internal.wasm"]) {
+  copyFileSync(path.join(tasksVisionDir, "wasm", file), path.join(mediapipeDir, "wasm", file));
+}
+console.log("copy-assets: MediaPipe wasm -> public/mediapipe/wasm/");
+
+const MODELS = [
+  {
+    file: "pose_landmarker_full.task",
+    url: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+    sha256: "5134a3aad27a58b93da0088d431f366da362b44e3ccfbe3462b3827a839011b1",
+  },
+  {
+    file: "hand_landmarker.task",
+    url: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+    sha256: "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+  },
+];
+const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+for (const { file, url, sha256: expected } of MODELS) {
+  const dest = path.join(mediapipeDir, "models", file);
+  if (existsSync(dest) && sha256(readFileSync(dest)) === expected) continue;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`copy-assets: ${url} answered HTTP ${res.status}`);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  const got = sha256(bytes);
+  if (got !== expected) throw new Error(`copy-assets: ${file} has SHA-256 ${got}, expected ${expected}`);
+  writeFileSync(dest, bytes);
+  console.log(`copy-assets: ${file} (${mb(bytes.length)} MB) downloaded -> public/mediapipe/models/`);
+}

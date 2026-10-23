@@ -9,7 +9,7 @@ import type { DetectedHand } from "./select";
 import type { Point3, PoseTokens } from "./types";
 
 const BASE = "/mediapipe";
-/** The wasm copied from @mediapipe/tasks-vision 1.1.1; it must match the installed package. */
+/** Published by scripts/copy-assets.mjs from the installed @mediapipe/tasks-vision. */
 const WASM = {
   wasmLoaderPath: `${BASE}/wasm/vision_wasm_internal.js`,
   wasmBinaryPath: `${BASE}/wasm/vision_wasm_internal.wasm`,

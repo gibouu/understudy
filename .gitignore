@@ -46,3 +46,5 @@ next-env.d.ts
 # copied from node_modules by scripts/copy-assets.mjs
 /public/mujoco/
 /public/so101/
+/public/mediapipe/wasm/
+/public/mediapipe/models/
