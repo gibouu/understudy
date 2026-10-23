@@ -59,6 +59,22 @@ export function validateSpec(spec: TaskSpec): SpecIssue[] {
   });
   const reg = registries(spec);
   const poseFrame = new Map(spec.objects.map((o) => [o.id, o.pose?.frame ?? "world"]));
+  // Resolve every pose chain once: "ok" when it reaches world, "cycle" otherwise.
+  const chain = new Map<string, "ok" | "cycle">();
+  const resolveChain = (start: string) => {
+    const path: string[] = [];
+    let f = start;
+    while (f !== "world" && !chain.has(f)) {
+      if (path.includes(f)) {
+        for (const id of path) chain.set(id, "cycle");
+        return;
+      }
+      path.push(f);
+      f = poseFrame.get(f) ?? "world";
+    }
+    const verdict = f === "world" ? "ok" : chain.get(f)!;
+    for (const id of path) chain.set(id, verdict);
+  };
 
   spec.objects.forEach((o, i) => {
     if (!o.pose) {
@@ -66,16 +82,9 @@ export function validateSpec(spec: TaskSpec): SpecIssue[] {
     } else if (!reg.frames.has(o.pose.frame) || o.pose.frame === o.id) {
       issues.push({ code: "unknown_pose_frame", path: `objects[${i}].pose.frame`, message: `object "${o.id}" is posed in unknown or self frame "${o.pose.frame}"`, severity: "error" });
     } else {
-      // walk to world; a revisit is a cycle
-      const visited = new Set<string>([o.id]);
-      let f = o.pose.frame;
-      while (f !== "world") {
-        if (visited.has(f)) {
-          issues.push({ code: "pose_frame_cycle", path: `objects[${i}].pose.frame`, message: `object "${o.id}" has a cyclic pose frame through "${f}"`, severity: "error" });
-          break;
-        }
-        visited.add(f);
-        f = poseFrame.get(f) ?? "world";
+      resolveChain(o.id);
+      if (chain.get(o.id) === "cycle") {
+        issues.push({ code: "pose_frame_cycle", path: `objects[${i}].pose.frame`, message: `object "${o.id}" has a cyclic pose frame`, severity: "error" });
       }
     }
     if (o.role === "fixture" && o.pocket_clearance_mm === undefined && spec.steps.some((s) => s.target?.fixture === "pocket" && s.target.frame === o.id)) {

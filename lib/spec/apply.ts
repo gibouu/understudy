@@ -5,12 +5,15 @@
  * Inside brackets an id is matched before an index, so `[0]` means the object
  * whose id is "0" if there is one, else the first object. Provenance lands in
  * the record's `sources` under the leaf path relative to the record
- * ("tolerances.x_mm", "via_points.0.xyz_mm"); top-level fields land in the
- * spec's own `sources`.
+ * ("tolerances.x_mm", "via_points.0.xyz_mm"); replacing a parent drops the
+ * provenance of its descendants; top-level fields land in the spec's own
+ * `sources`.
  *
- * Changes are applied as one transaction: if the whole batch validates it is
- * accepted as is; otherwise they are applied one by one and the ones that
- * break an invariant or name an unknown field are skipped with a warning.
+ * A batch is one transaction: either every change applies and the result
+ * validates, or nothing is applied and the warnings name each change that
+ * fails on its own (or the batch as a whole when only the combination does).
+ * Reference consistency (ids, frames) is `validateSpec`'s job, run by the
+ * caller after a successful apply.
  */
 import { TaskSpec, type SpecChange } from "./schema";
 
@@ -33,24 +36,41 @@ function resolveIndex(list: unknown[], token: string): number {
   return -1;
 }
 
-function getAt(root: unknown, tokens: string[]): unknown {
+/** Follow a path of resolved tokens (array positions are numeric strings). */
+function getResolved(root: unknown, resolved: string[]): unknown {
   let node = root;
-  for (const t of tokens) {
-    if (Array.isArray(node)) {
-      const i = resolveIndex(node, t);
-      if (i < 0) return undefined;
-      node = node[i];
-    } else if (isRec(node) && Object.hasOwn(node, t)) node = node[t];
+  for (const t of resolved) {
+    if (Array.isArray(node)) node = node[Number(t)];
+    else if (isRec(node) && Object.hasOwn(node, t)) node = node[t];
     else return undefined;
   }
   return node;
 }
 
-/** Mutates `draft`; returns the leaf path relative to the owning record (or null when the path is bad). */
-function applyOne(draft: Rec, change: SpecChange): { ok: true; record: Rec; leaf: string } | { ok: false; reason: string } {
+/** Keys the caller supplied that the validated result does not have (the schema stripped them). */
+function missingKeys(supplied: unknown, parsed: unknown, prefix: string, out: string[]) {
+  if (isRec(supplied)) {
+    if (!isRec(parsed)) {
+      out.push(prefix);
+      return;
+    }
+    for (const k of Object.keys(supplied)) {
+      if (!Object.hasOwn(parsed, k)) out.push(prefix ? `${prefix}.${k}` : k);
+      else missingKeys(supplied[k], parsed[k], prefix ? `${prefix}.${k}` : k, out);
+    }
+  } else if (Array.isArray(supplied) && Array.isArray(parsed)) {
+    supplied.forEach((v, i) => missingKeys(v, parsed[i], `${prefix}.${i}`, out));
+  }
+}
+
+type Applied = { change: SpecChange; resolved: string[] };
+
+/** Mutates `draft`. Returns the resolved location, or a reason. */
+function applyOne(draft: Rec, change: SpecChange): { ok: true; resolved: string[] } | { ok: false; reason: string } {
   const tokens = parsePath(change.path);
   if (tokens.length === 0) return { ok: false, reason: "empty path" };
   if (tokens.some((t) => FORBIDDEN.has(t))) return { ok: false, reason: "forbidden path segment" };
+  const resolved: string[] = [];
   let node: unknown = draft;
   let record: Rec = draft;
   let recordDepth = 0;
@@ -59,6 +79,7 @@ function applyOne(draft: Rec, change: SpecChange): { ok: true; record: Rec; leaf
     if (Array.isArray(node)) {
       const idx = resolveIndex(node, t);
       if (idx < 0) return { ok: false, reason: "path not found" };
+      resolved.push(String(idx));
       node = node[idx];
       if (isRec(node) && (tokens[i - 1] === "objects" || tokens[i - 1] === "steps")) {
         record = node;
@@ -66,6 +87,7 @@ function applyOne(draft: Rec, change: SpecChange): { ok: true; record: Rec; leaf
       }
     } else if (isRec(node)) {
       if (!Object.hasOwn(node, t)) node[t] = {};
+      resolved.push(t);
       node = node[t];
     } else return { ok: false, reason: "path not found" };
   }
@@ -73,64 +95,62 @@ function applyOne(draft: Rec, change: SpecChange): { ok: true; record: Rec; leaf
   if (Array.isArray(node)) {
     const idx = resolveIndex(node, last);
     if (idx < 0) return { ok: false, reason: "path not found" };
+    resolved.push(String(idx));
     node[idx] = change.value;
-  } else if (isRec(node)) node[last] = change.value;
-  else return { ok: false, reason: "path not found" };
-  return { ok: true, record, leaf: tokens.slice(recordDepth).join(".") };
-}
+  } else if (isRec(node)) {
+    resolved.push(last);
+    node[last] = change.value;
+  } else return { ok: false, reason: "path not found" };
 
-function recordSource(record: Rec, leaf: string, source: string) {
+  const leaf = tokens.slice(recordDepth).join(".");
   const sources = isRec(record.sources) ? record.sources : (record.sources = {});
-  sources[leaf] = source;
+  for (const k of Object.keys(sources)) if (k.startsWith(`${leaf}.`)) delete sources[k]; // a parent replaced
+  sources[leaf] = change.source;
+  return { ok: true, resolved };
 }
 
-function validate(draft: Rec, changes: SpecChange[]): { spec: TaskSpec } | { reason: string } {
+function tryBatch(spec: TaskSpec, changes: SpecChange[]): { spec: TaskSpec } | { reason: string } {
+  const draft = structuredClone(spec) as unknown as Rec;
+  const applied: Applied[] = [];
+  for (const change of changes) {
+    const r = applyOne(draft, change);
+    if (!r.ok) return { reason: `${change.path}: ${r.reason}` };
+    applied.push({ change, resolved: r.resolved });
+  }
   const result = TaskSpec.safeParse(draft);
   if (!result.success) {
     const issue = result.error.issues[0];
     return { reason: `rejected (${issue?.path.join(".") || "root"}: ${issue?.message})` };
   }
-  for (const c of changes) {
-    if (c.value !== undefined && getAt(result.data, parsePath(c.path)) === undefined) {
-      return { reason: `${c.path}: unknown field (not part of the spec)` };
-    }
+  for (const { change, resolved } of applied) {
+    const got = getResolved(result.data, resolved);
+    if (change.value !== undefined && got === undefined) return { reason: `${change.path}: unknown field (not part of the spec)` };
+    const missing: string[] = [];
+    missingKeys(change.value, got, "", missing);
+    if (missing.length) return { reason: `${change.path}: unknown field(s) ${missing.join(", ")}` };
   }
   return { spec: result.data };
 }
 
 export function applyChanges(spec: TaskSpec, changes: SpecChange[]): { spec: TaskSpec; warnings: string[] } {
-  const warnings: string[] = [];
-  // one transaction first
-  const batch = structuredClone(spec) as unknown as Rec;
-  let batchOk = true;
-  for (const c of changes) {
-    const r = applyOne(batch, c);
-    if (!r.ok) {
-      batchOk = false;
-      break;
-    }
-    recordSource(r.record, r.leaf, c.source);
+  if (changes.length === 0) return { spec: structuredClone(spec), warnings: [] };
+  const whole = tryBatch(spec, changes);
+  if ("spec" in whole) return { spec: whole.spec, warnings: [] };
+  const warnings = [`no change applied: ${whole.reason}`];
+  // Blame: a change whose removal makes the batch valid is at fault.
+  const offenders: string[] = [];
+  if (changes.length > 1) {
+    changes.forEach((c, i) => {
+      if ("spec" in tryBatch(spec, changes.filter((_, j) => j !== i))) offenders.push(`${c.path}: the batch is valid without it`);
+    });
   }
-  if (batchOk) {
-    const v = validate(batch, changes);
-    if ("spec" in v) return { spec: v.spec, warnings };
-  }
-  // fall back to one by one, skipping the offenders
-  let current = structuredClone(spec);
-  for (const c of changes) {
-    const draft = structuredClone(current) as unknown as Rec;
-    const r = applyOne(draft, c);
-    if (!r.ok) {
-      warnings.push(`${c.path}: ${r.reason}`);
-      continue;
+  // Otherwise name every change that fails on its own; if none does, the combination is at fault.
+  if (offenders.length === 0) {
+    for (const c of changes) {
+      const alone = tryBatch(spec, [c]);
+      if ("reason" in alone) offenders.push(alone.reason.startsWith(c.path) ? alone.reason : `${c.path}: ${alone.reason}`);
     }
-    recordSource(r.record, r.leaf, c.source);
-    const v = validate(draft, [c]);
-    if ("reason" in v) {
-      warnings.push(v.reason.startsWith(c.path) ? v.reason : `${c.path}: ${v.reason}`);
-      continue;
-    }
-    current = v.spec;
   }
-  return { spec: current, warnings };
+  if (offenders.length === 0) offenders.push("the changes conflict with each other");
+  return { spec: structuredClone(spec), warnings: [...warnings, ...offenders] };
 }

@@ -50,8 +50,9 @@ describe("extractJson and candidates", () => {
   it("lists top-level candidates in order and ignores nested ones", () => {
     expect([...jsonCandidates('x {"a":[1]} y [2]')]).toEqual(['{"a":[1]}', "[2]"]);
   });
-  it("offers nothing from inside an unfinished value", () => {
+  it("offers nothing from inside an unfinished value or after a mismatched closer", () => {
     expect([...jsonCandidates('{"draft":{"question":"DRAFT","done":true},"answer":')]).toEqual([]);
+    expect([...jsonCandidates('{"draft": ] {"question":"DRAFT","done":true}')]).toEqual([]);
   });
   it("scans pathological input in linear time", () => {
     const t0 = performance.now();
@@ -71,11 +72,14 @@ describe("parseModelJson", () => {
     expect(value.question).toBe("What does <think>foo</think> mean?");
     expect(parseModelJson('{"question":"What does <think> mean?"}', InterviewTurn).value.question).toBe("What does <think> mean?");
   });
-  it("prefers the last valid candidate, so an example before the answer loses", () => {
+  it("accepts the one valid candidate next to an invalid example", () => {
     expect(parseModelJson('Example: {"question": 3}\nAnswer: {"question":"real"}', InterviewTurn).value.question).toBe("real");
-    const v = parseModelJson('Example: {"question":"EXAMPLE","done":true}\nAnswer: {"question":"REAL"}', InterviewTurn).value;
-    expect(v.question).toBe("REAL");
-    expect(v.done).toBe(false);
+    expect(parseModelJson('Answer: {"question":"real"}\nExample of a bad one: {"question": 3}', InterviewTurn).value.question).toBe("real");
+  });
+  it("refuses two different valid candidates as ambiguous, whichever comes first", () => {
+    expect(() => parseModelJson('Example: {"question":"EXAMPLE","done":true}\nAnswer: {"question":"REAL"}', InterviewTurn)).toThrow(/ambiguous/);
+    expect(() => parseModelJson('{"question":"REAL"}\nFor example: {"question":"EXAMPLE","done":true}', InterviewTurn)).toThrow(/ambiguous/);
+    expect(parseModelJson('{"question":"same"} and again {"question":"same"}', InterviewTurn).value.question).toBe("same");
   });
   it("refuses a truncated draft instead of answering from its inside", () => {
     expect(() => parseModelJson('{"draft":{"question":"DRAFT","done":true},"answer":', InterviewTurn)).toThrow(/no complete JSON/);

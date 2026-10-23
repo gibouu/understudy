@@ -44,6 +44,17 @@ describe("validateSpec", () => {
     spec.objects[1].pose = { xyz_mm: [0, 0, 0], yaw_deg: 0, frame: "cup" };
     expect(validateSpec(spec).map((i) => i.code)).toContain("pose_frame_cycle");
   });
+  it("resolves a long pose chain in linear time", () => {
+    const objects = Array.from({ length: 5000 }, (_, i) => ({
+      id: `o${i}`, name: `o${i}`, shape: "box" as const, size_mm: [10, 10, 10] as [number, number, number], symmetry: "none" as const,
+      role: i === 0 ? ("manipulated" as const) : ("obstacle" as const), source: "vl#seg1", sources: {}, confidence: 0.5,
+      pose: { xyz_mm: [0, 0, 0] as [number, number, number], yaw_deg: 0, frame: i === 0 ? "world" : `o${i - 1}` },
+    }));
+    const spec = TaskSpec.parse({ ...base, objects, steps: [] });
+    const t0 = performance.now();
+    expect(validateSpec(spec).filter((i) => i.severity === "error")).toEqual([]);
+    expect(performance.now() - t0).toBeLessThan(500);
+  });
   it("warns on a pocket without clearance and on overlapping steps", () => {
     const spec = structuredClone(base);
     spec.steps[1].target = { fixture: "pocket", frame: "saucer" };

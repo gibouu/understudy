@@ -8,8 +8,9 @@
  *   2. A single string-aware pass finds the balanced JSON values at the top
  *      level of what remains. Values nested inside an unfinished outer value
  *      (a truncated draft) are not candidates. Prose braces that do not parse
- *      are skipped. Among candidates that parse and validate, the LAST one
- *      wins: models put examples first and the answer last.
+ *      are skipped. Exactly one candidate may parse and validate; several
+ *      different valid ones (an example next to the answer) are refused as
+ *      ambiguous, and the caller asks again for a single JSON value.
  *   3. An optional `normalize` hook rewrites near-misses (aliases, degraded
  *      fixtures) and returns warnings before validation. A normalizer that
  *      throws only disqualifies that candidate.
@@ -40,9 +41,9 @@ export function stripLeadingThink(text: string): string {
   return s;
 }
 
-/** Index of the close bracket balancing the one at `start`, or -1 when the text ends first. */
+/** Index of the close bracket balancing the one at `start`; -1 when the text ends first or a closer mismatches. */
 function balancedEnd(text: string, start: number): number {
-  let depth = 0;
+  const expected: string[] = [];
   let inString = false;
   let escaped = false;
   for (let i = start; i < text.length; i++) {
@@ -54,11 +55,11 @@ function balancedEnd(text: string, start: number): number {
       continue;
     }
     if (c === '"') inString = true;
-    else if (c === "{" || c === "[") depth++;
+    else if (c === "{") expected.push("}");
+    else if (c === "[") expected.push("]");
     else if (c === "}" || c === "]") {
-      depth--;
-      if (depth === 0) return i;
-      if (depth < 0) return -1;
+      if (expected.pop() !== c) return -1; // a mismatched closer: not JSON, and nothing after it is trusted
+      if (expected.length === 0) return i;
     }
   }
   return -1;
@@ -84,7 +85,7 @@ export function* jsonCandidates(text: string): Generator<string> {
   }
 }
 
-/** The last top-level candidate that is valid JSON, after leading-think removal, or null. */
+/** The last top-level candidate that is valid JSON, after leading-think removal, or null. Diagnostics only; parseModelJson decides. */
 export function extractJson(text: string): string | null {
   let last: string | null = null;
   for (const candidate of jsonCandidates(stripLeadingThink(text))) {
@@ -123,7 +124,7 @@ export function parseModelJson<T>(
     throw new ModelOutputError(`model output too long (${text.length} chars)`, text.slice(0, 1000));
   }
   const body = stripLeadingThink(text);
-  let best: Parsed<T> | null = null;
+  const valid: Parsed<T>[] = [];
   let lastFailure: string | null = null;
   let sawJson = false;
   for (const candidate of jsonCandidates(body)) {
@@ -142,10 +143,15 @@ export function parseModelJson<T>(
       continue;
     }
     const result = schema.safeParse(normalized.data);
-    if (result.success) best = { value: result.data, warnings: normalized.warnings };
+    if (result.success) valid.push({ value: result.data, warnings: normalized.warnings });
     else lastFailure = describe(result.error);
   }
-  if (best) return best;
+  if (valid.length === 1) return valid[0];
+  if (valid.length > 1) {
+    const distinct = new Set(valid.map((v) => JSON.stringify(v.value)));
+    if (distinct.size === 1) return valid[valid.length - 1];
+    throw new ModelOutputError(`ambiguous output: ${distinct.size} different values validate; ask for a single JSON value`, text);
+  }
   if (!sawJson) throw new ModelOutputError("no complete JSON value in model output", text);
   throw new ModelOutputError(`schema validation failed: ${lastFailure}`, text);
 }
