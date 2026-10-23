@@ -24,11 +24,22 @@ export function hasTokenFactoryKey(): boolean {
   return Boolean(process.env.NEBIUS_API_KEY);
 }
 
+export type ClientOptions = {
+  /** per-request deadline in ms; must stay under the route's maxDuration */
+  timeout?: number;
+  maxRetries?: number;
+};
+
 /** Returns null when no key is configured: every route then serves recorded replays. */
-export function tokenFactory(): OpenAI | null {
+export function tokenFactory(options: ClientOptions = {}): OpenAI | null {
   const apiKey = process.env.NEBIUS_API_KEY;
   if (!apiKey) return null;
-  return new OpenAI({ apiKey, baseURL: TOKEN_FACTORY_BASE_URL, maxRetries: 2 });
+  return new OpenAI({
+    apiKey,
+    baseURL: TOKEN_FACTORY_BASE_URL,
+    timeout: options.timeout ?? 60_000,
+    maxRetries: options.maxRetries ?? 2,
+  });
 }
 
 /** `?replay=1` on any route forces the recorded fixture even with a key present. */

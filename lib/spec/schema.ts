@@ -1,15 +1,29 @@
 /**
  * The shared contract of Understudy. Every stage reads or writes one of these.
  *
- * Provenance: every object, step and via-point carries a `source` string so the
- * UI can badge where a value came from and the reshoot list can tell footage
- * gaps from spec gaps. Prefixes:
- *   vl#<segment>      labelled by the vision model from keyframes
- *   pose#<segment>    measured from MediaPipe landmarks
- *   interview#<turn>  answered by the person who did the task
- *   tavily:<url>      grounded in a fetched document (opt-in)
- *   user#edit         edited by hand in the UI
- *   default           a default the compiler or UI filled in
+ * Units and frames
+ *   The spec speaks millimetres and degrees; the simulator converts to metres
+ *   and radians at its boundary. The world frame sits where the robot base
+ *   meets the table: x away from the robot, y to the robot's left, z up. An
+ *   object frame sits at the object's centre, rotated by its yaw. Via-points
+ *   and `move_to` offsets are expressed in a named frame ("world" or an
+ *   object id); perturbations move the object frame, which is how the same
+ *   program is replayed under a displaced rack.
+ *
+ * Provenance
+ *   Each object and step carries a default `source` and a `sources` map for
+ *   fields that were later changed by someone else (an interview answer, a
+ *   hand edit). Prefixes:
+ *     vl#<segment>      labelled by the vision model from keyframes
+ *     pose#<segment>    measured from MediaPipe landmarks
+ *     interview#<turn>  answered by the person who did the task
+ *     tavily:<url>      grounded in a fetched document (opt-in)
+ *     user#edit         edited by hand in the UI
+ *     default           a default the compiler or UI filled in
+ *
+ * Validation happens in two layers: this file checks shape and physical
+ * invariants; `validate.ts` checks references (ids, frames, step ids) so the
+ * compiler can turn a dangling reference into an `ask` instead of a crash.
  */
 import { z } from "zod";
 
@@ -31,7 +45,7 @@ export const PREDICATES = [
   "object_still",
   "time_under",
 ] as const;
-/** Perturbation axes the saboteur may pick; the band is a half-width. */
+/** Perturbation axes the saboteur may pick; a tolerance is a half-width. */
 export const AXES = [
   "x_mm",
   "y_mm",
@@ -42,6 +56,12 @@ export const AXES = [
   "pose_noise_mm",
 ] as const;
 export const MODES = ["sensed", "blind"] as const;
+export const FAILURE_CLASSES = [
+  "spec_gap",
+  "footage_gap",
+  "embodiment_limit",
+  "simulator_artefact",
+] as const;
 
 export type Fixture = (typeof FIXTURES)[number];
 export type Shape = (typeof SHAPES)[number];
@@ -50,70 +70,105 @@ export type Mode = (typeof MODES)[number];
 export type PredicateKind = (typeof PREDICATES)[number];
 
 export const Source = z.string().min(1).default("default");
-export const Vec3mm = z.tuple([z.number(), z.number(), z.number()]);
+/** field name -> source, for fields whose provenance differs from the record's `source` */
+export const Sources = z.record(z.string(), z.string().min(1)).default({});
+const finite = z.number().finite();
+export const Vec3mm = z.tuple([finite, finite, finite]);
 
-export const Predicate = z.object({
-  kind: z.enum(PREDICATES),
-  /** object id the predicate is about */
-  object: z.string().optional(),
-  /** zone, pocket or object id it is measured against */
-  target: z.string().optional(),
-  /** threshold in mm, degrees or seconds depending on the kind */
-  value: z.number().optional(),
-});
+/** Operands each predicate kind needs; the compiler asks for what is missing. */
+export const PREDICATE_OPERANDS: Record<PredicateKind, { object: boolean; target: boolean; value: boolean; unit?: string }> = {
+  contact_both_pads: { object: true, target: false, value: false },
+  height_above: { object: true, target: false, value: true, unit: "mm above the table" },
+  inside_zone: { object: true, target: true, value: false },
+  no_collision: { object: false, target: false, value: false },
+  tilt_under: { object: true, target: false, value: true, unit: "degrees from upright" },
+  gripper_within: { object: true, target: false, value: true, unit: "mm of aperture error" },
+  object_still: { object: true, target: false, value: false },
+  time_under: { object: false, target: false, value: true, unit: "seconds" },
+};
+
+export const Predicate = z
+  .object({
+    kind: z.enum(PREDICATES),
+    /** object id the predicate is about */
+    object: z.string().min(1).optional(),
+    /** zone, pocket or object id it is measured against */
+    target: z.string().min(1).optional(),
+    /** threshold, unit per PREDICATE_OPERANDS */
+    value: finite.optional(),
+  })
+  .superRefine((p, ctx) => {
+    const need = PREDICATE_OPERANDS[p.kind];
+    if (need.object && !p.object) ctx.addIssue({ code: "custom", path: ["object"], message: `${p.kind} needs an object` });
+    if (need.target && !p.target) ctx.addIssue({ code: "custom", path: ["target"], message: `${p.kind} needs a target` });
+    if (need.value && p.value === undefined) ctx.addIssue({ code: "custom", path: ["value"], message: `${p.kind} needs a value (${need.unit})` });
+    if (need.value && p.value !== undefined && p.value < 0) ctx.addIssue({ code: "custom", path: ["value"], message: `${p.kind} value must be >= 0` });
+  });
 export type Predicate = z.infer<typeof Predicate>;
 
+export const Pose = z.object({
+  xyz_mm: Vec3mm,
+  yaw_deg: finite.default(0),
+  /** "world" or an object id */
+  frame: z.string().min(1).default("world"),
+});
+export type Pose = z.infer<typeof Pose>;
+
 export const SpecObject = z.object({
-  id: z.string(),
-  name: z.string(),
+  id: z.string().min(1),
+  name: z.string().min(1),
   shape: z.enum(SHAPES),
-  /** cylinder: [diameter, diameter, height]; box: [x, y, z]; sphere: [d, d, d] */
-  size_mm: Vec3mm,
+  /** cylinder: [diameter, diameter, height]; box: [x, y, z]; sphere: [d, d, d]; all > 0 */
+  size_mm: z.tuple([z.number().positive(), z.number().positive(), z.number().positive()]),
   symmetry: z.enum(SYMMETRIES),
   role: z.enum(ROLES),
+  /** nominal pose; missing means the scene builder lays it out and the compiler asks */
+  pose: Pose.optional(),
   /** fixtures with a pocket: hole minus object, in mm */
-  pocket_clearance_mm: z.number().optional(),
+  pocket_clearance_mm: z.number().nonnegative().optional(),
   confidence: z.number().min(0).max(1).default(0.5),
   source: Source,
+  sources: Sources,
 });
 export type SpecObject = z.infer<typeof SpecObject>;
 
 export const ViaPoint = z.object({
   /** frame the point is expressed in: an object id or "world" */
-  frame: z.string(),
+  frame: z.string().min(1),
   xyz_mm: Vec3mm,
-  t_s: z.number().optional(),
+  t_s: z.number().nonnegative().optional(),
   source: Source,
 });
 export type ViaPoint = z.infer<typeof ViaPoint>;
 
-export const Step = z.object({
-  id: z.string(),
-  verb: z.enum(VERBS),
-  /** manipulated object id */
-  object: z.string(),
-  target: z
-    .object({ fixture: z.enum(FIXTURES), frame: z.string() })
-    .optional(),
-  via_points: z.array(ViaPoint).default([]),
-  preconditions: z.array(Predicate).default([]),
-  success: z.array(Predicate).default([]),
-  /** half-width of the band the step must survive, per axis */
-  tolerances: z.partialRecord(z.enum(AXES), z.number()).default({}),
-  t_start_s: z.number(),
-  t_end_s: z.number(),
-  source: Source,
-});
+export const Step = z
+  .object({
+    id: z.string().min(1),
+    verb: z.enum(VERBS),
+    /** manipulated object id */
+    object: z.string().min(1),
+    target: z.object({ fixture: z.enum(FIXTURES), frame: z.string().min(1) }).optional(),
+    via_points: z.array(ViaPoint).default([]),
+    preconditions: z.array(Predicate).default([]),
+    success: z.array(Predicate).default([]),
+    /** half-width of the band the step must survive, per axis, >= 0 */
+    tolerances: z.partialRecord(z.enum(AXES), z.number().nonnegative()).default({}),
+    t_start_s: z.number().nonnegative(),
+    t_end_s: z.number().nonnegative(),
+    source: Source,
+    sources: Sources,
+  })
+  .refine((s) => s.t_end_s >= s.t_start_s, { message: "t_end_s must be >= t_start_s", path: ["t_end_s"] });
 export type Step = z.infer<typeof Step>;
 
 export const TaskSpec = z.object({
   version: z.literal(1),
-  title: z.string(),
+  title: z.string().min(1),
   summary: z.string(),
   objects: z.array(SpecObject),
   steps: z.array(Step),
   /** the grasp moment the via-points are anchored on */
-  anchor: z.object({ t_s: z.number(), confidence: z.number() }).optional(),
+  anchor: z.object({ t_s: z.number().nonnegative(), confidence: z.number().min(0).max(1) }).optional(),
   warnings: z.array(z.string()).default([]),
   open_questions: z.array(z.string()).default([]),
   provenance: z
@@ -130,41 +185,45 @@ export type TaskSpec = z.infer<typeof TaskSpec>;
 export const ProgramOp = z.discriminatedUnion("op", [
   z.object({
     op: z.literal("move_to"),
-    frame: z.string(),
+    frame: z.string().min(1),
     offset_mm: Vec3mm,
     approach: z.enum(APPROACHES).default("top"),
   }),
-  z.object({ op: z.literal("grasp"), object: z.string(), aperture_mm: z.number() }),
+  z.object({ op: z.literal("grasp"), object: z.string().min(1), aperture_mm: z.number().nonnegative() }),
   z.object({ op: z.literal("release") }),
   z.object({
     op: z.literal("wait_until"),
     predicate: Predicate,
-    timeout_s: z.number().default(3),
+    timeout_s: z.number().positive().default(3),
   }),
   z.object({ op: z.literal("assert"), predicate: Predicate }),
   z.object({
     op: z.literal("ask"),
-    /** JSON path in the spec the answer fills, e.g. steps[1].tolerances.x_mm */
-    slot: z.string(),
-    question: z.string(),
-    why: z.string(),
+    /** path in the spec the answer fills, e.g. steps[1].tolerances.x_mm */
+    slot: z.string().min(1),
+    question: z.string().min(1),
+    why: z.string().default(""),
   }),
 ]);
 export type ProgramOp = z.infer<typeof ProgramOp>;
 
 export const Program = z.object({
   spec_title: z.string(),
-  steps: z.array(z.object({ step_id: z.string(), ops: z.array(ProgramOp) })),
+  steps: z.array(z.object({ step_id: z.string().min(1), ops: z.array(ProgramOp) })),
   warnings: z.array(z.string()).default([]),
 });
 export type Program = z.infer<typeof Program>;
 
-/** One interview turn from Super, streamed in this key order. */
+/** One field-level change, applied with `applyChanges`, which also records provenance. */
 export const SpecChange = z.object({
-  path: z.string(),
+  /** e.g. objects[rack].pocket_clearance_mm, steps[s2].tolerances.x_mm, anchor.t_s */
+  path: z.string().min(1),
   value: z.unknown(),
   source: Source,
 });
+export type SpecChange = z.infer<typeof SpecChange>;
+
+/** One interview turn from Super, streamed in this key order. */
 export const InterviewTurn = z.object({
   question: z.string(),
   chips: z.array(z.string()).default([]),
@@ -174,38 +233,57 @@ export const InterviewTurn = z.object({
 });
 export type InterviewTurn = z.infer<typeof InterviewTurn>;
 
-/** A saboteur scenario: one axis, one offset, an expected outcome. */
+/**
+ * A saboteur scenario: a world perturbation on one axis of one object, with
+ * optional observation noise on top (what the sensed mode sees), and an
+ * expected outcome. `seed` makes the noise reproducible.
+ */
 export const Scenario = z.object({
-  id: z.string(),
-  name: z.string(),
+  id: z.string().min(1),
+  name: z.string().min(1),
   axis: z.enum(AXES),
   /** signed offset in the axis unit */
-  offset: z.number(),
+  offset: finite,
   /** object id the perturbation applies to */
-  object: z.string(),
+  object: z.string().min(1),
+  /** for tilt_deg: which horizontal axis the object tilts about */
+  tilt_axis: z.enum(["x", "y"]).optional(),
+  /** observation noise added to the pose the program receives in sensed mode */
+  pose_noise_mm: z.number().nonnegative().optional(),
+  seed: z.number().int().nonnegative().optional(),
   expected: z.enum(["pass", "fail", "unknown"]),
   why: z.string().default(""),
 });
 export type Scenario = z.infer<typeof Scenario>;
 
 export const RolloutResult = z.object({
-  scenario_id: z.string(),
+  scenario_id: z.string().min(1),
   mode: z.enum(MODES),
   pass: z.boolean(),
   failed_step_id: z.string().optional(),
   failed_predicate: Predicate.optional(),
-  /** "embodiment limit" when the reachability pre-check fails */
-  failure_class: z
-    .enum(["spec_gap", "footage_gap", "embodiment_limit", "simulator_artefact"])
-    .optional(),
-  metrics: z.record(z.string(), z.number()).default({}),
-  seconds: z.number().default(0),
+  /** "embodiment_limit" when the reachability pre-check fails */
+  failure_class: z.enum(FAILURE_CLASSES).optional(),
+  metrics: z.record(z.string(), finite).default({}),
+  seconds: z.number().nonnegative().default(0),
 });
 export type RolloutResult = z.infer<typeof RolloutResult>;
 
-/** Per-axis envelope: the largest offset that still passed, per mode. */
-export const Envelope = z.record(
+/**
+ * Sampled evidence per axis and mode: the largest offset that passed and the
+ * smallest that failed, on each side. A symmetric half-width is
+ * min(|pass_neg|, pass_pos) and only exists when both sides were sampled;
+ * the report shows the signed numbers, never a band it did not test.
+ */
+export const SignedBand = z.object({
+  pass_neg: finite.nullable(),
+  pass_pos: finite.nullable(),
+  fail_neg: finite.nullable(),
+  fail_pos: finite.nullable(),
+});
+export type SignedBand = z.infer<typeof SignedBand>;
+export const Envelope = z.partialRecord(
   z.enum(AXES),
-  z.object({ sensed: z.number().nullable(), blind: z.number().nullable() }),
+  z.object({ sensed: SignedBand, blind: SignedBand }),
 );
 export type Envelope = z.infer<typeof Envelope>;

@@ -1,6 +1,6 @@
 <h1 align="center">Understudy</h1>
 
-<p align="center"><b>Watch a person do a task once. Interview them. Rehearse it on a simulated robot. Export the training data.</b></p>
+<p align="center"><b>Watch a person do a task once. Interview them. Rehearse it on a simulated robot. Export the dataset.</b></p>
 
 <p align="center">
   <a href="docs/SPEC.md">Spec</a> ·
@@ -76,7 +76,7 @@ flowchart LR
 ```bash
 git clone https://github.com/gibouu/understudy && cd understudy
 pnpm install
-cp .env.example .env.local        # add NEBIUS_API_KEY (and TAVILY_API_KEY); without a key every route replays recorded sessions
+cp .env.example .env.local        # add NEBIUS_API_KEY (and TAVILY_API_KEY); without a key the app runs in replay mode (recorded sessions land with issue #23)
 pnpm dev                           # http://localhost:3000
 pnpm test && pnpm typecheck && pnpm lint
 ```
@@ -85,7 +85,7 @@ Credits for the hackathon: promo code `NEBIUS-DEVPOST-GLOBAL26` on Token Factory
 
 ## Simulated versus real
 
-The rehearsal proves that the clarified spec is executable by a scripted SO-101 program across the stated band, in rigid-body physics with a geometric grasp, and that its success criteria are computable. It does not prove a learned policy would succeed or that a real grasp holds. The export is a format-valid skeleton for GR00T's loader, not training data, and its quality report says so. Details and three documented failing rollouts: [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+The rehearsal proves that the clarified spec is executable by a scripted SO-101 program across the stated band, in rigid-body physics with a geometric grasp, and that its success criteria are computable. It does not prove a learned policy would succeed or that a real grasp holds. The export is a format-valid skeleton for GR00T's loader, not training data, and its quality report says so. Details: [docs/LIMITATIONS.md](docs/LIMITATIONS.md) (three documented failing rollouts land with issue #24).
 
 ## Prior art
 
