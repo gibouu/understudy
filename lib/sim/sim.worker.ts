@@ -104,7 +104,10 @@ async function engine(mujocoBase: string): Promise<MainModule> {
       /* webpackIgnore: true */ /* turbopackIgnore: true */ `${mujocoBase}/mujoco.js`
     )) as { default: (options?: { locateFile?: (p: string) => string }) => Promise<MainModule> };
     return loader.default({ locateFile: (p: string) => `${mujocoBase}/${p}` });
-  })();
+  })().catch((err: unknown) => {
+    enginePromise = null; // a failed initialization may be retried
+    throw err;
+  });
   return enginePromise;
 }
 
@@ -168,7 +171,9 @@ async function loadMeshes(vfs: MjVFS, assetBase: string, mujoco: MainModule) {
     }
   }
   let fetched = 0;
-  await Promise.all(
+  // allSettled: every download finishes (and adds to the VFS) before a failure
+  // propagates, so no addBuffer can run after the VFS has been deleted.
+  const results = await Promise.allSettled(
     SO101_MESHES.map(async (file) => {
       const res = await fetch(`${assetBase}/assets/${file}`);
       if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`);
@@ -177,18 +182,35 @@ async function loadMeshes(vfs: MjVFS, assetBase: string, mujoco: MainModule) {
       status(`fetched ${fetched}/${SO101_MESHES.length} meshes`, 0.05 + 0.6 * (fetched / SO101_MESHES.length));
     }),
   );
+  const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+  if (failed.length) throw new Error(failed.map((r) => errorText(r.reason, mujoco)).join("; "));
 }
 
 function readBundle(buf: ArrayBuffer): { name: string; bytes: Uint8Array }[] {
-  const view = new DataView(buf);
-  const headerLength = view.getUint32(0, true);
-  const index = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, headerLength))) as {
-    name: string;
-    offset: number;
-    length: number;
-  }[];
+  // Validated before anything reaches the VFS: a bad bundle must fall back, not half-load.
+  if (buf.byteLength < 4) throw new Error("mesh bundle too short");
+  const headerLength = new DataView(buf).getUint32(0, true);
+  if (headerLength === 0 || 4 + headerLength > buf.byteLength) throw new Error("mesh bundle header out of bounds");
+  const index: unknown = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, headerLength)));
+  if (!Array.isArray(index)) throw new Error("mesh bundle index is not a list");
   const base = 4 + headerLength;
-  return index.map((e) => ({ name: e.name, bytes: new Uint8Array(buf.slice(base + e.offset, base + e.offset + e.length)) }));
+  const payload = buf.byteLength - base;
+  const seen = new Set<string>();
+  const entries = index.map((e: unknown) => {
+    const { name, offset, length } = (e ?? {}) as { name?: unknown; offset?: unknown; length?: unknown };
+    if (typeof name !== "string" || !Number.isSafeInteger(offset) || !Number.isSafeInteger(length)) {
+      throw new Error("mesh bundle entry malformed");
+    }
+    const o = offset as number;
+    const n = length as number;
+    if (o < 0 || n <= 0 || o + n > payload) throw new Error(`mesh bundle entry ${name} out of bounds`);
+    if (seen.has(name)) throw new Error(`mesh bundle lists ${name} twice`);
+    seen.add(name);
+    return { name, bytes: new Uint8Array(buf.slice(base + o, base + o + n)) };
+  });
+  const missing = SO101_MESHES.filter((m) => !seen.has(m));
+  if (missing.length) throw new Error(`mesh bundle is missing ${missing.join(", ")}`);
+  return entries;
 }
 
 function extractMeta(m: MjModel): SimMeta {
