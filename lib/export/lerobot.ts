@@ -10,7 +10,7 @@ import { VIDEO_KEY, type EpisodeVideoEncoder } from "@/lib/export/video";
 
 export const CHUNKS_SIZE = 1000;
 export const DATA_PATH = "data/chunk-{episode_chunk:03d}/episode_{episode_index:06d}.parquet";
-const VIDEO_PATH = "videos/chunk-{episode_chunk:03d}/{video_key}/episode_{episode_index:06d}";
+const VIDEO_PATH = "videos/chunk-{episode_chunk:03d}/{video_key}/episode_{episode_index:06d}.mp4";
 
 /** Paths relative to the dataset root, contents as bytes. */
 export type FileTree = Record<string, Uint8Array>;
@@ -34,8 +34,8 @@ export function episodeDataPath(episodeIndex: number): string {
   return `data/chunk-${pad(chunkOf(episodeIndex), 3)}/episode_${pad(episodeIndex, 6)}.parquet`;
 }
 
-export function episodeVideoPath(episodeIndex: number, extension: string): string {
-  return `videos/chunk-${pad(chunkOf(episodeIndex), 3)}/${VIDEO_KEY}/episode_${pad(episodeIndex, 6)}.${extension}`;
+export function episodeVideoPath(episodeIndex: number): string {
+  return `videos/chunk-${pad(chunkOf(episodeIndex), 3)}/${VIDEO_KEY}/episode_${pad(episodeIndex, 6)}.mp4`;
 }
 
 /** Throws on anything LeRobot's loader would reject later, with the episode named. */
@@ -209,7 +209,7 @@ export function infoJson(episodes: EpisodeRecord[], video?: EpisodeVideoEncoder)
     fps: episodes[0].fps,
     splits: { train: `0:${episodes.length}` },
     data_path: DATA_PATH,
-    video_path: video ? `${VIDEO_PATH}.${video.format.extension}` : null,
+    video_path: video ? VIDEO_PATH : null,
     features: {
       action: vectorFeature,
       "observation.state": vectorFeature,
@@ -265,7 +265,7 @@ export async function buildLeRobot(episodes: EpisodeRecord[], { video }: BuildLe
           `episode ${ep.episode_index} needs ${ep.frames.length} video frames at ${video.width}x${video.height}`,
         );
       }
-      files[episodeVideoPath(ep.episode_index, video.format.extension)] = await video.encode(v.frames);
+      files[episodeVideoPath(ep.episode_index)] = await video.encode(v.frames);
     }
   }
 

@@ -47,5 +47,8 @@ describe("export zip", () => {
   it("refuses names that escape their folder", () => {
     expect(() => understudyFiles({ "../evil": 1 })).toThrow(/unsafe/);
     expect(() => understudyFiles({ "/abs.json": 1 })).toThrow(/unsafe/);
+    expect(() => understudyFiles({ "..\\..\\evil.json": 1 })).toThrow(/unsafe/);
+    expect(() => understudyFiles({ "C:evil.json": 1 })).toThrow(/unsafe/);
+    expect(() => understudyFiles({ "notes/plan.md": "ok" })).not.toThrow();
   });
 });

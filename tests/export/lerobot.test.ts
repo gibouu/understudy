@@ -79,8 +79,8 @@ describe("meta/ files against Isaac-GR00T cube_to_bowl_5", async () => {
 
   it("writes one video per episode from all its frames", () => {
     expect(video.calls).toEqual([60, 60, 60, 60]);
-    expect(files[episodeVideoPath(3, "mp4")]).toBeDefined();
-    expect(episodeVideoPath(3, "mp4")).toBe("videos/chunk-000/observation.images.workspace/episode_000003.mp4");
+    expect(files[episodeVideoPath(3)]).toBeDefined();
+    expect(episodeVideoPath(3)).toBe("videos/chunk-000/observation.images.workspace/episode_000003.mp4");
   });
 });
 

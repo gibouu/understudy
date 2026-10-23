@@ -10,12 +10,29 @@ import { SO101_JOINTS, type EpisodeRecord, type QualityReport } from "@/lib/expo
 /** A dimension whose range is at or below this is degenerate. */
 export const DEGENERATE_RANGE = 1e-6;
 
-export function headline(episodeCount: number): string {
+/** rehearsal: rollouts of the simulated arm; synthetic: lib/export/synthetic, joint keyframes and no physics. */
+export type EpisodeOrigin = "rehearsal" | "synthetic";
+
+const ORIGIN_TEXT: Record<EpisodeOrigin, { kind: string; how: string }> = {
+  rehearsal: {
+    kind: "scripted, primitive-rendered",
+    how: "These episodes come from a scripted SO-101 program rehearsed in rigid-body simulation with a geometric grasp, rendered from primitives.",
+  },
+  synthetic: {
+    kind: "synthetic, scripted",
+    how: "These episodes are a scripted joint-space trajectory interpolated between keyframes: no physics, no grasp, no rendering.",
+  },
+};
+
+export function headline(episodeCount: number, origin: EpisodeOrigin = "rehearsal"): string {
   const noun = episodeCount === 1 ? "episode" : "episodes";
-  return `${episodeCount} scripted, primitive-rendered ${noun}; a format-valid skeleton, not training data`;
+  return `${episodeCount} ${ORIGIN_TEXT[origin].kind} ${noun}; a format-valid skeleton, not training data`;
 }
 
-/** Names like `observation.state.gripper.pos` for every dimension with max - min <= DEGENERATE_RANGE. */
+/**
+ * Names like `observation.state.gripper.pos` for every dimension whose range,
+ * in the float32 values the parquet holds, is at most DEGENERATE_RANGE.
+ */
 export function degenerateDimensions(episodes: EpisodeRecord[]): string[] {
   const frames = episodes.flatMap((ep) => ep.frames);
   const out: string[] = [];
@@ -27,7 +44,7 @@ export function degenerateDimensions(episodes: EpisodeRecord[]): string[] {
       let min = Infinity;
       let max = -Infinity;
       for (const f of frames) {
-        const v = pick(f)[d];
+        const v = Math.fround(pick(f)[d]);
         if (v < min) min = v;
         if (v > max) max = v;
       }
@@ -63,11 +80,18 @@ export type QualityInput = {
   spec?: TaskSpec;
   /** true only once validate_groot.py has loaded this export */
   loaderValidated?: boolean;
+  origin?: EpisodeOrigin;
 };
 
-export function buildQualityReport({ episodes, envelope, spec, loaderValidated = false }: QualityInput): QualityReport {
+export function buildQualityReport({
+  episodes,
+  envelope,
+  spec,
+  loaderValidated = false,
+  origin = "rehearsal",
+}: QualityInput): QualityReport {
   return {
-    headline: headline(episodes.length),
+    headline: headline(episodes.length, origin),
     envelope_per_axis: Object.fromEntries(Object.entries(envelope ?? {}).filter(([, v]) => v !== undefined)),
     spec_coverage_by_source: spec ? specCoverageBySource(spec) : {},
     degenerate_dimensions: degenerateDimensions(episodes),
@@ -81,18 +105,20 @@ const cell = (v: number | null, unit: string) => (v === null ? "none passed" : `
 export type QualityMarkdownOptions = {
   /** what the joint values are, as the rehearsal recorded them */
   jointUnits?: string;
+  /** must match the origin the report was built with */
+  origin?: EpisodeOrigin;
 };
 
 /** QUALITY.md, written next to the dataset. */
 export function renderQualityMarkdown(
   report: QualityReport,
   episodes: EpisodeRecord[],
-  { jointUnits = "radians (MuJoCo joint positions)" }: QualityMarkdownOptions = {},
+  { jointUnits = "radians (MuJoCo joint positions)", origin = "rehearsal" }: QualityMarkdownOptions = {},
 ): string {
   const lines: string[] = ["# Quality report", "", `**${report.headline}.**`, ""];
 
   lines.push(
-    "These episodes come from a scripted SO-101 program rehearsed in rigid-body simulation with a geometric grasp, rendered from primitives. They fill the LeRobot v2.1 layout Isaac-GR00T reads, to show the format; they are not demonstrations to train a policy on.",
+    `${ORIGIN_TEXT[origin].how} They fill the LeRobot v2.1 layout Isaac-GR00T reads, to show the format; they are not demonstrations to train a policy on.`,
     "",
   );
   lines.push(
@@ -102,7 +128,7 @@ export function renderQualityMarkdown(
     "",
   );
   lines.push(
-    `Joint values are written as the rehearsal recorded them: ${jointUnits}. Isaac-GR00T's \`cube_to_bowl_5\` stores LeRobot's normalised range instead (-100 to 100, gripper 0 to 100); nothing here is converted.`,
+    `Joint values are written as recorded: ${jointUnits}. Isaac-GR00T's \`cube_to_bowl_5\` stores LeRobot's normalised range instead (-100 to 100, gripper 0 to 100); nothing here is converted.`,
     "",
   );
 

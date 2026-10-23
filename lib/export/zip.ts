@@ -10,11 +10,19 @@ import type { ExportBundle, QualityReport } from "@/lib/export/types";
 const encoder = new TextEncoder();
 
 /** Already-compressed formats are stored, everything else deflated. */
-const STORED = /\.(parquet|mp4|webm)$/;
+const STORED = /\.(parquet|mp4)$/;
 
-/** Rejects names that could escape their folder when unzipped. */
+/**
+ * Rejects names that could escape their folder when unzipped, on any OS:
+ * absolute paths, `.` or `..` segments, backslashes, drive letters, controls.
+ */
 function safeName(name: string): string {
-  if (!name || name.startsWith("/") || name.split("/").some((part) => part === "" || part === "." || part === "..")) {
+  if (
+    !name ||
+    name.startsWith("/") ||
+    /[\\:\x00-\x1f]/.test(name) ||
+    name.split("/").some((part) => part === "" || part === "." || part === "..")
+  ) {
     throw new Error(`unsafe file name in export: ${JSON.stringify(name)}`);
   }
   return name;
@@ -55,9 +63,10 @@ export type ExportResult = { zip: Uint8Array; paths: string[]; quality: QualityR
 
 export async function buildExportZip(bundle: ExportBundle, options: ExportOptions = {}): Promise<ExportResult> {
   const { video, jointUnits, ...qualityInput } = options;
+  const { origin } = qualityInput;
   const lerobot = await buildLeRobot(bundle.episodes, { video });
   const quality = buildQualityReport({ episodes: bundle.episodes, ...qualityInput });
-  lerobot["QUALITY.md"] = encoder.encode(renderQualityMarkdown(quality, bundle.episodes, { jointUnits }));
+  lerobot["QUALITY.md"] = encoder.encode(renderQualityMarkdown(quality, bundle.episodes, { jointUnits, origin }));
   const understudy = understudyFiles({ ...bundle.understudy, quality });
   const zip = zipTrees({ lerobot, understudy });
   const paths = [

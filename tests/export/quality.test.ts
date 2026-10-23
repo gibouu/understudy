@@ -25,6 +25,14 @@ describe("degenerate dimensions", () => {
   });
 });
 
+describe("degenerate dimensions in float32", () => {
+  it("fire when values differ only below float32 precision", () => {
+    const eps = syntheticEpisodes();
+    for (const ep of eps) ep.frames.forEach((f, i) => (f.state[0] = i % 2 ? 100 : 100.000002));
+    expect(degenerateDimensions(eps)).toEqual(["observation.state.shoulder_pan.pos"]);
+  });
+});
+
 describe("QUALITY.md", () => {
   const spec = TaskSpec.parse({
     version: 1,
@@ -72,6 +80,15 @@ describe("QUALITY.md", () => {
     expect(md).not.toContain("Loader-validated with Isaac-GR00T");
     expect(md).toContain("Every state and action dimension moves");
     expect(md).toContain("| 2 | x_mm+8 | blind | no | 60 |");
+  });
+
+  it("describes synthetic episodes without physics claims", () => {
+    const episodes = syntheticEpisodes();
+    const report = buildQualityReport({ episodes, origin: "synthetic" });
+    expect(report.headline).toBe("4 synthetic, scripted episodes; a format-valid skeleton, not training data");
+    const md = renderQualityMarkdown(report, episodes, { origin: "synthetic" });
+    expect(md).toContain("no physics, no grasp, no rendering");
+    expect(md).not.toContain("rigid-body");
   });
 
   it("claims loader validation only when told", () => {

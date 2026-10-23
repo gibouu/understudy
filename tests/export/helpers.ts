@@ -25,7 +25,7 @@ export const parseJsonl = (bytes: Uint8Array) =>
 export function stubVideoEncoder(): EpisodeVideoEncoder & { calls: number[] } {
   const calls: number[] = [];
   return {
-    format: { codec: "h264", extension: "mp4" },
+    format: { codec: "h264" },
     width: 480,
     height: 360,
     fps: 15,
