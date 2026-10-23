@@ -5,7 +5,7 @@
  * The page shows a banner and serves recorded sessions in replay mode, so the
  * demo URL keeps working through judging.
  */
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { MODELS, tokenFactory } from "@/lib/providers/tokenfactory";
 
 export const maxDuration = 30;
@@ -18,6 +18,9 @@ type Health = {
 };
 
 export async function GET(): Promise<NextResponse<Health>> {
+  // Render at request time: with cache components a route handler is
+  // prerendered at build unless it opts into the request.
+  await connection();
   const client = tokenFactory();
   if (!client) return NextResponse.json({ mode: "replay", reason: "no NEBIUS_API_KEY" });
   const started = Date.now();
