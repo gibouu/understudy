@@ -96,9 +96,18 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
     models = await create("CPU");
   }
   const { pose, hand, crop } = models;
-  const canvas = new OffscreenCanvas(MIN_CANVAS, MIN_CANVAS);
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("No 2D context for the wrist crops.");
+  let canvas: OffscreenCanvas;
+  let ctx: OffscreenCanvasRenderingContext2D | null;
+  try {
+    canvas = new OffscreenCanvas(MIN_CANVAS, MIN_CANVAS);
+    ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("No 2D context for the wrist crops.");
+  } catch (e) {
+    pose.close();
+    hand.close();
+    crop.close();
+    throw e;
+  }
   // a browser without canvas filters just crops; resizing the canvas resets the filter, so it is set per crop
   const filtered = "filter" in ctx;
   let last = -1;
@@ -129,9 +138,10 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
       const { width, height } = frame;
       const aspect = width / height;
       let crops = 0;
-      for (const person of poses) {
+      const poseImages = poses.map((x) => x.image);
+      for (const [p_i, person] of poses.entries()) {
         if (crops >= MAX_CROPS) break;
-        for (const side of missingWrists(person.image, hands.map((x) => x.image), aspect)) {
+        for (const side of missingWrists(poseImages, p_i, hands.map((x) => x.image), aspect)) {
           if (crops >= MAX_CROPS) break;
           const win = wristCrop(person, side, width, height);
           if (!win) continue;

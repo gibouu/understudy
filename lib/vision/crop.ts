@@ -7,7 +7,7 @@
  * landmarks come back in full-frame coordinates. Pure geometry here; the
  * canvas work is in `mediapipe.ts`.
  */
-import { POSE, torso } from "./select";
+import { matchHands, POSE } from "./select";
 import type { HandSide, Point3 } from "./types";
 
 /** A square window in the sampled frame, pixels. */
@@ -80,30 +80,47 @@ export function uncrop(p: Point3, crop: Crop, width: number, height: number): Po
 const dist = (a: Point3, b: Point3, aspect: number) => Math.hypot((a.x - b.x) * aspect, a.y - b.y);
 
 /**
- * The wrists of `pose` that no detected hand sits near, by the rule
- * `matchHands` uses to give a wrist a hand (half a torso height, at least 0.05
- * frame heights). Those are the wrists worth a crop.
+ * The wrists of person `selected` that `matchHands` leaves without a hand:
+ * the same ownership rule (a hand belongs to the nearest wrist of anyone in
+ * frame) and the same one-to-one assignment, so a hand that sits near both
+ * wrists still leaves the other wrist missing, and a neighbour's hand reaching
+ * across never counts as ours. Those are the wrists worth a crop.
  */
-export function missingWrists(pose: Point3[], hands: Point3[][], aspect: number): HandSide[] {
-  const limit = Math.max(0.05, torso(pose, aspect).height / 2);
+export function missingWrists(poses: Point3[][], selected: number, hands: Point3[][], aspect: number): HandSide[] {
+  const m = matchHands(poses, selected, hands, aspect);
   const sides: HandSide[] = [];
-  for (const side of ["left", "right"] as const) {
-    const wrist = pose[side === "left" ? POSE.LEFT_WRIST : POSE.RIGHT_WRIST];
-    if (!wrist) continue;
-    if (!hands.some((h) => h[0] && dist(h[0], wrist, aspect) <= limit)) sides.push(side);
-  }
+  if (m.left === null) sides.push("left");
+  if (m.right === null) sides.push("right");
   return sides;
 }
 
 /**
- * Drop a hand whose wrist landmark lies within `minGap` frame heights of a hand
- * already kept: two crops that overlap see the same hand twice.
+ * Two detections are the same hand when their landmarks lie on top of each
+ * other: the mean landmark distance is small next to the hand's own span. Two
+ * touching hands share a wrist position but not their fingers, so they stay.
  */
-export function dedupeHands<T extends { image: Point3[] }>(hands: T[], aspect: number, minGap = 0.02): T[] {
-  const kept: T[] = [];
+export function sameHand(a: Point3[], b: Point3[], aspect: number): boolean {
+  if (a.length === 0 || a.length !== b.length) return false;
+  let mean = 0;
+  let span = 0;
+  for (let i = 0; i < a.length; i++) {
+    mean += dist(a[i], b[i], aspect);
+    span = Math.max(span, dist(a[0], a[i], aspect));
+  }
+  mean /= a.length;
+  return mean < Math.max(0.005, 0.2 * span);
+}
+
+/**
+ * Drop a crop-found hand that is the same hand as one already kept: two
+ * overlapping crops see it twice. Full-frame detections are always kept.
+ */
+export function dedupeHands<T extends { image: Point3[]; cropped?: boolean }>(hands: T[], aspect: number): T[] {
+  const kept: T[] = hands.filter((h) => !h.cropped);
   for (const h of hands) {
-    if (!h.image[0]) continue;
-    if (kept.some((k) => dist(k.image[0], h.image[0], aspect) < minGap)) continue;
+    if (!h.cropped) continue;
+    if (h.image.length === 0) continue;
+    if (kept.some((k) => sameHand(k.image, h.image, aspect))) continue;
     kept.push(h);
   }
   return kept;

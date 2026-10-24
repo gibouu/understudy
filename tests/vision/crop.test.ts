@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CROP_FOREARMS, dedupeHands, MIN_CROP_PX, missingWrists, uncrop, wristCrop, type Crop } from "@/lib/vision/crop";
+import { CROP_FOREARMS, CROP_SHIFT, dedupeHands, MIN_CROP_PX, missingWrists, sameHand, uncrop, wristCrop, type Crop } from "@/lib/vision/crop";
 import { POSE } from "@/lib/vision/select";
 import type { Point3 } from "@/lib/vision/types";
 
@@ -83,39 +83,78 @@ describe("uncrop", () => {
     expect(p.y).toBeCloseTo(100 / H);
     expect(p.z).toBeCloseTo((0.1 * 200) / W);
   });
-  it("round-trips a wrist crop: the crop's centre is where the crop was aimed", () => {
+  it("maps the crop's centre back to the point the crop was aimed at, computed independently", () => {
+    // forearm straight down, 54 px: the aim is the wrist plus CROP_SHIFT forearms further down
     const p = pose({ leftElbow: { x: 0.5, y: 0.5, z: 0 }, leftWrist: { x: 0.5, y: 0.6, z: 0 } });
     const c = wristCrop(p, "left", W, H)!;
     const centre = uncrop({ x: 0.5, y: 0.5, z: 0 }, c, W, H);
-    expect(centre.x * W).toBeCloseTo(c.x0 + c.side / 2, 5);
-    expect(centre.y * H).toBeCloseTo(c.y0 + c.side / 2, 5);
+    expect(centre.x).toBeCloseTo(0.5, 2);
+    expect(centre.y).toBeCloseTo(0.6 + (CROP_SHIFT * 54) / H, 2);
   });
 });
 
 describe("missingWrists", () => {
   const p = pose({ leftElbow: { x: 0.5, y: 0.5, z: 0 }, leftWrist: { x: 0.5, y: 0.6, z: 0 } });
+  const poses = [p.image];
   it("names both wrists when no hand is near either", () => {
-    expect(missingWrists(p.image, [], ASPECT)).toEqual(["left", "right"]);
+    expect(missingWrists(poses, 0, [], ASPECT)).toEqual(["left", "right"]);
   });
   it("skips a wrist that already has a hand within half a torso height", () => {
     const near = hand({ x: 0.505, y: 0.61, z: 0 }).image;
-    expect(missingWrists(p.image, [near], ASPECT)).toEqual(["right"]);
+    expect(missingWrists(poses, 0, [near], ASPECT)).toEqual(["right"]);
   });
   it("still names a wrist whose nearest hand is too far to be its own", () => {
     const far = hand({ x: 0.1, y: 0.1, z: 0 }).image;
-    expect(missingWrists(p.image, [far], ASPECT)).toEqual(["left", "right"]);
+    expect(missingWrists(poses, 0, [far], ASPECT)).toEqual(["left", "right"]);
+  });
+  it("still names the second wrist when one hand sits near both wrists", () => {
+    // wrists 0.02 apart, one hand between them: matchHands gives it to one wrist only
+    const close = pose({ leftElbow: { x: 0.49, y: 0.5, z: 0 }, leftWrist: { x: 0.49, y: 0.6, z: 0 }, rightElbow: { x: 0.51, y: 0.5, z: 0 }, rightWrist: { x: 0.51, y: 0.6, z: 0 } });
+    const between = hand({ x: 0.5, y: 0.6, z: 0 }).image;
+    expect(missingWrists([close.image], 0, [between], ASPECT)).toHaveLength(1);
+  });
+  it("does not count a neighbour's hand that reaches near our wrist", () => {
+    const neighbour = pose({ leftElbow: { x: 0.3, y: 0.5, z: 0 }, leftWrist: { x: 0.5, y: 0.61, z: 0 }, rightElbow: { x: 0.2, y: 0.5, z: 0 }, rightWrist: { x: 0.2, y: 0.6, z: 0 } });
+    // the hand is nearer the neighbour's left wrist than ours, so it is theirs
+    const theirs = hand({ x: 0.5, y: 0.612, z: 0 }).image;
+    expect(missingWrists([p.image, neighbour.image], 0, [theirs], ASPECT)).toEqual(["left", "right"]);
   });
 });
 
-describe("dedupeHands", () => {
-  it("keeps the first of two detections of the same hand and both of two distinct hands", () => {
-    const a = hand({ x: 0.5, y: 0.5, z: 0 });
-    const aAgain = { ...hand({ x: 0.502, y: 0.501, z: 0 }), score: 0.1 };
-    const b = hand({ x: 0.8, y: 0.5, z: 0 });
-    const kept = dedupeHands([a, aAgain, b], ASPECT);
-    expect(kept).toEqual([a, b]);
+/** A hand with the fingers fanned out `angle` radians from straight down, span 0.1 frame heights. */
+function fanned(wrist: Point3, angle: number) {
+  const image: Point3[] = [wrist];
+  for (let i = 1; i <= 20; i++) {
+    const r = 0.1 * (i / 20);
+    const a = angle + ((i % 5) - 2) * 0.15;
+    image.push({ x: wrist.x + (r * Math.sin(a)) / ASPECT, y: wrist.y + r * Math.cos(a), z: 0 });
+  }
+  return image;
+}
+
+describe("sameHand and dedupeHands", () => {
+  it("calls two detections of one hand the same when every landmark lies on top of the other", () => {
+    const a = fanned({ x: 0.5, y: 0.5, z: 0 }, 0);
+    const b = a.map((q) => ({ x: q.x + 0.001, y: q.y - 0.001, z: q.z }));
+    expect(sameHand(a, b, ASPECT)).toBe(true);
   });
-  it("drops a hand with no landmarks", () => {
-    expect(dedupeHands([{ image: [] }, hand({ x: 0.5, y: 0.5, z: 0 })], ASPECT)).toHaveLength(1);
+  it("keeps two touching hands whose wrists almost coincide but whose fingers point apart", () => {
+    const a = fanned({ x: 0.5, y: 0.6, z: 0 }, 0.6);
+    const b = fanned({ x: 0.51, y: 0.6, z: 0 }, -0.6);
+    expect(sameHand(a, b, ASPECT)).toBe(false);
+    const kept = dedupeHands([{ image: a, cropped: true }, { image: b, cropped: true }], ASPECT);
+    expect(kept).toHaveLength(2);
+  });
+  it("drops the crop copy of a hand the full frame already found, and never a full-frame hand", () => {
+    const full = { image: fanned({ x: 0.5, y: 0.5, z: 0 }, 0), cropped: false };
+    const copy = { image: full.image.map((q) => ({ ...q, x: q.x + 0.0005 })), cropped: true };
+    const other = { image: fanned({ x: 0.8, y: 0.5, z: 0 }, 0), cropped: true };
+    const kept = dedupeHands([full, copy, other], ASPECT);
+    expect(kept).toEqual([full, other]);
+    const twoFull = dedupeHands([full, { ...copy, cropped: false }], ASPECT);
+    expect(twoFull).toHaveLength(2);
+  });
+  it("drops a crop hand with no landmarks", () => {
+    expect(dedupeHands([{ image: [], cropped: true }, { image: fanned({ x: 0.5, y: 0.5, z: 0 }, 0), cropped: true }], ASPECT)).toHaveLength(1);
   });
 });
