@@ -9,6 +9,7 @@ Every piece exists (MediaPipe; GPT-4V for Robotics, SeeDo, GF-VLA; MimicGen, Dex
 ## Simulated versus real
 
 - One 5-DoF arm plus a gripper (SO-101 from MuJoCo Menagerie); no humanoid, no dexterous hand.
+- Hands: MediaPipe's hand model returns nothing on nitrile gloves and on hands under about thirty pixels. The sepia wrist crop recovers hands in many frames of the ISS clip, not all; where it does not, the pose model's wrist carries the motion and the hand aperture is an interview question, not a measurement.
 - Grasp is a geometric weld gate: no friction, no slip, no deformation.
 - Objects are primitives sized from a monocular clip; sizes are approximate and are the first thing the interview checks.
 - The exported dataset is a format-valid LeRobot v2.1 skeleton for GR00T's loader with scripted, primitive-rendered episodes. It is not training data and the quality report says so.

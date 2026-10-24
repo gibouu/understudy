@@ -19,6 +19,8 @@ const SAMPLES = [
   { name: "dev-clip", label: "ISS: chess (dev clip, 30 s)" },
 ] as const;
 const FPS = 10;
+/** sampled frame width; wider than the models need so a wrist crop keeps real pixels (lib/vision/crop.ts) */
+const SAMPLE_WIDTH = 960;
 
 type Readout = { frame: number; t_s: number; left: number | null; right: number | null };
 
@@ -58,6 +60,8 @@ export default function WatchPage() {
   const [delegate, setDelegate] = useState<string | null>(null);
   const detectMs = useRef<{ pose: number; hand: number } | null>(null);
   const [cost, setCost] = useState<{ pose: number; hand: number } | null>(null);
+  /** frames whose hand came from a wrist crop rather than the full frame (far camera, gloves) */
+  const [cropped, setCropped] = useState<number | null>(null);
 
   /** Draw frame `i` on the overlay; refresh the readout at most every 200 ms (`force` skips the wait). */
   const lastReadout = useRef(0);
@@ -88,6 +92,7 @@ export default function WatchPage() {
     setReadout(null);
     setElapsed(null);
     setProgress(null);
+    setCropped(null);
     let lm: Detector | null = null;
     (async () => {
       setStage(running("Loading MediaPipe"));
@@ -107,6 +112,7 @@ export default function WatchPage() {
       const startedAt = performance.now();
       const result = await sampleVideo(video, {
         fps: FPS,
+        width: SAMPLE_WIDTH,
         signal: abort.signal,
         async onFrame(bitmap, t) {
           const { width, height } = bitmap;
@@ -136,6 +142,7 @@ export default function WatchPage() {
       setCost(detectMs.current);
       const filled = fillHandGaps(frames.current);
       frames.current = filled.frames;
+      setCropped(filled.frames.filter((f) => f.left_hand?.cropped || f.right_hand?.cropped).length);
       setGaps(filled.gaps);
       setStage(
         done(
@@ -335,6 +342,12 @@ export default function WatchPage() {
         <dd>
           {delegate ?? "–"}
           {cost && `, pose ${cost.pose.toFixed(0)} ms + hands ${cost.hand.toFixed(0)} ms`}
+        </dd>
+        <dt className="text-neutral-500">wrist crops</dt>
+        <dd data-testid="wrist-crops">
+          {stage.status === "done" && cropped !== null
+            ? `hands found by zooming on the wrist in ${cropped} of ${stage.value.frames.length} frames`
+            : "–"}
         </dd>
       </dl>
     </main>

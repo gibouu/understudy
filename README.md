@@ -30,7 +30,7 @@ Understudy was a month of internal research before it was a hackathon project. T
 
 | Stage | What happens | Runs on |
 |---|---|---|
-| **Watch** | Pose and hand landmarks become motion tokens drawn over the clip; the grasp moment becomes the anchor; a 480p proxy is encoded. Nothing but that proxy leaves the browser. | browser, MediaPipe |
+| **Watch** | Pose and hand landmarks become motion tokens drawn over the clip; the grasp moment becomes the anchor; a 480p proxy is encoded. Station cameras are far and crews wear gloves, which the hand model cannot see, so a sepia-toned crop around each wrist gets a second look. Nothing but that proxy leaves the browser. | browser, MediaPipe |
 | **Label** | A small video proxy of the clip (480p, 4 fps, about 150 KB per 30 s) becomes a task spec: steps with timestamps, objects as primitives with size and symmetry, each target as a `pocket`, `zone` or `stack`. Keyframes are the fallback. | `nvidia/Nemotron-3.5-Super-VL` on Nebius Token Factory |
 | **Compile** | The spec becomes a robot program: `move_to`, `grasp`, `release`, `wait_until`, `assert`. Whatever the compiler cannot execute becomes an `ask` slot. | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` |
 | **Interview** | The `ask` slots are the questionnaire. Each question cites a measurement from this clip; each answer patches the spec and the program recompiles. | `nvidia/nemotron-3-super-120b-a12b` |
