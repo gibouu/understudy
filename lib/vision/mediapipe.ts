@@ -5,6 +5,7 @@
  * `detector.ts`.
  */
 import { HandLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
+import { dedupeHands, missingWrists, uncrop, wristCrop } from "./crop";
 import type { DetectedHand } from "./select";
 import type { Point3, PoseTokens } from "./types";
 
@@ -16,13 +17,29 @@ const WASM = {
 };
 const POSE_MODEL = `${BASE}/models/pose_landmarker_full.task`;
 const HAND_MODEL = `${BASE}/models/hand_landmarker.task`;
+/** initial size of the crop canvas; it is resized per crop */
+const MIN_CANVAS = 64;
+/**
+ * Colour remap applied to every wrist crop before the Hand Landmarker sees it.
+ * The model is trained on bare skin and finds nothing on a nitrile glove; a
+ * sepia tone makes a glove of any colour read as a hand (measured on the ISS
+ * clip: 0 hands without it, both hands with it; bare hands are unaffected).
+ */
+export const CROP_FILTER = "sepia(1) saturate(1.4)";
+/** detection and presence threshold on the crops (the full-frame pass keeps the default 0.5) */
+export const CROP_CONFIDENCE = 0.3;
 
 export type Detections = {
   poses: PoseTokens[];
   hands: DetectedHand[];
-  /** wall time of each model on this frame */
+  /** wall time of each model on this frame; `hand` includes the crops */
   ms: { pose: number; hand: number };
+  /** wrist crops the Hand Landmarker ran on, after the full frame (see crop.ts) */
+  crops: number;
 };
+
+/** Most wrist crops per frame: two people's two hands. */
+export const MAX_CROPS = 4;
 
 export type Delegate = "GPU" | "CPU";
 
@@ -52,7 +69,21 @@ async function create(delegate: Delegate) {
     pose.close();
     throw e;
   });
-  return { pose, hand };
+  // IMAGE mode for the wrist crops: each crop is a picture of its own, so the
+  // VIDEO mode's hand tracking must not carry over between them
+  const crop = await HandLandmarker.createFromOptions(WASM, {
+    baseOptions: { modelAssetPath: HAND_MODEL, delegate },
+    runningMode: "IMAGE",
+    numHands: 2,
+    // a crop is already aimed at a wrist and matchHands checks the distance, so a lower bar is safe
+    minHandDetectionConfidence: CROP_CONFIDENCE,
+    minHandPresenceConfidence: CROP_CONFIDENCE,
+  }).catch((e: unknown) => {
+    pose.close();
+    hand.close();
+    throw e;
+  });
+  return { pose, hand, crop };
 }
 
 export async function loadLandmarkers(): Promise<Landmarkers> {
@@ -64,7 +95,12 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
     delegate = "CPU";
     models = await create("CPU");
   }
-  const { pose, hand } = models;
+  const { pose, hand, crop } = models;
+  const canvas = new OffscreenCanvas(MIN_CANVAS, MIN_CANVAS);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("No 2D context for the wrist crops.");
+  // a browser without canvas filters just crops; resizing the canvas resets the filter, so it is set per crop
+  const filtered = "filter" in ctx;
   let last = -1;
   let offset = 0;
   return {
@@ -79,24 +115,50 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
       const p = pose.detectForVideo(frame, ts);
       const t1 = performance.now();
       const h = hand.detectForVideo(frame, ts);
+      const poses: PoseTokens[] = p.landmarks.map((image, i) => ({
+        image: image.map(point),
+        world: (p.worldLandmarks[i] ?? []).map(point),
+        visibility: image.map((l) => l.visibility ?? 0),
+      }));
+      let hands: DetectedHand[] = h.landmarks.map((image, i) => ({
+        image: image.map(point),
+        world: (h.worldLandmarks[i] ?? []).map(point),
+        score: h.handedness[i]?.[0]?.score ?? 0,
+      }));
+      // Second look: a crop around every wrist the full frame gave no hand.
+      const { width, height } = frame;
+      const aspect = width / height;
+      let crops = 0;
+      for (const person of poses) {
+        if (crops >= MAX_CROPS) break;
+        for (const side of missingWrists(person.image, hands.map((x) => x.image), aspect)) {
+          if (crops >= MAX_CROPS) break;
+          const win = wristCrop(person, side, width, height);
+          if (!win) continue;
+          crops++;
+          canvas.width = win.side;
+          canvas.height = win.side;
+          if (filtered) ctx.filter = CROP_FILTER;
+          ctx.drawImage(frame, win.x0, win.y0, win.side, win.side, 0, 0, win.side, win.side);
+          const c = crop.detect(canvas);
+          c.landmarks.forEach((image, i) => {
+            hands.push({
+              image: image.map((l) => uncrop(l, win, width, height)),
+              world: (c.worldLandmarks[i] ?? []).map(point),
+              score: c.handedness[i]?.[0]?.score ?? 0,
+              cropped: true,
+            });
+          });
+        }
+      }
+      if (crops > 0) hands = dedupeHands(hands, aspect);
       const t2 = performance.now();
-      return {
-        ms: { pose: t1 - t0, hand: t2 - t1 },
-        poses: p.landmarks.map((image, i) => ({
-          image: image.map(point),
-          world: (p.worldLandmarks[i] ?? []).map(point),
-          visibility: image.map((l) => l.visibility ?? 0),
-        })),
-        hands: h.landmarks.map((image, i) => ({
-          image: image.map(point),
-          world: (h.worldLandmarks[i] ?? []).map(point),
-          score: h.handedness[i]?.[0]?.score ?? 0,
-        })),
-      };
+      return { ms: { pose: t1 - t0, hand: t2 - t1 }, poses, hands, crops };
     },
     close() {
       pose.close();
       hand.close();
+      crop.close();
     },
   };
 }
