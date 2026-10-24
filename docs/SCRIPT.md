@@ -5,7 +5,7 @@ Recorded on the live path with the cost ledger visible. Plain-text captions nami
 Recorded on the live path with the ledger strip visible; plain-text captions, no logos, no music.
 
 - **0:00-0:15** An astronaut on the ISS slipping seed film into a plant pillow (NASA public-domain footage, `samples/iss-veggie-seed-film.mp4`), then a hand moving a tube into a rack on a bench. VO: "Every crew hour up there is scarce. Down here, a fifth of the footage collected for robots is thrown away. Nobody asks the person who did the task."
-- **0:15-0:35** Clip in the browser; skeleton, chips, anchor marker. VO: "MediaPipe turns motion into tokens."
+- **0:15-0:35** Clip in the browser; skeleton, chips, anchor marker; a wrist crop flashes sepia and the hand landmarks appear on the gloves. VO: "MediaPipe turns motion into tokens. The hand model is blind to gloves and to hands this far from the camera, so Understudy zooms on each wrist and re-tones the crop before it looks."
 - **0:35-0:55** Labels land on chips; caption `nvidia/Nemotron-3.5-Super-VL` on Nebius Token Factory; ledger visible.
 - **0:55-1:30** Nano's program with red `ask` slots; question one cites "aperture 61 mm at t=1.3 s"; a chip click flashes the changed path; an opt-in Tavily card. VO: "Nano plays the robot. What it cannot execute, Super asks the person who did it."
 - **1:30-1:50** SO-101 runs the program with the via-point ghost line. VO: "Rehearsed on a real robot model in MuJoCo, in the browser."
