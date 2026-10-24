@@ -21,7 +21,7 @@ import {
   type ToWorker,
   type Waypoint,
 } from "./protocol";
-import { SO101_MESH_BUNDLE, SO101_MESHES, SO101_XML, stageXml } from "./so101";
+import { demoTubeXml, G_M_S2, SO101_MESH_BUNDLE, SO101_MESHES, SO101_XML, stageXml } from "./so101";
 
 type WorkerCtx = {
   postMessage: (message: FromWorker, transfer?: Transferable[]) => void;
@@ -38,6 +38,10 @@ const TICK_MS = 1000 / 60;
 let enginePromise: Promise<MainModule> | null = null;
 let loading: Promise<void> | null = null;
 let runtime: Runtime | null = null;
+/** a setGravity that arrived while a load was in flight; applied when the load completes */
+let wantedGravity: number | null = null;
+/** mjtJoint.mjJNT_FREE */
+const FREE_JOINT = 0;
 let playing: { waypoints: Waypoint[]; loop: boolean; start: number } | null = null;
 let simTime = 0;
 let backlog = 0;
@@ -68,7 +72,8 @@ ctx.onmessage = async (e) => {
     switch (msg.type) {
       case "load":
         if (loading) throw new Error("a load is already in progress");
-        loading = load(msg.id, msg.mujocoBase, msg.assetBase).finally(() => {
+        wantedGravity = null; // the load's own gravity is the latest instruction
+        loading = load(msg.id, msg.mujocoBase, msg.assetBase, msg.gravityG ?? 1, msg.demoTube ?? false).finally(() => {
           loading = null;
         });
         await loading;
@@ -85,6 +90,12 @@ ctx.onmessage = async (e) => {
         break;
       case "reset":
         reset();
+        break;
+      case "setGravity":
+        setGravity(msg.g);
+        break;
+      case "nudge":
+        nudge(msg.body, msg.velocity);
         break;
       case "jacobian":
         jacobian(msg.id, msg.site);
@@ -111,7 +122,7 @@ async function engine(mujocoBase: string): Promise<MainModule> {
   return enginePromise;
 }
 
-async function load(id: number, mujocoBase: string, assetBase: string) {
+async function load(id: number, mujocoBase: string, assetBase: string, gravityG: number, demoTube: boolean) {
   const mujoco = await engine(mujocoBase);
   status("engine ready; fetching the SO-101", 0.05);
   const vfs = new mujoco.MjVFS();
@@ -124,13 +135,20 @@ async function load(id: number, mujocoBase: string, assetBase: string) {
     await loadMeshes(vfs, assetBase, mujoco);
 
     status("compiling the model", 0.7);
-    model = mujoco.MjModel.from_xml_string(stageXml(), vfs);
+    model = mujoco.MjModel.from_xml_string(stageXml(demoTube ? demoTubeXml() : "", { gravity_g: gravityG }), vfs);
     data = new mujoco.MjData(model);
     mujoco.mj_forward(model, data);
-    const meta = extractMeta(model);
+    const meta = { ...extractMeta(model), gravity_g: gravityG };
 
     const previous = runtime;
     runtime = { mujoco, model, data, meta: { ...meta, meshes: [] } };
+    if (wantedGravity !== null) {
+      // the user changed gravity while this load was in flight
+      const g = wantedGravity;
+      wantedGravity = null;
+      setGravity(g);
+      meta.gravity_g = g;
+    }
     model = null; // ownership moved into runtime
     data = null;
     if (previous) {
@@ -289,7 +307,7 @@ function extractMeta(m: MjModel): SimMeta {
     meshes.push({ id, name: name(m.name_meshadr, id), vertices, faces });
   }
 
-  return { nq, nv, nu, ngeom, nsite, timestep, joints, actuators, sites, bodies, geoms, meshes };
+  return { gravity_g: 1, nq, nv, nu, ngeom, nsite, timestep, joints, actuators, sites, bodies, geoms, meshes };
 }
 
 function setCtrl(values: number[]) {
@@ -302,6 +320,42 @@ function setCtrl(values: number[]) {
     const vec = ctrl as { set: (i: number, v: number) => boolean; size: () => number };
     for (let i = 0; i < Math.min(values.length, vec.size()); i++) vec.set(i, values[i]);
   }
+}
+
+/** Gravity is a model option MuJoCo reads every step, so it changes without a recompile. */
+function setGravity(g: number) {
+  // a load in flight builds its own model: remember the change for it, whether or
+  // not an older runtime is still answering meanwhile
+  if (loading || !runtime) wantedGravity = g;
+  if (!runtime) return;
+  const opt = runtime.model.opt as { gravity: unknown };
+  const gz = -(G_M_S2 * Math.max(0, Math.min(2, g)));
+  if (ArrayBuffer.isView(opt.gravity)) (opt.gravity as unknown as Float64Array)[2] = gz;
+  else (opt.gravity as { set: (i: number, v: number) => boolean }).set(2, gz);
+  runtime.meta.gravity_g = g;
+}
+
+/** Give a free body a velocity (m/s); in orbit it keeps drifting, on Earth it falls back. */
+function nudge(body: string, velocity: [number, number, number]) {
+  if (!runtime) return;
+  const { mujoco, model, data, meta } = runtime;
+  const b = meta.bodies.find((x) => x.name === body);
+  if (!b) throw new Error(`no body named ${body}`);
+  const jntAdr = toNumbers(model.body_jntadr)[b.id];
+  if (jntAdr === undefined || jntAdr < 0) throw new Error(`${body} has no joint to push`);
+  // only a free joint has three linear velocities first; a hinge would take the next three joints' dofs
+  if (toNumbers(model.jnt_type)[jntAdr] !== FREE_JOINT) throw new Error(`${body} is not a free body`);
+  const dofAdr = toNumbers(model.jnt_dofadr)[jntAdr];
+  if (dofAdr === undefined || dofAdr < 0) throw new Error(`${body} has no joint to push`);
+  const qvel = data.qvel as unknown;
+  const set = (i: number, v: number) => {
+    if (ArrayBuffer.isView(qvel)) (qvel as unknown as Float64Array)[i] = v;
+    else (qvel as { set: (i: number, v: number) => boolean }).set(i, v);
+  };
+  set(dofAdr, velocity[0]);
+  set(dofAdr + 1, velocity[1]);
+  set(dofAdr + 2, velocity[2]);
+  mujoco.mj_forward(model, data);
 }
 
 function reset() {

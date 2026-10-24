@@ -35,8 +35,15 @@ export class SimClient {
   }
 
   /** `mujocoBase` serves mujoco.js and mujoco.wasm (copied there by scripts/copy-assets.mjs). */
-  load(mujocoBase = "/mujoco", assetBase = SO101_ASSET_BASE): Promise<SimMeta> {
-    return this.request<SimMeta>((id) => ({ type: "load", id, mujocoBase, assetBase }));
+  load(options: { mujocoBase?: string; assetBase?: string; gravityG?: number; demoTube?: boolean } = {}): Promise<SimMeta> {
+    const { mujocoBase = "/mujoco", assetBase = SO101_ASSET_BASE, gravityG = 1, demoTube = false } = options;
+    return this.request<SimMeta>((id) => ({ type: "load", id, mujocoBase, assetBase, gravityG, demoTube }));
+  }
+  setGravity(g: number) {
+    this.send({ type: "setGravity", g });
+  }
+  nudge(body: string, velocity: [number, number, number]) {
+    this.send({ type: "nudge", body, velocity });
   }
   setCtrl(ctrl: number[]) {
     this.send({ type: "setCtrl", ctrl });

@@ -13,3 +13,7 @@ Every piece exists (MediaPipe; GPT-4V for Robotics, SeeDo, GF-VLA; MimicGen, Dex
 - Objects are primitives sized from a monocular clip; sizes are approximate and are the first thing the interview checks.
 - The exported dataset is a format-valid LeRobot v2.1 skeleton for GR00T's loader with scripted, primitive-rendered episodes. It is not training data and the quality report says so.
 - A pass does not predict that a learned policy or a real robot would succeed.
+
+## Orbit mode
+
+Orbit mode is rigid-body physics with gravity set to 0 g (the Moon preset uses 0.1654 g). It models one thing well: a released object keeps its velocity instead of resting, so a program must constrain an object before it lets go. It does not model air currents, tethers and cable drag, contact with floating neighbours, the arm's own reaction forces on a free-flying base, flight rules, or any certification. A drifting tube in the rehearsal is a model of the failure, not a flight test.

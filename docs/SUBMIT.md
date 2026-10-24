@@ -5,12 +5,12 @@ Hackathon: Nebius x NVIDIA Global AI Hackathon. Submission closes Friday 30 Octo
 ## Fields
 
 - Project name: Understudy
-- Tagline: Watch a person do a task once, interview them, rehearse it on a simulated robot, export the dataset.
+- Tagline: Watch an astronaut do a task once, interview them, rehearse it on a simulated robot on Earth and in orbit, and export the dataset.
 - Track: Physical AI
 - Demo URL: (Vercel production URL)
 - Repository: https://github.com/gibouu/understudy
 - Video: (public YouTube link, under three minutes)
-- Built with: Nebius Token Factory, nvidia/Nemotron-3.5-Super-VL, nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B, nvidia/nemotron-3-super-120b-a12b, nvidia/Nemotron-3-Ultra-550b-a55b, Tavily, MuJoCo, MediaPipe, LeRobot, Next.js, Vercel
+- Built with: Nebius Token Factory, nvidia/Nemotron-3.5-Super-VL, nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B, nvidia/nemotron-3-super-120b-a12b, nvidia/Nemotron-3-Ultra-550b-a55b, Tavily, MuJoCo, MediaPipe, LeRobot, Next.js, Vercel, NASA public-domain footage
 - Pre-existing project: no
 - City: Paris
 
@@ -18,9 +18,9 @@ Hackathon: Nebius x NVIDIA Global AI Hackathon. Submission closes Friday 30 Octo
 
 Draft, to be finished on day five with the measured numbers:
 
-**What.** Understudy turns one phone clip of a person doing a tabletop task into an interviewed task specification, a robot program rehearsed by a simulated SO-101 arm in the browser, a perception budget per axis (how much pose error the task survives blind versus with a pose estimate), a reshoot list, and a LeRobot v2.1 dataset skeleton in the layout GR00T reads.
+**What.** Understudy turns one clip of a person doing a hands-on task, an astronaut handling samples aboard a station or a technician at a bench, into an interviewed task specification, a robot program rehearsed by a simulated SO-101 arm in the browser under Earth, Moon and orbit gravity, a perception budget per axis and per gravity (how much pose error the task survives blind versus with a pose estimate), a reshoot list, and a LeRobot v2.1 dataset skeleton in the layout GR00T reads.
 
-**Why.** It started as a month of internal research into robot demonstration data. Collection is cheap and industrialised; the waste comes after: a fifth to a third of demos discarded, re-collection eating a third to a half of a campaign budget, and nobody asking the person who did the task what mattered. Understudy is the briefing and QA layer in front of collection. The hackathon week is where that research became software.
+**Why.** On a station every crew hour is scarce and every mistake is expensive; the robots meant to take over routine crew work need a clear task, a rehearsed program and labelled data, and crew procedures are already filmed by the hour. The same loop serves satellite servicing and refuelling. It started as a month of internal research into robot demonstration data on the ground, where collection is cheap and industrialised and the waste comes after: a fifth to a third of demos discarded, re-collection eating a third to a half of a campaign budget, and nobody asking the person who did the task what mattered. Understudy is the briefing and QA layer in front of collection, on the bench and in orbit. The hackathon week is where that research became software.
 
 **How.** Nemotron 3.5 Super VL watches a 480p proxy of the clip and labels steps, objects and their sizes; Nemotron 3 Nano compiles the spec into a robot program and turns whatever it cannot execute into questions; Nemotron 3 Super asks them, citing measurements from the clip, and writes twelve perturbation scenarios; MuJoCo WebAssembly rehearses the program in a Web Worker, blind and sensed; Super patches the worst failure and Nano recompiles; Nemotron 3 Ultra writes the failure classes and the reshoot list. All calls go through Nebius Token Factory; the export loads in Isaac-GR00T's dataset loader.
 
@@ -47,7 +47,7 @@ One block per tool, filled from `docs/FEEDBACK.md`: used for, what worked, what 
 
 ## Elevator pitch (200 characters)
 
-Watch a person do a task once, interview them, rehearse it on a simulated robot, and export the dataset. Nemotron on Nebius Token Factory, MuJoCo in the browser.
+Watch an astronaut do a task once, interview them, rehearse it on a simulated robot on Earth and in orbit, and export the dataset. Nemotron on Nebius Token Factory.
 
 ## Thumbnail
 

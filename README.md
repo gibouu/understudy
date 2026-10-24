@@ -1,6 +1,6 @@
 <h1 align="center">Understudy</h1>
 
-<p align="center"><b>Watch a person do a task once. Interview them. Rehearse it on a simulated robot. Export the dataset.</b></p>
+<p align="center"><b>Watch a person do a task once. Interview them. Rehearse it on a simulated robot, on Earth and in orbit. Export the dataset.</b></p>
 
 <p align="center">
   <a href="docs/SPEC.md">Spec</a> ·
@@ -18,7 +18,9 @@ An understudy learns a role by watching the lead, then rehearses it on stage. Un
 
 ## Why
 
-Collecting human demonstrations is an industry now: recorders at about $15 an hour, data factories, teleoperation farms. The waste comes after collection: a fifth to a third of demos get discarded, re-collection eats a third to a half of a campaign budget, and nobody asks the person who did the task what mattered. Understudy is the briefing and QA layer in front of collection. It answers two questions before anyone buys five hundred repetitions: *what exactly is this task*, and *what does a robot need to perceive to do it*.
+On a space station every crew hour is scarce and every mistake is expensive. The robots meant to take over routine crew work (Canadarm2 and Dextre, Astrobee, GITAI's arm on the ISS, the arms planned for commercial stations and lunar bases) need three things a station already produces by the hour: a clear task, a rehearsed program, and labelled data. NASA films crew procedures all the time. Understudy turns one such clip into all three, and rehearses the result under Earth gravity and in orbit, because a program that works on a bench can fail the moment a released object drifts instead of resting. The same loop serves satellite servicing and refuelling, where the stakes are a spacecraft rather than a sample.
+
+The need is the same on the ground. Collecting human demonstrations is an industry now: recorders at about $15 an hour, data factories, teleoperation farms. The waste comes after collection: a fifth to a third of demos get discarded, re-collection eats a third to a half of a campaign budget, and nobody asks the person who did the task what mattered. Understudy is the briefing and QA layer in front of collection, on a lab bench or on a station: *what exactly is this task*, and *what does a robot need to perceive to do it*.
 
 ## Where this comes from
 
@@ -34,12 +36,16 @@ Understudy was a month of internal research before it was a hackathon project. T
 | **Interview** | The `ask` slots are the questionnaire. Each question cites a measurement from this clip; each answer patches the spec and the program recompiles. | `nvidia/nemotron-3-super-120b-a12b` |
 | **Ground** (opt-in) | Hazards and preconditions for the task, with their source URLs. | Tavily search + extract, filtered by Nano |
 | **Saboteur** | Twelve perturbation scenarios chosen from object symmetry and the tightest constraint, each with an expected outcome. | `nvidia/nemotron-3-super-120b-a12b` |
-| **Rehearsal** | A simulated SO-101 arm runs the program in MuJoCo, in the browser, once per scenario in two modes: **blind** (nominal object pose) and **sensed** (perturbed pose known). The result is the **perception budget**: per axis, how far the task survives without perception and with it. | `@mujoco/mujoco` WebAssembly in a Web Worker |
+| **Rehearsal** | A simulated SO-101 arm runs the program in MuJoCo, in the browser, once per scenario in two modes: **blind** (nominal object pose) and **sensed** (perturbed pose known), and under **Earth, Moon or orbit gravity**. The result is the **perception budget**: per axis and per gravity, how far the task survives without perception and with it. | `@mujoco/mujoco` WebAssembly in a Web Worker |
 | **Notes** | The worst failure goes back to the model as text; it proposes one patch; the program recompiles and re-runs. | Super, then Nano |
 | **Reshoot** | Failure classes (spec gap, footage gap, embodiment limit, simulator artefact), a reshoot list and open risks. | `nvidia/Nemotron-3-Ultra-550b-a55b`, in the background |
 | **Export** | `understudy-<task>.zip`: a LeRobot v2.1 dataset skeleton with `modality.json` (the layout Isaac-GR00T N1.7 reads), the spec with per-field provenance, the interview transcript, the rehearsal report, the reshoot list, the cost ledger and a quality report that says plainly what the data is. | browser |
 
-Task-agnostic by construction: the code never names a task. Three sample clips ship with the app to prove it: a capped marker from a tray into a cardboard rack (a stand-in for a lab tube rack), a cup onto a saucer, a small box onto a shelf.
+Task-agnostic by construction: the code never names a task. Three sample clips prove it: a NASA public-domain clip of an astronaut placing seed film into the plant pillows of the station's Veggie facility (the hero clip, filmed in microgravity, in [samples/](samples/README.md)), a capped marker from a tray into a cardboard rack (a stand-in for a sample rack), and a cup onto a saucer (the two household clips land with issue #5).
+
+## Orbit mode
+
+Gravity is a scenario axis. The contract carries `gravity_g` on every scenario and rollout, and the stage runs under 1 g, 0.1654 g (the Moon) or 0 g; scoring the same clip, program and 24 rollouts per gravity lands with the interpreter and the scoreboard (issue #55). On Earth a released tube rests where it was put; in orbit it keeps drifting, so a program that passed on the bench fails in orbit unless it holds the object until it is constrained, and the perception budget changes with it. The stage page has the three gravities and a free tube to nudge, so the difference is visible in ten seconds. What it proves and does not: rigid-body physics with gravity set to zero, no air currents, tethers, cable drag or flight rules; a drifting object is a model, not a flight test.
 
 ## Which model does what, and why that tier
 

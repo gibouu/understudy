@@ -56,6 +56,9 @@ export const AXES = [
   "pose_noise_mm",
 ] as const;
 export const MODES = ["sensed", "blind"] as const;
+/** Gravity presets, in g. Orbit is microgravity; the same program is rehearsed under each. */
+export const GRAVITIES = { earth: 1, moon: 0.1654, orbit: 0 } as const;
+export type GravityName = keyof typeof GRAVITIES;
 export const FAILURE_CLASSES = [
   "spec_gap",
   "footage_gap",
@@ -253,6 +256,8 @@ export const Scenario = z.object({
   /** observation noise added to the pose the program receives in sensed mode */
   pose_noise_mm: z.number().nonnegative().optional(),
   seed: z.number().int().nonnegative().optional(),
+  /** gravity the rollout runs under, in g: 1 Earth, 0.1654 Moon, 0 orbit */
+  gravity_g: z.number().min(0).max(2).default(1),
   expected: z.enum(["pass", "fail", "unknown"]),
   why: z.string().default(""),
 });
@@ -266,6 +271,7 @@ export const RolloutResult = z.object({
   failed_predicate: Predicate.optional(),
   /** "embodiment_limit" when the reachability pre-check fails */
   failure_class: z.enum(FAILURE_CLASSES).optional(),
+  gravity_g: z.number().min(0).max(2).default(1),
   metrics: z.record(z.string(), finite).default({}),
   seconds: z.number().nonnegative().default(0),
 });
