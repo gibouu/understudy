@@ -21,7 +21,7 @@
   h1 { font-family: var(--disp); font-weight: 700; font-size: 176px; line-height: .92; letter-spacing: -.02em; color: var(--ink-deep); margin-top: 26px; font-variation-settings: "opsz" 144; }
   h1 .u { position: relative; display: inline-block; z-index: 0; }
   h1 .u::after { content: ""; position: absolute; left: 4px; right: 6px; bottom: 14px; height: 18px; background: var(--sun); z-index: -1; transform: rotate(-1deg); }
-  .sub { margin-top: 30px; width: 720px; font-size: 40px; line-height: 1.28; color: var(--ink); }
+  .sub { margin-top: 30px; width: 760px; font-size: 37px; line-height: 1.28; color: var(--ink); }
   .sub b { font-weight: 600; color: var(--ink-deep); }
   .flow { position: absolute; left: 96px; bottom: 92px; display: flex; align-items: center; gap: 18px; font-family: var(--mono); font-size: 26px; }
   .chip { padding: 12px 22px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--paper-card); color: var(--ink-deep); }
@@ -44,13 +44,13 @@
 <div class="page">
   <div class="kicker">Nebius × NVIDIA Global AI Hackathon · <b>Physical AI</b></div>
   <h1><span class="u">Understudy</span></h1>
-  <p class="sub"><b>Watch</b> a person do a task once. <b>Interview</b> them. <b>Rehearse</b> it on a simulated robot. <b>Export</b> the dataset.</p>
+  <p class="sub"><b>Watch</b> an astronaut do a task once. <b>Interview</b> them. <b>Rehearse</b> it on a simulated robot, on Earth and in orbit. <b>Export</b> the dataset.</p>
 
   <div class="stage">
     <div class="card">
       <img src="arm.png" alt="SO-101 arm rehearsing in MuJoCo in the browser">
-      <div class="tag"><b>live</b> · MuJoCo in the browser · SO-101</div>
-      <div class="foot">24 rollouts · blind vs sensed · perception budget per axis</div>
+      <div class="tag"><b>live</b> · SO-101 in MuJoCo · <b>0 g</b></div>
+      <div class="foot">24 rollouts · blind vs sensed · Earth, Moon, orbit</div>
     </div>
     <svg class="human" viewBox="0 0 420 560" fill="none" stroke-linecap="round" stroke-linejoin="round">
       <!-- skeleton lines -->
@@ -78,13 +78,13 @@
         <rect x="330" y="300" width="18" height="90" rx="6" fill="#efb340" stroke="#16283f" stroke-width="5" transform="rotate(20 339 345)"/>
       </g>
     </svg>
-    <div class="bubble">“How tight is the rack? 3 mm or 10?”<small>Nemotron 3 Super asks what the clip can’t show</small></div>
+    <div class="bubble">“Once you let go, does the pillow hold the film, or does it drift?”<small>Nemotron 3 Super asks what the clip can’t show</small></div>
   </div>
 
   <div class="flow">
     <span class="chip">watch</span><span class="arrow">→</span>
     <span class="chip">interview</span><span class="arrow">→</span>
-    <span class="chip hot">rehearse</span><span class="arrow">→</span>
+    <span class="chip hot">rehearse · 1 g / 0 g</span><span class="arrow">→</span>
     <span class="chip">export</span>
   </div>
   <div class="corner">Nemotron 3.5 Super VL · Nano · Super · Ultra<br>on Nebius Token Factory</div>
