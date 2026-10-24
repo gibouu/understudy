@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addHand, CROP_FOREARMS, CROP_SHIFT, dedupeHands, MIN_CROP_PX, missingWrists, sameHand, uncrop, wristCrop, type Crop } from "@/lib/vision/crop";
+import { addHand, CROP_FOREARMS, CROP_SHIFT, cropHandReach, dedupeHands, MIN_CROP_PX, missingWrists, sameHand, uncrop, wristCrop, type Crop } from "@/lib/vision/crop";
 import { POSE } from "@/lib/vision/select";
 import type { Point3 } from "@/lib/vision/types";
 
@@ -172,5 +172,34 @@ describe("sameHand and dedupeHands", () => {
   });
   it("drops a crop hand with no landmarks", () => {
     expect(dedupeHands([{ image: [], cropped: true }, { image: fanned({ x: 0.5, y: 0.5, z: 0 }, 0), cropped: true }], ASPECT)).toHaveLength(1);
+  });
+});
+
+describe("cropHandReach", () => {
+  // wrists 20 px apart at 960 wide: left (480, 324), right (500, 324)
+  const p = pose({ leftElbow: { x: 0.5, y: 0.5, z: 0 }, leftWrist: { x: 0.5, y: 0.6, z: 0 }, rightElbow: { x: 0.52, y: 0.5, z: 0 }, rightWrist: { x: 0.52, y: 0.6, z: 0 } });
+  it("accepts a hand for the wrist it is nearest to and rejects it for the other", () => {
+    // a jittered copy of the left hand, 1.5 px below the left wrist
+    const copy = hand({ x: 0.5, y: 0.6 + 1.5 / H, z: 0 }).image;
+    expect(cropHandReach(copy, p.image, "left", ASPECT)).not.toBeNull();
+    expect(cropHandReach(copy, p.image, "right", ASPECT)).toBeNull();
+  });
+  it("accepts each of two touching hands for its own wrist only", () => {
+    const left = fanned({ x: 0.5, y: 0.6, z: 0 }, 0.6, 0.01);
+    const right = fanned({ x: 0.52, y: 0.6, z: 0 }, -0.6, 0.01);
+    expect(cropHandReach(left, p.image, "left", ASPECT)).toBe(0);
+    expect(cropHandReach(right, p.image, "right", ASPECT)).toBe(0);
+    expect(cropHandReach(left, p.image, "right", ASPECT)).toBeNull();
+    expect(cropHandReach(right, p.image, "left", ASPECT)).toBeNull();
+  });
+  it("rejects a hand beyond half a torso height and one exactly between the wrists", () => {
+    const far = hand({ x: 0.5, y: 0.9, z: 0 }).image;
+    expect(cropHandReach(far, p.image, "left", ASPECT)).toBeNull();
+    const between = hand({ x: 0.51, y: 0.6, z: 0 }).image;
+    expect(cropHandReach(between, p.image, "left", ASPECT)).toBeNull();
+    expect(cropHandReach(between, p.image, "right", ASPECT)).toBeNull();
+  });
+  it("returns null for a hand with no landmarks", () => {
+    expect(cropHandReach([], p.image, "left", ASPECT)).toBeNull();
   });
 });

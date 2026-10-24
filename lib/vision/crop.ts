@@ -7,7 +7,7 @@
  * landmarks come back in full-frame coordinates. Pure geometry here; the
  * canvas work is in `mediapipe.ts`.
  */
-import { matchHands, POSE } from "./select";
+import { matchHands, POSE, torso } from "./select";
 import type { HandSide, Point3 } from "./types";
 
 /** A square window in the sampled frame, pixels. */
@@ -92,6 +92,26 @@ export function missingWrists(poses: Point3[][], selected: number, hands: Point3
   if (m.left === null) sides.push("left");
   if (m.right === null) sides.push("right");
   return sides;
+}
+
+/**
+ * Whether a hand found on the crop for wrist `side` of `pose` can be that
+ * wrist's hand, and how far its wrist landmark is from it (frame heights):
+ * within `matchHands`' reach (half a torso height, at least 0.05) and strictly
+ * nearer to this wrist than to the person's other wrist. A crop that re-detects
+ * the hand already sitting on the other wrist (a jittered copy) fails here,
+ * whatever the duplicate threshold says, so it cannot steal this wrist.
+ * Returns null when the hand is not acceptable.
+ */
+export function cropHandReach(hand: Point3[], pose: Point3[], side: HandSide, aspect: number): number | null {
+  const own = pose[side === "left" ? POSE.LEFT_WRIST : POSE.RIGHT_WRIST];
+  const other = pose[side === "left" ? POSE.RIGHT_WRIST : POSE.LEFT_WRIST];
+  if (!hand[0] || !own) return null;
+  const limit = Math.max(0.05, torso(pose, aspect).height / 2);
+  const d = dist(hand[0], own, aspect);
+  if (d > limit) return null;
+  if (other && !(d < dist(hand[0], other, aspect))) return null;
+  return d;
 }
 
 /** Below this mean landmark distance (frame heights, about a pixel at 540 px) two detections are one hand whatever their span. */

@@ -5,7 +5,7 @@
  * `detector.ts`.
  */
 import { HandLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
-import { addHand, missingWrists, uncrop, wristCrop } from "./crop";
+import { addHand, cropHandReach, missingWrists, uncrop, wristCrop } from "./crop";
 import type { DetectedHand } from "./select";
 import type { Point3, PoseTokens } from "./types";
 
@@ -151,20 +151,20 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
           if (filtered) ctx.filter = CROP_FILTER;
           ctx.drawImage(frame, win.x0, win.y0, win.side, win.side, 0, 0, win.side, win.side);
           const c = crop.detect(canvas);
-          // a copy of a hand already in the list is dropped here, before the
-          // next person's wrists are judged against the list
+          // one hand per crop: the acceptable detection nearest this wrist (a hand
+          // nearer the person's other wrist is that wrist's, or a copy of it); a
+          // copy of a hand already in the list is dropped before the next
+          // person's wrists are judged against the list
+          let best: DetectedHand | null = null;
+          let bestReach = Infinity;
           c.landmarks.forEach((image, i) => {
-            addHand(
-              hands,
-              {
-                image: image.map((l) => uncrop(l, win, width, height)),
-                world: (c.worldLandmarks[i] ?? []).map(point),
-                score: c.handedness[i]?.[0]?.score ?? 0,
-                cropped: true,
-              },
-              aspect,
-            );
+            const mapped = image.map((l) => uncrop(l, win, width, height));
+            const reach = cropHandReach(mapped, person.image, side, aspect);
+            if (reach === null || reach >= bestReach) return;
+            bestReach = reach;
+            best = { image: mapped, world: (c.worldLandmarks[i] ?? []).map(point), score: c.handedness[i]?.[0]?.score ?? 0, cropped: true };
           });
+          if (best) addHand(hands, best, aspect);
         }
       }
       const t2 = performance.now();
