@@ -13,8 +13,9 @@ export default function StagePage() {
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight">Rehearsal stage</h1>
         <p className="text-sm text-neutral-600">
-          Day-one spike: the SO-101 loads from MuJoCo Menagerie into MuJoCo WebAssembly, steps in a
-          worker, and renders here. Via-points, perturbations and the program interpreter come next.
+          The SO-101 loads from MuJoCo Menagerie into MuJoCo WebAssembly, steps in a worker, and
+          renders here, on Earth, on the Moon or in orbit. Via-points, perturbations and the program
+          interpreter come next.
         </p>
       </header>
       <StageView />

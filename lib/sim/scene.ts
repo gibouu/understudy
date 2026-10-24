@@ -261,7 +261,7 @@ const usedAsPocket = (spec: TaskSpec, id: string) => spec.steps.some((s) => s.ta
 export function perturb(
   spec: TaskSpec,
   scenario: Scenario,
-): { spec: TaskSpec; tilts: Record<string, Tilt>; warnings: string[]; applied: boolean } {
+): { spec: TaskSpec; tilts: Record<string, Tilt>; warnings: string[]; applied: boolean; gravity_g: number } {
   const laid = layoutMissingPoses(spec);
   const out = laid.spec;
   const warnings = [...laid.warnings];
@@ -310,7 +310,7 @@ export function perturb(
       break;
   }
   for (const c of pose.xyz_mm) if (!Number.isFinite(c)) throw new SceneError(`scenario ${scenario.id}: non-finite pose for "${o.id}"`);
-  return { spec: out, tilts, warnings, applied };
+  return { spec: out, tilts, warnings, applied, gravity_g: scenario.gravity_g ?? 1 };
 }
 
 function geomSize(o: SpecObject): string {
@@ -413,11 +413,11 @@ export function buildScene(spec: TaskSpec, tilts: Record<string, Tilt> = {}): Sc
   return { worldbody: parts.join("\n"), frames, names, pockets, warnings, laidOut: laid.laidOut };
 }
 
-/** A self-contained model for tests: the objects on a floor, no arm. */
-export function standaloneXml(worldbody: string): string {
+/** A self-contained model for tests: the objects on a floor, no arm, under a given gravity. */
+export function standaloneXml(worldbody: string, gravity_g = 1): string {
   return `<mujoco model="understudy-scene-test">
   <compiler angle="radian" autolimits="true"/>
-  <option timestep="0.005"/>
+  <option timestep="0.005" gravity="0 0 ${-9.81 * gravity_g}"/>
   <worldbody>
     <light pos="0 0 3" dir="0 0 -1" directional="true"/>
     <geom name="floor" size="0 0 0.05" type="plane"/>

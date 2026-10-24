@@ -5,6 +5,7 @@ import { SimClient } from "@/lib/sim/client";
 import type { Frame, SimMeta } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
+import { GRAVITIES, type GravityName } from "@/lib/spec/schema";
 
 type Jac = { nv: number; norm: number; rows: string[] } | null;
 
@@ -17,9 +18,11 @@ export function StageView() {
   const [error, setError] = useState<string | null>(null);
   const [ctrl, setCtrl] = useState<number[]>(SO101_HOME);
   const [tip, setTip] = useState<[number, number, number] | null>(null);
+  const [tube, setTube] = useState<[number, number, number] | null>(null);
   const [simT, setSimT] = useState(0);
   const [dropped, setDropped] = useState(0);
   const [jac, setJac] = useState<Jac>(null);
+  const [gravity, setGravity] = useState<GravityName>("earth");
   const lastUi = useRef(0);
 
   useEffect(() => {
@@ -43,6 +46,11 @@ export function StageView() {
           lastUi.current = now;
           setSimT(frame.t);
           setDropped(frame.dropped_s);
+          const tubeGeom = client.meta?.geoms.find((g) => g.name === "demo_tube_geom");
+          if (tubeGeom) {
+            const i = 3 * tubeGeom.id;
+            setTube([frame.geomXpos[i], frame.geomXpos[i + 1], frame.geomXpos[i + 2]]);
+          }
           const site = client.meta?.sites.find((s) => s.name === SO101_TIP_SITE);
           if (site) {
             const i = 3 * site.id;
@@ -51,7 +59,7 @@ export function StageView() {
         }
       });
     clientRef.current = client;
-    client.load().catch((err: Error) => {
+    client.load({ demoTube: true }).catch((err: Error) => {
       if (alive) setError(err.message);
     });
     return () => {
@@ -110,11 +118,28 @@ export function StageView() {
           <div className="pointer-events-none absolute bottom-3 left-3 rounded bg-white/80 px-2 py-1 font-mono text-[11px] text-neutral-700">
             t={simT.toFixed(2)}s{dropped > 0 ? ` (dropped ${dropped.toFixed(1)}s)` : ""} · dof {meta.nq} · geoms {meta.ngeom} · {SO101_TIP_SITE}{" "}
             {tip ? `(${tip.map((v) => (v * 1000).toFixed(0)).join(", ")}) mm` : ""}
+            {tube ? ` · tube (${tube.map((v) => (v * 1000).toFixed(0)).join(", ")}) mm` : ""}
           </div>
         )}
       </div>
 
       <div className="flex flex-col gap-3 text-sm">
+        <div className="flex flex-wrap items-center gap-2" aria-label="gravity">
+          <span className="text-xs text-neutral-500">gravity</span>
+          {(Object.keys(GRAVITIES) as GravityName[]).map((name) => (
+            <button
+              key={name}
+              className={`rounded border px-3 py-1 ${gravity === name ? "bg-neutral-900 text-white" : ""}`}
+              onClick={() => { setGravity(name); clientRef.current?.setGravity(GRAVITIES[name]); }}
+            >
+              {name} {GRAVITIES[name]} g
+            </button>
+          ))}
+          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" onClick={() => clientRef.current?.nudge("demo_tube", [0.04, 0.03, 0.12])} disabled={!meta}>
+            Nudge the tube
+          </button>
+        </div>
+
         <div className="flex flex-wrap gap-2">
           <button className="rounded border px-3 py-1" onClick={() => { setCtrl(SO101_HOME); clientRef.current?.setCtrl(SO101_HOME); }}>
             Home
@@ -164,7 +189,8 @@ export function StageView() {
 
         <p className="text-xs text-neutral-500">
           SO-101 from MuJoCo Menagerie (Apache-2.0), MuJoCo 3.17 WebAssembly in a Web Worker,
-          three.js on the main thread. Drag to orbit, scroll to zoom.
+          three.js on the main thread. Drag to orbit, scroll to zoom. The orange tube is a free
+          body: nudge it on Earth and it falls back; nudge it in orbit and it keeps drifting.
         </p>
       </div>
     </div>

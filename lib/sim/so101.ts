@@ -46,15 +46,27 @@ export const SO101_TIP_SITE = "gripperframe";
 /** A resting pose that keeps the arm off the floor. Radians, joint order above. */
 export const SO101_HOME: number[] = [0, -1.3, 1.2, 0.6, 0, 0.3];
 
+export const G_M_S2 = 9.81;
+
+/** A free test tube above the table: the orbit demo on the stage page. */
+export function demoTubeXml(): string {
+  return `<body name="demo_tube" pos="0.25 -0.1 0.12">
+      <freejoint name="demo_tube_free"/>
+      <geom name="demo_tube_geom" type="cylinder" size="0.0085 0.05" rgba="0.93 0.52 0.2 1" friction="1 0.005 0.0001"/>
+    </body>`;
+}
+
 /**
- * The stage: floor, light and the arm. The arm's own <option> (timestep
- * 0.005 s, tuned by Menagerie for its actuators) wins over anything set here;
- * the worker reads the compiled timestep. Task objects are appended by the
- * scene builder (issue #18); this spike only needs the arm.
+ * The stage: floor, light and the arm. The arm's own <option> sets the
+ * timestep (0.005 s, tuned by Menagerie for its actuators); gravity is set
+ * here, after the include, so it wins: 1 g on Earth, 0.1654 g on the Moon,
+ * 0 g in orbit. Task objects are appended by the scene builder.
  */
-export function stageXml(extraWorldbody = ""): string {
+export function stageXml(extraWorldbody = "", options: { gravity_g?: number } = {}): string {
+  const g = options.gravity_g ?? 1;
   return `<mujoco model="understudy-stage">
   <include file="${SO101_XML}"/>
+  <option gravity="0 0 ${-(G_M_S2 * g)}"/>
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.3 0.3 0.3" specular="0 0 0"/>
     <global azimuth="160" elevation="-20"/>

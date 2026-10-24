@@ -13,7 +13,11 @@ import { COLOURS, drawSkeleton } from "@/lib/vision/skeleton";
 import type { HandGap, TokenFrame, WatchTokens } from "@/lib/vision/types";
 import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 
-const DEV_CLIP = "/samples/dev-clip.mp4";
+/** Clips under samples/ (sources and licences in samples/README.md); the ISS clip is the hero. */
+const SAMPLES = [
+  { name: "iss-veggie-seed-film", label: "ISS: seed film into a plant pillow (NASA, 36 s)" },
+  { name: "dev-clip", label: "ISS: chess (dev clip, 30 s)" },
+] as const;
 const FPS = 10;
 
 type Readout = { frame: number; t_s: number; left: number | null; right: number | null };
@@ -42,7 +46,7 @@ export default function WatchPage() {
   const frames = useRef<TokenFrame[]>([]);
   /** the blob URL on screen, revoked when replaced or on unmount */
   const blobUrl = useRef<string | null>(null);
-  /** bumped on every pick, so a slow dev-clip download cannot replace a newer pick */
+  /** bumped on every pick, so a slow sample download cannot replace a newer pick */
   const pick = useRef(0);
   const [src, setSrc] = useState<string | null>(null);
   const [size, setSize] = useState<{ width: number; height: number } | null>(null);
@@ -164,7 +168,7 @@ export default function WatchPage() {
       detector.current?.then((d) => d.close()).catch(() => {});
       detector.current = null;
       if (blobUrl.current) URL.revokeObjectURL(blobUrl.current);
-      // a dev-clip download still in flight must not create a URL after this
+      // a sample download still in flight must not create a URL after this
       pick.current++;
     },
     [],
@@ -197,11 +201,11 @@ export default function WatchPage() {
     setSrc(blobUrl.current);
   }
 
-  function loadDevClip() {
+  function loadSample(name: string) {
     const id = ++pick.current;
-    fetch(DEV_CLIP)
+    fetch(`/samples/${name}.mp4`)
       .then((r) => {
-        if (!r.ok) throw new Error(`The dev clip did not load (HTTP ${r.status}).`);
+        if (!r.ok) throw new Error(`The sample clip did not load (HTTP ${r.status}).`);
         return r.blob();
       })
       .then((b) => choose(b, id))
@@ -236,13 +240,16 @@ export default function WatchPage() {
             }}
           />
         </label>
-        <button
-          type="button"
-          className="rounded-lg border px-3 py-2 hover:bg-neutral-500/10"
-          onClick={loadDevClip}
-        >
-          Use the dev clip
-        </button>
+        {SAMPLES.map((clip) => (
+          <button
+            key={clip.name}
+            type="button"
+            className="rounded-lg border px-3 py-2 hover:bg-neutral-500/10"
+            onClick={() => loadSample(clip.name)}
+          >
+            {clip.label}
+          </button>
+        ))}
         <span className="text-neutral-500">
           {stage.status === "idle" && "Pick a clip to start."}
           {stage.status === "running" && `${stage.note}…`}

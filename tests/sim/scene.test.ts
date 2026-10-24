@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { TaskSpec, type Scenario } from "@/lib/spec/schema";
 import { apply, buildScene, layoutMissingPoses, matToQuat, mjcfName, perturb, SceneError, standaloneXml, WALL_M, worldPoses } from "@/lib/sim/scene";
-import { stageXml, SO101_XML } from "@/lib/sim/so101";
+import { demoTubeXml, stageXml, SO101_XML } from "@/lib/sim/so101";
 
 const spec = TaskSpec.parse({
   version: 1,
@@ -130,7 +130,7 @@ describe("buildScene", () => {
     expect(() => buildScene(shallow)).toThrow(/too shallow/);
     const huge = structuredClone(spec);
     huge.objects[0].pose = { xyz_mm: [Number.MAX_VALUE, 0, 0], yaw_deg: 0, frame: "world" };
-    expect(() => perturb(huge, { id: "x", name: "x", axis: "x_mm", offset: Number.MAX_VALUE, object: "marker", expected: "unknown", why: "" })).toThrow(/non-finite/);
+    expect(() => perturb(huge, { id: "x", name: "x", axis: "x_mm", offset: Number.MAX_VALUE, object: "marker", expected: "unknown", why: "", gravity_g: 1 })).toThrow(/non-finite/);
   });
   it("keeps special ids in its registries", () => {
     const odd = TaskSpec.parse({ ...spec, objects: [{ ...spec.objects[0], id: "__proto__" }, spec.objects[1]], steps: [{ ...spec.steps[0], object: "__proto__" }, { ...spec.steps[1], object: "__proto__" }] });
@@ -210,7 +210,7 @@ describe("layoutMissingPoses", () => {
 
 describe("perturb", () => {
   const scenario = (axis: Scenario["axis"], offset: number, object = "rack", extra: Partial<Scenario> = {}): Scenario => ({
-    id: `sc-${axis}`, name: axis, axis, offset, object, expected: "unknown", why: "", ...extra,
+    id: `sc-${axis}`, name: axis, axis, offset, object, expected: "unknown", why: "", gravity_g: 1, ...extra,
   });
   it("moves the rack along world x", () => {
     const r = perturb(spec, scenario("x_mm", 6));
@@ -295,4 +295,37 @@ describe("the generated scene compiles in MuJoCo", () => {
       vfs.delete();
     }
   }, 60_000);
+});
+
+describe("gravity", () => {
+  it("is set after the arm's include so it wins, per preset", () => {
+    expect(stageXml("", { gravity_g: 0 })).toMatch(/<include file="so101.xml"\/>\s*<option gravity="0 0 0"\/>/);
+    expect(stageXml("", { gravity_g: 1 })).toContain('<option gravity="0 0 -9.81"/>');
+    expect(stageXml("")).toContain('<option gravity="0 0 -9.81"/>');
+  });
+  it("lets a free tube fall on Earth and hang in orbit", async () => {
+    const { default: loadMujoco } = await import("@mujoco/mujoco");
+    const mujoco = await loadMujoco();
+    const heightAfter = (g: number) => {
+      const model = mujoco.MjModel.from_xml_string(standaloneXml(demoTubeXml(), g));
+      const data = new mujoco.MjData(model);
+      try {
+        for (let i = 0; i < 200; i++) mujoco.mj_step(model, data); // one simulated second
+        const qpos = Array.from(data.qpos as ArrayLike<number>);
+        return qpos[2]; // free joint: x y z, then the quaternion
+      } finally {
+        data.delete();
+        model.delete();
+      }
+    };
+    const earth = heightAfter(1);
+    const orbit = heightAfter(0);
+    expect(orbit).toBeCloseTo(0.12, 3); // where it started
+    expect(earth).toBeLessThan(0.08); // fell to the floor
+  }, 30_000);
+  it("passes a scenario's gravity through perturb", () => {
+    const r = perturb(spec, { id: "orbit", name: "orbit", axis: "x_mm", offset: 0, object: "rack", expected: "unknown", why: "", gravity_g: 0 });
+    expect(r.gravity_g).toBe(0);
+    expect(perturb(spec, { id: "e", name: "e", axis: "x_mm", offset: 0, object: "rack", expected: "unknown", why: "", gravity_g: 1 }).gravity_g).toBe(1);
+  });
 });
