@@ -45,7 +45,7 @@ Task-agnostic by construction: the code never names a task. Three sample clips p
 
 ## Orbit mode
 
-Gravity is a scenario axis. The same clip, the same program, the same 24 rollouts run at 1 g, at 0.1654 g (the Moon) and at 0 g. On Earth a released tube rests where it was put; in orbit it keeps drifting, so a program that passed on the bench fails in orbit unless it holds the object until it is constrained, and the perception budget changes with it. The stage page has the three gravities and a free tube to nudge, so the difference is visible in ten seconds. What it proves and does not: rigid-body physics with gravity set to zero, no air currents, tethers, cable drag or flight rules; a drifting object is a model, not a flight test.
+Gravity is a scenario axis. The contract carries `gravity_g` on every scenario and rollout, and the stage runs under 1 g, 0.1654 g (the Moon) or 0 g; scoring the same clip, program and 24 rollouts per gravity lands with the interpreter and the scoreboard (issue #55). On Earth a released tube rests where it was put; in orbit it keeps drifting, so a program that passed on the bench fails in orbit unless it holds the object until it is constrained, and the perception budget changes with it. The stage page has the three gravities and a free tube to nudge, so the difference is visible in ten seconds. What it proves and does not: rigid-body physics with gravity set to zero, no air currents, tethers, cable drag or flight rules; a drifting object is a model, not a flight test.
 
 ## Which model does what, and why that tier
 

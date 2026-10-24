@@ -38,6 +38,10 @@ const TICK_MS = 1000 / 60;
 let enginePromise: Promise<MainModule> | null = null;
 let loading: Promise<void> | null = null;
 let runtime: Runtime | null = null;
+/** a setGravity that arrived while a load was in flight; applied when the load completes */
+let wantedGravity: number | null = null;
+/** mjtJoint.mjJNT_FREE */
+const FREE_JOINT = 0;
 let playing: { waypoints: Waypoint[]; loop: boolean; start: number } | null = null;
 let simTime = 0;
 let backlog = 0;
@@ -68,6 +72,7 @@ ctx.onmessage = async (e) => {
     switch (msg.type) {
       case "load":
         if (loading) throw new Error("a load is already in progress");
+        wantedGravity = null; // the load's own gravity is the latest instruction
         loading = load(msg.id, msg.mujocoBase, msg.assetBase, msg.gravityG ?? 1, msg.demoTube ?? false).finally(() => {
           loading = null;
         });
@@ -137,6 +142,13 @@ async function load(id: number, mujocoBase: string, assetBase: string, gravityG:
 
     const previous = runtime;
     runtime = { mujoco, model, data, meta: { ...meta, meshes: [] } };
+    if (wantedGravity !== null) {
+      // the user changed gravity while this load was in flight
+      const g = wantedGravity;
+      wantedGravity = null;
+      setGravity(g);
+      meta.gravity_g = g;
+    }
     model = null; // ownership moved into runtime
     data = null;
     if (previous) {
@@ -312,7 +324,10 @@ function setCtrl(values: number[]) {
 
 /** Gravity is a model option MuJoCo reads every step, so it changes without a recompile. */
 function setGravity(g: number) {
-  if (!runtime) return;
+  if (!runtime) {
+    wantedGravity = g;
+    return;
+  }
   const opt = runtime.model.opt as { gravity: unknown };
   const gz = -(G_M_S2 * Math.max(0, Math.min(2, g)));
   if (ArrayBuffer.isView(opt.gravity)) (opt.gravity as unknown as Float64Array)[2] = gz;
@@ -327,8 +342,11 @@ function nudge(body: string, velocity: [number, number, number]) {
   const b = meta.bodies.find((x) => x.name === body);
   if (!b) throw new Error(`no body named ${body}`);
   const jntAdr = toNumbers(model.body_jntadr)[b.id];
+  if (jntAdr === undefined || jntAdr < 0) throw new Error(`${body} has no joint to push`);
+  // only a free joint has three linear velocities first; a hinge would take the next three joints' dofs
+  if (toNumbers(model.jnt_type)[jntAdr] !== FREE_JOINT) throw new Error(`${body} is not a free body`);
   const dofAdr = toNumbers(model.jnt_dofadr)[jntAdr];
-  if (jntAdr < 0 || dofAdr < 0) throw new Error(`${body} has no joint to push`);
+  if (dofAdr === undefined || dofAdr < 0) throw new Error(`${body} has no joint to push`);
   const qvel = data.qvel as unknown;
   const set = (i: number, v: number) => {
     if (ArrayBuffer.isView(qvel)) (qvel as unknown as Float64Array)[i] = v;
