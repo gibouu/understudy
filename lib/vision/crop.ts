@@ -94,10 +94,14 @@ export function missingWrists(poses: Point3[][], selected: number, hands: Point3
   return sides;
 }
 
+/** Below this mean landmark distance (frame heights, about a pixel at 540 px) two detections are one hand whatever their span. */
+export const SAME_HAND_FLOOR = 0.002;
+
 /**
  * Two detections are the same hand when their landmarks lie on top of each
- * other: the mean landmark distance is small next to the hand's own span. Two
- * touching hands share a wrist position but not their fingers, so they stay.
+ * other: the mean landmark distance is under a fifth of the hand's own span.
+ * Two touching hands share a wrist position but not their fingers, so they
+ * stay, at any scale: the floor is a pixel, not a fixed fraction of the frame.
  */
 export function sameHand(a: Point3[], b: Point3[], aspect: number): boolean {
   if (a.length === 0 || a.length !== b.length) return false;
@@ -108,20 +112,29 @@ export function sameHand(a: Point3[], b: Point3[], aspect: number): boolean {
     span = Math.max(span, dist(a[0], a[i], aspect));
   }
   mean /= a.length;
-  return mean < Math.max(0.005, 0.2 * span);
+  return mean < Math.max(SAME_HAND_FLOOR, 0.2 * span);
 }
 
 /**
- * Drop a crop-found hand that is the same hand as one already kept: two
- * overlapping crops see it twice. Full-frame detections are always kept.
+ * Add a crop-found hand unless it is the same hand as one already in the list
+ * (two overlapping crops see it twice). Called as crops run, so a duplicate
+ * never gets to decide which wrists of the next person still need a crop.
+ * Returns true when the hand was added.
+ */
+export function addHand<T extends { image: Point3[]; cropped?: boolean }>(hands: T[], hand: T, aspect: number): boolean {
+  if (hand.image.length === 0) return false;
+  if (hand.cropped && hands.some((k) => sameHand(k.image, hand.image, aspect))) return false;
+  hands.push(hand);
+  return true;
+}
+
+/**
+ * The same rule over a whole list: full-frame detections are always kept, a
+ * crop-found hand only when it is not a copy of one already kept.
  */
 export function dedupeHands<T extends { image: Point3[]; cropped?: boolean }>(hands: T[], aspect: number): T[] {
-  const kept: T[] = hands.filter((h) => !h.cropped);
-  for (const h of hands) {
-    if (!h.cropped) continue;
-    if (h.image.length === 0) continue;
-    if (kept.some((k) => sameHand(k.image, h.image, aspect))) continue;
-    kept.push(h);
-  }
+  const kept: T[] = [];
+  for (const h of hands) if (!h.cropped) kept.push(h);
+  for (const h of hands) if (h.cropped) addHand(kept, h, aspect);
   return kept;
 }

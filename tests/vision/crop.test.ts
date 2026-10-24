@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CROP_FOREARMS, CROP_SHIFT, dedupeHands, MIN_CROP_PX, missingWrists, sameHand, uncrop, wristCrop, type Crop } from "@/lib/vision/crop";
+import { addHand, CROP_FOREARMS, CROP_SHIFT, dedupeHands, MIN_CROP_PX, missingWrists, sameHand, uncrop, wristCrop, type Crop } from "@/lib/vision/crop";
 import { POSE } from "@/lib/vision/select";
 import type { Point3 } from "@/lib/vision/types";
 
@@ -121,11 +121,11 @@ describe("missingWrists", () => {
   });
 });
 
-/** A hand with the fingers fanned out `angle` radians from straight down, span 0.1 frame heights. */
-function fanned(wrist: Point3, angle: number) {
+/** A hand with the fingers fanned out `angle` radians from straight down, span `span` frame heights (0.1 by default). */
+function fanned(wrist: Point3, angle: number, span = 0.1) {
   const image: Point3[] = [wrist];
   for (let i = 1; i <= 20; i++) {
-    const r = 0.1 * (i / 20);
+    const r = span * (i / 20);
     const a = angle + ((i % 5) - 2) * 0.15;
     image.push({ x: wrist.x + (r * Math.sin(a)) / ASPECT, y: wrist.y + r * Math.cos(a), z: 0 });
   }
@@ -153,6 +153,22 @@ describe("sameHand and dedupeHands", () => {
     expect(kept).toEqual([full, other]);
     const twoFull = dedupeHands([full, { ...copy, cropped: false }], ASPECT);
     expect(twoFull).toHaveLength(2);
+  });
+  it("keeps two touching hands at a tenth of the scale, five pixels across at 540 px", () => {
+    const a = fanned({ x: 0.5, y: 0.6, z: 0 }, 0.6, 0.01);
+    const b = fanned({ x: 0.501, y: 0.6, z: 0 }, -0.6, 0.01);
+    expect(sameHand(a, b, ASPECT)).toBe(false);
+    expect(dedupeHands([{ image: a, cropped: true }, { image: b, cropped: true }], ASPECT)).toHaveLength(2);
+  });
+  it("addHand refuses a copy as it arrives, so a later person's wrists are judged against the real list", () => {
+    const list: { image: Point3[]; cropped?: boolean }[] = [{ image: fanned({ x: 0.5, y: 0.5, z: 0 }, 0), cropped: false }];
+    const copy = { image: list[0].image.map((q) => ({ ...q, y: q.y + 0.0005 })), cropped: true };
+    expect(addHand(list, copy, ASPECT)).toBe(false);
+    expect(list).toHaveLength(1);
+    expect(addHand(list, { image: fanned({ x: 0.9, y: 0.5, z: 0 }, 0), cropped: true }, ASPECT)).toBe(true);
+    expect(list).toHaveLength(2);
+    // a full-frame hand is added even when it coincides with one already there
+    expect(addHand(list, { ...copy, cropped: false }, ASPECT)).toBe(true);
   });
   it("drops a crop hand with no landmarks", () => {
     expect(dedupeHands([{ image: [], cropped: true }, { image: fanned({ x: 0.5, y: 0.5, z: 0 }, 0), cropped: true }], ASPECT)).toHaveLength(1);

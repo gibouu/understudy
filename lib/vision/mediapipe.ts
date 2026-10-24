@@ -5,7 +5,7 @@
  * `detector.ts`.
  */
 import { HandLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
-import { dedupeHands, missingWrists, uncrop, wristCrop } from "./crop";
+import { addHand, missingWrists, uncrop, wristCrop } from "./crop";
 import type { DetectedHand } from "./select";
 import type { Point3, PoseTokens } from "./types";
 
@@ -129,7 +129,7 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
         world: (p.worldLandmarks[i] ?? []).map(point),
         visibility: image.map((l) => l.visibility ?? 0),
       }));
-      let hands: DetectedHand[] = h.landmarks.map((image, i) => ({
+      const hands: DetectedHand[] = h.landmarks.map((image, i) => ({
         image: image.map(point),
         world: (h.worldLandmarks[i] ?? []).map(point),
         score: h.handedness[i]?.[0]?.score ?? 0,
@@ -151,17 +151,22 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
           if (filtered) ctx.filter = CROP_FILTER;
           ctx.drawImage(frame, win.x0, win.y0, win.side, win.side, 0, 0, win.side, win.side);
           const c = crop.detect(canvas);
+          // a copy of a hand already in the list is dropped here, before the
+          // next person's wrists are judged against the list
           c.landmarks.forEach((image, i) => {
-            hands.push({
-              image: image.map((l) => uncrop(l, win, width, height)),
-              world: (c.worldLandmarks[i] ?? []).map(point),
-              score: c.handedness[i]?.[0]?.score ?? 0,
-              cropped: true,
-            });
+            addHand(
+              hands,
+              {
+                image: image.map((l) => uncrop(l, win, width, height)),
+                world: (c.worldLandmarks[i] ?? []).map(point),
+                score: c.handedness[i]?.[0]?.score ?? 0,
+                cropped: true,
+              },
+              aspect,
+            );
           });
         }
       }
-      if (crops > 0) hands = dedupeHands(hands, aspect);
       const t2 = performance.now();
       return { ms: { pose: t1 - t0, hand: t2 - t1 }, poses, hands, crops };
     },
