@@ -44,3 +44,27 @@ Chrome on a laptop. Open the demo URL, click "Try a sample clip", and follow the
 ## Feedback section (Most Valuable Feedback award)
 
 One block per tool, filled from `docs/FEEDBACK.md`: used for, what worked, what needs work, minutes to hello-world, would we build on it again. Tools: Token Factory onboarding and credits, Nemotron 3.5 Super VL, Nemotron 3 Nano, Nemotron 3 Super, Nemotron 3 Ultra, Tavily, Nebius Serverless Jobs.
+
+## Elevator pitch (200 characters)
+
+Watch a person do a task once, interview them, rehearse it on a simulated robot, and export the dataset. Nemotron on Nebius Token Factory, MuJoCo in the browser.
+
+## Thumbnail
+
+`docs/submission/thumbnail.jpg` (1800 x 1200, 3:2).
+
+## Additional info (organiser questions), draft answers
+
+- **Submitter type / organisation:** team; organisation "N/A" unless gib wants KUZOG named. **Country:** France. **Canada province:** N/A.
+- **Track:** Physical AI. **New or existing before 26 August 2026:** new (research began late September, code from 23 October).
+- **Repository:** https://github.com/gibouu/understudy. **Demo URL:** the Vercel production URL once Vercel Authentication is off.
+- **Models and why:** `nvidia/Nemotron-3.5-Super-VL` because it is the hosted NVIDIA model that takes video, and one call labels a whole clip (30 s = 5,024 input tokens); `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` for the compile step that runs after every answer (1 s, cheap); `nvidia/nemotron-3-super-120b-a12b` for the interview, the perturbation scenarios and the patches (reasoning, 0.8 s with thinking off); `nvidia/Nemotron-3-Ultra-550b-a55b` once per session in the background for failure classes and the reshoot list.
+- **Output quality (1 to 10):** to rate on day five from the hero clip; day-one evidence: valid JSON in both JSON modes on every call once thinking is off.
+- **Approach:** out of the box, prompt-engineered, with structured output; no fine-tuning (no NVIDIA model is fine-tunable on Token Factory today).
+- **Comparison to other models:** to fill on day five.
+- **Nebius capabilities:** the OpenAI-compatible Token Factory API with `video_url` input, structured outputs, prefix caching and the verbose model catalog (prices and limits used for the on-screen ledger); a Serverless Job for the GR00T loader validation and the batch sweep if they ship.
+- **Recommend (1 to 10), experience versus other clouds (1 to 10):** gib's call; evidence in `docs/FEEDBACK.md`.
+- **Improvements wanted:** an image cap above 8 per request or a documented limit in the API error before the call; `reasoning_effort: none` emptying Nano's answer; unknown parameters accepted silently; image and video token counts in the usage object.
+- **Hope from the Nemotron team:** a hosted Cosmos Reason or GR00T on Token Factory; fine-tuning for Nemotron.
+- **Tavily:** yes once `/api/ground` ships (issue #29); otherwise no.
+- **City:** Paris. **AI tools used:** Claude Code (Fable 5.1), OpenAI Codex for second-model review, Nemotron for the product itself. **Learning / career value:** to write in gib's words.
