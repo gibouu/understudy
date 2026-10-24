@@ -324,10 +324,10 @@ function setCtrl(values: number[]) {
 
 /** Gravity is a model option MuJoCo reads every step, so it changes without a recompile. */
 function setGravity(g: number) {
-  if (!runtime) {
-    wantedGravity = g;
-    return;
-  }
+  // a load in flight builds its own model: remember the change for it, whether or
+  // not an older runtime is still answering meanwhile
+  if (loading || !runtime) wantedGravity = g;
+  if (!runtime) return;
   const opt = runtime.model.opt as { gravity: unknown };
   const gz = -(G_M_S2 * Math.max(0, Math.min(2, g)));
   if (ArrayBuffer.isView(opt.gravity)) (opt.gravity as unknown as Float64Array)[2] = gz;
