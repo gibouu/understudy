@@ -5,8 +5,8 @@
  * `detector.ts`.
  */
 import { HandLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
-import { addHand, cropHandReach, missingWrists, uncrop, wristCrop } from "./crop";
-import type { DetectedHand } from "./select";
+import { cropPlan, missingWrists, pickCropHands, uncrop } from "./crop";
+import { matchHands, type CropHand, type DetectedHand } from "./select";
 import type { Point3, PoseTokens } from "./types";
 
 const BASE = "/mediapipe";
@@ -31,10 +31,13 @@ export const CROP_CONFIDENCE = 0.3;
 
 export type Detections = {
   poses: PoseTokens[];
+  /** hands found on the full frame */
   hands: DetectedHand[];
+  /** hands found on wrist crops, each attached to the person and wrist its crop was made for (see crop.ts) */
+  cropHands: CropHand[];
   /** wall time of each model on this frame; `hand` includes the crops */
   ms: { pose: number; hand: number };
-  /** wrist crops the Hand Landmarker ran on, after the full frame (see crop.ts) */
+  /** wrist crops the Hand Landmarker ran on, after the full frame */
   crops: number;
 };
 
@@ -134,41 +137,45 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
         world: (h.worldLandmarks[i] ?? []).map(point),
         score: h.handedness[i]?.[0]?.score ?? 0,
       }));
-      // Second look: a crop around every wrist the full frame gave no hand.
+      // Second look: a crop around every wrist the full frame gave no hand. The
+      // finds are attached to that wrist and never join the full-frame pool.
       const { width, height } = frame;
       const aspect = width / height;
-      let crops = 0;
       const poseImages = poses.map((x) => x.image);
+      const fullImages = hands.map((x) => x.image);
+      const cropHands: CropHand[] = [];
+      let crops = 0;
       for (const [p_i, person] of poses.entries()) {
         if (crops >= MAX_CROPS) break;
-        for (const side of missingWrists(poseImages, p_i, hands.map((x) => x.image), aspect)) {
+        const missing = missingWrists(poseImages, p_i, fullImages, aspect);
+        if (missing.length === 0) continue;
+        const m = matchHands(poseImages, p_i, fullImages, aspect);
+        const existing = [m.left, m.right].flatMap((i) => (i === null ? [] : [fullImages[i]]));
+        const plan = cropPlan(person, missing, width, height);
+        for (const { win, sides } of plan.windows) {
           if (crops >= MAX_CROPS) break;
-          const win = wristCrop(person, side, width, height);
-          if (!win) continue;
           crops++;
           canvas.width = win.side;
           canvas.height = win.side;
           if (filtered) ctx.filter = CROP_FILTER;
           ctx.drawImage(frame, win.x0, win.y0, win.side, win.side, 0, 0, win.side, win.side);
           const c = crop.detect(canvas);
-          // one hand per crop: the acceptable detection nearest this wrist (a hand
-          // nearer the person's other wrist is that wrist's, or a copy of it); a
-          // copy of a hand already in the list is dropped before the next
-          // person's wrists are judged against the list
-          let best: DetectedHand | null = null;
-          let bestReach = Infinity;
-          c.landmarks.forEach((image, i) => {
-            const mapped = image.map((l) => uncrop(l, win, width, height));
-            const reach = cropHandReach(mapped, person.image, side, aspect);
-            if (reach === null || reach >= bestReach) return;
-            bestReach = reach;
-            best = { image: mapped, world: (c.worldLandmarks[i] ?? []).map(point), score: c.handedness[i]?.[0]?.score ?? 0, cropped: true };
-          });
-          if (best) addHand(hands, best, aspect);
+          const found = c.landmarks.map((image) => image.map((l) => uncrop(l, win, width, height)));
+          const picks = pickCropHands(found, person.image, sides, aspect, plan.close, existing);
+          for (const side of sides) {
+            const i = picks[side];
+            if (i === undefined) continue;
+            existing.push(found[i]);
+            cropHands.push({
+              person: p_i,
+              side,
+              hand: { image: found[i], world: (c.worldLandmarks[i] ?? []).map(point), score: c.handedness[i]?.[0]?.score ?? 0, cropped: true },
+            });
+          }
         }
       }
       const t2 = performance.now();
-      return { ms: { pose: t1 - t0, hand: t2 - t1 }, poses, hands, crops };
+      return { ms: { pose: t1 - t0, hand: t2 - t1 }, poses, hands, cropHands, crops };
     },
     close() {
       pose.close();

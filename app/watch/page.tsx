@@ -117,9 +117,9 @@ export default function WatchPage() {
         async onFrame(bitmap, t) {
           const { width, height } = bitmap;
           setSize((s) => (s?.width === width && s.height === height ? s : { width, height }));
-          const { poses, hands, ms } = await ready.detect(bitmap, t);
+          const { poses, hands, cropHands, ms } = await ready.detect(bitmap, t);
           if (abort.signal.aborted) return;
-          const next = selectFrame(t, poses, hands, track, width / height);
+          const next = selectFrame(t, poses, hands, track, width / height, cropHands);
           detectMs.current =
             detectMs.current === null
               ? ms
