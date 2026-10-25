@@ -1,6 +1,6 @@
 {
   "name": "arm-ik-accuracy",
-  "measured_at": "2026-10-25T08:39:26.771Z",
+  "measured_at": "2026-10-25T17:59:05.942Z",
   "machine": {
     "cpu": "Apple M4",
     "cores": 10,
@@ -8,8 +8,8 @@
     "node": "v24.21.0",
     "mujoco_wasm": "3.17.0",
     "threads_used": 1,
-    "loadavg_1m_at_start": 16.57,
-    "git_head": "4056148"
+    "loadavg_1m_at_start": 2.43,
+    "git_head": "b92a604"
   },
   "parameters": {
     "grid": {
@@ -21,7 +21,7 @@
         -0.25,
         0.25
       ],
-      "step_m": 0.05,
+      "step_m": 0.025,
       "z_m": [
         0.02,
         0.06,
@@ -33,94 +33,94 @@
   "rows": [
     {
       "approach": "top",
-      "solved": 78,
+      "solved": 285,
       "tip_err_mm": {
-        "median": 0.2,
-        "p95": 0.72,
-        "max": 0.894
+        "median": 0.264,
+        "p95": 0.761,
+        "max": 0.938
       },
       "axis_err_deg": {
-        "median": 0.53,
-        "max": 0.99
+        "median": 0.6,
+        "max": 1
       },
       "iterations_median": 12,
       "solve_ms_ok": {
-        "median": 0.09,
-        "p95": 1.32
+        "median": 0.08,
+        "p95": 0.27
       },
       "solve_ms_not_ok": {
-        "n": 153,
-        "median": 65.4,
-        "p95": 90.4
+        "n": 534,
+        "median": 66.4,
+        "p95": 93.2
       }
     },
     {
       "approach": "side",
-      "solved": 4,
+      "solved": 10,
       "tip_err_mm": {
         "median": 0.179,
-        "p95": 0.366,
-        "max": 0.366
+        "p95": 0.377,
+        "max": 0.377
       },
       "axis_err_deg": {
         "median": 0.87,
         "max": 0.99
       },
-      "iterations_median": 19,
+      "iterations_median": 20,
       "solve_ms_ok": {
-        "median": 0.15,
-        "p95": 10.29
+        "median": 0.17,
+        "p95": 10.48
       },
       "solve_ms_not_ok": {
-        "n": 227,
-        "median": 0.1,
-        "p95": 58.9
+        "n": 809,
+        "median": 0.2,
+        "p95": 50.7
       }
     },
     {
       "approach": "front",
-      "solved": 38,
+      "solved": 141,
       "tip_err_mm": {
-        "median": 0.367,
-        "p95": 0.927,
-        "max": 0.961
+        "median": 0.282,
+        "p95": 0.953,
+        "max": 1.876
       },
       "axis_err_deg": {
         "median": 0.52,
-        "max": 0.96
+        "max": 1.06
       },
       "iterations_median": 16,
       "solve_ms_ok": {
         "median": 0.1,
-        "p95": 8.86
+        "p95": 8.67
       },
       "solve_ms_not_ok": {
-        "n": 193,
-        "median": 17.1,
-        "p95": 50.2
+        "n": 678,
+        "median": 19.3,
+        "p95": 52.5
       }
     },
     {
       "approach": "all",
-      "solved": 120,
+      "solved": 436,
       "tip_err_mm": {
-        "median": 0.243,
-        "p95": 0.879,
-        "max": 0.961
+        "median": 0.272,
+        "p95": 0.84,
+        "max": 1.876
       },
       "axis_err_deg": {
-        "median": 0.53,
-        "max": 0.99
+        "median": 0.59,
+        "max": 1.06
       },
       "iterations_median": 13,
       "solve_ms_ok": {
-        "median": 0.1,
-        "p95": 8.86
+        "median": 0.09,
+        "p95": 7.82
       },
       "solve_ms_not_ok": {
-        "n": 573,
-        "median": 25.7,
-        "p95": 86.1
+        "n": 2021,
+        "median": 27.2,
+        "p95": 86.4
       }
     }
   ]

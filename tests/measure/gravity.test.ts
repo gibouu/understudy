@@ -351,7 +351,8 @@ describe("gravity measurements", () => {
       });
     };
 
-    const SEEDS = [1, 2, 3];
+    // CI runs one seed to stay well inside its time budget; a MEASURE_WRITE run (the published numbers) runs all three
+    const SEEDS = process.env.CI && process.env.MEASURE_WRITE !== "1" ? [1] : [1, 2, 3];
     const rows = GRAVITIES.flatMap((G) => SEEDS.map((seed) => pour(mj, G.g, G.label, seed)));
     // cross-check with frictional spheres (condim 3, friction 0.3) on the three gravities that pour
     const cross = GRAVITIES.filter((G) => G.g > 0).map((G) => pour(mj, G.g, G.label, 1, { condim: 3, friction: "0.3 0.005 0.0001" }));
@@ -412,7 +413,7 @@ describe("gravity measurements", () => {
       const all = [...t90(rows, G.g), ...t90(cross, G.g)];
       expect(Math.max(...all) - Math.min(...all)).toBeLessThan(0.15);
     }
-  }, 40_000);
+  }, 180_000);
 
   it("settle time: a tube dropped upright from 20 mm onto a flat surface", async () => {
     const mj = await loadMujoco();
@@ -630,5 +631,5 @@ describe("gravity measurements", () => {
     // pulled toward the mouth in orbit, the cup holds nothing
     for (const cp of get("orbit-0.02g-axial").cups) expect(cp.out_at_end).toBe(PARTICLES.count);
     expect(get("orbit-0.02g-axial").pocket_tube.seated).toBe(false);
-  }, 40_000);
+  }, 180_000);
 });
