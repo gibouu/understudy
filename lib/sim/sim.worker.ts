@@ -22,7 +22,7 @@ import {
   type ToWorker,
   type Waypoint,
 } from "./protocol";
-import { demoTubeXml, G_M_S2, SO101_MESH_BUNDLE, SO101_MESHES, SO101_XML, stageXml } from "./so101";
+import { G_M_S2, SO101_MESH_BUNDLE, SO101_MESHES, SO101_XML, stageXml } from "./so101";
 
 type WorkerCtx = {
   postMessage: (message: FromWorker, transfer?: Transferable[]) => void;
@@ -74,7 +74,7 @@ ctx.onmessage = async (e) => {
       case "load":
         if (loading) throw new Error("a load is already in progress");
         wantedGravity = null; // the load's own gravity is the latest instruction
-        loading = load(msg.id, msg.mujocoBase, msg.assetBase, msg.gravityG ?? 1, msg.demoTube ?? false).finally(() => {
+        loading = load(msg.id, msg.mujocoBase, msg.assetBase, msg.gravityG ?? 1, msg.worldbody ?? "").finally(() => {
           loading = null;
         });
         await loading;
@@ -126,7 +126,7 @@ async function engine(mujocoBase: string): Promise<MainModule> {
   return enginePromise;
 }
 
-async function load(id: number, mujocoBase: string, assetBase: string, gravityG: number, demoTube: boolean) {
+async function load(id: number, mujocoBase: string, assetBase: string, gravityG: number, worldbody: string) {
   const mujoco = await engine(mujocoBase);
   status("engine ready; fetching the SO-101", 0.05);
   const vfs = new mujoco.MjVFS();
@@ -139,7 +139,7 @@ async function load(id: number, mujocoBase: string, assetBase: string, gravityG:
     await loadMeshes(vfs, assetBase, mujoco);
 
     status("compiling the model", 0.7);
-    model = mujoco.MjModel.from_xml_string(stageXml(demoTube ? demoTubeXml() : "", { gravity_g: gravityG }), vfs);
+    model = mujoco.MjModel.from_xml_string(stageXml(worldbody, { gravity_g: gravityG }), vfs);
     data = new mujoco.MjData(model);
     mujoco.mj_forward(model, data);
     const meta = { ...extractMeta(model), gravity_g: gravityG };

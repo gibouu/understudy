@@ -2,11 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SimClient } from "@/lib/sim/client";
+import { DEMO_SPEC } from "@/lib/sim/demo-spec";
 import type { Approach, IkResult } from "@/lib/sim/ik";
 import type { Frame, SimMeta } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
+import { buildScene } from "@/lib/sim/scene";
 import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
 import { APPROACHES, GRAVITIES, type GravityName } from "@/lib/spec/schema";
+
+const SCENE = buildScene(DEMO_SPEC);
+const TUBE = SCENE.names.tube;
+const POCKET_SITE = `${SCENE.names.rack}_pocket`;
 
 type Jac = { nv: number; norm: number; rows: string[] } | null;
 
@@ -31,6 +37,7 @@ export function StageView() {
   const [ctrl, setCtrl] = useState<number[]>(SO101_HOME);
   const [tip, setTip] = useState<[number, number, number] | null>(null);
   const [tube, setTube] = useState<[number, number, number] | null>(null);
+  const [pocket, setPocket] = useState<[number, number, number] | null>(null);
   const [simT, setSimT] = useState(0);
   const [dropped, setDropped] = useState(0);
   const [jac, setJac] = useState<Jac>(null);
@@ -63,7 +70,7 @@ export function StageView() {
           lastUi.current = now;
           setSimT(frame.t);
           setDropped(frame.dropped_s);
-          const tubeGeom = client.meta?.geoms.find((g) => g.name === "demo_tube_geom");
+          const tubeGeom = client.meta?.geoms.find((g) => g.name === `${TUBE}_geom`);
           if (tubeGeom) {
             const i = 3 * tubeGeom.id;
             setTube([frame.geomXpos[i], frame.geomXpos[i + 1], frame.geomXpos[i + 2]]);
@@ -73,10 +80,15 @@ export function StageView() {
             const i = 3 * site.id;
             setTip([frame.siteXpos[i], frame.siteXpos[i + 1], frame.siteXpos[i + 2]]);
           }
+          const opening = client.meta?.sites.find((s) => s.name === POCKET_SITE);
+          if (opening) {
+            const i = 3 * opening.id;
+            setPocket([frame.siteXpos[i], frame.siteXpos[i + 1], frame.siteXpos[i + 2]]);
+          }
         }
       });
     clientRef.current = client;
-    client.load({ demoTube: true }).catch((err: Error) => {
+    client.load({ worldbody: SCENE.worldbody }).catch((err: Error) => {
       if (alive) setError(err.message);
     });
     return () => {
@@ -184,7 +196,7 @@ export function StageView() {
               {name} {GRAVITIES[name]} g
             </button>
           ))}
-          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" onClick={() => clientRef.current?.nudge("demo_tube", [0.04, 0.03, 0.12])} disabled={!meta}>
+          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" onClick={() => clientRef.current?.nudge(TUBE, [0.04, 0.03, 0.12])} disabled={!meta}>
             Nudge the tube
           </button>
         </div>
@@ -253,6 +265,14 @@ export function StageView() {
         >
           Go to the tube ({approach})
         </button>
+        <button
+          className="self-start rounded border border-orange-600 px-3 py-1 text-xs text-orange-700"
+          disabled={!meta || !pocket}
+          // where the tip is when a tube gripped at mid-height has its bottom at the opening
+          onClick={() => pocket && moveTo([Math.round(pocket[0] * 1000), Math.round(pocket[1] * 1000), Math.round(pocket[2] * 1000) + 50])}
+        >
+          Go 50 mm above the pocket ({approach})
+        </button>
         <p className="text-xs text-neutral-500">Or click the floor: the tip goes above that point at height z.</p>
         {ik && (
           <div className={`rounded border p-2 font-mono text-[11px] leading-5 ${ik.ok ? "bg-neutral-50" : "border-red-300 bg-red-50 text-red-800"}`}>
@@ -292,8 +312,9 @@ export function StageView() {
 
         <p className="text-xs text-neutral-500">
           SO-101 from MuJoCo Menagerie (Apache-2.0), MuJoCo 3.17 WebAssembly in a Web Worker,
-          three.js on the main thread. Drag to orbit, scroll to zoom. The orange tube is a free
-          body: nudge it on Earth and it falls back; nudge it in orbit and it keeps drifting.
+          three.js on the main thread. Drag to orbit, scroll to zoom. The scene is built from a
+          task spec: the tube is a free body, the rack a fixture with a pocket. Nudge the tube on
+          Earth and it falls back; nudge it in orbit and it keeps drifting.
         </p>
       </div>
     </div>

@@ -37,9 +37,9 @@ export class SimClient {
   }
 
   /** `mujocoBase` serves mujoco.js and mujoco.wasm (copied there by scripts/copy-assets.mjs). */
-  load(options: { mujocoBase?: string; assetBase?: string; gravityG?: number; demoTube?: boolean } = {}): Promise<SimMeta> {
-    const { mujocoBase = "/mujoco", assetBase = SO101_ASSET_BASE, gravityG = 1, demoTube = false } = options;
-    return this.request<SimMeta>((id) => ({ type: "load", id, mujocoBase, assetBase, gravityG, demoTube }));
+  load(options: { mujocoBase?: string; assetBase?: string; gravityG?: number; worldbody?: string } = {}): Promise<SimMeta> {
+    const { mujocoBase = "/mujoco", assetBase = SO101_ASSET_BASE, gravityG = 1, worldbody = "" } = options;
+    return this.request<SimMeta>((id) => ({ type: "load", id, mujocoBase, assetBase, gravityG, worldbody }));
   }
   setGravity(g: number) {
     this.send({ type: "setGravity", g });

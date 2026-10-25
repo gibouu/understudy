@@ -48,14 +48,6 @@ export const SO101_HOME: number[] = [0, -1.3, 1.2, 0.6, 0, 0.3];
 
 export const G_M_S2 = 9.81;
 
-/** A free test tube above the table: the orbit demo on the stage page. */
-export function demoTubeXml(): string {
-  return `<body name="demo_tube" pos="0.25 -0.1 0.12">
-      <freejoint name="demo_tube_free"/>
-      <geom name="demo_tube_geom" type="cylinder" size="0.0085 0.05" rgba="0.93 0.52 0.2 1" friction="1 0.005 0.0001"/>
-    </body>`;
-}
-
 /**
  * The stage: floor, light and the arm. The arm's own <option> sets the
  * timestep (0.005 s, tuned by Menagerie for its actuators); gravity is set
