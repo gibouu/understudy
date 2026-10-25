@@ -7,12 +7,12 @@
  */
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import { toNumbers } from "./names";
-import { SO101_GRIPPER_BODY, SO101_MOVING_JAW_BODY, graspWeld } from "./so101";
+import { SO101_GRIPPER_BODY, SO101_HELD_SITE, SO101_MOVING_JAW_BODY, graspWeld } from "./so101";
 
 /** A jaw counts as touching within this gap, so a squeeze that stops just short still holds. */
-export const TOUCH_M = 0.003;
+const TOUCH_M = 0.003;
 /** The moving jaw has stopped closing below this speed: it is squeezing, so attaching now leaves no push against the weld. */
-export const SETTLED_RAD_S = 0.05;
+const SETTLED_RAD_S = 0.05;
 /** Simulated seconds a grasp waits for the jaws to close on the object before it fails. */
 export const GRASP_TIMEOUT_S = 1.5;
 /** mjNEQDATA: weld data is anchor[3], relpose pos[3], relpose quat[4], torquescale. */
@@ -25,6 +25,8 @@ export type Grasp = {
   eq: number;
   objectGeoms: number[];
   jaws: [number[], number[]];
+  /** SO101_HELD_SITE, on the gripper body */
+  heldSite: number;
   /** qpos and dof addresses of the moving jaw's hinge */
   jawQpos: number;
   jawDof: number;
@@ -53,6 +55,7 @@ export function graspIndex(mujoco: MainModule, model: MjModel, body: string): Gr
     eq,
     objectGeoms: geomsOf(bodyId),
     jaws: [geomsOf(gripper), geomsOf(movingJaw)],
+    heldSite: id(mujoco.mjtObj.mjOBJ_SITE.value, SO101_HELD_SITE),
     jawQpos: toNumbers(model.jnt_qposadr)[jawJoint],
     jawDof: toNumbers(model.jnt_dofadr)[jawJoint],
   };
@@ -76,26 +79,27 @@ export function isAttached(data: MjData, g: Grasp): boolean {
 
 /**
  * Weld the object where it is now: relpose = its pose in the gripper's frame
- * (otherwise MuJoCo would use qpos0's). Returns the jaw angle to hold from
+ * (otherwise MuJoCo would use qpos0's), and move SO101_HELD_SITE onto the
+ * object's centre. Returns the jaw angle to hold from
  * now on: squeezing on towards closed would push the object against the weld.
  */
 export function attach(model: MjModel, data: MjData, g: Grasp): number {
-  const gripperBody = g.gripper;
   const xpos = toNumbers(data.xpos);
   const xmat = toNumbers(data.xmat);
   const xquat = toNumbers(data.xquat);
-  const p1 = [0, 1, 2].map((k) => xpos[3 * gripperBody + k]);
+  const p1 = [0, 1, 2].map((k) => xpos[3 * g.gripper + k]);
   const p2 = [0, 1, 2].map((k) => xpos[3 * g.bodyId + k]);
-  const R1 = Array.from({ length: 9 }, (_, k) => xmat[9 * gripperBody + k]);
+  const R1 = Array.from({ length: 9 }, (_, k) => xmat[9 * g.gripper + k]);
   const d = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]];
   const rel = [0, 1, 2].map((c) => R1[c] * d[0] + R1[3 + c] * d[1] + R1[6 + c] * d[2]);
-  const q1 = [0, 1, 2, 3].map((k) => xquat[4 * gripperBody + k]);
+  const q1 = [0, 1, 2, 3].map((k) => xquat[4 * g.gripper + k]);
   const q2 = [0, 1, 2, 3].map((k) => xquat[4 * g.bodyId + k]);
   const relq = mulQuat([q1[0], -q1[1], -q1[2], -q1[3]], q2);
   const eqData = model.eq_data as Float64Array;
   const o = NEQDATA * g.eq;
   eqData.set([0, 0, 0, ...rel, ...relq], o);
   (data.eq_active as Uint8Array)[g.eq] = 1;
+  (model.site_pos as Float64Array).set(rel, 3 * g.heldSite);
   return toNumbers(data.qpos)[g.jawQpos];
 }
 

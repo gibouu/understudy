@@ -6,7 +6,7 @@ import { DEMO_SPEC } from "@/lib/sim/demo-spec";
 import { attach, detach, graspIndex, holding, isAttached, type Grasp } from "@/lib/sim/grasp";
 import { solveIk } from "@/lib/sim/ik";
 import { buildScene } from "@/lib/sim/scene";
-import { GRIPPER_CLOSED, GRIPPER_OPEN, SO101_GRASP_SITE, SO101_HOME, SO101_XML, stageXml } from "@/lib/sim/so101";
+import { GRIPPER_CLOSED, GRIPPER_OPEN, SO101_GRASP_SITE, SO101_HELD_SITE, SO101_HOME, SO101_XML, stageXml } from "@/lib/sim/so101";
 
 const build = buildScene(DEMO_SPEC);
 const TUBE = build.names.tube;
@@ -60,8 +60,8 @@ function drive(to: number[], ramp: number, total = ramp + 0.5, each?: () => bool
   return false;
 }
 
-function armTo(target: number[], gripper: number, ramp = 1) {
-  const r = solveIk(mujoco, model, scratch(), target as [number, number, number], "top", undefined, SO101_GRASP_SITE);
+function armTo(target: number[], gripper: number, ramp = 1, site = SO101_GRASP_SITE) {
+  const r = solveIk(mujoco, model, scratch(), target as [number, number, number], "top", undefined, site);
   expect(r.ok, JSON.stringify({ target, err: r.pos_err_mm })).toBe(true);
   drive([...r.q, gripper], ramp);
 }
@@ -99,13 +99,15 @@ describe("grasp and release", () => {
     const lifted = tubePos();
     (model.opt.gravity as Float64Array)[2] = -9.81 * g; // grasped at 1 g so the tube stood still; the carry and release run at g
     expect(lifted[2] - start[2]).toBeGreaterThan(0.03);
-    // tube bottom 2 mm above the opening
-    const over = [pocket[0], pocket[1], pocket[2] + 0.002 + GRIP_FROM_BOTTOM_M];
-    armTo(over, jaw, 2);
+    // aim the tube itself: its centre over the opening, its bottom 2 mm above
+    const over = [pocket[0], pocket[1], pocket[2] + 0.002 + 0.03];
+    armTo(over, jaw, 2, SO101_HELD_SITE);
     // the tube rode with the gripper: same place in the gripper's frame within 2 mm
     const drift = inGripper().map((v, i) => v - offset[i]);
     expect(Math.hypot(...drift)).toBeLessThan(0.002);
     const held = tubePos();
+    // lined up with the 20 mm pocket: a 17 mm tube has 1.5 mm each side
+    expect(Math.hypot(held[0] - pocket[0], held[1] - pocket[1])).toBeLessThan(0.001);
 
     detach(data, grasp);
     drive([...ctrl().slice(0, 5), GRIPPER_OPEN], 0.3, 1.5);

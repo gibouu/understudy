@@ -388,8 +388,7 @@ function nudge(body: string, velocity: [number, number, number]) {
 function reset() {
   if (!runtime) return;
   playing = null;
-  if (attached) detach(runtime.data, attached);
-  attached = null;
+  attached = null; // mj_resetData switches every weld back to its declared state, off
   cancelGrasp("the physics was reset");
   runtime.mujoco.mj_resetData(runtime.model, runtime.data);
   runtime.mujoco.mj_forward(runtime.model, runtime.data);
@@ -519,8 +518,8 @@ function checkGrasp() {
     post({ type: "grasp", id, result: { ok: true, body: g.body, jaw } });
   } else if (simTime >= until) {
     grasping = null;
-    const jaw = toNumbers(data.qpos)[g.jawQpos];
-    post({ type: "grasp", id, result: { ok: false, body: g.body, jaw, message: `the jaws closed without holding ${g.body}` } });
+    // the gripper stays commanded closed; report that, so the page's next move keeps it
+    post({ type: "grasp", id, result: { ok: false, body: g.body, jaw: GRIPPER_CLOSED, message: `the jaws closed without holding ${g.body}` } });
   }
 }
 

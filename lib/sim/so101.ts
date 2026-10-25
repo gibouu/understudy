@@ -45,6 +45,8 @@ export const SO101_TIP_SITE = "gripperframe";
 
 /** The site between the jaw pads: IK aims it at an object's grasp point. */
 export const SO101_GRASP_SITE = "graspframe";
+/** A site on the gripper that a grasp moves onto the held object's centre: IK on it places the object, wherever the jaws caught it. */
+export const SO101_HELD_SITE = "heldframe";
 
 /** The body carrying the fixed jaw; a grasp welds the object to it. */
 export const SO101_GRIPPER_BODY = "gripper";

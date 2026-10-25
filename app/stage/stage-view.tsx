@@ -7,7 +7,7 @@ import type { Approach, IkResult } from "@/lib/sim/ik";
 import type { Frame, SimMeta } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { buildScene } from "@/lib/sim/scene";
-import { GRIPPER_OPEN, SO101_GRASP_SITE, SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
+import { GRIPPER_OPEN, SO101_GRASP_SITE, SO101_HELD_SITE, SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
 import { APPROACHES, GRAVITIES, type GravityName } from "@/lib/spec/schema";
 
 const SCENE = buildScene(DEMO_SPEC);
@@ -314,14 +314,14 @@ export function StageView() {
           </button>
           <button
             className="rounded border border-orange-600 px-3 py-1 text-orange-700"
-            disabled={!meta || !pocket || !tube}
+            disabled={!meta || !pocket || !tube || !attached}
             onClick={() => {
               if (!pocket || !tube) return;
-              // the tube's bottom 2 mm above the opening; lift the tube straight up first
+              // the tube's centre over the opening, its bottom 2 mm above; lift the tube straight up first
               const [x, y, z] = pocket.map((v) => Math.round(v * 1000));
-              const over: [number, number, number] = [x, y, z + 2 + 2 * TUBE_HALF_MM - GRIP_BELOW_TOP_MM];
+              const over: [number, number, number] = [x, y, z + 2 + TUBE_HALF_MM];
               const [tx, ty] = tube.map((v) => Math.round(v * 1000));
-              moveTo(over, "top", false, { site: SO101_GRASP_SITE, via: [[tx, ty, over[2]]] });
+              moveTo(over, "top", false, { site: SO101_HELD_SITE, via: [[tx, ty, over[2]]] });
             }}
           >
             3. Over the pocket
