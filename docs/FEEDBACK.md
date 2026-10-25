@@ -41,7 +41,7 @@ For each: used for, what worked, what needs work, minutes to hello-world, would 
 - **Used for:** labelling a clip into a task spec, from a 480p video proxy sent as a `video_url` data URI.
 - **Worked:** valid JSON in every one of about 90 calls; 2.4 to 3.9 s for a 36 s clip; about US$0.0024 per label.
 - **Needs work:**
-  - **Fine manipulation:** on the NASA ISS clip (an astronaut placing seed film into plant pillows) it never named the film as the object moved: 0 of 35 labels across seven input conditions. In 26 it called the pillows "battery packs" or "hard drives". A one-line context hint cut that to 1 of 5. Only a hint naming the task got the film named.
+  - **Fine manipulation:** on the NASA ISS clip (an astronaut placing seed film into plant pillows) it never named the film as the object moved: 0 of 35 labels across seven input conditions. In 23 it called the pillows "battery packs" or "hard drives". A one-line context hint cut that to 1 of 5. Only a hint naming the task got the film named.
   - **Video tokens are fixed per clip:** 6,379 tokens for that clip at 2, 4 or 8 fps and at 480 or 960 px wide, so the service resamples the video. That is good for cost, but undocumented. Image inputs do scale with resolution.
   - **Thinking:** turning it on (4k budget) made labels worse and hit the budget with empty content in 3 of 10 runs.
 - **Prompt caching:** reported 2,176 cached tokens on repeated video.

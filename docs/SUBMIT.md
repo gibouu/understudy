@@ -44,7 +44,7 @@ Every number below was checked twice against its page on 25 October 2026; the so
 | Learning across tasks, Moon and orbit | first try 5% to 67%; within five patches 93% to 100% | `docs/MEASUREMENTS.md` |
 | A tube let go at the slot mouth | seats on Earth, Mars and the Moon; floats 30 mm up in orbit | `docs/MEASUREMENTS.md` |
 | Liquid model against physics | pour time within 2.8% of Torricelli's law; surface tilt within 0.09° | `docs/MEASUREMENTS.md` |
-| Saving on a 500-demonstration campaign | 3%, 10% or 25% of the collection budget if Understudy avoids a tenth, a quarter or half of re-collection; the share is a model, its inputs are measured (finding a failure: 0.3 s per gravity; fixing it: $0.0024) | `docs/research/market.md`, section 5; `docs/MEASUREMENTS.md`, section 9 |
+| Saving on a 500-demonstration campaign | 3%, 10% or 25% of the collection budget if Understudy avoids a tenth, a quarter or half of re-collection; the share is a model, its inputs are measured (a naive program fails 86% of disturbed runs; fixing one costs $0.0024) | `docs/research/market.md`, section 5; `docs/MEASUREMENTS.md`, section 9 |
 
 Say "one vendor's model" whenever the 30 to 50% figure is used: only one source has published it.
 

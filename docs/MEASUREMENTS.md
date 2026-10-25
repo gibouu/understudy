@@ -88,7 +88,7 @@ A throw at 0 g against a wall checks that the liquid really behaves as one (mean
 
 `scripts/bench-label.mjs`, Super VL on the ISS clip, 5 runs per condition, scored against a ground truth written by watching the frames (verb, main object, fixture type, step count, size).
 
-- In 0 of 35 labels across seven input conditions (frame rate, width, keyframes, thinking on) does the model name the seed film as the object moved; 26 of 35 call the pillows battery packs or hard drives.
+- In 0 of 35 labels across seven input conditions (frame rate, width, keyframes, thinking on) does the model name the seed film as the object moved; 23 of 35 call the pillows battery packs or hard drives.
 - A plausible one-line hint, "aboard the ISS, plant growth experiment", cuts the battery reading from 5 of 5 to 1 of 5 for 17 tokens. Only a hint that names the task gets the film named (4 of 5).
 - Frame rate and width do not change the token count (6,379 tokens for the clip at 2, 4 or 8 fps and at 480 or 960 px): Token Factory resamples the video. Thinking on made labels worse and cost twice as much.
 - Keyframes report a manipulation that never happened on the chess clip in 4 of 5 runs; the video never does.
@@ -109,7 +109,7 @@ In the first design 48 of 124 answers that carried the missing value produced no
 
 `tests/measure/patch-loop.test.ts` (live only), four probes (insert, place, pour, carry under vehicle acceleration) at four gravities with disturbances: 36 cases, 3 seeds. Each starts from a naive program; on a failure the model gets the task, the knobs with their bounds and a note of measured facts (never the answer), and returns a patch; the simulator re-runs; at most 5 patches.
 
-A naive program, written the way a person would do the task, fails in 90 of 108 runs at iteration 0: the disturbances (a hand-off velocity, an offset, a vehicle burst, orbit) break it. Six seeds per case, fix rates with Wilson 95% intervals:
+A naive program, written the way a person would do the task, fails in 93 of 108 runs (86%) at iteration 0: the disturbances (a hand-off velocity, an offset, a vehicle burst, orbit) break it. In 90 of those 93 a passing program exists, and the fix rates below count only those solvable failures (180 runs over six seeds). Six seeds per case, fix rates with Wilson 95% intervals:
 
 | Patcher | Fixed within 5 patches | Fixed on the first patch | Cost per fixed case | Model time per fixed case |
 |---|---|---|---|---|
@@ -140,7 +140,7 @@ Limits: the program is 2 to 4 bounded knobs, not the full interpreter; the failu
 
 The market brief (`docs/research/market.md`, section 5) prices the saving on a 500-demonstration campaign from one vendor's re-collection figure (30 to 50% of the original budget) and a share of that re-collection avoided. That share is still a model: it can only be measured on a real collection campaign, before and after. What is now measured is everything around it:
 
-- **What finding a failure costs.** A naive, human-like program fails 83% of the disturbed scenarios above. The rehearsal finds those failures in 0.3 s per gravity, with no robot and no operator.
+- **What finding a failure costs.** A naive, human-like program fails 86% of the disturbed runs above, and the simulator finds each of those failures in a single probe rollout, with no robot and no operator. The arm's physics runs a 24-rollout grid in 0.3 s per gravity (section 3); timing the full detection with the interpreter's checks waits for the interpreter.
 - **What fixing one costs.** The escalating patcher fixes 94% of them within five patches, for US$0.0024 of model calls per fixed case and about 16 s of model time.
 - **What a session costs.** US$0.0375 on average for the whole session, measured.
 - **What the bench cannot see.** Orbit and the Moon turn passing programs into failing ones (a tube let go at the slot mouth seats on Earth and floats in orbit; a free-standing tube topples at a sixth of the push on the Moon), and the liquid model turns an "infeasible" task into a feasible one. Each of those would otherwise surface on the real system.
