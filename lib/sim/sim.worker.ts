@@ -457,7 +457,7 @@ function ik(id: number, target: [number, number, number], approach: Approach) {
     const view = scratch.qpos as unknown;
     if (ArrayBuffer.isView(view)) (view as unknown as Float64Array).set(qpos);
     else qpos.forEach((v, i) => (view as { set: (i: number, v: number) => boolean }).set(i, v));
-    post({ type: "ik", id, result: solveIk(mujoco, model, scratch, target, approach, qpos.slice(0, 5)) });
+    post({ type: "ik", id, result: solveIk(mujoco, model, scratch, target, approach) });
   } finally {
     scratch.delete();
   }

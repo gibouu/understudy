@@ -3,6 +3,7 @@
  * physics; the main thread only renders what it is told. Requests that expect
  * an answer carry an `id` so errors reach the right caller.
  */
+import type { Approach, IkResult } from "./ik";
 
 /** mjtGeom values we render. */
 export const GEOM_PLANE = 0;
@@ -65,8 +66,6 @@ export type Frame = {
   /** nsite x 3 world positions */
   siteXpos: Float64Array;
 };
-
-import type { Approach, IkResult } from "./ik";
 
 export type Waypoint = { t: number; q: number[] };
 

@@ -66,7 +66,8 @@ export function approachVector(approach: Approach, target: Vec3): Vec3 {
 /**
  * Solve for the tip site at `target` (world metres) coming in along `approach`.
  * `data` is scratch: its arm qpos is overwritten; other joints (gripper, free
- * bodies) are read as they are. `seed` (IK_JOINTS order) is tried first.
+ * bodies) are read as they are. `seed` (IK_JOINTS order) is tried first;
+ * without one, the arm's pose in `data`.
  */
 export function solveIk(
   mujoco: MainModule,
@@ -77,7 +78,9 @@ export function solveIk(
   seed?: number[],
 ): IkResult {
   const arm = armIndex(model);
-  setArm(data, arm.qposadr, seed ?? SEEDS[0]);
+  const qpos = toNumbers(data.qpos);
+  seed ??= arm.qposadr.map((adr) => qpos[adr]);
+  setArm(data, arm.qposadr, seed);
   mujoco.mj_kinematics(model, data);
   const pan = panAnchor(data, arm.panJoint);
   const axis = projectOntoPitchPlane(approachVector(approach, target), target, pan);
@@ -85,7 +88,7 @@ export function solveIk(
   const facing = -Math.atan2(target[1] - pan[1], target[0] - pan[0]);
   const seeds = SEEDS.map((s) => [facing, ...s.slice(1)]);
   let best: IkResult | null = null;
-  for (const s of seed ? [seed, ...seeds] : seeds) {
+  for (const s of [seed, ...seeds]) {
     const r = descend(mujoco, model, data, arm, target, axis.v, s);
     const res: IkResult = { ...r, axis: axis.v, approach_deg: axis.deg };
     if (!best || score(res) < score(best)) best = res;

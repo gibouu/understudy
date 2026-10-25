@@ -39,7 +39,8 @@ export function StageView() {
   const [approach, setApproach] = useState<Approach>("top");
   const [ik, setIk] = useState<(IkResult & { asked: string }) | null>(null);
   const lastUi = useRef(0);
-  const pressAt = useRef<[number, number]>([0, 0]);
+  /** a left-button, primary-pointer press: right/middle buttons pan and a second finger pinches */
+  const pressAt = useRef<[number, number] | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -146,11 +147,12 @@ export function StageView() {
         <canvas
           ref={canvasRef}
           className="h-full w-full"
-          onPointerDown={(e) => (pressAt.current = [e.clientX, e.clientY])}
+          onPointerDown={(e) => (pressAt.current = e.button === 0 && e.isPrimary ? [e.clientX, e.clientY] : null)}
           onPointerUp={(e) => {
             // a click, not an orbit drag: move the tip above that floor point at the current height
-            const [x0, y0] = pressAt.current;
-            if (!meta || Math.hypot(e.clientX - x0, e.clientY - y0) > 5) return;
+            const start = pressAt.current;
+            pressAt.current = null;
+            if (!meta || !start || e.button !== 0 || Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 5) return;
             const p = rendererRef.current?.floorPoint(e.clientX, e.clientY);
             if (p) moveTo([Math.round(p[0] * 1000), Math.round(p[1] * 1000), target[2]]);
           }}
