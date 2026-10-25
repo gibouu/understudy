@@ -2,10 +2,9 @@ import { TaskSpec } from "@/lib/spec/schema";
 
 /**
  * The /stage scene until a compiled spec arrives: a 17 x 100 mm tube standing
- * on the table and a rack whose pocket it goes into. Placed inside the arm's
- * top-down reach (measured in #19): the tube's mid-height (50 mm) and a point
- * 50 mm above the pocket opening both solve. The pocket is 20 mm wide (17 mm
- * plus 3 mm clearance), 32 mm deep, near the 24 Oct zero-g check.
+ * on the table and a rack with a 20 mm pocket. Top-down reach ends near
+ * z = 90 mm: the tube's mid-height and 50 mm above the pocket must both
+ * solve, which tests/sim/demo-spec.test.ts checks.
  */
 export const DEMO_SPEC = TaskSpec.parse({
   version: 1,

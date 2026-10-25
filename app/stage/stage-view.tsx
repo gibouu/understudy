@@ -70,21 +70,13 @@ export function StageView() {
           lastUi.current = now;
           setSimT(frame.t);
           setDropped(frame.dropped_s);
-          const tubeGeom = client.meta?.geoms.find((g) => g.name === `${TUBE}_geom`);
-          if (tubeGeom) {
-            const i = 3 * tubeGeom.id;
-            setTube([frame.geomXpos[i], frame.geomXpos[i + 1], frame.geomXpos[i + 2]]);
-          }
-          const site = client.meta?.sites.find((s) => s.name === SO101_TIP_SITE);
-          if (site) {
-            const i = 3 * site.id;
-            setTip([frame.siteXpos[i], frame.siteXpos[i + 1], frame.siteXpos[i + 2]]);
-          }
-          const opening = client.meta?.sites.find((s) => s.name === POCKET_SITE);
-          if (opening) {
-            const i = 3 * opening.id;
-            setPocket([frame.siteXpos[i], frame.siteXpos[i + 1], frame.siteXpos[i + 2]]);
-          }
+          const xyz = (list: { id: number; name: string }[] | undefined, xpos: Float64Array, name: string) => {
+            const i = 3 * (list?.find((x) => x.name === name)?.id ?? -1);
+            return i < 0 ? null : ([xpos[i], xpos[i + 1], xpos[i + 2]] as [number, number, number]);
+          };
+          setTube(xyz(client.meta?.geoms, frame.geomXpos, `${TUBE}_geom`));
+          setTip(xyz(client.meta?.sites, frame.siteXpos, SO101_TIP_SITE));
+          setPocket(xyz(client.meta?.sites, frame.siteXpos, POCKET_SITE));
         }
       });
     clientRef.current = client;
