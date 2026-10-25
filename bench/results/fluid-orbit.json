@@ -1,0 +1,66 @@
+{
+  "name": "fluid-orbit",
+  "title": "c. Orbit (0 g): the same tank, gate open for 2.44 s (1.2 x the Moon's t90)",
+  "measured_at": "2026-10-25T18:02:55.924Z",
+  "machine": "Apple M4",
+  "node": "v24.21.0",
+  "head": [
+    "quantity",
+    "measured",
+    "tolerance"
+  ],
+  "rows": [
+    [
+      "fraction drained",
+      "0.0%",
+      "< 5%"
+    ],
+    [
+      "rms radius about the centroid (mm)",
+      "31.6 -> 31.6",
+      "within 10%"
+    ],
+    [
+      "farthest particle from the centroid (mm)",
+      "50.7 -> 50.7",
+      "reported"
+    ],
+    [
+      "particles with < 3 neighbours within h",
+      "0.0%",
+      "< 2%"
+    ],
+    [
+      "centroid drift (mm)",
+      "0.8",
+      "reported"
+    ],
+    [
+      "kinetic energy (J)",
+      "8.49e-7",
+      "reported"
+    ]
+  ],
+  "notes": [
+    "The drift is the blob rounding itself (weak cohesion) and pushing off the floor; with no wall adhesion nothing holds it down."
+  ],
+  "params": {
+    "d": 0.005,
+    "W": 0.06,
+    "slot": 0.015,
+    "t": 0.01,
+    "fill": 0.07,
+    "seconds": 2.4376,
+    "solver": "defaults"
+  },
+  "results": {
+    "drained": 0,
+    "rms0": 0.031648725967492485,
+    "rms1": 0.031625155235498026,
+    "rmax0": 0.05065888207722915,
+    "rmax1": 0.050747894533492946,
+    "isolated": 0,
+    "centroid_drift_m": 0.0008398692860732185,
+    "kinetic_energy_J": 8.489502332023527e-7
+  }
+}

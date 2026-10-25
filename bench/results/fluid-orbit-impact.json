@@ -1,0 +1,97 @@
+{
+  "name": "fluid-orbit-impact",
+  "title": "c2. Orbit control: 1000 particles (d = 4 mm) thrown at 0.3 m/s against a wall at 0 g, 0.8 s; the control has the pressure solve off",
+  "measured_at": "2026-10-25T18:02:56.291Z",
+  "machine": "Apple M4",
+  "node": "v24.21.0",
+  "head": [
+    "quantity",
+    "liquid (defaults)",
+    "control: no pressure (0 iterations)",
+    "liquid must"
+  ],
+  "rows": [
+    [
+      "mean velocity in free flight / v0 (x; y, z)",
+      "1.000; -0.000, 0.000",
+      "1.000; 0.000, 0.000",
+      "1 within 1%; 0 within 1%"
+    ],
+    [
+      "peak mean compression through the impact",
+      "0.1%",
+      "350.4%",
+      "< 5%"
+    ],
+    [
+      "peak max compression",
+      "2.0%",
+      "420.1%",
+      "reported"
+    ],
+    [
+      "lateral spread along the wall (rms, end / start)",
+      "7.98",
+      "1.00",
+      "> 1.2"
+    ],
+    [
+      "particles with < 3 neighbours within h",
+      "0.0%",
+      "0.0%",
+      "< 2%"
+    ],
+    [
+      "mean velocity at 0.8 s / v0 (x)",
+      "0.007",
+      "0.000",
+      "reported"
+    ]
+  ],
+  "notes": [
+    "A liquid keeps its momentum in flight, stays near rest density as it hits, and flows sideways along the wall; dust without pressure piles into the wall."
+  ],
+  "params": {
+    "v0": 0.3,
+    "spacing": 0.004,
+    "block_m": 0.04,
+    "wall_x_m": 0.08,
+    "seconds": 0.8
+  },
+  "results": {
+    "liquid": {
+      "n": 1000,
+      "free": [
+        0.2999998843065248,
+        -7.83815463211709e-8,
+        6.453180009088304e-7
+      ],
+      "peakMean": 0.001320234719073637,
+      "peakMax": 0.019614172784125916,
+      "spread": 7.9826782932926195,
+      "isolated": 0,
+      "after": [
+        0.002149445695681448,
+        0.0005007479608289934,
+        -0.00043586493227822706
+      ]
+    },
+    "dust": {
+      "n": 1000,
+      "free": [
+        0.3000000000000007,
+        0,
+        0
+      ],
+      "peakMean": 3.503508776140894,
+      "peakMax": 4.200806745534526,
+      "spread": 1,
+      "isolated": 0,
+      "after": [
+        0,
+        0,
+        0
+      ]
+    }
+  }
+}

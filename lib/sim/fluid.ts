@@ -53,9 +53,9 @@
  *     gain 167 kg/m^3. Its cost grows with the square of the number of thin solids
  *     near a particle (1, 16, 64 panels: 0.19, 3.6, 19.6 ms per substep at 1,000
  *     particles), fine for a scene with a few geoms.
- *   - The closing contact pass projects a particle out of each solid in turn (up to 4
- *     rounds). Where solids leave no room for it at all, the last projection wins and it
- *     may end inside another solid.
+ *   - Where solids leave no room at all for a particle (say two walls closer than its
+ *     diameter), the closing contact pass cannot place it: the last projection stands, it
+ *     ends inside another solid, and closeUnresolved counts it.
  */
 
 export type Vec3 = [number, number, number];
@@ -180,6 +180,9 @@ interface Solid {
   qB: Float64Array;
   /** rotation over the current substep, rad */
   angle: number;
+  /** the part of that rotation that can change a distance to the surface: 0 for a sphere, the
+   * component off the local z axis for capsules, cylinders and planes, all of it for a box */
+  turn: number;
   /** thinner than the kernel: liquid on both sides could see itself through it */
   thin: boolean;
 }
@@ -193,6 +196,12 @@ const PSI_SAMPLES = 128;
 const ROTATION_EPS = 1e-6;
 /** most pose samples along one substep of a rotating solid; past it, conservative advancement takes over */
 const MAX_SWEEP_SAMPLES = 512;
+/** conservative-advancement steps before the rest of the substep is sampled densely */
+const CA_STEPS = 2000;
+/** most dense samples after conservative advancement crawls */
+const DENSE_SWEEP_CAP = 1 << 20;
+/** most closing rounds per particle */
+const CLOSE_ROUNDS = 256;
 /** most nearby surfaces counted in one particle's wall density */
 const MAX_PLANES = 8;
 /** largest (W / W(dq))^n the tensile correction may use */
@@ -546,6 +555,7 @@ export class Fluid {
       qA: new Float64Array([1, 0, 0, 0]),
       qB: new Float64Array([1, 0, 0, 0]),
       angle: 0,
+      turn: 0,
       thin: false,
     };
     this.solids.push(s);
@@ -643,6 +653,7 @@ export class Fluid {
       matToQuat(R, s.qA);
       s.qB.set(s.qA);
       s.angle = 0;
+      s.turn = 0;
     }
   }
 
@@ -653,6 +664,7 @@ export class Fluid {
       poseAt(s, b, s.posB, s.rotB, s.qB);
       const dot = Math.abs(s.qA[0] * s.qB[0] + s.qA[1] * s.qB[1] + s.qA[2] * s.qB[2] + s.qA[3] * s.qB[3]);
       s.angle = 2 * Math.acos(Math.min(1, dot));
+      s.turn = s.angle * offAxis(s.shape, s.qA, s.qB);
     }
   }
 
@@ -1250,22 +1262,25 @@ export class Fluid {
 
   /**
    * End of substep: particles pushed by a swept contact, or touching two or more solids,
-   * are projected out of every solid at its end pose again (end points only, Gauss-Seidel,
-   * until nothing moves, at most 4 rounds), so a push from one solid cannot leave them
-   * inside another. Where solids leave no room at all the last projection wins.
+   * must end clear of every solid at its end pose. Each is projected out of the solids in
+   * turn (end points only) until a round moves nothing. Alternating between two surfaces
+   * converges slowly in a narrow wedge, so after a round that met two or more, the point
+   * goes straight to the nearest point of the two last tangent half-spaces (exact for
+   * planes and box faces), and the next round checks it. When those two half-spaces do
+   * not overlap, or CLOSE_ROUNDS pass without settling, there is no room for the particle:
+   * the last projection stands and closeUnresolved counts it.
    */
   private closeContacts() {
     const n = this.n, r = this.collisionRadius;
     const { x, p, entangled } = this;
     const loc = this.tmpLoc, start = this.tmpStart, nrm = this.tmpNrm;
-    let any = false;
-    for (let i = 0; i < n && !any; i++) if (entangled[i]) any = true;
-    if (!any) return;
-    for (let round = 0; round < 4; round++) {
-      let moved = false;
-      for (let i = 0; i < n; i++) {
-        if (!entangled[i]) continue;
-        const o = 3 * i;
+    const C = this.closeC, N = this.closeN;
+    for (let i = 0; i < n; i++) {
+      if (!entangled[i]) continue;
+      const o = 3 * i;
+      let settled = false;
+      for (let round = 0; round < CLOSE_ROUNDS && !settled; round++) {
+        let nc = 0, travel = 0;
         for (let sid = 0; sid < this.solids.length; sid++) {
           const s = this.solids[sid];
           if (!s.enabled) continue;
@@ -1276,20 +1291,44 @@ export class Fluid {
           start[1] = A[1] * dx + A[4] * dy + A[7] * dz;
           start[2] = A[2] * dx + A[5] * dy + A[8] * dz;
           if (!projectOut(s.shape, r, loc, start, nrm)) continue;
+          const bx = p[o], by = p[o + 1], bz = p[o + 2];
           this.placeOnSolid(i, sid, s, loc, nrm);
-          moved = true;
+          travel += Math.hypot(p[o] - bx, p[o + 1] - by, p[o + 2] - bz);
+          // its tangent half-space: n . (y - c) >= 0, c the projected point
+          const B = s.rotB, k = nc++ % 2;
+          C[3 * k] = p[o]; C[3 * k + 1] = p[o + 1]; C[3 * k + 2] = p[o + 2];
+          N[3 * k] = B[0] * nrm[0] + B[1] * nrm[1] + B[2] * nrm[2];
+          N[3 * k + 1] = B[3] * nrm[0] + B[4] * nrm[1] + B[5] * nrm[2];
+          N[3 * k + 2] = B[6] * nrm[0] + B[7] * nrm[1] + B[8] * nrm[2];
         }
         const b = this.bounds;
         if (b)
           for (let a = 0; a < 3; a++) {
             const lo = b.min[a] + r, hi = b.max[a] - r;
-            if (p[o + a] < lo) { p[o + a] = lo; moved = true; }
-            else if (p[o + a] > hi) { p[o + a] = hi; moved = true; }
+            const v = p[o + a];
+            if (v >= lo && v <= hi) continue;
+            p[o + a] = v < lo ? lo : hi;
+            travel += Math.abs(p[o + a] - v);
+            const k = nc++ % 2;
+            C[3 * k] = p[o]; C[3 * k + 1] = p[o + 1]; C[3 * k + 2] = p[o + 2];
+            N[3 * k] = N[3 * k + 1] = N[3 * k + 2] = 0;
+            N[3 * k + a] = v < lo ? 1 : -1;
           }
+        // settled when a round's projections move it less than 0.1 nm in all (what is left is rounding)
+        if (nc === 0 || travel < 1e-10) {
+          settled = true;
+          break;
+        }
+        if (nc >= 2 && !projectTwoHalfSpaces(p, o, C, N)) break; // no room between them: last projection stands
       }
-      if (!moved) break;
+      if (!settled) this.closeUnresolved++;
     }
   }
+
+  /** particles the closing pass could not place clear of every solid (no room, or not settled) */
+  closeUnresolved = 0;
+  private readonly closeC = new Float64Array(6);
+  private readonly closeN = new Float64Array(6);
 
   /** world box holding every pose of a solid over the substep, inflated by pad; null when unbounded */
   private sweptBounds(s: Solid, pad: number, rotating: boolean): number[] | null {
@@ -1323,13 +1362,14 @@ export class Fluid {
     const dP = Math.hypot(PB[0] - PA[0], PB[1] - PA[1], PB[2] - PA[2]);
     const arm = Math.max(Math.hypot(x[o] - PA[0], x[o + 1] - PA[1], x[o + 2] - PA[2]), Math.hypot(p[o] - PB[0], p[o + 1] - PB[1], p[o + 2] - PB[2])) + dP;
     // bound on the relative path length (nlerp turns at most ~1.1x faster than uniform)
-    const path = 1.3 * (Math.hypot(p[o] - x[o], p[o + 1] - x[o + 1], p[o + 2] - x[o + 2]) + dP + s.angle * arm);
+    // spin about a symmetry axis moves no surface point and does not count
+    const path = 1.3 * (Math.hypot(p[o] - x[o], p[o + 1] - x[o + 1], p[o + 2] - x[o + 2]) + dP + s.turn * arm);
     // distance to a surface changes no faster than the point moves: too far to reach it, skip
     if (surfaceDistance(s.shape, start, this.tmpN2) - r > path) return false;
     const plane = s.shape.type === "plane";
     const need = Math.ceil(path / (plane ? r / 2 : thin));
     // too fast or too thin for sampling: exact conservative advancement instead
-    if (need > MAX_SWEEP_SAMPLES) return this.advanceRotating(s, r, i, start, loc, nrm);
+    if (need > MAX_SWEEP_SAMPLES) return this.advanceRotating(s, r, i, start, loc, nrm, thin);
     const N = Math.max(2, need);
     this.sweepSampleCount += N - 1;
     this.sampleTable(s, N);
@@ -1389,59 +1429,126 @@ export class Fluid {
   /**
    * Exact sweep for a particle the sampling would need more than MAX_SWEEP_SAMPLES for
    * (a very thin or very fast rotating solid): conservative advancement on the true
-   * rounded shape. From t = 0, step t by (distance to the inflated surface) / (upper
-   * bound on the relative point speed): linear part |(p - x) - (PB - PA)| plus the
-   * nlerp's top turning rate 4 tan(angle / 4) times the farthest the particle gets from
-   * the solid's centre. No step can jump the surface and the steps shrink only near it;
-   * a cap on their number ends in a contact, so it always terminates and never tunnels.
-   * On contact the solid carries the contact point to its end pose, and the particle adds
-   * its own remaining motion except any part into the solid.
+   * rounded shape. From t = 0, step t by (distance to the inflated surface) / L, L an
+   * upper bound on how fast that distance can change: the linear part
+   * |(p - x) - (PB - PA)| plus the nlerp's top turning rate 4 tan(angle / 4), less any
+   * spin about a symmetry axis, times the farthest the particle gets from the solid's
+   * centre. No step can jump the surface. Contact is declared only when the distance
+   * really reaches the surface. If the steps crawl (a particle grazing a surface that
+   * slides past it), after CA_STEPS the rest of the substep is sampled at exact poses no
+   * further apart than the solid's half-thickness / L, which cannot step over the solid,
+   * and contact needs a sample inside. Neither path invents a contact.
    */
-  private advanceRotating(s: Solid, r: number, i: number, start: Float64Array, loc: Float64Array, nrm: Float64Array): boolean {
+  private advanceRotating(s: Solid, r: number, i: number, start: Float64Array, loc: Float64Array, nrm: Float64Array, thin: number): boolean {
     const { x, p } = this;
     const o = 3 * i;
     const PA = s.posA, PB = s.posB;
     const lin = Math.hypot(p[o] - x[o] - (PB[0] - PA[0]), p[o + 1] - x[o + 1] - (PB[1] - PA[1]), p[o + 2] - x[o + 2] - (PB[2] - PA[2]));
     // |w(t) - P(t)| is convex in t, so its largest value is at an end
     const arm = Math.max(Math.hypot(x[o] - PA[0], x[o + 1] - PA[1], x[o + 2] - PA[2]), Math.hypot(p[o] - PB[0], p[o + 1] - PB[1], p[o + 2] - PB[2]));
-    const speed = lin + 4 * Math.tan(s.angle / 4) * arm;
-    if (!(speed > 0)) return false;
-    const q = this.tmpQ, nq = this.tmpN2, R = this.tmpR2, P = this.tmpP2;
+    const L = lin + 4 * Math.tan(s.angle / 4) * (s.angle > 0 ? s.turn / s.angle : 0) * arm;
+    if (!(L > 0)) return false; // nothing moves relative to the surface: still clear
+    this.advanceCount++;
+    const q = this.tmpQ, nq = this.tmpN2, raw = this.tmpRaw, prev = this.tmpPrev;
     q.set(start);
-    let t = 0, contact = false;
-    for (let step = 0; step < 100000; step++) {
+    let t = 0, contact = false, steps = 0;
+    for (; steps < CA_STEPS; steps++) {
       const d = surfaceDistance(s.shape, q, nq) - r;
       if (d <= SURFACE_EPS) {
         contact = true;
         break;
       }
-      t += d / speed;
-      if (t >= 1) break;
-      this.poseAtSub(s, t, P, R);
-      const wx = x[o] + (p[o] - x[o]) * t - P[0], wy = x[o + 1] + (p[o + 1] - x[o + 1]) * t - P[1], wz = x[o + 2] + (p[o + 2] - x[o + 2]) * t - P[2];
-      q[0] = R[0] * wx + R[3] * wy + R[6] * wz;
-      q[1] = R[1] * wx + R[4] * wy + R[7] * wz;
-      q[2] = R[2] * wx + R[5] * wy + R[8] * wz;
-      if (step === 99999) contact = true; // ending in a contact keeps it safe
+      t += d / L;
+      if (t >= 1) return false; // reached the end of the substep clear
+      this.localAtSub(s, i, t, q);
     }
-    this.sweepSampleCount++;
-    this.advanceCount++;
-    if (!contact) return false;
-    // the solid carries the contact point; the particle adds its own later motion, never into the solid
-    surfaceDistance(s.shape, q, nq);
-    const B = s.rotB, rest = 1 - t;
-    const ox = (p[o] - x[o]) * rest, oy = (p[o + 1] - x[o + 1]) * rest, oz = (p[o + 2] - x[o + 2]) * rest;
-    let ux = B[0] * ox + B[3] * oy + B[6] * oz, uy = B[1] * ox + B[4] * oy + B[7] * oz, uz = B[2] * ox + B[5] * oy + B[8] * oz;
-    const un = ux * nq[0] + uy * nq[1] + uz * nq[2];
-    if (un < 0) {
-      ux -= un * nq[0]; uy -= un * nq[1]; uz -= un * nq[2];
+    this.sweepSampleCount += steps;
+    raw.set(q);
+    if (!contact) {
+      // crawling: sample the rest densely; a sample inside is the contact
+      const M = Math.min(DENSE_SWEEP_CAP, Math.max(1, Math.ceil(((1 - t) * L) / thin)));
+      this.sweepSampleCount += M;
+      prev.set(q);
+      const t0 = t;
+      for (let k = 1; k <= M; k++) {
+        const tk = t0 + ((1 - t0) * k) / M;
+        this.localAtSub(s, i, tk, q);
+        raw.set(q);
+        if (projectOut(s.shape, r, q, prev, nq)) {
+          contact = true;
+          t = tk;
+          break;
+        }
+        prev.set(q);
+      }
+      if (!contact) return false;
+    } else surfaceDistance(s.shape, q, nq); // the outward normal at the contact
+    return this.afterContact(s, i, t, q, raw, nq, loc, nrm);
+  }
+
+  /**
+   * The rest of the substep after particle i met solid s at t: the contact plane (point
+   * q, normal n, fixed in the solid's coordinates) moves with the solid and pushes the
+   * particle only along its normal, never sideways, so contact is frictionless. Sub-steps
+   * no more than 3 degrees of turn apart keep the pushes close to the true path. `loc`
+   * becomes the particle's end point plus the pushes, in the end frame.
+   */
+  private afterContact(s: Solid, i: number, t: number, q: Float64Array, raw: Float64Array, n: Float64Array, loc: Float64Array, nrm: Float64Array): boolean {
+    const { p } = this;
+    const o = 3 * i;
+    const D = this.tmpD, w = this.tmpW, R = this.tmpR2;
+    // the push that put the contact sample on the surface, in world coordinates
+    this.poseAtSub(s, t, this.tmpP2, R);
+    const ux = q[0] - raw[0], uy = q[1] - raw[1], uz = q[2] - raw[2];
+    D[0] = R[0] * ux + R[1] * uy + R[2] * uz;
+    D[1] = R[3] * ux + R[4] * uy + R[5] * uz;
+    D[2] = R[6] * ux + R[7] * uy + R[8] * uz;
+    const cx = q[0], cy = q[1], cz = q[2], nx = n[0], ny = n[1], nz = n[2];
+    // a particle whose own end point is in front of the carried contact plane did not cross:
+    // leave it (this also keeps repeated projection passes in one substep from adding up)
+    {
+      const B = s.rotB, PB = s.posB;
+      const dx = p[o] - PB[0], dy = p[o + 1] - PB[1], dz = p[o + 2] - PB[2];
+      const ex = B[0] * dx + B[3] * dy + B[6] * dz, ey = B[1] * dx + B[4] * dy + B[7] * dz, ez = B[2] * dx + B[5] * dy + B[8] * dz;
+      if ((ex - cx) * nx + (ey - cy) * ny + (ez - cz) * nz >= 0) return false;
     }
-    loc[0] = q[0] + ux; loc[1] = q[1] + uy; loc[2] = q[2] + uz;
-    nrm.set(nq);
+    const M = Math.min(256, Math.max(1, Math.ceil((s.angle * (1 - t)) / ((3 * Math.PI) / 180))));
+    for (let k = 1; k <= M; k++) {
+      const tk = t + ((1 - t) * k) / M;
+      this.localAtSub(s, i, tk, w, D);
+      const sd = (w[0] - cx) * nx + (w[1] - cy) * ny + (w[2] - cz) * nz;
+      if (sd < 0) {
+        // behind the contact plane: pushed back onto it along its normal (R is the pose at tk)
+        D[0] -= sd * (R[0] * nx + R[1] * ny + R[2] * nz);
+        D[1] -= sd * (R[3] * nx + R[4] * ny + R[5] * nz);
+        D[2] -= sd * (R[6] * nx + R[7] * ny + R[8] * nz);
+      }
+    }
+    const B = s.rotB, PB = s.posB;
+    const dx = p[o] + D[0] - PB[0], dy = p[o + 1] + D[1] - PB[1], dz = p[o + 2] + D[2] - PB[2];
+    loc[0] = B[0] * dx + B[3] * dy + B[6] * dz;
+    loc[1] = B[1] * dx + B[4] * dy + B[7] * dz;
+    loc[2] = B[2] * dx + B[5] * dy + B[8] * dz;
+    nrm[0] = nx; nrm[1] = ny; nrm[2] = nz;
     this.tmpPrev.set(q);
-    if (projectOut(s.shape, r, loc, this.tmpPrev, nq)) nrm.set(nq); // still in the way at the end: pushed on
+    if (projectOut(s.shape, this.collisionRadius, loc, this.tmpPrev, this.tmpN2)) nrm.set(this.tmpN2); // still in the way at the end: pushed on
     return true;
   }
+
+  /** particle i (plus a world offset) in solid s's coordinates at fraction t of the substep; leaves that pose in tmpR2 / tmpP2 */
+  private localAtSub(s: Solid, i: number, t: number, out: Float64Array, offset?: Float64Array) {
+    const { x, p } = this;
+    const o = 3 * i, R = this.tmpR2, P = this.tmpP2;
+    this.poseAtSub(s, t, P, R);
+    const wx = x[o] + (p[o] - x[o]) * t - P[0] + (offset ? offset[0] : 0);
+    const wy = x[o + 1] + (p[o + 1] - x[o + 1]) * t - P[1] + (offset ? offset[1] : 0);
+    const wz = x[o + 2] + (p[o + 2] - x[o + 2]) * t - P[2] + (offset ? offset[2] : 0);
+    out[0] = R[0] * wx + R[3] * wy + R[6] * wz;
+    out[1] = R[1] * wx + R[4] * wy + R[7] * wz;
+    out[2] = R[2] * wx + R[5] * wy + R[8] * wz;
+  }
+
+  private readonly tmpW = new Float64Array(3);
 
   /** particle sweeps resolved by conservative advancement since creation (diagnostic) */
   advanceCount = 0;
@@ -1875,6 +1982,27 @@ function poseAt(s: Solid, t: number, pos: Float64Array, rot: Float64Array, quat:
   }
 }
 
+/**
+ * Fraction of the substep's rotation (qA -> qB) that can move a surface point. The
+ * relative rotation's axis is fixed in the body over the substep (nlerp stays on one
+ * great circle), and a solid of revolution spun about its own axis keeps every surface
+ * point in place: a sphere about any axis, a capsule, cylinder or plane about local z.
+ */
+function offAxis(shape: SolidShape, qA: Float64Array, qB: Float64Array): number {
+  if (shape.type === "box") return 1;
+  if (shape.type === "sphere") return 0;
+  // vector part of conj(qA) * qB: the rotation axis in body coordinates, times sin(angle / 2)
+  const aw = qA[0], ax = -qA[1], ay = -qA[2], az = -qA[3];
+  const bw = qB[0], bx = qB[1], by = qB[2], bz = qB[3];
+  const vx = aw * bx + bw * ax + (ay * bz - az * by);
+  const vy = aw * by + bw * ay + (az * bx - ax * bz);
+  const vz = aw * bz + bw * az + (ax * by - ay * bx);
+  const l = Math.hypot(vx, vy, vz);
+  if (!(l > 0)) return 0;
+  const c = vz / l;
+  return Math.sqrt(Math.max(0, 1 - c * c));
+}
+
 /** Particle i in solid s's end-of-substep frame. */
 function toLocal(s: Solid, pos: Float64Array, i: number, out: Float64Array) {
   const B = s.rotB, o = 3 * i;
@@ -2096,6 +2224,38 @@ function sweepStraight(shape: SolidShape, r: number, a: Float64Array, b: Float64
   if (sd < 0) {
     b[0] -= sd * nrm[0]; b[1] -= sd * nrm[1]; b[2] -= sd * nrm[2];
   }
+  return true;
+}
+
+/**
+ * Move p[o..o+2] to the nearest point of the half-spaces n_k . (y - c_k) >= 0, k = 0, 1
+ * (C, N hold c_0, c_1 and n_0, n_1). Returns false, leaving p alone, when they do not
+ * overlap.
+ */
+function projectTwoHalfSpaces(p: Float64Array, o: number, C: Float64Array, N: Float64Array): boolean {
+  const tol = 1e-12;
+  const px = p[o], py = p[o + 1], pz = p[o + 2];
+  const s0 = N[0] * (px - C[0]) + N[1] * (py - C[1]) + N[2] * (pz - C[2]);
+  const s1 = N[3] * (px - C[3]) + N[4] * (py - C[4]) + N[5] * (pz - C[5]);
+  if (s0 >= -tol && s1 >= -tol) return true;
+  let best = Infinity, bx = 0, by = 0, bz = 0;
+  const consider = (x: number, y: number, z: number) => {
+    const ok0 = N[0] * (x - C[0]) + N[1] * (y - C[1]) + N[2] * (z - C[2]) >= -tol;
+    const ok1 = N[3] * (x - C[3]) + N[4] * (y - C[4]) + N[5] * (z - C[5]) >= -tol;
+    const d = (x - px) ** 2 + (y - py) ** 2 + (z - pz) ** 2;
+    if (ok0 && ok1 && d < best) { best = d; bx = x; by = y; bz = z; }
+  };
+  // one plane active
+  if (s0 < 0) consider(px - s0 * N[0], py - s0 * N[1], pz - s0 * N[2]);
+  if (s1 < 0) consider(px - s1 * N[3], py - s1 * N[4], pz - s1 * N[5]);
+  // both active: p + l0 n0 + l1 n1 on both planes, l0, l1 >= 0
+  const c = N[0] * N[3] + N[1] * N[4] + N[2] * N[5], det = 1 - c * c;
+  if (det > 1e-12) {
+    const l0 = (-s0 + c * s1) / det, l1 = (-s1 + c * s0) / det;
+    if (l0 >= -tol && l1 >= -tol) consider(px + l0 * N[0] + l1 * N[3], py + l0 * N[1] + l1 * N[4], pz + l0 * N[2] + l1 * N[5]);
+  }
+  if (best === Infinity) return false;
+  p[o] = bx; p[o + 1] = by; p[o + 2] = bz;
   return true;
 }
 

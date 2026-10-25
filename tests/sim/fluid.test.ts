@@ -526,20 +526,86 @@ describe("removed limits", () => {
       { half: 0.00001, spacing: 0.0001, from: -40, to: 50, substeps: 4 }, // Codex's repro
       { half: 0.000001, spacing: 0.00001, from: -60, to: 60, substeps: 1 }, // ten times thinner, 120 degrees in one substep
     ];
-    for (const c of cases) {
-      const f = create({ spacing: c.spacing, gravity: [0, 0, 0], cohesion: 0, wallDensity: false, xsph: 0, substeps: c.substeps });
-      const rot = (deg: number) => axisAngleToMat([0, 0, 1], (deg * Math.PI) / 180);
-      const rod = f.addSolid({ shape: { type: "box", halfSize: [1, c.half, c.half] }, pose: { position: [0, 0, 0], rotation: rot(c.from) } });
-      f.addParticles([0.9992, 0, 0]);
-      f.setSolidPose(rod, { position: [0, 0, 0], rotation: rot(c.to) });
+    for (const c of cases)
+      for (const radius of [0.9992, 0.5]) {
+        const f = create({ spacing: c.spacing, gravity: [0, 0, 0], cohesion: 0, wallDensity: false, xsph: 0, substeps: c.substeps });
+        const rot = (deg: number) => axisAngleToMat([0, 0, 1], (deg * Math.PI) / 180);
+        const rod = f.addSolid({ shape: { type: "box", halfSize: [1, c.half, c.half] }, pose: { position: [0, 0, 0], rotation: rot(c.from) } });
+        f.addParticles([radius, 0, 0]);
+        f.setSolidPose(rod, { position: [0, 0, 0], rotation: rot(c.to) });
+        f.step(1 / FPS);
+        const [px, py] = [f.positions[0], f.positions[1]];
+        const a = (c.to * Math.PI) / 180, clear = c.half + c.spacing / 2;
+        const along = Math.cos(a) * px + Math.sin(a) * py, across = -Math.sin(a) * px + Math.cos(a) * py;
+        expect(f.advanceCount).toBeGreaterThan(0); // the exact fallback ran
+        expect(Math.hypot(px - radius, py)).toBeGreaterThan(0.2 * radius); // swept, not passed through
+        // never left behind the rod within its length (before the fix: behind it, at its start)
+        expect(across >= clear - 1e-9 || Math.abs(along) > 1 + c.spacing / 2).toBe(true);
+        // mid-rod it rides the face to the end pose; near the tip, frictionless contact may let it slide off the end
+        if (radius === 0.5) expect(across).toBeGreaterThanOrEqual(clear - 1e-9);
+      }
+  });
+});
+
+/** Codex's branch review: no invented contact in the exact sweep, closing contacts that settle. */
+describe("branch review regressions", () => {
+  const quiet = { gravity: [0, 0, 0], wallDensity: false, xsph: 0, cohesion: 0, iterations: 0 } as Partial<FluidParams>;
+
+  it("5a: a capsule spinning on its own axis while sliding along it leaves a particle 1 um away alone", () => {
+    const f = create({ spacing: 0.001, substeps: 1, ...quiet }); // the whole turn in one substep: past 512 samples
+    const cap = f.addSolid({ shape: { type: "capsule", radius: 0.001, halfLength: 1 }, pose: { position: [0, 0, 0] } });
+    f.addParticles([0.001501, 0, 0.5]); // 1 um outside radius + collision radius
+    f.setSolidPose(cap, { position: [0, 0, 0.1], rotation: axisAngleToMat([0, 0, 1], (120 * Math.PI) / 180) });
+    f.step(1 / FPS);
+    const p = f.positions;
+    // before the fix: dragged about 9.2 cm along the axis by an invented contact
+    expect(Math.hypot(p[0] - 0.001501, p[1], p[2] - 0.5)).toBeLessThan(1e-9);
+  });
+
+  it("5b: when conservative advancement crawls past a grazing particle, it finds no contact that is not there", () => {
+    // a box rod (no symmetry) sliding 0.5 m along its length in one substep, turning a hair about it,
+    // 1 um from a particle: far beyond 512 samples, and the advancement steps crawl
+    const f = create({ spacing: 0.0001, substeps: 1, ...quiet });
+    const rod = f.addSolid({ shape: { type: "box", halfSize: [1, 0.00001, 0.00001] }, pose: { position: [0, 0, 0] } });
+    const y0 = 0.00001 + 0.00005 + 0.000001;
+    f.addParticles([0.2, y0, 0]);
+    f.setSolidPose(rod, { position: [0.5, 0, 0], rotation: axisAngleToMat([1, 0, 0], 1e-4) });
+    f.step(1 / FPS);
+    const p = f.positions;
+    expect(f.advanceCount).toBeGreaterThan(0); // the exact fallback ran
+    // before the fix: an invented contact after 100,000 steps dragged it 0.4 m along the rod
+    expect(Math.hypot(p[0] - 0.2, p[1] - y0, p[2])).toBeLessThan(1e-9);
+  });
+
+  it("6: closing contacts settle a particle driven into a 10 degree wedge, and say when there is no room", () => {
+    const half = (5 * Math.PI) / 180, r = 0.0005;
+    // wedge opening toward +x: the planes' outward normals point into it
+    const n1 = [Math.sin(half), Math.cos(half), 0], n2 = [Math.sin(half), -Math.cos(half), 0];
+    const toward = (n: number[]) => {
+      // a rotation taking local z to n (about the axis z x n)
+      const ax = [-n[1], n[0], 0], l = Math.hypot(ax[0], ax[1]);
+      return axisAngleToMat(l > 0 ? ax : [1, 0, 0], Math.acos(n[2]));
+    };
+    for (const substeps of [1, 4]) {
+      const f = create({ spacing: 0.001, substeps, ...quiet, iterations: 4 });
+      f.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0, 0], rotation: toward(n1) } });
+      f.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0, 0], rotation: toward(n2) } });
+      f.addParticles([0.01, 0.0001, 0], [-1.2, 0, 0]);
       f.step(1 / FPS);
-      const [px, py] = [f.positions[0], f.positions[1]];
-      const a = (c.to * Math.PI) / 180;
-      // swept along in front of the rod to its end pose, not passed through
-      expect(py).toBeGreaterThan(0.9 * Math.sin(a));
-      expect(-Math.sin(a) * px + Math.cos(a) * py).toBeGreaterThanOrEqual(c.half + c.spacing / 2 - 1e-9);
-      expect(f.advanceCount).toBeGreaterThan(0); // the exact fallback ran
+      const p = f.positions;
+      const pen = Math.max(0, r - (n1[0] * p[0] + n1[1] * p[1]), r - (n2[0] * p[0] + n2[1] * p[1]));
+      // before the fix: 1.336 mm in with one substep, 1.012 mm with four
+      expect(pen).toBeLessThan(1e-9);
+      expect(f.closeUnresolved).toBe(0);
     }
+    // two walls 0.6 mm apart facing each other: a 1 mm particle cannot fit, and that is reported
+    const g = create({ spacing: 0.001, ...quiet, iterations: 4 });
+    g.addSolid({ shape: { type: "plane" }, pose: { position: [0, -0.0003, 0], rotation: toward([0, 1, 0]) } });
+    g.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0.0003, 0], rotation: toward([0, -1, 0]) } });
+    g.addParticles([0, 0, 0]);
+    g.step(1 / FPS);
+    expect(Array.from(g.positions).every(Number.isFinite)).toBe(true);
+    expect(g.closeUnresolved).toBeGreaterThan(0);
   });
 });
 
