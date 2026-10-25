@@ -1,30 +1,146 @@
 // Shared spend ledger for the Token Factory experiment scripts.
 //
-//   import { charge, spent, guard } from "./bench-ledger.mjs";
-//   guard(worstCaseUsdOfNextCall);              // throws BudgetError past the global cap
-//   charge("bench-label", usd, { model, stage }); // one line per billed call
+//   import { guard, charge, BudgetError, loadPrices, costOf } from "./bench-ledger.mjs";
+//   const PRICES = loadPrices([model, ...]);                       // throws if a model has no list price
+//   const r = guard(worstCaseUsd, { script: "bench-x", capUsd: 5 }); // reserves, or throws BudgetError
+//   try { res = await call(); } catch (e) {
+//     charge("bench-x", worstCaseUsd, { estimated: true, failed: true }, r);  // a failed call costs its estimate
+//     throw e;
+//   }
+//   charge("bench-x", costOf(PRICES, model, usage), { model }, r);  // settles the reservation at the real cost
 //
-// The ledger is bench/results/ledger.jsonl, one JSON object per line:
-//   {"t": ISO time, "script": string, "usd": number, "meta": {...}}
-// Lines are appended with O_APPEND in one write each, so several scripts can
-// charge at the same time. The global cap is BENCH_CAP_USD (default 90) and
-// covers every script; guard(est, { script, capUsd }) also enforces a cap on
-// one script's own lines. Prices are list prices, so the ledger is an estimate
-// of the bill, not the bill. Never put prompts, outputs or keys in meta.
+// The ledger is bench/results/ledger.jsonl (or BENCH_LEDGER_PATH), one JSON object per line:
+//   charge   {"t", "script", "usd", "meta", "settles"?: <reservation id>}   (lines without "type" are charges)
+//   reserve  {"t", "type": "reserve", "id", "script", "usd", "meta"}
+//   release  {"t", "type": "release", "id"}                                  (the call was never sent)
+// spent() sums the charges; pending() sums the reservations not yet settled or released; the caps
+// apply to spent + pending, so concurrent callers cannot all pass on the same last dollar. A
+// reservation that is never settled (a process killed mid-call) keeps counting against the cap
+// until `node scripts/bench-ledger.mjs --settle-stale <minutes>` charges it at its estimate.
 //
-//   node scripts/bench-ledger.mjs            prints the total and the split per script
-//   node scripts/bench-ledger.mjs --seed     adds the bench-session line if it is missing
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+// guard() and reserve() run their check-and-append inside a cross-process lock: an exclusive-create
+// lock file next to the ledger (fs.openSync(path, "wx")), retried for up to 30 s, taken over when it
+// is older than 10 s (critical sections take milliseconds; an old lock means its holder died). A
+// charge() without a reservation settles the oldest open reservation of the same script, so callers
+// written against the first version of this file (guard, then charge) still settle what they reserved.
+//
+// The global cap is BENCH_CAP_USD (default 90). guard(est, { script, capUsd, capScripts }) also caps
+// the exposure of `capScripts` (default [script]) at capUsd. Prices are list prices, so the ledger is
+// an estimate of the bill, not the bill. Never put prompts, outputs or keys in meta.
+//
+//   node scripts/bench-ledger.mjs                       spend and open reservations per script
+//   node scripts/bench-ledger.mjs --seed                adds the bench-session line if it is missing
+//   node scripts/bench-ledger.mjs --settle-stale 30     charges reservations older than 30 min at their estimate
+//   node scripts/bench-ledger.mjs --self-check          concurrency test on a temporary ledger (no network)
+import { spawn } from "node:child_process";
+import { appendFileSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, rmSync, statSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-export const LEDGER = path.join(ROOT, "bench/results/ledger.jsonl");
+export const LEDGER = path.resolve(process.env.BENCH_LEDGER_PATH ?? path.join(ROOT, "bench/results/ledger.jsonl"));
 export const CAP_USD = Number(process.env.BENCH_CAP_USD ?? 90);
+const LOCK = `${LEDGER}.lock`;
+const LOCK_STALE_MS = 10_000;
+const LOCK_WAIT_MS = 30_000;
+/** float slack, so 0.5 + 5 x 0.1 still fits under a cap of 1 */
+const EPS = 1e-9;
 
 export class BudgetError extends Error {}
 
-/** Every line of the ledger; a torn or unreadable line is skipped, never fatal. */
+// --- Lock -------------------------------------------------------------------------
+const sleepMs = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+function withLock(fn) {
+  mkdirSync(path.dirname(LEDGER), { recursive: true });
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  for (;;) {
+    let fd;
+    try {
+      fd = openSync(LOCK, "wx");
+    } catch (err) {
+      if (err?.code !== "EEXIST") throw err;
+      try {
+        if (Date.now() - statSync(LOCK).mtimeMs > LOCK_STALE_MS) unlinkSync(LOCK);
+      } catch {
+        // the holder released it between our two calls: try again
+      }
+      if (Date.now() > deadline) throw new Error(`ledger lock ${LOCK} busy for ${LOCK_WAIT_MS / 1000} s`);
+      sleepMs(2 + Math.floor(Math.random() * 8));
+      continue;
+    }
+    try {
+      writeSync(fd, `${process.pid} ${new Date().toISOString()}\n`);
+      return fn();
+    } finally {
+      closeSync(fd);
+      try {
+        unlinkSync(LOCK);
+      } catch {
+        // taken over as stale by someone else: nothing to release
+      }
+    }
+  }
+}
+
+// --- State: read the ledger incrementally (it is append-only) ---------------------------
+const state = { ino: null, size: 0, total: 0, charged: new Map(), open: new Map(), closed: new Set() };
+function resetState() {
+  Object.assign(state, { ino: null, size: 0, total: 0, charged: new Map(), open: new Map(), closed: new Set() });
+}
+function applyLine(line) {
+  let e;
+  try {
+    e = JSON.parse(line);
+  } catch {
+    return; // a torn line is skipped, never fatal
+  }
+  const type = e.type ?? "charge";
+  if (type === "charge") {
+    const usd = Number(e.usd);
+    if (Number.isFinite(usd)) {
+      state.total += usd;
+      state.charged.set(e.script, (state.charged.get(e.script) ?? 0) + usd);
+    }
+    if (e.settles) {
+      state.open.delete(e.settles);
+      state.closed.add(e.settles);
+    }
+  } else if (type === "reserve") {
+    const usd = Number(e.usd);
+    if (e.id && Number.isFinite(usd) && !state.closed.has(e.id)) state.open.set(e.id, { script: e.script, usd, t: e.t });
+  } else if (type === "release") {
+    state.open.delete(e.id);
+    state.closed.add(e.id);
+  }
+}
+function refresh() {
+  let st;
+  try {
+    st = statSync(LEDGER);
+  } catch {
+    resetState();
+    return;
+  }
+  if (st.ino !== state.ino || st.size < state.size) {
+    resetState();
+    state.ino = st.ino;
+  }
+  if (st.size === state.size) return;
+  const fd = openSync(LEDGER, "r");
+  try {
+    const buf = Buffer.alloc(st.size - state.size);
+    const n = readSync(fd, buf, 0, buf.length, state.size);
+    const end = buf.subarray(0, n).lastIndexOf(10);
+    if (end < 0) return; // only a partial line so far
+    for (const line of buf.subarray(0, end + 1).toString("utf8").split("\n")) if (line.trim()) applyLine(line);
+    state.size += end + 1;
+  } finally {
+    closeSync(fd);
+  }
+}
+
+/** Every charge line of the ledger (reservations and releases left out). */
 export function entries() {
   if (!existsSync(LEDGER)) return [];
   return readFileSync(LEDGER, "utf8")
@@ -33,52 +149,236 @@ export function entries() {
     .flatMap((l) => {
       try {
         const e = JSON.parse(l);
-        return Number.isFinite(Number(e.usd)) ? [e] : [];
+        return (e.type ?? "charge") === "charge" && Number.isFinite(Number(e.usd)) ? [e] : [];
       } catch {
         return [];
       }
     });
 }
 
-/** Total USD on the ledger, or only one script's lines when `script` is given. */
+/** USD charged so far, in total or for one script. */
 export function spent(script) {
-  return entries()
-    .filter((e) => script === undefined || e.script === script)
-    .reduce((n, e) => n + Number(e.usd), 0);
+  refresh();
+  return script === undefined ? state.total : (state.charged.get(script) ?? 0);
+}
+/** USD reserved by calls still in flight (or whose process died), in total or for one script. */
+export function pending(script) {
+  refresh();
+  let n = 0;
+  for (const r of state.open.values()) if (script === undefined || r.script === script) n += r.usd;
+  return n;
+}
+/** What the caps are checked against: charged plus reserved. */
+export const exposure = (script) => spent(script) + pending(script);
+
+let seq = 0;
+/**
+ * Atomically check that `estimate` fits under the global cap (and under capUsd for capScripts, default
+ * [script]) counting open reservations, then reserve it. Returns the reservation to pass to charge().
+ * `estimate` should be the worst case (prompt estimate at the prompt price plus max_tokens at the
+ * completion price).
+ */
+export function reserve(estimate, { script, capUsd, capScripts, meta } = {}) {
+  const est = Number(estimate);
+  if (!Number.isFinite(est) || est < 0) throw new Error(`reserve: bad estimate ${estimate}`);
+  return withLock(() => {
+    refresh();
+    const total = exposure();
+    if (total + est > CAP_USD + EPS) throw new BudgetError(`ledger at $${total.toFixed(4)} (charged plus reserved); the next call (up to $${est.toFixed(4)}) would pass the global cap $${CAP_USD}`);
+    if (capUsd !== undefined) {
+      const group = capScripts ?? [script];
+      const mine = group.reduce((n, s) => n + exposure(s), 0);
+      if (mine + est > Number(capUsd) + EPS) throw new BudgetError(`${group.join(" + ")} at $${mine.toFixed(4)} (charged plus reserved); the next call (up to $${est.toFixed(4)}) would pass the cap $${capUsd}`);
+    }
+    const id = `${process.pid}-${Date.now().toString(36)}-${(seq++).toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    appendFileSync(LEDGER, JSON.stringify({ t: new Date().toISOString(), type: "reserve", id, script: script ?? null, usd: Number(est.toFixed(8)), ...(meta ? { meta } : {}) }) + "\n");
+    refresh();
+    return { id, script: script ?? null, usd: est };
+  });
 }
 
-/** Append one charge. Zero-cost lines are skipped unless meta.keep is set. */
-export function charge(script, usd, meta = {}) {
-  const amount = Number(usd);
-  if (!Number.isFinite(amount) || amount < 0) throw new Error(`charge: bad amount ${usd}`);
-  if (amount === 0 && !meta.keep) return;
-  mkdirSync(path.dirname(LEDGER), { recursive: true });
-  appendFileSync(LEDGER, JSON.stringify({ t: new Date().toISOString(), script: String(script), usd: Number(amount.toFixed(8)), meta }) + "\n");
-}
+/** Same as reserve(); kept under its first name. Throws BudgetError when the call does not fit. */
+export const guard = reserve;
 
 /**
- * Throw before a call that could push the ledger past the global cap, or past
- * `capUsd` for `script` when both are given. `nextUsdEstimate` should be the
- * worst case (max_tokens at the completion price).
+ * Record what a call cost and settle its reservation. For a call that failed or timed out, charge the
+ * reserved estimate and set meta.estimated (the server may have done the work). Without a reservation,
+ * the oldest open reservation of the same script is settled.
  */
-export function guard(nextUsdEstimate, { script, capUsd } = {}) {
-  const est = Math.max(0, Number(nextUsdEstimate) || 0);
-  const total = spent();
-  if (total + est > CAP_USD) throw new BudgetError(`ledger at $${total.toFixed(4)}; the next call (up to $${est.toFixed(4)}) would pass the global cap $${CAP_USD}`);
-  if (script !== undefined && capUsd !== undefined) {
-    const mine = spent(script);
-    if (mine + est > capUsd) throw new BudgetError(`${script} at $${mine.toFixed(4)}; the next call (up to $${est.toFixed(4)}) would pass its cap $${capUsd}`);
+export function charge(script, usd, meta = {}, reservation) {
+  const amount = Number(usd);
+  if (!Number.isFinite(amount) || amount < 0) throw new Error(`charge: bad amount ${usd}`);
+  withLock(() => {
+    refresh();
+    let settles = reservation?.id ?? null;
+    if (!settles) for (const [id, r] of state.open) if (r.script === script || r.script === null) { settles = id; break; }
+    if (amount === 0 && !settles && !meta.keep) return;
+    appendFileSync(LEDGER, JSON.stringify({ t: new Date().toISOString(), script: String(script), usd: Number(amount.toFixed(8)), meta, ...(settles ? { settles } : {}) }) + "\n");
+    refresh();
+  });
+}
+
+/** Drop a reservation whose call was never sent. */
+export function release(reservation) {
+  if (!reservation?.id) return;
+  withLock(() => {
+    appendFileSync(LEDGER, JSON.stringify({ t: new Date().toISOString(), type: "release", id: reservation.id }) + "\n");
+    refresh();
+  });
+}
+
+// --- Prices ---------------------------------------------------------------------------
+/**
+ * List prices (USD per token) from tests/fixtures/models.json for the given model ids. Refuses
+ * (throws) when one of them is missing or not a number, because its calls would be charged $0.
+ */
+export function loadPrices(models, file = path.join(ROOT, "tests/fixtures/models.json")) {
+  const catalog = JSON.parse(readFileSync(file, "utf8"));
+  const prices = {};
+  const missing = [];
+  for (const id of new Set(models)) {
+    const m = catalog.models?.find((x) => x.id === id);
+    const p = m && { prompt: Number(m.pricing?.prompt), completion: Number(m.pricing?.completion), cache_read: m.pricing?.input_cache_read == null ? null : Number(m.pricing.input_cache_read) };
+    if (!p || !Number.isFinite(p.prompt) || !Number.isFinite(p.completion) || (p.cache_read !== null && !Number.isFinite(p.cache_read))) missing.push(id);
+    else prices[id] = p;
   }
-  return total;
+  if (missing.length) throw new Error(`no list price for ${missing.join(", ")} in ${path.relative(ROOT, file)} (fetched ${catalog.fetched ?? "?"}): refusing to run, its calls would be charged $0. Refresh the catalogue or fix the model id.`);
+  prices.fetched = catalog.fetched;
+  return prices;
+}
+/** USD of one call at list prices; throws for a model loadPrices() did not return. */
+export function costOf(prices, model, u) {
+  const p = prices[model];
+  if (!p) throw new Error(`costOf: no price for ${model}`);
+  const cached = u.cached_tokens ?? 0;
+  return (u.prompt_tokens - cached) * p.prompt + cached * (p.cache_read ?? p.prompt) + u.completion_tokens * p.completion;
+}
+
+// --- Self-check: concurrent reservations near the cap, on a temporary ledger -----------------
+async function selfCheck() {
+  const dir = mkdtempSync(path.join(os.tmpdir(), "bench-ledger-check-"));
+  const me = fileURLToPath(import.meta.url);
+  const go = path.join(dir, "go");
+  /** n child processes, each waiting for the go file, then reserve(est) and maybe charge; returns how many reserved */
+  async function race(ledger, cap, n, est, then) {
+    const child = `
+      const fs = require("node:fs");
+      while (!fs.existsSync(${JSON.stringify(go)})) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1);
+      import(${JSON.stringify(me)}).then((L) => {
+        try {
+          const r = L.reserve(${est}, { script: "check" });
+          ${then === "settle" ? 'L.charge("check", 0.04, { model: "x" }, r);' : then === "fail" ? `L.charge("check", ${est}, { estimated: true, failed: true }, r);` : then === "legacy" ? 'L.charge("check", 0.04, { model: "x" });' : ""}
+          console.log("ok");
+        } catch (e) { console.log(e instanceof L.BudgetError ? "refused" : "error " + e.message); }
+      });`;
+    if (existsSync(go)) rmSync(go);
+    const procs = Array.from({ length: n }, () => {
+      const p = spawn(process.execPath, ["-e", child], { env: { ...process.env, BENCH_LEDGER_PATH: ledger, BENCH_CAP_USD: String(cap) } });
+      let out = "";
+      p.stdout.on("data", (d) => (out += d));
+      p.stderr.on("data", (d) => (out += d));
+      return new Promise((res) => p.on("close", () => res(out.trim())));
+    });
+    await new Promise((r) => setTimeout(r, 400)); // let every child reach the barrier
+    writeFileSync(go, "");
+    const outs = await Promise.all(procs);
+    const bad = outs.filter((o) => o !== "ok" && o !== "refused");
+    if (bad.length) throw new Error(`child failed: ${bad[0]}`);
+    return outs.filter((o) => o === "ok").length;
+  }
+  /** read a temporary ledger with a fresh copy of this module (its LEDGER is fixed at import) */
+  const totals = async (ledger, cap) => {
+    const out = await new Promise((res) => {
+      const p = spawn(process.execPath, ["-e", `import(${JSON.stringify(me)}).then((L) => console.log(JSON.stringify({ spent: L.spent(), pending: L.pending() })))`], { env: { ...process.env, BENCH_LEDGER_PATH: ledger, BENCH_CAP_USD: String(cap) } });
+      let s = "";
+      p.stdout.on("data", (d) => (s += d));
+      p.on("close", () => res(s));
+    });
+    return JSON.parse(out);
+  };
+  const results = [];
+  const check = (name, got, want) => {
+    results.push({ name, got, want, pass: got === want });
+    console.log(`${got === want ? "PASS" : "FAIL"}  ${name}: ${got} (want ${want})`);
+  };
+
+  // 1. Codex's case: $0.01 left, five concurrent guard(0.01): exactly one may pass
+  const l1 = path.join(dir, "l1.jsonl");
+  writeFileSync(l1, JSON.stringify({ t: "x", script: "seed", usd: 0.99 }) + "\n");
+  check("$0.01 left, 5 concurrent reserve($0.01)", await race(l1, 1, 5, 0.01, "none"), 1);
+
+  // 2. $0.50 left, 12 concurrent reserve($0.10) that never settle: 5 pass, 7 refused
+  const l2 = path.join(dir, "l2.jsonl");
+  writeFileSync(l2, JSON.stringify({ t: "x", script: "seed", usd: 0.5 }) + "\n");
+  check("$0.50 left, 12 concurrent reserve($0.10)", await race(l2, 1, 12, 0.1, "none"), 5);
+  const t2 = await totals(l2, 1);
+  check("  pending after the race ($)", Number(t2.pending.toFixed(4)), 0.5);
+
+  // 3. same, but each call settles at a real cost of $0.04: reservations are released as calls finish,
+  //    so more fit; the final charged + pending never passes the cap
+  const l3 = path.join(dir, "l3.jsonl");
+  writeFileSync(l3, JSON.stringify({ t: "x", script: "seed", usd: 0.5 }) + "\n");
+  const ok3 = await race(l3, 1, 12, 0.1, "settle");
+  const t3 = await totals(l3, 1);
+  check("  settled race: charged + pending <= cap", t3.spent + t3.pending <= 1 + EPS, true);
+  check("  settled race: nothing left pending", Number(t3.pending.toFixed(4)), 0);
+  check("  settled race: charged = 0.5 + 0.04 x passed", Number(t3.spent.toFixed(4)), Number((0.5 + 0.04 * ok3).toFixed(4)));
+  console.log(`      (${ok3} of 12 passed with settlement)`);
+
+  // 4. failed calls are charged at their estimate: 5 pass, $1.00 charged, nothing pending
+  const l4 = path.join(dir, "l4.jsonl");
+  writeFileSync(l4, JSON.stringify({ t: "x", script: "seed", usd: 0.5 }) + "\n");
+  check("failed calls charged at estimate: passed", await race(l4, 1, 12, 0.1, "fail"), 5);
+  const t4 = await totals(l4, 1);
+  check("  charged ($)", Number(t4.spent.toFixed(4)), 1);
+  check("  pending ($)", Number(t4.pending.toFixed(4)), 0);
+
+  // 5. legacy pattern (guard, then charge without the reservation) settles FIFO by script
+  const l5 = path.join(dir, "l5.jsonl");
+  writeFileSync(l5, JSON.stringify({ t: "x", script: "seed", usd: 0.5 }) + "\n");
+  await race(l5, 1, 6, 0.1, "legacy");
+  const t5 = await totals(l5, 1);
+  check("legacy guard+charge: nothing left pending", Number(t5.pending.toFixed(4)), 0);
+
+  // 6. missing prices refuse
+  let refused = false;
+  try {
+    loadPrices(["nvidia/not-a-model"]);
+  } catch (e) {
+    refused = /refusing to run/.test(e.message);
+  }
+  check("missing price refuses", refused, true);
+
+  rmSync(dir, { recursive: true, force: true });
+  const failed = results.filter((r) => !r.pass).length;
+  console.log(failed ? `\n${failed} check(s) FAILED` : `\nall ${results.length} checks passed`);
+  process.exitCode = failed ? 1 : 0;
 }
 
 // --- CLI -------------------------------------------------------------------------
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  if (process.argv.includes("--seed") && !entries().some((e) => e.script === "bench-session")) {
-    charge("bench-session", 0.29, { note: "seeded: spend of scripts/bench-session.mjs runs before the ledger existed (owner's figure, list prices)" });
+  const argv = process.argv.slice(2);
+  if (argv.includes("--self-check")) {
+    await selfCheck();
+  } else {
+    if (argv.includes("--seed") && !entries().some((e) => e.script === "bench-session")) {
+      charge("bench-session", 0.29, { note: "seeded: spend of scripts/bench-session.mjs runs before the ledger existed (owner's figure, list prices)" });
+    }
+    const stale = argv.indexOf("--settle-stale");
+    if (stale >= 0) {
+      const minutes = Number(argv[stale + 1]);
+      if (!Number.isFinite(minutes) || minutes <= 0) throw new Error("--settle-stale needs a number of minutes");
+      refresh();
+      const old = [...state.open].filter(([, r]) => Date.now() - Date.parse(r.t) > minutes * 60_000);
+      for (const [id, r] of old) charge(r.script ?? "unknown", r.usd, { estimated: true, reason: `reservation open for more than ${minutes} min` }, { id });
+      console.log(`settled ${old.length} stale reservation(s) at their estimate`);
+    }
+    refresh();
+    const scripts = new Set([...state.charged.keys(), ...[...state.open.values()].map((r) => r.script)]);
+    for (const s of [...scripts].sort((a, b) => spent(b) - spent(a))) {
+      const p = pending(s);
+      console.log(`${String(s).padEnd(24)} $${spent(s).toFixed(4)}${p ? `  (+ $${p.toFixed(4)} reserved)` : ""}`);
+    }
+    console.log(`${"total".padEnd(24)} $${spent().toFixed(4)} charged + $${pending().toFixed(4)} reserved of $${CAP_USD}`);
   }
-  const by = {};
-  for (const e of entries()) by[e.script] = (by[e.script] ?? 0) + Number(e.usd);
-  for (const [s, usd] of Object.entries(by).sort((a, b) => b[1] - a[1])) console.log(`${s.padEnd(24)} $${usd.toFixed(4)}`);
-  console.log(`${"total".padEnd(24)} $${spent().toFixed(4)} of $${CAP_USD}`);
 }

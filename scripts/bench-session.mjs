@@ -17,12 +17,17 @@
 // Rollouts are synthetic (no simulator here); Ground (Tavily, opt-in) and the reactive turn are left out.
 //
 // Model IDs, the base URL and the thinking switch come from lib/providers/tokenfactory.ts; list prices
-// from tests/fixtures/models.json. Writes counts and shapes only: no prompts, no outputs, no key.
+// from tests/fixtures/models.json (the script refuses to run when one of the four is missing). Every call
+// reserves its worst case on the shared ledger (scripts/bench-ledger.mjs, global cap BENCH_CAP_USD) before
+// it is sent and is charged after: the real cost, or the reserved estimate when it failed or timed out.
+// --ledger-cap-usd <n> also caps this script's cumulative ledger spend. Writes counts and shapes only:
+// no prompts, no outputs, no key.
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { BudgetError, charge, costOf as ledgerCostOf, guard, loadPrices } from "./bench-ledger.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 process.loadEnvFile(process.env.UNDERSTUDY_ENV_FILE ?? ".env.local");
@@ -48,6 +53,9 @@ const CLIP = path.resolve(ROOT, args.clip ?? "samples/iss-veggie-seed-film.mp4")
 const ULTRA_THINKING = args["ultra-thinking"] === "off" ? "off" : "on";
 const MAX_RUN_USD = Number(args["max-run-usd"] ?? 0.5);
 const MAX_TOTAL_USD = 1.0;
+const SCRIPT = "bench-session";
+/** optional cap on this script's cumulative spend on the shared ledger (the global cap always applies) */
+const LEDGER_CAP_USD = args["ledger-cap-usd"] === undefined ? undefined : Number(args["ledger-cap-usd"]);
 const MAX_QUESTIONS = 5;
 /** --debug <dir>: also write each call's user prompt and output there, for prompt work (never into the repo) */
 const DEBUG_DIR = typeof args.debug === "string" ? path.resolve(args.debug) : null;
@@ -57,25 +65,9 @@ if (DEBUG_DIR) mkdirSync(DEBUG_DIR, { recursive: true });
 const client = tokenFactory({ timeout: 290_000, maxRetries: 0 });
 
 // --- Prices ------------------------------------------------------------------
-const catalog = JSON.parse(readFileSync(path.join(ROOT, "tests/fixtures/models.json"), "utf8"));
-const PRICES = Object.fromEntries(
-  catalog.models.map((m) => [
-    m.id,
-    {
-      prompt: Number(m.pricing.prompt),
-      completion: Number(m.pricing.completion),
-      cache_read: m.pricing.input_cache_read == null ? null : Number(m.pricing.input_cache_read),
-    },
-  ]),
-);
-for (const [role, id] of Object.entries(MODELS)) if (!PRICES[id]) console.warn(`! no list price for ${role} = ${id}; its cost counts as 0`);
-function costOf(model, u) {
-  const p = PRICES[model];
-  if (!p) return 0;
-  const cached = u.cached_tokens ?? 0;
-  const cacheRate = p.cache_read ?? p.prompt;
-  return (u.prompt_tokens - cached) * p.prompt + cached * cacheRate + u.completion_tokens * p.completion;
-}
+// list prices from tests/fixtures/models.json; throws (refuses to run) when a model has none
+const PRICES = loadPrices(Object.values(MODELS));
+const costOf = (model, u) => ledgerCostOf(PRICES, model, u);
 
 // --- Video proxy --------------------------------------------------------------
 const tmp = path.join(os.tmpdir(), "understudy-bench");
@@ -358,9 +350,10 @@ class BudgetStop extends Error {}
 
 async function call(ctx, stage, role, { system, user, maxTokens, thinking = "off", json = true, video = false }) {
   const model = MODELS[role];
-  const p = PRICES[model] ?? { prompt: 0, completion: 0 };
+  const p = PRICES[model];
   const textChars = (system?.length ?? 0) + (typeof user === "string" ? user.length : LABEL_PROMPT.length);
-  const estPrompt = Math.ceil(textChars / 3) + (video ? Math.ceil(clipSeconds * 250) : 0);
+  // chars/3 plus 100 tokens of chat-template overhead (a 27-char health prompt is billed as 23 tokens)
+  const estPrompt = Math.ceil(textChars / 3) + 100 + (video ? Math.ceil(clipSeconds * 250) : 0);
   const worst = estPrompt * p.prompt + maxTokens * p.completion;
   if (ctx.cost + worst > MAX_RUN_USD || totalCost + worst > MAX_TOTAL_USD)
     throw new BudgetStop(`stopped before ${stage}: run at $${ctx.cost.toFixed(4)}, worst case of the next call $${worst.toFixed(4)}, cap $${MAX_RUN_USD} per run / $${MAX_TOTAL_USD} total`);
@@ -372,43 +365,57 @@ async function call(ctx, stage, role, { system, user, maxTokens, thinking = "off
   if (json) params.response_format = { type: "json_object" };
   if (thinking === "off") Object.assign(params, thinkingOff());
 
+  // reserve the worst case on the shared ledger (throws BudgetError past the global or --ledger-cap-usd cap)
+  let reservation;
+  try {
+    reservation = guard(worst, { script: SCRIPT, capUsd: LEDGER_CAP_USD, meta: { model, stage, run: ctx.run } });
+  } catch (err) {
+    if (err instanceof BudgetError) throw new BudgetStop(`stopped before ${stage}: ${err.message}`);
+    throw err;
+  }
   const started = performance.now();
   const rec = { stage, role, model, thinking, max_tokens: maxTokens, prompt_text_chars: textChars, video_bytes: video ? proxyBytes : undefined };
+  let res;
   try {
-    const res = await client.chat.completions.create(params);
-    const msg = res.choices?.[0]?.message ?? {};
-    const text = msg.content ?? "";
-    const reasoning = msg.reasoning_content ?? msg.reasoning ?? "";
-    const u = usageOf(res);
-    const cost = costOf(model, u);
-    Object.assign(rec, {
-      ok: true,
-      ms: Math.round(performance.now() - started),
-      prompt_tokens: u.prompt_tokens,
-      completion_tokens: u.completion_tokens,
-      reasoning_tokens: u.reasoning_tokens ?? null,
-      cached_tokens: u.cached_tokens ?? null,
-      reasoning_chars: reasoning.length,
-      content_chars: text.length,
-      finish: res.choices?.[0]?.finish_reason ?? null,
-      cost_usd: cost,
-    });
-    ctx.cost += cost;
-    totalCost += cost;
-    const parsed = json ? parseJson(text) : null;
-    if (DEBUG_DIR) writeFileSync(path.join(DEBUG_DIR, `run${ctx.run}-${String(ctx.calls.length + 1).padStart(2, "0")}-${stage}.txt`), `${typeof user === "string" ? user : LABEL_PROMPT}\n\n--- output ---\n${text}\n`);
-    rec.json_ok = json ? parsed !== null : null;
-    rec.empty = text.trim() === "";
-    ctx.calls.push(rec);
-    const flag = rec.empty ? " EMPTY" : json && !rec.json_ok ? " BAD-JSON" : "";
-    console.log(`  ${stage.padEnd(10)} ${role.padEnd(5)} ${String(rec.ms).padStart(6)} ms  in ${String(u.prompt_tokens).padStart(5)}  out ${String(u.completion_tokens).padStart(5)}${u.reasoning_tokens ? ` (reasoning ${u.reasoning_tokens})` : reasoning.length ? ` (reasoning ${reasoning.length} chars)` : ""}  $${cost.toFixed(5)}  ${rec.finish}${flag}`);
-    return { rec, parsed, text };
+    res = await client.chat.completions.create(params);
   } catch (err) {
-    Object.assign(rec, { ok: false, ms: Math.round(performance.now() - started), status: err?.status ?? null, error: redact(err?.message ?? err).slice(0, 300), cost_usd: 0, prompt_tokens: 0, completion_tokens: 0 });
+    // the server may have done the work before the error or timeout: charge the reserved estimate
+    charge(SCRIPT, worst, { model, stage, run: ctx.run, estimated: true, failed: true, status: err?.status ?? null }, reservation);
+    ctx.cost += worst;
+    totalCost += worst;
+    Object.assign(rec, { ok: false, ms: Math.round(performance.now() - started), status: err?.status ?? null, error: redact(err?.message ?? err).slice(0, 300), cost_usd: 0, estimated_usd: worst, prompt_tokens: 0, completion_tokens: 0 });
     ctx.calls.push(rec);
-    console.log(`  ${stage.padEnd(10)} ${role.padEnd(5)} FAILED HTTP ${rec.status ?? "?"}: ${rec.error}`);
+    console.log(`  ${stage.padEnd(10)} ${role.padEnd(5)} FAILED HTTP ${rec.status ?? "?"}: ${rec.error} (charged its estimate $${worst.toFixed(5)})`);
     return { rec, parsed: null, text: "" };
   }
+  const msg = res.choices?.[0]?.message ?? {};
+  const text = msg.content ?? "";
+  const reasoning = msg.reasoning_content ?? msg.reasoning ?? "";
+  const u = usageOf(res);
+  const cost = costOf(model, u);
+  charge(SCRIPT, cost, { model, stage, run: ctx.run, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens }, reservation);
+  Object.assign(rec, {
+    ok: true,
+    ms: Math.round(performance.now() - started),
+    prompt_tokens: u.prompt_tokens,
+    completion_tokens: u.completion_tokens,
+    reasoning_tokens: u.reasoning_tokens ?? null,
+    cached_tokens: u.cached_tokens ?? null,
+    reasoning_chars: reasoning.length,
+    content_chars: text.length,
+    finish: res.choices?.[0]?.finish_reason ?? null,
+    cost_usd: cost,
+  });
+  ctx.cost += cost;
+  totalCost += cost;
+  const parsed = json ? parseJson(text) : null;
+  if (DEBUG_DIR) writeFileSync(path.join(DEBUG_DIR, `run${ctx.run}-${String(ctx.calls.length + 1).padStart(2, "0")}-${stage}.txt`), `${typeof user === "string" ? user : LABEL_PROMPT}\n\n--- output ---\n${text}\n`);
+  rec.json_ok = json ? parsed !== null : null;
+  rec.empty = text.trim() === "";
+  ctx.calls.push(rec);
+  const flag = rec.empty ? " EMPTY" : json && !rec.json_ok ? " BAD-JSON" : "";
+  console.log(`  ${stage.padEnd(10)} ${role.padEnd(5)} ${String(rec.ms).padStart(6)} ms  in ${String(u.prompt_tokens).padStart(5)}  out ${String(u.completion_tokens).padStart(5)}${u.reasoning_tokens ? ` (reasoning ${u.reasoning_tokens})` : reasoning.length ? ` (reasoning ${reasoning.length} chars)` : ""}  $${cost.toFixed(5)}  ${rec.finish}${flag}`);
+  return { rec, parsed, text };
 }
 
 // --- One session --------------------------------------------------------------
@@ -628,11 +635,11 @@ const result = {
     clip: { file: path.relative(ROOT, CLIP), seconds: clipSeconds, width: clipProbe.streams[0].width, height: clipProbe.streams[0].height, fps: clipProbe.streams[0].r_frame_rate },
     proxy: { width: proxyProbe.streams[0].width, height: proxyProbe.streams[0].height, fps: VIDEO_PROXY.fps, codec: proxyProbe.streams[0].codec_name, crf: CRF, bytes: proxyBytes, encode_ms: encMs, note: "VIDEO_PROXY in lib/providers/tokenfactory.ts (width 480); encoded once with ffmpeg, outside the timed sessions" },
     prices_per_million_tokens: Object.fromEntries(Object.entries(MODELS).map(([role, id]) => [role, PRICES[id] ? { prompt: PRICES[id].prompt * 1e6, completion: PRICES[id].completion * 1e6, cache_read: PRICES[id].cache_read == null ? null : PRICES[id].cache_read * 1e6 } : null])),
-    prices_source: `tests/fixtures/models.json (list prices, fetched ${catalog.fetched}); video and image inputs are priced 0 beyond their prompt tokens`,
+    prices_source: `tests/fixtures/models.json (list prices, fetched ${PRICES.fetched}); video and image inputs are priced 0 beyond their prompt tokens`,
     interview: `at most ${MAX_QUESTIONS} questions over the compiler's ask slots plus the label's open questions; each answer is canned (picked by keyword from the question, else its first chip) and comes back on the next Super turn as changes[]; the spec is patched and Nano recompiles after every answer; a closing turn folds in the last answer`,
     rollouts: "synthetic 12 x {sensed, blind} grid from fixed bands (no simulator); it only feeds the notes and reshoot prompts",
     excluded: ["Ground (Tavily search + extract, opt-in) and its Nano filter", "the reactive turn (stretch)", "GET /v1/models in health (not a chat call, unbilled)", "retries after a 400 (none happened unless listed in failures)"],
-    caps: { per_run_usd: MAX_RUN_USD, total_usd: MAX_TOTAL_USD },
+    caps: { per_run_usd: MAX_RUN_USD, total_usd: MAX_TOTAL_USD, ledger: `every call reserved on bench/results/ledger.jsonl before it is sent (global cap BENCH_CAP_USD${LEDGER_CAP_USD === undefined ? "" : `, ${SCRIPT} cap $${LEDGER_CAP_USD}`}); a failed call is charged at its reserved estimate` },
   },
   summary,
   failures: runs.flatMap((s) => s.calls.filter((c) => !c.ok || (c.empty && c.stage !== "health") || c.json_ok === false).map((c) => ({ run: s.run, stage: c.stage, role: c.role, status: c.status ?? null, error: c.error ?? null, finish: c.finish ?? null, empty: c.empty ?? null, json_ok: c.json_ok ?? null }))),

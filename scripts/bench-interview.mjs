@@ -30,7 +30,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { BudgetError, charge, guard, spent } from "./bench-ledger.mjs";
+import { BudgetError, charge, costOf, guard, loadPrices, spent } from "./bench-ledger.mjs";
 
 const SCRIPT = "bench-interview";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -67,15 +67,8 @@ if (DEBUG_DIR) mkdirSync(DEBUG_DIR, { recursive: true });
 
 const client = tokenFactory({ timeout: 290_000, maxRetries: 0 });
 
-// --- Prices (as scripts/bench-session.mjs) ---------------------------------------
-const catalog = JSON.parse(readFileSync(path.join(ROOT, "tests/fixtures/models.json"), "utf8"));
-const PRICES = Object.fromEntries(catalog.models.map((m) => [m.id, { prompt: Number(m.pricing.prompt), completion: Number(m.pricing.completion), cache_read: m.pricing.input_cache_read == null ? null : Number(m.pricing.input_cache_read) }]));
-function costOf(model, u) {
-  const p = PRICES[model];
-  if (!p) return 0;
-  const cached = u.cached_tokens ?? 0;
-  return (u.prompt_tokens - cached) * p.prompt + cached * (p.cache_read ?? p.prompt) + u.completion_tokens * p.completion;
-}
+// --- Prices: list prices from tests/fixtures/models.json; refuses to run when one is missing ---------
+const PRICES = loadPrices([MODELS.nano, MODELS.super]);
 
 // --- Prompts (scripts/bench-session.mjs, copied; changes marked) ---------------------
 const PREDICATES = "contact_both_pads(object), height_above(object, value mm above the table), inside_zone(object, target), no_collision(), tilt_under(object, value degrees from upright), gripper_within(object, value mm of aperture error), object_still(object), time_under(value seconds)";
@@ -330,36 +323,30 @@ function parseJson(text) {
   return null;
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const mySpend = () => MINE.reduce((n, s) => n + spent(s), 0);
 
 async function call(ctx, stage, role, { system, user, maxTokens, thinking = "off" }) {
   const model = MODELS[role];
   const p = PRICES[model];
-  const worst = Math.ceil(((system?.length ?? 0) + user.length) / 3) * p.prompt + maxTokens * p.completion;
-  guard(worst);
-  if (mySpend() + worst > MY_CAP_USD) throw new BudgetError(`my scripts at $${mySpend().toFixed(4)}; next call up to $${worst.toFixed(4)} would pass $${MY_CAP_USD}`);
+  // chars/3 plus 100 tokens of chat-template overhead, then max_tokens at the completion price
+  const worst = (Math.ceil(((system?.length ?? 0) + user.length) / 3) + 100) * p.prompt + maxTokens * p.completion;
   const params = { model, messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: maxTokens, response_format: { type: "json_object" } };
   if (thinking === "off") Object.assign(params, thinkingOff());
-  const rec = { stage, role, thinking, max_tokens: maxTokens };
+  const rec = { stage, role, thinking, max_tokens: maxTokens, estimated_usd: 0 };
+  const meta = { model, stage, spec: ctx.name, pass: ctx.pass, run: ctx.run };
   for (let attempt = 1; attempt <= 2; attempt++) {
+    // every attempt, retries included, reserves its worst case first (throws BudgetError past a cap)
+    const reservation = guard(worst, { script: SCRIPT, capUsd: MY_CAP_USD, capScripts: MINE, meta: { ...meta, attempt } });
     const started = performance.now();
+    let res;
     try {
-      const res = await client.chat.completions.create(params);
-      const msg = res.choices?.[0]?.message ?? {};
-      const text = msg.content ?? "";
-      const u = usageOf(res);
-      const cost = costOf(model, u);
-      charge(SCRIPT, cost, { model, stage, spec: ctx.name, pass: ctx.pass, run: ctx.run, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens });
-      Object.assign(rec, { ok: true, attempts: attempt, ms: Math.round(performance.now() - started), prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, reasoning_tokens: u.reasoning_tokens ?? null, finish: res.choices?.[0]?.finish_reason ?? null, cost_usd: cost });
-      const parsed = parseJson(text);
-      rec.json_ok = parsed !== null;
-      ctx.calls.push(rec);
-      ctx.cost += cost;
-      if (DEBUG_DIR) writeFileSync(path.join(DEBUG_DIR, `${ctx.pass}-${ctx.name}-r${ctx.run}-${String(ctx.calls.length).padStart(2, "0")}-${stage}.txt`), `${user}\n\n--- output ---\n${text}\n`);
-      return { rec, parsed };
+      res = await client.chat.completions.create(params);
     } catch (err) {
-      if (err instanceof BudgetError) throw err;
+      // the server may have done the work before the error or timeout: charge the reserved estimate
       const status = err?.status ?? null;
+      charge(SCRIPT, worst, { ...meta, attempt, estimated: true, failed: true, status }, reservation);
+      rec.estimated_usd += worst;
+      ctx.cost += worst;
+      ctx.estimated += worst;
       Object.assign(rec, { ok: false, attempts: attempt, ms: Math.round(performance.now() - started), status, error: redact(err?.message ?? err).slice(0, 300), cost_usd: 0 });
       if (attempt === 1 && (status === null || status === 429 || status >= 500)) {
         await sleep(5000);
@@ -368,6 +355,18 @@ async function call(ctx, stage, role, { system, user, maxTokens, thinking = "off
       ctx.calls.push(rec);
       return { rec, parsed: null };
     }
+    const msg = res.choices?.[0]?.message ?? {};
+    const text = msg.content ?? "";
+    const u = usageOf(res);
+    const cost = costOf(PRICES, model, u);
+    charge(SCRIPT, cost, { ...meta, attempt, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens }, reservation);
+    Object.assign(rec, { ok: true, attempts: attempt, ms: Math.round(performance.now() - started), prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, reasoning_tokens: u.reasoning_tokens ?? null, finish: res.choices?.[0]?.finish_reason ?? null, cost_usd: cost });
+    const parsed = parseJson(text);
+    rec.json_ok = parsed !== null;
+    ctx.calls.push(rec);
+    ctx.cost += cost;
+    if (DEBUG_DIR) writeFileSync(path.join(DEBUG_DIR, `${ctx.pass}-${ctx.name}-r${ctx.run}-${String(ctx.calls.length).padStart(2, "0")}-${stage}.txt`), `${user}\n\n--- output ---\n${text}\n`);
+    return { rec, parsed };
   }
 }
 
@@ -383,7 +382,7 @@ async function interview(name, pass, run, index) {
   const compileSystem = /v2/.test(pass) ? COMPILE_SYSTEM_V2 : COMPILE_SYSTEM;
   const changesFirst = /changes-first/.test(pass);
   const split = /split/.test(pass);
-  const ctx = { name, pass, run, calls: [], cost: 0 };
+  const ctx = { name, pass, run, calls: [], cost: 0, estimated: 0 };
   let spec = structuredClone(degraded);
   const recovered = () => gaps.filter((g) => g.check(spec)).map((g) => g.cat);
   const turns = [{ turn: 0, recovered: recovered(), cost_usd: 0, questions: 0 }];
@@ -487,6 +486,7 @@ async function interview(name, pass, run, index) {
     first_compile_asks: turns[0].asks ?? [],
     curve,
     cost_usd: Number(ctx.cost.toFixed(6)),
+    estimated_usd: Number(ctx.estimated.toFixed(6)),
     calls: ctx.calls.length,
     failed_calls: ctx.calls.filter((c) => !c.ok).length,
     bad_json: ctx.calls.filter((c) => c.ok && !c.json_ok).length,
@@ -499,7 +499,7 @@ async function interview(name, pass, run, index) {
 }
 
 async function gtCompile(name) {
-  const ctx = { name, pass: "gt-compile", run: 1, calls: [], cost: 0 };
+  const ctx = { name, pass: "gt-compile", run: 1, calls: [], cost: 0, estimated: 0 };
   const r = await call(ctx, "compile", "nano", { system: COMPILE_SYSTEM, user: `Task spec:\n${JSON.stringify(GT[name])}`, maxTokens: 3000 });
   return { spec: name, asks: askSlots(r.parsed).map((a) => a.slot), ok: Boolean(r.parsed), cost_usd: ctx.cost };
 }
@@ -601,7 +601,7 @@ const result = {
     checks: CHECKS,
     apply: "lib/spec/apply.ts applyChanges (atomic batch, schema-validated): a batch with one bad change applies nothing",
     concurrency: CONCURRENCY,
-    prices: "list prices from tests/fixtures/models.json (Super $0.30 / $0.90, Nano $0.06 / $0.24 per million)",
+    prices: "list prices from tests/fixtures/models.json (Super $0.30 / $0.90, Nano $0.06 / $0.24 per million); a failed or timed-out call is charged at its reserved worst case (estimated_usd, included in cost_usd)",
   },
   ground_truth_compile_asks: gtc,
   summary,

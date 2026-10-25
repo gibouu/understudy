@@ -31,7 +31,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { BudgetError, charge, guard, spent } from "./bench-ledger.mjs";
+import { BudgetError, charge, costOf, guard, loadPrices, spent } from "./bench-ledger.mjs";
 
 const SCRIPT = "bench-label";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -59,15 +59,8 @@ const REPRODUCE = `UNDERSTUDY_ENV_FILE=<path to .env.local> node scripts/bench-l
 
 const client = tokenFactory({ timeout: 290_000, maxRetries: 0 });
 
-// --- Prices (as scripts/bench-session.mjs) ---------------------------------------
-const catalog = JSON.parse(readFileSync(path.join(ROOT, "tests/fixtures/models.json"), "utf8"));
-const PRICES = Object.fromEntries(catalog.models.map((m) => [m.id, { prompt: Number(m.pricing.prompt), completion: Number(m.pricing.completion), cache_read: m.pricing.input_cache_read == null ? null : Number(m.pricing.input_cache_read) }]));
-function costOf(model, u) {
-  const p = PRICES[model];
-  if (!p) return 0;
-  const cached = u.cached_tokens ?? 0;
-  return (u.prompt_tokens - cached) * p.prompt + cached * (p.cache_read ?? p.prompt) + u.completion_tokens * p.completion;
-}
+// --- Prices: list prices from tests/fixtures/models.json; refuses to run when one is missing ---------
+const PRICES = loadPrices([MODELS.vl]);
 
 // --- Prompt (verbatim from scripts/bench-session.mjs) ----------------------------
 const LABEL_PROMPT = `You label a short video of one person doing a hands-on task (aboard a station or on a bench) so that a robot arm can try to repeat it. Watch the whole clip. Return one JSON object only, no prose, shaped like this:
@@ -241,7 +234,6 @@ function parseJson(text) {
   return null;
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const mySpend = () => MINE.reduce((n, s) => n + spent(s), 0);
 
 const CONDITION_DEFS = {
   a: { name: "video 480w 4 fps (baseline)", input: (clip) => ["v480x4", () => proxy(clip, 480, 4)], thinking: "off", maxTokens: 3000 },
@@ -271,47 +263,23 @@ async function label(clip, cond, run) {
   const p = PRICES[model];
   const imgTokens = input.kind === "video" ? (input.width / 480) ** 2 * input.fps * 36 * 60 : 8 * 1500;
   const worst = (6000 + imgTokens) * p.prompt + def.maxTokens * p.completion;
-  guard(worst);
-  if (mySpend() + worst > MY_CAP_USD) throw new BudgetError(`my scripts at $${mySpend().toFixed(4)}; next call up to $${worst.toFixed(4)} would pass $${MY_CAP_USD}`);
   const params = { model, messages: [{ role: "user", content: parts }], max_tokens: def.maxTokens, response_format: { type: "json_object" } };
   if (def.thinking === "off") Object.assign(params, thinkingOff());
-  const rec = { clip, condition: cond, run, model, thinking: def.thinking, max_tokens: def.maxTokens, attempts: 0 };
+  const rec = { clip, condition: cond, run, model, thinking: def.thinking, max_tokens: def.maxTokens, attempts: 0, estimated_usd: 0 };
+  const meta = { model, stage: "label", clip, condition: cond, run };
   for (let attempt = 1; attempt <= 2; attempt++) {
     rec.attempts = attempt;
+    // every attempt, retries included, reserves its worst case first (throws BudgetError past a cap)
+    const reservation = guard(worst, { script: SCRIPT, capUsd: MY_CAP_USD, capScripts: MINE, meta: { ...meta, attempt } });
     const started = performance.now();
+    let res;
     try {
-      const res = await client.chat.completions.create(params);
-      const msg = res.choices?.[0]?.message ?? {};
-      const text = msg.content ?? "";
-      const u = usageOf(res);
-      const cost = costOf(model, u);
-      charge(SCRIPT, cost, { model, stage: "label", clip, condition: cond, run, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens });
-      const parsed = parseJson(text);
-      Object.assign(rec, {
-        ok: true,
-        ms: Math.round(performance.now() - started),
-        prompt_tokens: u.prompt_tokens,
-        completion_tokens: u.completion_tokens,
-        reasoning_tokens: u.reasoning_tokens ?? null,
-        reasoning_chars: String(msg.reasoning_content ?? msg.reasoning ?? "").length,
-        finish: res.choices?.[0]?.finish_reason ?? null,
-        cost_usd: cost,
-        json_ok: parsed !== null,
-        score: score(clip, parsed),
-        label: parsed
-          ? {
-              title: String(parsed.title ?? ""),
-              objects: (parsed.objects ?? []).map((o) => ({ id: o?.id, name: o?.name, shape: o?.shape, size_mm: o?.size_mm, role: o?.role, confidence: o?.confidence })),
-              steps: (parsed.steps ?? []).map((s) => ({ id: s?.id, verb: s?.verb, object: s?.object, target: s?.target, t: [s?.t_start_s, s?.t_end_s] })),
-              warnings: (parsed.warnings ?? []).length,
-              open_questions: (parsed.open_questions ?? []).length,
-            }
-          : null,
-      });
-      return rec;
+      res = await client.chat.completions.create(params);
     } catch (err) {
-      if (err instanceof BudgetError) throw err;
+      // the server may have done the work before the error or timeout: charge the reserved estimate
       const status = err?.status ?? null;
+      charge(SCRIPT, worst, { ...meta, attempt, estimated: true, failed: true, status }, reservation);
+      rec.estimated_usd += worst;
       Object.assign(rec, { ok: false, ms: Math.round(performance.now() - started), status, error: redact(err?.message ?? err).slice(0, 300), cost_usd: 0, score: score(clip, null) });
       if (attempt === 1 && (status === null || status === 429 || status >= 500)) {
         await sleep(5000);
@@ -319,6 +287,34 @@ async function label(clip, cond, run) {
       }
       return rec;
     }
+    const msg = res.choices?.[0]?.message ?? {};
+    const text = msg.content ?? "";
+    const u = usageOf(res);
+    const cost = costOf(PRICES, model, u);
+    charge(SCRIPT, cost, { ...meta, attempt, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens }, reservation);
+    const parsed = parseJson(text);
+    Object.assign(rec, {
+      ok: true,
+      ms: Math.round(performance.now() - started),
+      prompt_tokens: u.prompt_tokens,
+      completion_tokens: u.completion_tokens,
+      reasoning_tokens: u.reasoning_tokens ?? null,
+      reasoning_chars: String(msg.reasoning_content ?? msg.reasoning ?? "").length,
+      finish: res.choices?.[0]?.finish_reason ?? null,
+      cost_usd: cost,
+      json_ok: parsed !== null,
+      score: score(clip, parsed),
+      label: parsed
+        ? {
+            title: String(parsed.title ?? ""),
+            objects: (parsed.objects ?? []).map((o) => ({ id: o?.id, name: o?.name, shape: o?.shape, size_mm: o?.size_mm, role: o?.role, confidence: o?.confidence })),
+            steps: (parsed.steps ?? []).map((s) => ({ id: s?.id, verb: s?.verb, object: s?.object, target: s?.target, t: [s?.t_start_s, s?.t_end_s] })),
+            warnings: (parsed.warnings ?? []).length,
+            open_questions: (parsed.open_questions ?? []).length,
+          }
+        : null,
+    });
+    return rec;
   }
   return rec;
 }
@@ -394,13 +390,14 @@ const result = {
     order: "run-major: run 1 of every clip and condition, then run 2, ...; sequential, one call at a time",
     retries: "one retry after 5 s on a timeout, 429 or 5xx; none happened unless attempts > 1",
     inputs: inputInfo,
-    prices: "list prices from tests/fixtures/models.json ($0.30 in / $0.90 out per million for Super VL); video tokens priced as prompt tokens",
+    prices: "list prices from tests/fixtures/models.json ($0.30 in / $0.90 out per million for Super VL); video tokens priced as prompt tokens; a failed or timed-out call is charged at its reserved worst case",
   },
   ground_truth: Object.fromEntries(CLIPS.map((c) => [c, TRUTH[c]])),
   rubric: Object.fromEntries(CLIPS.map((c) => [c, RUBRIC[c]])),
   summary,
   // this script's own calls only (the ledger may be charged by other scripts at the same time)
-  spend_usd: Number(runs.reduce((n, x) => n + (x.cost_usd ?? 0), 0).toFixed(6)),
+  spend_usd: Number(runs.reduce((n, x) => n + (x.cost_usd ?? 0) + (x.estimated_usd ?? 0), 0).toFixed(6)),
+  estimated_failed_usd: Number(runs.reduce((n, x) => n + (x.estimated_usd ?? 0), 0).toFixed(6)),
   runs,
 };
 let body = JSON.stringify(result, null, 2) + "\n";
