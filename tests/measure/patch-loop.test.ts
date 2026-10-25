@@ -22,6 +22,9 @@
  *   super-off-rep  a second super-off run, for run-to-run spread
  *   super-off-derived  super-off with one line of arithmetic added to each note (ablation)
  *   super-off-retry    super-off where a patch that changes nothing is sent back once (ablation)
+ *   r2-*        round 2 (clamping reported, escalation, tagged playbook v3, liquid pour); r2-ctrl*
+ *               are the matched controls of the playbook arms: the same set-up call and playbook
+ *               section with "(none)" in place of the rules
  *
  * The live part spends Token Factory credits and runs only with BENCH_LIVE=1:
  *
@@ -35,7 +38,7 @@
  * summary tables print at the end of every live run, over every arm in the file.
  * Without BENCH_LIVE a cheap unit test of the probes runs (no network).
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, openSync, closeSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { fmt, loadMujoco, mdTable } from "./gravity-harness";
@@ -67,19 +70,24 @@ const PLAYBOOK_SYSTEM_V3 = `${PLAYBOOK_SYSTEM.split("\nReturn one JSON object on
 Return one JSON object only: {"rules":[{"task":"insert"|"place"|"pour"|"carry"|"all","rule":string,"evidence":string}]}`;
 
 type Rule = { rule: string; evidence: string; task?: string };
-/** v1/v2: every rule for every task; v3: only the rules tagged with this task or "all", with the gravity range they come from */
-const rulesBlock = (rules: Rule[], probe: ProbeId, version: number) => {
-  if (version < 3) return `Playbook (rules learned from earlier repairs on Earth and Mars):\n${rules.map((r, i) => `${i + 1}. ${r.rule}`).join("\n")}`;
+/**
+ * v1/v2: every rule for every task; v3: only the rules tagged with this task or "all", with the
+ * gravity range they come from. empty: the matched control, the same section in the same places
+ * (v3: only for the tasks that have rules) with "(none)" instead of the rules.
+ */
+const rulesBlock = (rules: Rule[], probe: ProbeId, version: number, empty = false) => {
+  const lines = (rs: Rule[]) => (empty ? "(none)" : rs.map((r, i) => `${i + 1}. ${r.rule}`).join("\n"));
+  if (version < 3) return `Playbook (rules learned from earlier repairs on Earth and Mars):\n${lines(rules)}`;
   const mine = rules.filter((r) => r.task === probe || r.task === "all");
-  return mine.length ? `Playbook for this task (rules learned from repairs at Earth 1 g and Mars 0.379 g only; untested in other gravities):\n${mine.map((r, i) => `${i + 1}. ${r.rule}`).join("\n")}` : null;
+  return mine.length ? `Playbook for this task (rules learned from repairs at Earth 1 g and Mars 0.379 g only; untested in other gravities):\n${lines(mine)}` : null;
 };
 
 /** the factual one-liner of a note used in the attempt history */
 const outcomeLine = (note: string) => note.split("\n").find((l) => /^(Checks?|Count):/.test(l)) ?? note.split("\n").at(-1) ?? "";
 
-type Book = { rules: Rule[]; version: number } | null;
+type Book = { rules: Rule[]; version: number; empty?: boolean } | null;
 const bookLines = (book: Book, probe: ProbeId) => {
-  const b = book ? rulesBlock(book.rules, probe, book.version) : null;
+  const b = book ? rulesBlock(book.rules, probe, book.version, book.empty) : null;
   return b ? [b] : [];
 };
 
@@ -209,83 +217,94 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       if (!KEY) throw new Error("NEBIUS_API_KEY missing from the env file");
       const redact = (s: unknown) => String(s).split(KEY).join("<redacted>");
       const tf = await import("@/lib/providers/tokenfactory");
-      const ledger = (await import("../../scripts/bench-ledger.mjs")) as {
-        guard: (est: number, o?: { script?: string; capUsd?: number }) => number;
-        charge: (script: string, usd: number, meta?: Record<string, unknown>) => void;
+      // guard() reserves the worst case under a cross-process lock and returns the reservation; charge() settles it
+      type Reservation = { id: string; script: string | null; usd: number };
+      const ledger = (await import("../../scripts/bench-ledger.mjs")) as unknown as {
+        guard: (est: number, o?: { script?: string; capUsd?: number }) => Reservation;
+        charge: (script: string, usd: number, meta?: Record<string, unknown>, reservation?: Reservation) => void;
         spent: (script?: string) => number;
+        loadPrices: (models: string[]) => Record<string, { prompt: number; completion: number; cache_read: number | null }>;
         BudgetError: new (m: string) => Error;
       };
       const client = tf.tokenFactory({ timeout: 240_000, maxRetries: 0 });
       if (!client) throw new Error("no Token Factory client");
-      const catalog = JSON.parse(readFileSync(path.join(ROOT, "tests/fixtures/models.json"), "utf8")) as { fetched: string; models: { id: string; pricing: { prompt: string; completion: string; input_cache_read: string | null } }[] };
+      const catalog = JSON.parse(readFileSync(path.join(ROOT, "tests/fixtures/models.json"), "utf8")) as { fetched: string };
+      /** list prices of every model the requested arms can call, from the ledger's loadPrices (it throws on a missing price) */
+      let PRICES: ReturnType<typeof ledger.loadPrices> = {};
+      /** a model missing from the fixture, or priced 0, stops the run before any call: the budget guard would count its calls as free */
       const price = (model: string) => {
-        const m = catalog.models.find((x) => x.id === model);
-        return m ? { prompt: Number(m.pricing.prompt), completion: Number(m.pricing.completion), cache: m.pricing.input_cache_read == null ? null : Number(m.pricing.input_cache_read) } : null;
+        const p = PRICES[model];
+        if (!p || !(p.prompt > 0) || !(p.completion > 0)) throw new Error(`no usable list price for ${model} in tests/fixtures/models.json: refusing to run, the budget guard would count its calls as free`);
+        return { prompt: p.prompt, completion: p.completion, cache: p.cache_read };
       };
       const mj = await loadMujoco();
       const spentBefore = ledger.spent(SCRIPT);
-      let inflight = 0;
       let budgetStop: string | null = null;
 
       type Role = "super" | "ultra";
       type CallCfg = { role: Role; thinking: "off" | "on"; maxTokens: number };
       async function call(cfg: CallCfg, system: string, user: string, meta: Record<string, unknown>): Promise<{ rec: CallRec; parsed: Record<string, unknown> | null }> {
         const model = tf.MODELS[cfg.role];
-        const p = price(model) ?? { prompt: 0, completion: 0, cache: null };
+        const p = price(model);
         const worst = Math.ceil((system.length + user.length) / 3) * p.prompt + cfg.maxTokens * p.completion;
         const rec: CallRec = { ok: false, ms: 0, prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: null, cost_usd: 0, finish: null, json_ok: false, empty: true, attempts: 0 };
         for (let attempt = 1; attempt <= 3; attempt++) {
           if (budgetStop) throw new ledger.BudgetError(budgetStop);
+          let reservation: Reservation;
           try {
-            ledger.guard(worst + inflight, { script: SCRIPT, capUsd: CAP_USD });
+            // reserves the worst case atomically across processes; the caps count open reservations
+            reservation = ledger.guard(worst, { script: SCRIPT, capUsd: CAP_USD });
           } catch (e) {
             budgetStop = redact((e as Error).message);
             throw e;
           }
-          inflight += worst;
           rec.attempts = attempt;
           const t0 = performance.now();
+          const params: Record<string, unknown> = {
+            model,
+            messages: [
+              { role: "system", content: system },
+              { role: "user", content: user },
+            ],
+            max_tokens: cfg.maxTokens,
+            response_format: { type: "json_object" },
+          };
+          if (cfg.thinking === "off") Object.assign(params, tf.thinkingOff());
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          let res: any;
           try {
-            const params: Record<string, unknown> = {
-              model,
-              messages: [
-                { role: "system", content: system },
-                { role: "user", content: user },
-              ],
-              max_tokens: cfg.maxTokens,
-              response_format: { type: "json_object" },
-            };
-            if (cfg.thinking === "off") Object.assign(params, tf.thinkingOff());
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const res = (await client!.chat.completions.create(params as any)) as any;
-            const u = tf.usageOf(res);
-            const cached = u.cached_tokens ?? 0;
-            const cost = (u.prompt_tokens - cached) * p.prompt + cached * (p.cache ?? p.prompt) + u.completion_tokens * p.completion;
-            ledger.charge(SCRIPT, cost, { model, thinking: cfg.thinking, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, reasoning_tokens: u.reasoning_tokens ?? null, ...meta });
-            const text: string = res.choices?.[0]?.message?.content ?? "";
-            Object.assign(rec, {
-              ok: true,
-              ms: Math.round(performance.now() - t0),
-              prompt_tokens: u.prompt_tokens,
-              completion_tokens: u.completion_tokens,
-              reasoning_tokens: u.reasoning_tokens ?? null,
-              cost_usd: cost,
-              finish: res.choices?.[0]?.finish_reason ?? null,
-              empty: text.trim() === "",
-            });
-            const parsed = parseJson(text);
-            rec.json_ok = parsed !== null;
-            return { rec, parsed };
+            res = await client!.chat.completions.create(params as any);
           } catch (err) {
             const e = err as { status?: number; message?: string };
+            // a failed call costs its estimate: the server may have done the work
+            ledger.charge(SCRIPT, worst, { model, thinking: cfg.thinking, estimated: true, failed: true, status: e?.status ?? null, ...meta }, reservation);
+            rec.cost_usd += worst;
             rec.ms = Math.round(performance.now() - t0);
             rec.error = `${e?.status ?? "?"} ${redact(e?.message ?? err)}`.slice(0, 300);
             const retriable = e?.status === undefined || e.status === 429 || e.status >= 500;
             if (!retriable || attempt === 3) return { rec, parsed: null };
             await new Promise((r) => setTimeout(r, 2000 * attempt));
-          } finally {
-            inflight -= worst;
+            continue;
           }
+          const u = tf.usageOf(res);
+          const cached = u.cached_tokens ?? 0;
+          const cost = (u.prompt_tokens - cached) * p.prompt + cached * (p.cache ?? p.prompt) + u.completion_tokens * p.completion;
+          ledger.charge(SCRIPT, cost, { model, thinking: cfg.thinking, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, reasoning_tokens: u.reasoning_tokens ?? null, ...meta }, reservation);
+          const text: string = res.choices?.[0]?.message?.content ?? "";
+          Object.assign(rec, {
+            ok: true,
+            ms: Math.round(performance.now() - t0),
+            prompt_tokens: u.prompt_tokens,
+            completion_tokens: u.completion_tokens,
+            reasoning_tokens: u.reasoning_tokens ?? null,
+            cost_usd: rec.cost_usd + cost,
+            finish: res.choices?.[0]?.finish_reason ?? null,
+            empty: text.trim() === "",
+          });
+          const parsed = parseJson(text);
+          rec.json_ok = parsed !== null;
+          return { rec, parsed };
         }
         return { rec, parsed: null };
       }
@@ -312,6 +331,8 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         retryNoop?: boolean;
         distil?: 1 | 2 | 3;
         rulesFrom?: string;
+        /** matched control: the playbook section without its rules */
+        emptyRules?: boolean;
         clampNote?: boolean;
         escalate?: CallCfg & { label: string };
         label?: string;
@@ -344,6 +365,11 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         "r2-playbook3": { ...SUPER_OFF, ...R2_MO, distil: 3, label: "super-off" },
         "r2-playbook3-on": { ...SUPER_ON, ...R2_MO, distil: 3, rulesFrom: "r2-playbook3", label: "super-on" },
         "r2-playbook3-esc": { ...SUPER_OFF, ...R2_MO, distil: 3, rulesFrom: "r2-playbook3", escalate: ESC_ON, label: "super-off -> super-on" },
+        // matched controls: the same set-up call and the same playbook section in the same places, with "(none)" for the rules
+        "r2-ctrl3": { ...SUPER_OFF, ...R2_MO, distil: 3, rulesFrom: "r2-playbook3", emptyRules: true, label: "super-off" },
+        "r2-ctrl3-on": { ...SUPER_ON, ...R2_MO, distil: 3, rulesFrom: "r2-playbook3", emptyRules: true, label: "super-on" },
+        "r2-ctrl3-esc": { ...SUPER_OFF, ...R2_MO, distil: 3, rulesFrom: "r2-playbook3", emptyRules: true, escalate: ESC_ON, label: "super-off -> super-on" },
+        "r2-ctrl2-on": { ...SUPER_ON, ...R2_MO, rulesFrom: "playbook2", emptyRules: true, label: "super-on" },
         "r2-liquid-super-off": { ...SUPER_OFF, ...R2, liquid: true, label: "super-off" },
         "r2-liquid-super-on": { ...SUPER_ON, ...R2, liquid: true, label: "super-on" },
       };
@@ -359,7 +385,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
             example_notes: {},
           };
       file.reproduce =
-        "round 1: BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=<path to .env.local> PATCH_ARMS=super-off,super-off-rep,super-on,ultra,ultra-on,ultra-on-16k,preflight,playbook,playbook2,super-off-derived,super-off-retry node_modules/.bin/vitest run tests/measure/patch-loop.test.ts --reporter=verbose; round 2: the same with PATCH_SCRIPT=patch-loop-r2 PATCH_SEEDS=1,2,3,4,5,6 PATCH_ARMS=r2-playbook3,r2-super-off,r2-super-on,r2-esc-on,r2-esc-ultra,r2-playbook2-on,r2-playbook3-on,r2-playbook3-esc,r2-liquid-super-off,r2-liquid-super-on (arms can run one per process; they merge by arm)";
+        "round 1: BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=<path to .env.local> PATCH_ARMS=super-off,super-off-rep,super-on,ultra,ultra-on,ultra-on-16k,preflight,playbook,playbook2,super-off-derived,super-off-retry node_modules/.bin/vitest run tests/measure/patch-loop.test.ts --reporter=verbose; round 2: the same with PATCH_SCRIPT=patch-loop-r2 PATCH_SEEDS=1,2,3,4,5,6 PATCH_ARMS=r2-playbook3,r2-super-off,r2-super-on,r2-esc-on,r2-esc-ultra,r2-playbook2-on,r2-playbook3-on,r2-playbook3-esc,r2-liquid-super-off,r2-liquid-super-on; matched controls: PATCH_ARMS=r2-ctrl3,r2-ctrl3-on,r2-ctrl3-esc,r2-ctrl2-on (arms can run one per process; they merge by arm under a lock file)";
       file.conditions = {
         engine: "MuJoCo WebAssembly (@mujoco/mujoco) in Node, timestep 2 ms; probes in tests/measure/patch-probes.ts on tests/measure/gravity-harness.ts",
         models: tf.MODELS,
@@ -376,21 +402,27 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         cap_usd: CAP_USD,
       };
       const mineArms = new Set<string>();
-      /** take the arms other processes have written since this one started */
+      /** take the arms other processes have written since this one started (the file only ever changes by rename, so a read sees a whole file) */
       const refresh = () => {
         if (!existsSync(OUT)) return;
         const disk = JSON.parse(readFileSync(OUT, "utf8")) as ResultsFile;
         for (const [id, arm] of Object.entries(disk.arms)) if (!mineArms.has(id)) file.arms[id] = arm;
       };
-      /** merge this process's arms into whatever is on disk now, so arms can run in parallel processes */
-      const save = () => {
-        refresh();
-        file.generated_at = new Date().toISOString();
-        file.summary = summarise(file);
-        let body = serialise(file);
-        if (body.includes(KEY)) body = redact(body);
-        writeFileSync(OUT, body);
-      };
+      /**
+       * Merge this process's arms into whatever is on disk now, so arms can run in parallel
+       * processes: under an exclusive lock file, re-read, merge, write a temp file, rename it over.
+       */
+      const save = () =>
+        withFileLock(`${OUT}.lock`, () => {
+          refresh();
+          file.generated_at = new Date().toISOString();
+          file.summary = summarise(file);
+          let body = serialise(file);
+          if (body.includes(KEY)) body = redact(body);
+          const tmp = `${OUT}.${process.pid}.tmp`;
+          writeFileSync(tmp, body);
+          renameSync(tmp, OUT);
+        });
 
       const only = (c: CaseDef) => !process.env.PATCH_ONLY || process.env.PATCH_ONLY.split(",").some((s) => c.id.includes(s));
       const cases = caseGrid().filter(only);
@@ -533,6 +565,13 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       }
 
       const arms = (process.env.PATCH_ARMS ?? "super-off").split(",").map((s) => s.trim()).filter(Boolean);
+      const needed = arms.flatMap((armId) => {
+        const cfg = ARMS[armId];
+        if (!cfg) throw new Error(`unknown arm ${armId}`);
+        return [cfg.role, ...(cfg.escalate ? [cfg.escalate.role] : []), ...(cfg.rules ? ["super" as const] : [])].map((role) => tf.MODELS[role]);
+      });
+      PRICES = ledger.loadPrices(needed);
+      for (const m of needed) price(m);
       for (const armId of arms) {
         const cfg = ARMS[armId];
         if (!cfg) throw new Error(`unknown arm ${armId}`);
@@ -542,13 +581,14 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         refresh();
         if (cfg.rules) {
           const from = cfg.rulesFrom ?? armId;
+          if (cfg.emptyRules && !file.arms[from]?.playbook) throw new Error(`control ${armId} needs ${from}'s playbook in the results file first (it copies where the section appears)`);
           playbook = file.arms[from]?.playbook && process.env.PATCH_REDISTIL !== "1" ? file.arms[from].playbook : await distil(cfg.distil ?? 1);
         }
-        const book: Book = playbook ? { rules: playbook.rules, version: playbook.version ?? cfg.distil ?? 1 } : null;
+        const book: Book = playbook ? { rules: playbook.rules, version: playbook.version ?? cfg.distil ?? 1, empty: cfg.emptyRules } : null;
         const mine = (cfg.liquid ? liquidCases : cases).filter((c) => cfg.gravities.includes(c.world.gravity));
         const jobs = mine.flatMap((c) => SEEDS.map((seed) => () => runCase(armId, cfg, c, seed, book)));
         console.log(`\n== arm ${armId}: ${jobs.length} case runs (${mine.length} cases x ${SEEDS.length} seeds), ledger for ${SCRIPT} at $${ledger.spent(SCRIPT).toFixed(4)}`);
-        const arm: ArmRec = { config: { ...cfg, model: tf.MODELS[cfg.role], ...(cfg.escalate ? { escalate_model: tf.MODELS[cfg.escalate.role] } : {}), seeds: SEEDS, ledger_script: SCRIPT }, started: new Date().toISOString(), finished: null, runs: [], ...(playbook ? { playbook } : {}) };
+        const arm: ArmRec = { config: { ...cfg, model: tf.MODELS[cfg.role], ...(cfg.escalate ? { escalate_model: tf.MODELS[cfg.escalate.role] } : {}), seeds: SEEDS, ledger_script: SCRIPT }, started: new Date().toISOString(), finished: null, runs: [], ...(playbook && !cfg.emptyRules ? { playbook } : {}) };
         let done = 0;
         arm.runs = await pool(
           jobs.map((job) => async () => {
@@ -575,6 +615,38 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
 });
 
 // --- helpers --------------------------------------------------------------------------
+/**
+ * Run `fn` holding an exclusive lock file (created with O_EXCL). Waits up to `waitMs` for
+ * another holder; a lock older than `staleMs` (a crashed writer: a save takes about a second)
+ * is removed. Synchronous on purpose: the save it guards is synchronous too.
+ */
+function withFileLock<T>(lock: string, fn: () => T, waitMs = 120_000, staleMs = 60_000): T {
+  const nap = new Int32Array(new SharedArrayBuffer(4));
+  const deadline = Date.now() + waitMs;
+  let fd: number | null = null;
+  while (fd === null) {
+    try {
+      fd = openSync(lock, "wx");
+      writeSync(fd, `${process.pid} ${new Date().toISOString()}\n`);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+      try {
+        if (Date.now() - statSync(lock).mtimeMs > staleMs) unlinkSync(lock);
+      } catch {
+        // the holder released it between the two calls
+      }
+      if (Date.now() > deadline) throw new Error(`could not take ${lock} within ${waitMs / 1000} s`);
+      Atomics.wait(nap, 0, 0, 50 + Math.random() * 100);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    closeSync(fd);
+    unlinkSync(lock);
+  }
+}
+
 /** numbers to 4 significant digits (3 decimals at 1 and above); keeps the file a few MB */
 const roundNumbers = (_k: string, v: unknown) => (typeof v === "number" && !Number.isInteger(v) ? (Math.abs(v) >= 1 ? Math.round(v * 1000) / 1000 : Number(v.toPrecision(4))) : v);
 
@@ -663,6 +735,15 @@ function wilson(k: number, n: number, z = 1.96): [number, number] {
   const c = (p + (z * z) / (2 * n)) / d;
   const h = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / d;
   return [Math.max(0, c - h), Math.min(1, c + h)];
+}
+/** Newcombe's hybrid score interval for p1 - p2 (independent samples), from the two Wilson intervals */
+function diffCI(k1: number, n1: number, k2: number, n2: number): { d: number; lo: number; hi: number } {
+  const p1 = k1 / n1;
+  const p2 = k2 / n2;
+  const [l1, u1] = wilson(k1, n1);
+  const [l2, u2] = wilson(k2, n2);
+  const d = p1 - p2;
+  return { d, lo: d - Math.sqrt((p1 - l1) ** 2 + (u2 - p2) ** 2), hi: d + Math.sqrt((u1 - p1) ** 2 + (p2 - l2) ** 2) };
 }
 const pctCI = (k: number, n: number) => {
   if (!n) return "-";
@@ -778,7 +859,7 @@ function report(file: ResultsFile): string {
     );
   }
   // playbook comparison on Moon and orbit
-  const pbOrder = ["super-off", "preflight", "playbook", "playbook2", "super-on", "r2-super-off", "r2-playbook3", "r2-super-on", "r2-playbook2-on", "r2-playbook3-on", "r2-esc-on", "r2-playbook3-esc"];
+  const pbOrder = ["super-off", "preflight", "playbook", "playbook2", "super-on", "r2-super-off", "r2-ctrl3", "r2-playbook3", "r2-super-on", "r2-ctrl2-on", "r2-playbook2-on", "r2-ctrl3-on", "r2-playbook3-on", "r2-esc-on", "r2-ctrl3-esc", "r2-playbook3-esc"];
   const pb = pbOrder.filter((a) => file.arms[a]);
   if (pb.length > 1) {
     const mo = (a: string) => file.arms[a].runs.filter((r) => (r.gravity === "moon" || r.gravity === "orbit") && r.probe !== "pour-liquid");
@@ -794,7 +875,11 @@ function report(file: ResultsFile): string {
           const arm = file.arms[a];
           const runs = mo(a).filter((r) => r.expert_pass);
           const c = curve(runs);
-          const rules = arm.config.rules ? (a.includes("playbook3") ? "v3 tagged" : a.includes("playbook2") ? "v2" : "v1") : arm.config.preflight ? "none (set-up patch)" : "none (naive start)";
+          const rules = arm.config.emptyRules
+            ? `empty ${a.includes("ctrl2") ? "v2" : "v3"} section (control)`
+            : arm.config.rules
+              ? a.includes("playbook3") ? "v3 tagged" : a.includes("playbook2") ? "v2" : "v1"
+              : arm.config.preflight ? "none (set-up patch)" : "none (naive start)";
           const orbitPour = runs.filter((r) => r.probe === "pour" && r.gravity === "orbit");
           const label = String(arm.config.label ?? `${arm.config.role}-${arm.config.thinking}`);
           return [a, label, rules, String((arm.config.seeds as number[] | undefined)?.length ?? 3), String(runs.length), pct(c[0], runs.length), pct(c[1], runs.length), pct(c[2], runs.length), pctCI(c[MAX_PATCHES], runs.length), fmt(mean(runs.map((r) => r.passed_at ?? MAX_PATCHES + 1)), 2), `${orbitPour.filter((r) => r.passed_at !== null).length}/${orbitPour.length}`, `$${mo(a).reduce((n, r) => n + r.cost_usd, 0).toFixed(4)}`];
@@ -812,6 +897,33 @@ function report(file: ResultsFile): string {
             return `${c[0]} / ${c[MAX_PATCHES]} of ${runs.length}`;
           }),
         ]),
+      ),
+    );
+  }
+  // the rules' own effect: each playbook arm against its matched control (same set-up call, same calls, same cases and seeds)
+  const pairs = [
+    ["r2-playbook3", "r2-ctrl3"],
+    ["r2-playbook3-on", "r2-ctrl3-on"],
+    ["r2-playbook3-esc", "r2-ctrl3-esc"],
+    ["r2-playbook2-on", "r2-ctrl2-on"],
+  ].filter(([a, b]) => file.arms[a] && file.arms[b]);
+  if (pairs.length) {
+    const mo = (a: string) => file.arms[a].runs.filter((r) => (r.gravity === "moon" || r.gravity === "orbit") && r.probe !== "pour-liquid" && r.expert_pass);
+    const at = (runs: RunRec[], k: number) => runs.filter((r) => r.passed_at !== null && r.passed_at <= k).length;
+    const lift = (a: RunRec[], b: RunRec[], k: number) => {
+      const d = diffCI(at(a, k), a.length, at(b, k), b.length);
+      return `${d.d >= 0 ? "+" : ""}${Math.round(100 * d.d)} [${Math.round(100 * d.lo)} to ${Math.round(100 * d.hi)}]`;
+    };
+    lines.push("\n### Lift from the rules alone (Moon and orbit, solvable runs): playbook arm minus its matched control, percentage points with Newcombe 95% intervals");
+    lines.push(
+      mdTable(
+        ["playbook arm", "matched control", "patcher", "runs", "at iteration 0", "lift", "after 1", "lift", "after 5", "lift", "mean iterations (never = 6): playbook / control"],
+        pairs.map(([a, b]) => {
+          const ra = mo(a);
+          const rb = mo(b);
+          const mi = (rs: RunRec[]) => fmt(mean(rs.map((r) => r.passed_at ?? MAX_PATCHES + 1)), 2);
+          return [a, b, String(file.arms[a].config.label), `${ra.length} / ${rb.length}`, `${pct(at(ra, 0), ra.length)} vs ${pct(at(rb, 0), rb.length)}`, lift(ra, rb, 0), `${pct(at(ra, 1), ra.length)} vs ${pct(at(rb, 1), rb.length)}`, lift(ra, rb, 1), `${pct(at(ra, MAX_PATCHES), ra.length)} vs ${pct(at(rb, MAX_PATCHES), rb.length)}`, lift(ra, rb, MAX_PATCHES), `${mi(ra)} / ${mi(rb)}`];
+        }),
       ),
     );
   }

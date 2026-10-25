@@ -17,7 +17,7 @@ Machine for the local runs: Apple M4, Node 24, one thread, MuJoCo WebAssembly 3.
 | Liquid model against physics | drain time within 2.8% of Torricelli's law; surface tilt within 0.09° of atan(a/g) | 5 |
 | Interview recovering missing details | 21% with the first design, 43% with a separate answer-to-change call | 7 |
 | Failing rehearsals fixed from simulator notes alone | 69% (Super), 94% (Super with reasoning, or escalating to it when stuck) within 5 patches | 8 |
-| Learning across tasks, Moon and orbit | first-try success 5% to 67%, five-patch success 93% to 100%, with 2 rules learned on Earth and Mars | 8 |
+| Learning across tasks, Moon and orbit | rules learned on Earth and Mars add 28 points of first-try success with the cheap model (5% to 33%) and 18 with reasoning (48% to 67%), against matched controls; no measurable change within five patches | 8 |
 | Pouring with a real liquid model | far harder to fix than beads (48% against 88%), and pouring in orbit turns out feasible | 8 |
 
 ## 1. What a session costs
@@ -119,18 +119,17 @@ A naive program, written the way a person would do the task, fails in 93 of 108 
 | Escalation to Ultra, thinking off | 91% [86 to 94] (164 of 180) | 27% | US$0.0023 | 9 s |
 | Ultra, 16k reasoning (3 seeds) | 94% [88 to 98] | 80% | US$0.045 | 39 s |
 
-The learning curve for the escalating patcher, share of failing rehearsals fixed after each patch: 0%, 28%, 56%, 81%, 87%, 94%. The cheap model alone stalls on lateral offsets (it never used the measured "4.1 mm from the pocket centre"); escalation takes insert from 45% to 97%.
+The learning curve for the escalating patcher, share of failing rehearsals fixed after each patch: 0%, 28%, 56%, 81%, 87%, 94%. The cheap model alone stalls on lateral offsets: of its 1,079 patches on offset inserts, 58 set the correction to exactly minus the measured offset (such as the note's "4.1 mm from the pocket centre"), mostly late, and 38 used the wrong sign. Escalation takes insert from 40% (24 of 60) to 97% (58 of 60).
 
-**Learning across tasks.** Rules distilled by Super from 16 Earth and Mars repairs, tagged by task and shown only for their own task, were given to the patcher on the Moon and in orbit (120 runs per arm):
+**Learning across tasks.** Rules distilled by Super from 16 Earth and Mars repairs, tagged by task and shown only for their own task, were given to the patcher on the Moon and in orbit. The playbook arms make one set-up call before the first rollout, so each is compared with a matched control: the same set-up call, the same number of editing calls, the same cases and seeds, and an empty rules section (120 runs per arm, Wilson 95% intervals for the rates, Newcombe for the lift):
 
-| Patcher | Rules | First try | Within 5 patches |
-|---|---|---|---|
-| Super, thinking on | none | 5% | 93% [87 to 97] |
-| Super, thinking on | 2 tagged rules | 67% | 100% [97 to 100] |
-| Super, thinking off | none | 5% | 82% [74 to 88] |
-| Super, thinking off | 2 tagged rules | 33% | 85% [78 to 90] |
+| Patcher | First try: rules vs control | Lift | Within 5 patches: rules vs control | Lift |
+|---|---|---|---|---|
+| Super, thinking off | 33% vs 5% | +28 points [18 to 37] | 85% vs 79% | +6 [-4 to 16] |
+| Super, thinking on | 67% vs 48% | +18 points [6 to 30] | 100% vs 100% | +0 [-3 to 3] |
+| Escalation | 33% vs 5% | +28 points [18 to 37] | 94% vs 93% | +2 [-5 to 8] |
 
-With the rules and reasoning, Super declares the orbit pour infeasible before the first rollout in 12 of 12 runs, for the bead model.
+The rules make the first try right more often; within five patches the loop gets there anyway, and no lift is distinguishable from zero. With reasoning, the set-up call alone does much of the work: it takes the first try from 5% to 48% without any rules. The cheap model never uses the set-up call (0 of 120 changed anything). Declaring the orbit bead pour infeasible up front (12 of 12) also happens without the rules, so it is not their doing.
 
 **The liquid model changes the pour.** Re-run on the liquid solver (600 particles, one-way coupled), the same loop fixes far fewer pours: 19% [10 to 32] with Super thinking off and 48% [34 to 62] with thinking on, against 79% and 88% with beads. Most failures sit at 75 to 88% of the water in the target, lost along the lip as the water wets the walls. And in orbit, turning the cup over in one second and waiting lands the water and keeps it there in 3 of 6 seeds, so "pouring in orbit is infeasible" was an artefact of the bead model. No patcher found that throw. This is the reason to keep the liquid model: it changes conclusions, not only numbers.
 

@@ -41,7 +41,7 @@ Every number below was checked twice against its page on 25 October 2026; the so
 | Re-collection after the first policy evaluation | 30 to 50% of the original budget (one vendor's model) | Robotics Center, March 2026 |
 | An Understudy session | $0.0375 on average, 17 calls, 71 s (measured, 3 runs) | `docs/MEASUREMENTS.md` |
 | Failing rehearsals fixed from simulator notes | 69% (cheap model), 94% (escalating to reasoning), $0.0024 per fix | `docs/MEASUREMENTS.md` |
-| Learning across tasks, Moon and orbit | first try 5% to 67%; within five patches 93% to 100% | `docs/MEASUREMENTS.md` |
+| Learning across tasks, Moon and orbit | rules learned on Earth and Mars: first try +28 points with the cheap model (5% to 33%), +18 with reasoning (48% to 67%), against matched controls | `docs/MEASUREMENTS.md` |
 | A tube let go at the slot mouth | seats on Earth, Mars and the Moon; floats 30 mm up in orbit | `docs/MEASUREMENTS.md` |
 | Liquid model against physics | pour time within 2.8% of Torricelli's law; surface tilt within 0.09° | `docs/MEASUREMENTS.md` |
 | Saving on a 500-demonstration campaign | 3%, 10% or 25% of the collection budget if Understudy avoids a tenth, a quarter or half of re-collection; the share is a model, its inputs are measured (a naive program fails 86% of disturbed runs; fixing one costs $0.0024) | `docs/research/market.md`, section 5; `docs/MEASUREMENTS.md`, section 9 |

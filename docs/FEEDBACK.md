@@ -68,10 +68,10 @@ For each: used for, what worked, what needs work, minutes to hello-world, would 
     - with thinking off, it fixed 69% of failing rehearsals within five patches, at US$0.0015 per fix
     - with thinking on (4k), 94%
     - starting with thinking off and escalating to thinking on when stuck, also 94%, at US$0.0024 per fix
-  - **Rules from earlier repairs:** two rules it distilled from 16 Earth and Mars repairs took first-try success on the Moon and in orbit from 5% to 67%.
+  - **Rules from earlier repairs:** two rules it distilled from 16 Earth and Mars repairs raised first-try success on the Moon and in orbit by 28 points with thinking off and 18 with thinking on, against matched controls.
   - **Infeasible tasks:** with thinking off it correctly declared pouring beads in orbit infeasible in 12 of 12 runs, and never wrongly on a surface.
 - **Needs work:**
-  - **Stuck patches:** with thinking off, about a quarter of its patches changed nothing. It never used a measured offset ("4.1 mm from the pocket centre") to correct an insertion.
+  - **Stuck patches:** with thinking off, about a quarter of its patches changed nothing. It rarely used a measured offset ("4.1 mm from the pocket centre") to correct an insertion: 58 of 1,079 patches did, mostly late, and 38 had the wrong sign.
   - **Saboteur:** it sometimes returned 5 scenarios instead of 12, and twice left out gravity despite the rule.
   - **Interview:** in a single call per turn it dropped 39% of answers that carried the missing value. A separate call that turns each answer into spec changes fixed that, and recovery rose from 21% to 43%.
 - **Prompt caching:** reported 0 cached tokens on interview turns that share a long prefix.

@@ -120,7 +120,7 @@ The loop is designed to compound through step 4: each clip leaves rules behind, 
 
 The demo will use NASA public-domain footage of an astronaut placing seed film into the ISS Veggie plant pillows. The same program will run on Earth and in orbit, where a released object drifts instead of resting. The scoreboard will show passes out of 24 per iteration and per gravity, with the perception budget per axis.
 
-**What is measured and what is planned.** Measured on 25 October 2026 (`docs/MEASUREMENTS.md`): a full session costs US$0.0375 in model calls on average; on four tasks at four gravities, a naive program fails 86% of runs and the loop fixes 94% of those within five patches when it escalates to reasoning; rules learned on Earth and Mars take first-try success on the Moon and in orbit from 5% to 67%. Those runs use a small program of bounded knobs; the full interpreter, the 24-rollout scoreboard and the iteration log for the sample clips are being built this week.
+**What is measured and what is planned.** Measured on 25 October 2026 (`docs/MEASUREMENTS.md`): a full session costs US$0.0375 in model calls on average; on four tasks at four gravities, a naive program fails 86% of runs and the loop fixes 94% of those within five patches when it escalates to reasoning; rules learned on Earth and Mars add 28 points of first-try success on the Moon and in orbit against a matched control. Those runs use a small program of bounded knobs; the full interpreter, the 24-rollout scoreboard and the iteration log for the sample clips are being built this week.
 
 ## 7. Sources
 
@@ -169,5 +169,5 @@ On 25 October 2026 every external number below was checked twice against its pag
 | 39 | AgiBot World verified data | +0.18 completion score (528 verified vs 1,010 mixed) | https://arxiv.org/html/2503.06669 | 2025-03 |
 | 40 | Vendor guide: pilot and task spec before collecting (Claru) | Pilot at 2-5% of budget; written spec with an explicit success condition | https://claru.ai/guides/how-to-create-a-robot-demonstration-dataset | 2026 |
 | 41 | Understudy session (measured) | 16.7 calls, US$0.0375 on average (US$0.028 to US$0.052 over 3 runs), 71 s; label call 6,379 tokens | Team measurement, `docs/MEASUREMENTS.md` and `bench/results/session.json` | 2026-10-25 |
-| 42 | Understudy rehearsal and repair loop (measured) | naive program fails 93 of 108 runs (86%) at four gravities; escalating patcher fixes 94% [89 to 97] within 5 patches at US$0.0024 per fix; playbook takes Moon and orbit first try from 5% to 67% | Team measurement, `docs/MEASUREMENTS.md` and `bench/results/patch-loop.json` | 2026-10-25 |
+| 42 | Understudy rehearsal and repair loop (measured) | naive program fails 93 of 108 runs (86%) at four gravities; escalating patcher fixes 94% [89 to 97] within 5 patches at US$0.0024 per fix; rules learned on Earth and Mars add 28 points of first-try success on the Moon and in orbit (matched control) | Team measurement, `docs/MEASUREMENTS.md` and `bench/results/patch-loop.json` | 2026-10-25 |
 | 43 | Robot data needed to fine-tune pi0 to a new task | 1 to 20 hours | https://pi.website/blog/openpi | 2025-02-04 |
