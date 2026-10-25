@@ -199,6 +199,10 @@
                   pos="-0.0143 0 -0.053"/>
                 <!-- Frame gripperframe -->
                 <site group="3" name="gripperframe" pos="0.012 -0.000218 -0.098127" quat="1 0 1 0"/>
+                <!-- Understudy: between the pads when they close on a ~17 mm object; IK aims here to grasp -->
+                <site group="3" name="graspframe" pos="0.0005 -0.000218 -0.094127" quat="1 0 1 0"/>
+                <!-- Understudy: moved onto the held object's centre at each grasp, so IK can place the object itself -->
+                <site group="3" name="heldframe" pos="0.0005 -0.000218 -0.094127" quat="1 0 1 0"/>
                 <!-- Camera mount -->
                 <body name="camera_mount">
                   <camera name="wrist_cam" mode="fixed" pos="-0.00296 0.05436 -0.05310"

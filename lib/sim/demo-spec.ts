@@ -11,7 +11,7 @@ export const DEMO_SPEC = TaskSpec.parse({
   title: "tube into rack",
   summary: "Pick up the tube and put it into the rack's pocket.",
   objects: [
-    { id: "tube", name: "tube", shape: "cylinder", size_mm: [17, 17, 100], symmetry: "axial", role: "manipulated", pose: { xyz_mm: [200, -100, 50] }, source: "demo" },
+    { id: "tube", name: "tube", shape: "cylinder", size_mm: [17, 17, 60], symmetry: "axial", role: "manipulated", pose: { xyz_mm: [200, -100, 30] }, source: "demo" },
     { id: "rack", name: "rack", shape: "box", size_mm: [60, 60, 40], symmetry: "none", role: "fixture", pocket_clearance_mm: 3, pose: { xyz_mm: [175, 100, 20] }, source: "demo" },
   ],
   steps: [

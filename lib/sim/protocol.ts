@@ -65,12 +65,14 @@ export type Frame = {
   geomXmat: Float64Array;
   /** nsite x 3 world positions */
   siteXpos: Float64Array;
+  /** the body welded to the gripper, if any */
+  attached: string | null;
 };
 
 export type Waypoint = { t: number; q: number[] };
 
 export type ToWorker =
-  | { type: "load"; id: number; mujocoBase: string; assetBase: string; gravityG?: number; worldbody?: string }
+  | { type: "load"; id: number; mujocoBase: string; assetBase: string; gravityG?: number; worldbody?: string; graspable?: string[] }
   | { type: "setGravity"; g: number }
   | { type: "nudge"; body: string; velocity: [number, number, number] }
   | { type: "setCtrl"; ctrl: number[] }
@@ -78,8 +80,12 @@ export type ToWorker =
   | { type: "stop" }
   | { type: "reset" }
   | { type: "jacobian"; id: number; site: string }
-  /** solve IK from the current state; `target` in world metres; nothing moves */
-  | { type: "ik"; id: number; target: [number, number, number]; approach: Approach };
+  /** solve IK from the current state for `site` (the tip unless given); `target` in world metres; nothing moves */
+  | { type: "ik"; id: number; target: [number, number, number]; approach: Approach; site?: string }
+  /** close the gripper; weld `body` once both jaws hold it, or fail after GRASP_TIMEOUT_S */
+  | { type: "grasp"; id: number; body: string }
+  /** unweld and open; the object keeps the velocity it had */
+  | { type: "release" };
 
 export type FromWorker =
   | { type: "status"; message: string; progress?: number }
@@ -87,4 +93,6 @@ export type FromWorker =
   | { type: "frame"; frame: Frame }
   | { type: "jacobian"; id: number; site: string; nv: number; jacp: Float64Array; jacr: Float64Array }
   | { type: "ik"; id: number; result: IkResult }
+  /** `jaw`: the gripper angle the worker now holds; keep it in later ctrl so a move does not squeeze or let go */
+  | { type: "grasp"; id: number; result: { ok: boolean; body: string; jaw: number; message?: string } }
   | { type: "error"; id?: number; message: string };
