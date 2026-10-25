@@ -1,0 +1,145 @@
+{
+  "removed": [
+    {
+      "field": "fit",
+      "path": "steps[s2].tolerances"
+    },
+    {
+      "field": "aperture",
+      "path": "objects[cup].size_mm"
+    },
+    {
+      "field": "success",
+      "path": "steps[s2].success"
+    },
+    {
+      "field": "via",
+      "path": "steps[s2].via_points"
+    },
+    {
+      "field": "precondition",
+      "path": "steps[s2].preconditions"
+    }
+  ],
+  "spec": {
+    "version": 1,
+    "title": "cup onto saucer",
+    "summary": "Lift a full espresso cup and set it down on its saucer without spilling.",
+    "objects": [
+      {
+        "id": "cup",
+        "name": "espresso cup",
+        "shape": "cylinder",
+        "size_mm": [
+          94,
+          94,
+          111
+        ],
+        "symmetry": "axial",
+        "role": "manipulated",
+        "pose": {
+          "xyz_mm": [
+            130,
+            120,
+            33
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.3,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "saucer",
+        "name": "saucer",
+        "shape": "cylinder",
+        "size_mm": [
+          150,
+          150,
+          15
+        ],
+        "symmetry": "axial",
+        "role": "fixture",
+        "pose": {
+          "xyz_mm": [
+            210,
+            -50,
+            8
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.9,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "steps": [
+      {
+        "id": "s1",
+        "verb": "grasp",
+        "object": "cup",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "contact_both_pads",
+            "object": "cup"
+          }
+        ],
+        "tolerances": {
+          "x_mm": 5,
+          "y_mm": 5
+        },
+        "t_start_s": 1,
+        "t_end_s": 2,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s2",
+        "verb": "place",
+        "object": "cup",
+        "target": {
+          "fixture": "zone",
+          "frame": "saucer"
+        },
+        "via_points": [],
+        "preconditions": [],
+        "success": [],
+        "tolerances": {},
+        "t_start_s": 2,
+        "t_end_s": 5,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s3",
+        "verb": "retract",
+        "object": "cup",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "no_collision"
+          }
+        ],
+        "tolerances": {},
+        "t_start_s": 5,
+        "t_end_s": 6,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "anchor": {
+      "t_s": 2,
+      "confidence": 0.8
+    },
+    "warnings": [],
+    "open_questions": [
+      "objects[cup].size_mm: the espresso cup's size is a guess (no scale in frame); how wide is it where the hand grips it?"
+    ],
+    "sources": {}
+  }
+}

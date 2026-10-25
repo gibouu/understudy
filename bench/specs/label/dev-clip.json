@@ -1,0 +1,25 @@
+{
+  "clip": "samples/dev-clip.mp4",
+  "how_made": "Watched by hand on 25 Oct 2026: 30 frames at 1 fps, 2 fps and 5 fps crops of the board (0-30 s, 3.5-6.7 s, 18.5-21.7 s). The piece layout (one white pawn and one black pawn advanced to the centre) is the same in the first and the last frame and in every frame checked between.",
+  "what_happens": "One astronaut in a navy NASA T-shirt floats behind a chess board mounted in front of him (white box on its left, a strap or bar to its right) and talks to the camera. He swings his arms, crosses them over the board twice and gestures; his hands pass over the pieces but no piece is picked up or moved in this 30 s window. samples/README.md says 'moving chess pieces': not in this window. A labeller that reports a grasp, move or place of a piece is hallucinating.",
+  "rubric_truth": {
+    "verb": "none (no manipulation)",
+    "objects": "chess board about 270 mm across, pieces about 45 mm tall",
+    "fixture_type": "none (a move would be a zone)",
+    "steps": 0,
+    "board_largest_mm": 270,
+    "piece_largest_mm": 45
+  },
+  "spec": {
+    "version": 1,
+    "title": "talking behind a chess board (no manipulation)",
+    "summary": "A person floats behind a mounted chess board, gestures and crosses his arms; no piece is moved.",
+    "objects": [
+      { "id": "board", "name": "chess board", "shape": "box", "size_mm": [270, 270, 20], "symmetry": "none", "role": "surface", "confidence": 0.7, "source": "gt#watch" },
+      { "id": "piece", "name": "chess piece (king, tallest)", "shape": "cylinder", "size_mm": [18, 18, 45], "symmetry": "axial", "role": "obstacle", "confidence": 0.6, "source": "gt#watch" }
+    ],
+    "steps": [],
+    "warnings": ["no object is moved in the clip: nothing for a robot to repeat"],
+    "open_questions": []
+  }
+}

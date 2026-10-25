@@ -1,0 +1,113 @@
+{
+  "name": "arm-rehearsal-throughput",
+  "measured_at": "2026-10-25T08:39:28.071Z",
+  "machine": {
+    "cpu": "Apple M4",
+    "cores": 10,
+    "platform": "darwin 27.0.0 arm64",
+    "node": "v24.21.0",
+    "mujoco_wasm": "3.17.0",
+    "threads_used": 1,
+    "loadavg_1m_at_start": 16.57,
+    "git_head": "4056148"
+  },
+  "parameters": {
+    "scene": "buildScene(DEMO_SPEC) inside stageXml, gravity_g per row",
+    "rollout_s": 3,
+    "rollouts_per_gravity": 24,
+    "trajectory": "ctrl = linear interpolation (sampleWaypoints) home -> IK solution 50 mm above the rack pocket (top) by t=1.5 s, held to 3 s; gripper at home",
+    "timing": "performance.now() from new MjData to the last mj_step; one untimed warm-up rollout per model",
+    "note": "Node single thread; the browser worker is similar WASM but not measured here; rollouts within one gravity are identical (no interpreter, grasp or predicates)"
+  },
+  "rows": [
+    {
+      "gravity_g": 1,
+      "compile_ms": 45,
+      "warmup_rollout_s": 0.0208,
+      "s_per_rollout": {
+        "mean": 0.0055,
+        "min": 0.0052,
+        "max": 0.008
+      },
+      "s_for_24": 0.13,
+      "real_time_factor": 540.6,
+      "steps_per_rollout": 600,
+      "us_per_step": 9.2,
+      "tip_err_at_3s_mm": 0.6,
+      "tube_moved_mm": 0.1,
+      "mujoco_warnings": 0,
+      "identical_rollouts": true
+    },
+    {
+      "gravity_g": 0.1654,
+      "compile_ms": 15,
+      "warmup_rollout_s": 0.0053,
+      "s_per_rollout": {
+        "mean": 0.0053,
+        "min": 0.0052,
+        "max": 0.0054
+      },
+      "s_for_24": 0.13,
+      "real_time_factor": 566.9,
+      "steps_per_rollout": 600,
+      "us_per_step": 8.8,
+      "tip_err_at_3s_mm": 0.5,
+      "tube_moved_mm": 0,
+      "mujoco_warnings": 0,
+      "identical_rollouts": true
+    },
+    {
+      "gravity_g": 0,
+      "compile_ms": 13,
+      "warmup_rollout_s": 0.0044,
+      "s_per_rollout": {
+        "mean": 0.0043,
+        "min": 0.0043,
+        "max": 0.0044
+      },
+      "s_for_24": 0.1,
+      "real_time_factor": 691.2,
+      "steps_per_rollout": 600,
+      "us_per_step": 7.2,
+      "tip_err_at_3s_mm": 0.5,
+      "tube_moved_mm": 0,
+      "mujoco_warnings": 0,
+      "identical_rollouts": true
+    }
+  ],
+  "end_to_end": {
+    "description": "per gravity: 12 perturbed scenario worlds compiled; per world one IK solve above the perturbed pocket and two rollouts (blind uses the nominal solution, sensed the re-solved one)",
+    "rows": [
+      {
+        "gravity_g": 1,
+        "rollouts": 24,
+        "scenario_worlds": 12,
+        "s_total": 0.28,
+        "s_compile": 0.14,
+        "s_ik": 0.003,
+        "s_sim": 0.13,
+        "real_time_factor": 253.2
+      },
+      {
+        "gravity_g": 0.1654,
+        "rollouts": 24,
+        "scenario_worlds": 12,
+        "s_total": 0.28,
+        "s_compile": 0.13,
+        "s_ik": 0.003,
+        "s_sim": 0.13,
+        "real_time_factor": 258.2
+      },
+      {
+        "gravity_g": 0,
+        "rollouts": 24,
+        "scenario_worlds": 12,
+        "s_total": 0.25,
+        "s_compile": 0.13,
+        "s_ik": 0.002,
+        "s_sim": 0.1,
+        "real_time_factor": 288.6
+      }
+    ]
+  }
+}

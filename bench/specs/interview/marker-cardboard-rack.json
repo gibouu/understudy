@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "title": "capped marker into a cardboard rack",
+  "summary": "Pick a capped marker from the table and drop it upright into a hole of a home-made cardboard rack.",
+  "objects": [
+    {
+      "id": "marker",
+      "name": "capped marker",
+      "shape": "cylinder",
+      "size_mm": [
+        18,
+        18,
+        140
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+        "xyz_mm": [
+          140,
+          110,
+          9
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench"
+    },
+    {
+      "id": "rack",
+      "name": "cardboard rack",
+      "shape": "box",
+      "size_mm": [
+        150,
+        60,
+        80
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+        "xyz_mm": [
+          210,
+          -60,
+          40
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench",
+      "pocket_clearance_mm": 3
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "marker",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "contact_both_pads",
+          "object": "marker"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 5,
+        "y_mm": 5
+      },
+      "t_start_s": 1,
+      "t_end_s": 2,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s2",
+      "verb": "insert",
+      "object": "marker",
+      "target": {
+        "fixture": "pocket",
+        "frame": "rack"
+      },
+      "via_points": [
+        {
+          "frame": "rack",
+          "xyz_mm": [
+            0,
+            0,
+            170
+          ],
+          "source": "gt#bench"
+        }
+      ],
+      "preconditions": [
+        {
+          "kind": "no_collision"
+        }
+      ],
+      "success": [
+        {
+          "kind": "inside_zone",
+          "object": "marker",
+          "target": "rack"
+        },
+        {
+          "kind": "object_still",
+          "object": "marker"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 3,
+        "y_mm": 3
+      },
+      "t_start_s": 2,
+      "t_end_s": 6,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s3",
+      "verb": "retract",
+      "object": "marker",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "no_collision"
+        }
+      ],
+      "tolerances": {},
+      "t_start_s": 6,
+      "t_end_s": 7,
+      "source": "gt#bench"
+    }
+  ],
+  "anchor": {
+    "t_s": 2,
+    "confidence": 0.8
+  },
+  "warnings": [],
+  "open_questions": []
+}

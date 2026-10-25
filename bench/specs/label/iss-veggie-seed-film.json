@@ -1,0 +1,34 @@
+{
+  "clip": "samples/iss-veggie-seed-film.mp4",
+  "how_made": "Watched by hand on 25 Oct 2026: 36 frames at 1 fps (640 wide), 1280x720 crops of the work area at 1 fps and 3 s steps. Sizes are rough, scaled from the gloved hand (palm about 90 mm across) and the Veggie root-mat frame. Times are +-1 s.",
+  "what_happens": "An astronaut in a red shirt and blue gloves works at the Veggie plant-growth facility. On a blue bench sits an orange-framed baseplate holding six black plant pillows in two rows of three, each with a white fabric wick or seed opening on top. 0-12 s: both hands at the top-right pillow, tucking a strip of seed film into the pillow's seed opening. 13-31 s: the hands drop to the lower right and pull the next yellow-green seed-film strip out of a clear zip bag. 31-33 s: the hands carry the strip back up to the pillows. 33-36 s: the strip goes into the next pillow's opening (the clip ends mid-insert). Microgravity; no tools; one fixed camera.",
+  "rubric_truth": {
+    "verb": "insert",
+    "manipulated": "seed film strip",
+    "fixture": "plant pillow (seed opening), one of six on a baseplate",
+    "fixture_type": "pocket",
+    "steps": 4,
+    "manipulated_largest_mm": 60,
+    "known_misreadings": ["battery packs", "hard-drive units in a six-slot tray"]
+  },
+  "spec": {
+    "version": 1,
+    "title": "seed film into plant pillows",
+    "summary": "Tuck a strip of seed film into the seed opening of a plant pillow, take the next strip out of its bag, and tuck it into the next pillow.",
+    "objects": [
+      { "id": "film", "name": "seed film strip", "shape": "box", "size_mm": [15, 60, 1], "symmetry": "none", "role": "manipulated", "confidence": 0.7, "source": "gt#watch" },
+      { "id": "pillow", "name": "plant pillow (seed opening)", "shape": "box", "size_mm": [100, 100, 50], "symmetry": "none", "role": "fixture", "confidence": 0.8, "source": "gt#watch" },
+      { "id": "bag", "name": "clear zip bag of seed films", "shape": "box", "size_mm": [100, 150, 10], "symmetry": "none", "role": "fixture", "confidence": 0.6, "source": "gt#watch" },
+      { "id": "baseplate", "name": "Veggie baseplate with six pillows", "shape": "box", "size_mm": [300, 220, 20], "symmetry": "none", "role": "surface", "confidence": 0.6, "source": "gt#watch" }
+    ],
+    "steps": [
+      { "id": "s1", "verb": "insert", "object": "film", "target": { "fixture": "pocket", "frame": "pillow" }, "t_start_s": 0, "t_end_s": 12, "source": "gt#watch" },
+      { "id": "s2", "verb": "grasp", "object": "film", "t_start_s": 13, "t_end_s": 31, "source": "gt#watch" },
+      { "id": "s3", "verb": "move", "object": "film", "t_start_s": 31, "t_end_s": 33, "source": "gt#watch" },
+      { "id": "s4", "verb": "insert", "object": "film", "target": { "fixture": "pocket", "frame": "pillow" }, "t_start_s": 33, "t_end_s": 36, "source": "gt#watch" }
+    ],
+    "anchor": { "t_s": 14, "confidence": 0.5 },
+    "warnings": ["the seed film is about 1 mm thick, under the 5 mm primitive floor", "the clip ends mid-insert"],
+    "open_questions": []
+  }
+}

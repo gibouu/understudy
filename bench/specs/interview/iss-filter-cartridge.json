@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "title": "swap a filter cartridge aboard a station",
+  "summary": "With the spent cartridge already out, take the new filter cartridge and push it straight into the empty filter housing.",
+  "objects": [
+    {
+      "id": "cartridge",
+      "name": "filter cartridge",
+      "shape": "cylinder",
+      "size_mm": [
+        40,
+        40,
+        90
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+        "xyz_mm": [
+          140,
+          120,
+          45
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench"
+    },
+    {
+      "id": "housing",
+      "name": "filter housing",
+      "shape": "cylinder",
+      "size_mm": [
+        60,
+        60,
+        110
+      ],
+      "symmetry": "axial",
+      "role": "fixture",
+      "pose": {
+        "xyz_mm": [
+          200,
+          -60,
+          55
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench",
+      "pocket_clearance_mm": 1
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "cartridge",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "contact_both_pads",
+          "object": "cartridge"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 5,
+        "y_mm": 5
+      },
+      "t_start_s": 2,
+      "t_end_s": 4,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s2",
+      "verb": "insert",
+      "object": "cartridge",
+      "target": {
+        "fixture": "pocket",
+        "frame": "housing"
+      },
+      "via_points": [
+        {
+          "frame": "housing",
+          "xyz_mm": [
+            0,
+            0,
+            180
+          ],
+          "source": "gt#bench"
+        }
+      ],
+      "preconditions": [
+        {
+          "kind": "tilt_under",
+          "object": "cartridge",
+          "value": 4
+        }
+      ],
+      "success": [
+        {
+          "kind": "inside_zone",
+          "object": "cartridge",
+          "target": "housing"
+        },
+        {
+          "kind": "tilt_under",
+          "object": "cartridge",
+          "value": 2
+        }
+      ],
+      "tolerances": {
+        "x_mm": 1,
+        "y_mm": 1
+      },
+      "t_start_s": 4,
+      "t_end_s": 11,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s3",
+      "verb": "retract",
+      "object": "cartridge",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "no_collision"
+        }
+      ],
+      "tolerances": {},
+      "t_start_s": 11,
+      "t_end_s": 12,
+      "source": "gt#bench"
+    }
+  ],
+  "anchor": {
+    "t_s": 4,
+    "confidence": 0.8
+  },
+  "warnings": [],
+  "open_questions": []
+}

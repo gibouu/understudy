@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "title": "pill bottle into a tray",
+  "summary": "Put a soft plastic pill bottle into a free well of a pharmacy tray without squeezing it.",
+  "objects": [
+    {
+      "id": "bottle",
+      "name": "pill bottle",
+      "shape": "cylinder",
+      "size_mm": [
+        35,
+        35,
+        70
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+        "xyz_mm": [
+          140,
+          110,
+          35
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench"
+    },
+    {
+      "id": "tray",
+      "name": "pharmacy tray",
+      "shape": "box",
+      "size_mm": [
+        200,
+        120,
+        30
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+        "xyz_mm": [
+          210,
+          -60,
+          15
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench",
+      "pocket_clearance_mm": 4
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "bottle",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "contact_both_pads",
+          "object": "bottle"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 5,
+        "y_mm": 5
+      },
+      "t_start_s": 1,
+      "t_end_s": 2,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s2",
+      "verb": "insert",
+      "object": "bottle",
+      "target": {
+        "fixture": "pocket",
+        "frame": "tray"
+      },
+      "via_points": [
+        {
+          "frame": "tray",
+          "xyz_mm": [
+            0,
+            0,
+            110
+          ],
+          "source": "gt#bench"
+        }
+      ],
+      "preconditions": [
+        {
+          "kind": "gripper_within",
+          "object": "bottle",
+          "value": 3
+        }
+      ],
+      "success": [
+        {
+          "kind": "inside_zone",
+          "object": "bottle",
+          "target": "tray"
+        },
+        {
+          "kind": "object_still",
+          "object": "bottle"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 4,
+        "y_mm": 4
+      },
+      "t_start_s": 2,
+      "t_end_s": 6,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s3",
+      "verb": "retract",
+      "object": "bottle",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "no_collision"
+        }
+      ],
+      "tolerances": {},
+      "t_start_s": 6,
+      "t_end_s": 7,
+      "source": "gt#bench"
+    }
+  ],
+  "anchor": {
+    "t_s": 2,
+    "confidence": 0.8
+  },
+  "warnings": [],
+  "open_questions": []
+}

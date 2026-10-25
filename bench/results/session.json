@@ -1,0 +1,2262 @@
+{
+  "benchmark": "understudy session cost on Nebius Token Factory",
+  "date": "2026-10-25T08:47:51.365Z",
+  "reproduce": "UNDERSTUDY_ENV_FILE=<path to .env.local> node scripts/bench-session.mjs",
+  "previous_estimate": "about 18 requests and under $0.10 per session (docs/SPEC.md, section 4)",
+  "conditions": {
+    "base_url": "https://api.tokenfactory.nebius.com/v1/",
+    "node": "v24.21.0",
+    "openai_sdk": "7.42.0",
+    "models": {
+      "vl": "nvidia/Nemotron-3.5-Super-VL",
+      "nano": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+      "super": "nvidia/nemotron-3-super-120b-a12b",
+      "ultra": "nvidia/Nemotron-3-Ultra-550b-a55b"
+    },
+    "thinking": {
+      "health": "default (as app/api/health/route.ts); its 5 tokens all go to reasoning, so the content is empty and finish is length, which the route does not check",
+      "label": "off (chat_template_kwargs.enable_thinking=false)",
+      "compile": "off",
+      "interview": "off",
+      "saboteur": "off",
+      "notes": "off",
+      "reshoot": "default (on), max_tokens 16000, as SPEC section 4 sizes the background call"
+    },
+    "max_tokens": {
+      "health": 5,
+      "label": 3000,
+      "compile": 3000,
+      "interview": 1200,
+      "saboteur": 3000,
+      "notes": 800,
+      "reshoot": 16000
+    },
+    "response_format": "json_object on every call except health",
+    "streaming": false,
+    "retries": 0,
+    "sequential": true,
+    "clip": {
+      "file": "samples/iss-veggie-seed-film.mp4",
+      "seconds": 36,
+      "width": 1280,
+      "height": 720,
+      "fps": "30/1"
+    },
+    "proxy": {
+      "width": 480,
+      "height": 270,
+      "fps": 4,
+      "codec": "h264",
+      "crf": 28,
+      "bytes": 231201,
+      "encode_ms": 512,
+      "note": "VIDEO_PROXY in lib/providers/tokenfactory.ts (width 480); encoded once with ffmpeg, outside the timed sessions"
+    },
+    "prices_per_million_tokens": {
+      "vl": {
+        "prompt": 0.3,
+        "completion": 0.8999999999999999,
+        "cache_read": 0.06
+      },
+      "nano": {
+        "prompt": 0.06,
+        "completion": 0.24,
+        "cache_read": null
+      },
+      "super": {
+        "prompt": 0.3,
+        "completion": 0.8999999999999999,
+        "cache_read": 0.06
+      },
+      "ultra": {
+        "prompt": 1,
+        "completion": 3,
+        "cache_read": 0.12
+      }
+    },
+    "prices_source": "tests/fixtures/models.json (list prices, fetched 2026-10-23); video and image inputs are priced 0 beyond their prompt tokens",
+    "interview": "at most 5 questions over the compiler's ask slots plus the label's open questions; each answer is canned (picked by keyword from the question, else its first chip) and comes back on the next Super turn as changes[]; the spec is patched and Nano recompiles after every answer; a closing turn folds in the last answer",
+    "rollouts": "synthetic 12 x {sensed, blind} grid from fixed bands (no simulator); it only feeds the notes and reshoot prompts",
+    "excluded": [
+      "Ground (Tavily search + extract, opt-in) and its Nano filter",
+      "the reactive turn (stretch)",
+      "GET /v1/models in health (not a chat call, unbilled)",
+      "retries after a 400 (none happened unless listed in failures)"
+    ],
+    "caps": {
+      "per_run_usd": 0.5,
+      "total_usd": 1
+    }
+  },
+  "summary": {
+    "runs": 3,
+    "per_session": {
+      "calls": {
+        "mean": 16.666667,
+        "min": 14,
+        "max": 18
+      },
+      "prompt_tokens": {
+        "mean": 34917.333333,
+        "min": 26762,
+        "max": 42191
+      },
+      "completion_tokens": {
+        "mean": 16134.666667,
+        "min": 11093,
+        "max": 23019
+      },
+      "reasoning_tokens": {
+        "mean": 6564.666667,
+        "min": 4621,
+        "max": 10149
+      },
+      "total_tokens": {
+        "mean": 51052,
+        "min": 37855,
+        "max": 65210
+      },
+      "cost_usd": {
+        "mean": 0.037455,
+        "min": 0.027604,
+        "max": 0.052006
+      },
+      "wall_s": {
+        "mean": 70.863333,
+        "min": 47.319,
+        "max": 101.889
+      }
+    },
+    "by_stage": {
+      "health": {
+        "calls": {
+          "mean": 1,
+          "min": 1,
+          "max": 1
+        },
+        "prompt_tokens": {
+          "mean": 23,
+          "min": 23,
+          "max": 23
+        },
+        "completion_tokens": {
+          "mean": 5,
+          "min": 5,
+          "max": 5
+        },
+        "cost_usd": {
+          "mean": 0.000003,
+          "min": 0.000003,
+          "max": 0.000003
+        },
+        "latency_s": {
+          "mean": 0.301333,
+          "min": 0.156,
+          "max": 0.394
+        }
+      },
+      "label": {
+        "calls": {
+          "mean": 1,
+          "min": 1,
+          "max": 1
+        },
+        "prompt_tokens": {
+          "mean": 6379,
+          "min": 6379,
+          "max": 6379
+        },
+        "completion_tokens": {
+          "mean": 866,
+          "min": 642,
+          "max": 1266
+        },
+        "cost_usd": {
+          "mean": 0.002171,
+          "min": 0.001969,
+          "max": 0.002531
+        },
+        "latency_s": {
+          "mean": 2.886,
+          "min": 2.405,
+          "max": 3.685
+        }
+      },
+      "compile": {
+        "calls": {
+          "mean": 5.333333,
+          "min": 4,
+          "max": 6
+        },
+        "prompt_tokens": {
+          "mean": 8563.333333,
+          "min": 5935,
+          "max": 10586
+        },
+        "completion_tokens": {
+          "mean": 4872.333333,
+          "min": 2660,
+          "max": 7391
+        },
+        "cost_usd": {
+          "mean": 0.001683,
+          "min": 0.000994,
+          "max": 0.002409
+        },
+        "latency_s": {
+          "mean": 24.557667,
+          "min": 13.284,
+          "max": 39.463
+        }
+      },
+      "interview": {
+        "calls": {
+          "mean": 5.333333,
+          "min": 4,
+          "max": 6
+        },
+        "prompt_tokens": {
+          "mean": 10055.333333,
+          "min": 6171,
+          "max": 13453
+        },
+        "completion_tokens": {
+          "mean": 733.666667,
+          "min": 349,
+          "max": 1139
+        },
+        "cost_usd": {
+          "mean": 0.003677,
+          "min": 0.002165,
+          "max": 0.004678
+        },
+        "latency_s": {
+          "mean": 7.104333,
+          "min": 4.094,
+          "max": 10.319
+        }
+      },
+      "saboteur": {
+        "calls": {
+          "mean": 1,
+          "min": 1,
+          "max": 1
+        },
+        "prompt_tokens": {
+          "mean": 2057.666667,
+          "min": 1860,
+          "max": 2439
+        },
+        "completion_tokens": {
+          "mean": 845.666667,
+          "min": 820,
+          "max": 860
+        },
+        "cost_usd": {
+          "mean": 0.001378,
+          "min": 0.001329,
+          "max": 0.00147
+        },
+        "latency_s": {
+          "mean": 4.286667,
+          "min": 3.953,
+          "max": 4.888
+        }
+      },
+      "notes": {
+        "calls": {
+          "mean": 2,
+          "min": 2,
+          "max": 2
+        },
+        "prompt_tokens": {
+          "mean": 3888,
+          "min": 3620,
+          "max": 4327
+        },
+        "completion_tokens": {
+          "mean": 984.333333,
+          "min": 768,
+          "max": 1269
+        },
+        "cost_usd": {
+          "mean": 0.001109,
+          "min": 0.00103,
+          "max": 0.001267
+        },
+        "latency_s": {
+          "mean": 6.835333,
+          "min": 4.464,
+          "max": 9.365
+        }
+      },
+      "reshoot": {
+        "calls": {
+          "mean": 1,
+          "min": 1,
+          "max": 1
+        },
+        "prompt_tokens": {
+          "mean": 3951,
+          "min": 2677,
+          "max": 4984
+        },
+        "completion_tokens": {
+          "mean": 7827.666667,
+          "min": 5812,
+          "max": 11555
+        },
+        "cost_usd": {
+          "mean": 0.027434,
+          "min": 0.020113,
+          "max": 0.039649
+        },
+        "latency_s": {
+          "mean": 24.882,
+          "min": 18.696,
+          "max": 37.224
+        }
+      }
+    },
+    "by_model": {
+      "vl": {
+        "model": "nvidia/Nemotron-3.5-Super-VL",
+        "calls": {
+          "mean": 1,
+          "min": 1,
+          "max": 1
+        },
+        "total_tokens": {
+          "mean": 7245,
+          "min": 7021,
+          "max": 7645
+        },
+        "cost_usd": {
+          "mean": 0.002171,
+          "min": 0.001969,
+          "max": 0.002531
+        }
+      },
+      "nano": {
+        "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+        "calls": {
+          "mean": 7.333333,
+          "min": 6,
+          "max": 8
+        },
+        "total_tokens": {
+          "mean": 15932,
+          "min": 10770,
+          "max": 20928
+        },
+        "cost_usd": {
+          "mean": 0.001984,
+          "min": 0.001238,
+          "max": 0.002789
+        }
+      },
+      "super": {
+        "model": "nvidia/nemotron-3-super-120b-a12b",
+        "calls": {
+          "mean": 7.333333,
+          "min": 6,
+          "max": 8
+        },
+        "total_tokens": {
+          "mean": 16096.333333,
+          "min": 11575,
+          "max": 20098
+        },
+        "cost_usd": {
+          "mean": 0.005866,
+          "min": 0.004284,
+          "max": 0.007037
+        }
+      },
+      "ultra": {
+        "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "calls": {
+          "mean": 1,
+          "min": 1,
+          "max": 1
+        },
+        "total_tokens": {
+          "mean": 11778.666667,
+          "min": 8489,
+          "max": 16539
+        },
+        "cost_usd": {
+          "mean": 0.027434,
+          "min": 0.020113,
+          "max": 0.039649
+        }
+      }
+    }
+  },
+  "failures": [],
+  "runs": [
+    {
+      "run": 1,
+      "wall_ms": 63382,
+      "aborted": null,
+      "notes": [],
+      "shape": {
+        "label": {
+          "objects": 3,
+          "steps": 6,
+          "open_questions": 1,
+          "used_fallback": false
+        },
+        "first_compile_asks": 2,
+        "interview": {
+          "questions": 5,
+          "calls": 6,
+          "changes_proposed": 13,
+          "changes_applied": 13,
+          "ended": "closing turn after 5 questions",
+          "slots_left": 6
+        },
+        "rollouts": {
+          "total": 24,
+          "pass": 22,
+          "synthetic": true
+        }
+      },
+      "totals": {
+        "calls": 18,
+        "failed": 0,
+        "empty": 1,
+        "bad_json": 0,
+        "prompt_tokens": 35799,
+        "completion_tokens": 14292,
+        "reasoning_tokens": 4924,
+        "total_tokens": 50091,
+        "cost_usd": 0.032754,
+        "latency_ms": 63370
+      },
+      "by_stage": {
+        "health": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 1,
+          "bad_json": 0,
+          "prompt_tokens": 23,
+          "completion_tokens": 5,
+          "reasoning_tokens": 0,
+          "total_tokens": 28,
+          "cost_usd": 0.000003,
+          "latency_ms": 394
+        },
+        "label": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 6379,
+          "completion_tokens": 690,
+          "reasoning_tokens": 0,
+          "total_tokens": 7069,
+          "cost_usd": 0.002012,
+          "latency_ms": 2405
+        },
+        "compile": {
+          "calls": 6,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 9169,
+          "completion_tokens": 4566,
+          "reasoning_tokens": 0,
+          "total_tokens": 13735,
+          "cost_usd": 0.001646,
+          "latency_ms": 20926
+        },
+        "interview": {
+          "calls": 6,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 10542,
+          "completion_tokens": 1139,
+          "reasoning_tokens": 0,
+          "total_tokens": 11681,
+          "cost_usd": 0.004188,
+          "latency_ms": 10319
+        },
+        "saboteur": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 1874,
+          "completion_tokens": 860,
+          "reasoning_tokens": 0,
+          "total_tokens": 2734,
+          "cost_usd": 0.001336,
+          "latency_ms": 3953
+        },
+        "notes": {
+          "calls": 2,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 3620,
+          "completion_tokens": 916,
+          "reasoning_tokens": 0,
+          "total_tokens": 4536,
+          "cost_usd": 0.00103,
+          "latency_ms": 6677
+        },
+        "reshoot": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 4192,
+          "completion_tokens": 6116,
+          "reasoning_tokens": 4924,
+          "total_tokens": 10308,
+          "cost_usd": 0.02254,
+          "latency_ms": 18696
+        }
+      },
+      "by_model": {
+        "nano": {
+          "calls": 8,
+          "failed": 0,
+          "empty": 1,
+          "bad_json": 0,
+          "prompt_tokens": 10764,
+          "completion_tokens": 5334,
+          "reasoning_tokens": 0,
+          "total_tokens": 16098,
+          "cost_usd": 0.001926,
+          "latency_ms": 25513
+        },
+        "vl": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 6379,
+          "completion_tokens": 690,
+          "reasoning_tokens": 0,
+          "total_tokens": 7069,
+          "cost_usd": 0.002012,
+          "latency_ms": 2405
+        },
+        "super": {
+          "calls": 8,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 14464,
+          "completion_tokens": 2152,
+          "reasoning_tokens": 0,
+          "total_tokens": 16616,
+          "cost_usd": 0.006276,
+          "latency_ms": 16756
+        },
+        "ultra": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 4192,
+          "completion_tokens": 6116,
+          "reasoning_tokens": 4924,
+          "total_tokens": 10308,
+          "cost_usd": 0.02254,
+          "latency_ms": 18696
+        }
+      },
+      "calls": [
+        {
+          "stage": "health",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "default",
+          "max_tokens": 5,
+          "prompt_text_chars": 30,
+          "ok": true,
+          "ms": 394,
+          "prompt_tokens": 23,
+          "completion_tokens": 5,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 17,
+          "content_chars": 0,
+          "finish": "length",
+          "cost_usd": 0.00000258,
+          "json_ok": null,
+          "empty": true
+        },
+        {
+          "stage": "label",
+          "role": "vl",
+          "model": "nvidia/Nemotron-3.5-Super-VL",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 2301,
+          "video_bytes": 231201,
+          "ok": true,
+          "ms": 2405,
+          "prompt_tokens": 6379,
+          "completion_tokens": 690,
+          "reasoning_tokens": 0,
+          "cached_tokens": 2176,
+          "reasoning_chars": 0,
+          "content_chars": 1920,
+          "finish": "stop",
+          "cost_usd": 0.0020124599999999998,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "objects": 3,
+            "steps": 6,
+            "open_questions": 1,
+            "used_fallback": false
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 4857,
+          "ok": true,
+          "ms": 3721,
+          "prompt_tokens": 1499,
+          "completion_tokens": 638,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 2258,
+          "finish": "stop",
+          "cost_usd": 0.00024306,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "label",
+            "steps": 6,
+            "ops": 12,
+            "asks": 2
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 4732,
+          "ok": true,
+          "ms": 1062,
+          "prompt_tokens": 1475,
+          "completion_tokens": 109,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 442,
+          "finish": "stop",
+          "cost_usd": 0.0005406,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 1,
+            "closing": false,
+            "done": false,
+            "question_chars": 148,
+            "chips": 3,
+            "changes": 0,
+            "applied": 0
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 5126,
+          "ok": true,
+          "ms": 1263,
+          "prompt_tokens": 1586,
+          "completion_tokens": 135,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 529,
+          "finish": "stop",
+          "cost_usd": 0.0005972999999999999,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 2,
+            "closing": false,
+            "done": false,
+            "question_chars": 117,
+            "chips": 3,
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 4898,
+          "ok": true,
+          "ms": 4184,
+          "prompt_tokens": 1511,
+          "completion_tokens": 853,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 4126,
+          "finish": "stop",
+          "cost_usd": 0.00029538,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 1",
+            "steps": 6,
+            "ops": 16,
+            "asks": 3
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 5530,
+          "ok": true,
+          "ms": 1086,
+          "prompt_tokens": 1703,
+          "completion_tokens": 122,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 383,
+          "finish": "stop",
+          "cost_usd": 0.0006207,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 3,
+            "closing": false,
+            "done": false,
+            "question_chars": 93,
+            "chips": 3,
+            "changes": 0,
+            "applied": 0
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 4898,
+          "ok": true,
+          "ms": 308,
+          "prompt_tokens": 1511,
+          "completion_tokens": 36,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 118,
+          "finish": "stop",
+          "cost_usd": 0.00009929999999999999,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 2",
+            "steps": 1,
+            "ops": 0,
+            "asks": 0
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 5361,
+          "ok": true,
+          "ms": 2322,
+          "prompt_tokens": 1671,
+          "completion_tokens": 139,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 521,
+          "finish": "stop",
+          "cost_usd": 0.0006264,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 4,
+            "closing": false,
+            "done": false,
+            "question_chars": 174,
+            "chips": 3,
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 4934,
+          "ok": true,
+          "ms": 5159,
+          "prompt_tokens": 1523,
+          "completion_tokens": 1082,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 4026,
+          "finish": "stop",
+          "cost_usd": 0.00035106,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 3",
+            "steps": 6,
+            "ops": 20,
+            "asks": 7
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 6575,
+          "ok": true,
+          "ms": 2634,
+          "prompt_tokens": 1974,
+          "completion_tokens": 570,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 1701,
+          "finish": "stop",
+          "cost_usd": 0.0011052,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 5,
+            "closing": false,
+            "done": false,
+            "question_chars": 156,
+            "chips": 3,
+            "changes": 10,
+            "applied": 10
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5056,
+          "ok": true,
+          "ms": 4555,
+          "prompt_tokens": 1549,
+          "completion_tokens": 1257,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 4709,
+          "finish": "stop",
+          "cost_usd": 0.00039461999999999993,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 4",
+            "steps": 6,
+            "ops": 23,
+            "asks": 10
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 7216,
+          "ok": true,
+          "ms": 1952,
+          "prompt_tokens": 2133,
+          "completion_tokens": 64,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 202,
+          "finish": "stop",
+          "cost_usd": 0.0006975,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 6,
+            "closing": true,
+            "done": true,
+            "question_chars": 0,
+            "chips": 0,
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5140,
+          "ok": true,
+          "ms": 2999,
+          "prompt_tokens": 1576,
+          "completion_tokens": 700,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 2599,
+          "finish": "stop",
+          "cost_usd": 0.00026256,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 5",
+            "steps": 5,
+            "ops": 13,
+            "asks": 5
+          }
+        },
+        {
+          "stage": "saboteur",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 6201,
+          "ok": true,
+          "ms": 3953,
+          "prompt_tokens": 1874,
+          "completion_tokens": 860,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 2572,
+          "finish": "stop",
+          "cost_usd": 0.0013362,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "scenarios": 12,
+            "expected_fail": 3,
+            "gravities": [
+              null
+            ]
+          }
+        },
+        {
+          "stage": "notes",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 800,
+          "prompt_text_chars": 5666,
+          "ok": true,
+          "ms": 2484,
+          "prompt_tokens": 2048,
+          "completion_tokens": 153,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 649,
+          "finish": "stop",
+          "cost_usd": 0.0007520999999999999,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "notes",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5131,
+          "ok": true,
+          "ms": 4193,
+          "prompt_tokens": 1572,
+          "completion_tokens": 763,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 2628,
+          "finish": "stop",
+          "cost_usd": 0.00027744,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "notes patch",
+            "steps": 6,
+            "ops": 13,
+            "asks": 1
+          }
+        },
+        {
+          "stage": "reshoot",
+          "role": "ultra",
+          "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+          "thinking": "default",
+          "max_tokens": 16000,
+          "prompt_text_chars": 13025,
+          "ok": true,
+          "ms": 18696,
+          "prompt_tokens": 4192,
+          "completion_tokens": 6116,
+          "reasoning_tokens": 4924,
+          "cached_tokens": 0,
+          "reasoning_chars": 20215,
+          "content_chars": 4959,
+          "finish": "stop",
+          "cost_usd": 0.022539999999999998,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "failure_classes": 1,
+            "reshoot_items": 8,
+            "open_risks": 9
+          }
+        }
+      ]
+    },
+    {
+      "run": 2,
+      "wall_ms": 101889,
+      "aborted": null,
+      "notes": [],
+      "shape": {
+        "label": {
+          "objects": 5,
+          "steps": 5,
+          "open_questions": 4,
+          "used_fallback": false
+        },
+        "first_compile_asks": 8,
+        "interview": {
+          "questions": 5,
+          "calls": 6,
+          "changes_proposed": 4,
+          "changes_applied": 4,
+          "ended": "closing turn after 5 questions",
+          "slots_left": 10
+        },
+        "rollouts": {
+          "total": 24,
+          "pass": 17,
+          "synthetic": true
+        }
+      },
+      "totals": {
+        "calls": 18,
+        "failed": 0,
+        "empty": 1,
+        "bad_json": 0,
+        "prompt_tokens": 42191,
+        "completion_tokens": 23019,
+        "reasoning_tokens": 10149,
+        "total_tokens": 65210,
+        "cost_usd": 0.052006,
+        "latency_ms": 101879
+      },
+      "by_stage": {
+        "health": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 1,
+          "bad_json": 0,
+          "prompt_tokens": 23,
+          "completion_tokens": 5,
+          "reasoning_tokens": 0,
+          "total_tokens": 28,
+          "cost_usd": 0.000003,
+          "latency_ms": 354
+        },
+        "label": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 6379,
+          "completion_tokens": 1266,
+          "reasoning_tokens": 0,
+          "total_tokens": 7645,
+          "cost_usd": 0.002531,
+          "latency_ms": 3685
+        },
+        "compile": {
+          "calls": 6,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 10586,
+          "completion_tokens": 7391,
+          "reasoning_tokens": 0,
+          "total_tokens": 17977,
+          "cost_usd": 0.002409,
+          "latency_ms": 39463
+        },
+        "interview": {
+          "calls": 6,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 13453,
+          "completion_tokens": 713,
+          "reasoning_tokens": 0,
+          "total_tokens": 14166,
+          "cost_usd": 0.004678,
+          "latency_ms": 6900
+        },
+        "saboteur": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 2439,
+          "completion_tokens": 820,
+          "reasoning_tokens": 0,
+          "total_tokens": 3259,
+          "cost_usd": 0.00147,
+          "latency_ms": 4888
+        },
+        "notes": {
+          "calls": 2,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 4327,
+          "completion_tokens": 1269,
+          "reasoning_tokens": 0,
+          "total_tokens": 5596,
+          "cost_usd": 0.001267,
+          "latency_ms": 9365
+        },
+        "reshoot": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 4984,
+          "completion_tokens": 11555,
+          "reasoning_tokens": 10149,
+          "total_tokens": 16539,
+          "cost_usd": 0.039649,
+          "latency_ms": 37224
+        }
+      },
+      "by_model": {
+        "nano": {
+          "calls": 8,
+          "failed": 0,
+          "empty": 1,
+          "bad_json": 0,
+          "prompt_tokens": 12410,
+          "completion_tokens": 8518,
+          "reasoning_tokens": 0,
+          "total_tokens": 20928,
+          "cost_usd": 0.002789,
+          "latency_ms": 47779
+        },
+        "vl": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 6379,
+          "completion_tokens": 1266,
+          "reasoning_tokens": 0,
+          "total_tokens": 7645,
+          "cost_usd": 0.002531,
+          "latency_ms": 3685
+        },
+        "super": {
+          "calls": 8,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 18418,
+          "completion_tokens": 1680,
+          "reasoning_tokens": 0,
+          "total_tokens": 20098,
+          "cost_usd": 0.007037,
+          "latency_ms": 13191
+        },
+        "ultra": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 4984,
+          "completion_tokens": 11555,
+          "reasoning_tokens": 10149,
+          "total_tokens": 16539,
+          "cost_usd": 0.039649,
+          "latency_ms": 37224
+        }
+      },
+      "calls": [
+        {
+          "stage": "health",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "default",
+          "max_tokens": 5,
+          "prompt_text_chars": 30,
+          "ok": true,
+          "ms": 354,
+          "prompt_tokens": 23,
+          "completion_tokens": 5,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 22,
+          "content_chars": 0,
+          "finish": "length",
+          "cost_usd": 0.00000258,
+          "json_ok": null,
+          "empty": true
+        },
+        {
+          "stage": "label",
+          "role": "vl",
+          "model": "nvidia/Nemotron-3.5-Super-VL",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 2301,
+          "video_bytes": 231201,
+          "ok": true,
+          "ms": 3685,
+          "prompt_tokens": 6379,
+          "completion_tokens": 1266,
+          "reasoning_tokens": 0,
+          "cached_tokens": 2176,
+          "reasoning_chars": 0,
+          "content_chars": 3675,
+          "finish": "stop",
+          "cost_usd": 0.0025308600000000002,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "objects": 5,
+            "steps": 5,
+            "open_questions": 4,
+            "used_fallback": false
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5728,
+          "ok": true,
+          "ms": 9295,
+          "prompt_tokens": 1726,
+          "completion_tokens": 1208,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 4438,
+          "finish": "stop",
+          "cost_usd": 0.00039348,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "label",
+            "steps": 5,
+            "ops": 25,
+            "asks": 8
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 6774,
+          "ok": true,
+          "ms": 996,
+          "prompt_tokens": 1995,
+          "completion_tokens": 63,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 237,
+          "finish": "stop",
+          "cost_usd": 0.0006552,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 1,
+            "closing": false,
+            "done": false,
+            "question_chars": 221,
+            "chips": 0,
+            "changes": 0,
+            "applied": 0
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 7219,
+          "ok": true,
+          "ms": 1073,
+          "prompt_tokens": 2116,
+          "completion_tokens": 156,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 525,
+          "finish": "stop",
+          "cost_usd": 0.0007752,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 2,
+            "closing": false,
+            "done": false,
+            "question_chars": 240,
+            "chips": 4,
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5796,
+          "ok": true,
+          "ms": 7380,
+          "prompt_tokens": 1751,
+          "completion_tokens": 1440,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 7311,
+          "finish": "stop",
+          "cost_usd": 0.0004506599999999999,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 1",
+            "steps": 5,
+            "ops": 29,
+            "asks": 7
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 7450,
+          "ok": true,
+          "ms": 1124,
+          "prompt_tokens": 2170,
+          "completion_tokens": 129,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 455,
+          "finish": "stop",
+          "cost_usd": 0.0007670999999999999,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 3,
+            "closing": false,
+            "done": false,
+            "question_chars": 202,
+            "chips": 4,
+            "changes": 0,
+            "applied": 0
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5796,
+          "ok": true,
+          "ms": 7022,
+          "prompt_tokens": 1751,
+          "completion_tokens": 1356,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 5262,
+          "finish": "stop",
+          "cost_usd": 0.00043049999999999995,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 2",
+            "steps": 5,
+            "ops": 24,
+            "asks": 10
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 8373,
+          "ok": true,
+          "ms": 1289,
+          "prompt_tokens": 2419,
+          "completion_tokens": 159,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 561,
+          "finish": "stop",
+          "cost_usd": 0.0008688,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 4,
+            "closing": false,
+            "done": false,
+            "question_chars": 235,
+            "chips": 4,
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5864,
+          "ok": true,
+          "ms": 4315,
+          "prompt_tokens": 1776,
+          "completion_tokens": 1046,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 3129,
+          "finish": "stop",
+          "cost_usd": 0.00035759999999999996,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 3",
+            "steps": 5,
+            "ops": 22,
+            "asks": 5
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 7903,
+          "ok": true,
+          "ms": 1537,
+          "prompt_tokens": 2314,
+          "completion_tokens": 121,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 453,
+          "finish": "stop",
+          "cost_usd": 0.0008031,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 5,
+            "closing": false,
+            "done": false,
+            "question_chars": 104,
+            "chips": 4,
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5864,
+          "ok": true,
+          "ms": 6363,
+          "prompt_tokens": 1776,
+          "completion_tokens": 1247,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 6193,
+          "finish": "stop",
+          "cost_usd": 0.00040584,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 4",
+            "steps": 5,
+            "ops": 24,
+            "asks": 7
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 8454,
+          "ok": true,
+          "ms": 881,
+          "prompt_tokens": 2439,
+          "completion_tokens": 85,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 259,
+          "finish": "stop",
+          "cost_usd": 0.0008081999999999999,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 6,
+            "closing": true,
+            "done": true,
+            "question_chars": 0,
+            "chips": 0,
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5966,
+          "ok": true,
+          "ms": 5088,
+          "prompt_tokens": 1806,
+          "completion_tokens": 1094,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 3965,
+          "finish": "stop",
+          "cost_usd": 0.00037091999999999995,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 5",
+            "steps": 5,
+            "ops": 22,
+            "asks": 6
+          }
+        },
+        {
+          "stage": "saboteur",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 8069,
+          "ok": true,
+          "ms": 4888,
+          "prompt_tokens": 2439,
+          "completion_tokens": 820,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 2366,
+          "finish": "stop",
+          "cost_usd": 0.0014697,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "scenarios": 12,
+            "expected_fail": 4,
+            "gravities": [
+              null,
+              0.1654,
+              0
+            ]
+          }
+        },
+        {
+          "stage": "notes",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 800,
+          "prompt_text_chars": 7199,
+          "ok": true,
+          "ms": 1403,
+          "prompt_tokens": 2526,
+          "completion_tokens": 147,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 647,
+          "finish": "stop",
+          "cost_usd": 0.0008901,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "notes",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5951,
+          "ok": true,
+          "ms": 7962,
+          "prompt_tokens": 1801,
+          "completion_tokens": 1122,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 4406,
+          "finish": "stop",
+          "cost_usd": 0.00037734,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "notes patch",
+            "steps": 5,
+            "ops": 29,
+            "asks": 6
+          }
+        },
+        {
+          "stage": "reshoot",
+          "role": "ultra",
+          "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+          "thinking": "default",
+          "max_tokens": 16000,
+          "prompt_text_chars": 15812,
+          "ok": true,
+          "ms": 37224,
+          "prompt_tokens": 4984,
+          "completion_tokens": 11555,
+          "reasoning_tokens": 10149,
+          "cached_tokens": 0,
+          "reasoning_chars": 42720,
+          "content_chars": 5479,
+          "finish": "stop",
+          "cost_usd": 0.039649000000000004,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "failure_classes": 3,
+            "reshoot_items": 9,
+            "open_risks": 6
+          }
+        }
+      ]
+    },
+    {
+      "run": 3,
+      "wall_ms": 47319,
+      "aborted": null,
+      "notes": [],
+      "shape": {
+        "label": {
+          "objects": 3,
+          "steps": 4,
+          "open_questions": 1,
+          "used_fallback": false
+        },
+        "first_compile_asks": 3,
+        "interview": {
+          "questions": 3,
+          "calls": 4,
+          "changes_proposed": 1,
+          "changes_applied": 1,
+          "ended": "model said done",
+          "slots_left": 10
+        },
+        "rollouts": {
+          "total": 10,
+          "pass": 9,
+          "synthetic": true
+        }
+      },
+      "totals": {
+        "calls": 14,
+        "failed": 0,
+        "empty": 1,
+        "bad_json": 0,
+        "prompt_tokens": 26762,
+        "completion_tokens": 11093,
+        "reasoning_tokens": 4621,
+        "total_tokens": 37855,
+        "cost_usd": 0.027604,
+        "latency_ms": 47311
+      },
+      "by_stage": {
+        "health": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 1,
+          "bad_json": 0,
+          "prompt_tokens": 23,
+          "completion_tokens": 5,
+          "reasoning_tokens": 0,
+          "total_tokens": 28,
+          "cost_usd": 0.000003,
+          "latency_ms": 156
+        },
+        "label": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 6379,
+          "completion_tokens": 642,
+          "reasoning_tokens": 0,
+          "total_tokens": 7021,
+          "cost_usd": 0.001969,
+          "latency_ms": 2568
+        },
+        "compile": {
+          "calls": 4,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 5935,
+          "completion_tokens": 2660,
+          "reasoning_tokens": 0,
+          "total_tokens": 8595,
+          "cost_usd": 0.000994,
+          "latency_ms": 13284
+        },
+        "interview": {
+          "calls": 4,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 6171,
+          "completion_tokens": 349,
+          "reasoning_tokens": 0,
+          "total_tokens": 6520,
+          "cost_usd": 0.002165,
+          "latency_ms": 4094
+        },
+        "saboteur": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 1860,
+          "completion_tokens": 857,
+          "reasoning_tokens": 0,
+          "total_tokens": 2717,
+          "cost_usd": 0.001329,
+          "latency_ms": 4019
+        },
+        "notes": {
+          "calls": 2,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 3717,
+          "completion_tokens": 768,
+          "reasoning_tokens": 0,
+          "total_tokens": 4485,
+          "cost_usd": 0.00103,
+          "latency_ms": 4464
+        },
+        "reshoot": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 2677,
+          "completion_tokens": 5812,
+          "reasoning_tokens": 4621,
+          "total_tokens": 8489,
+          "cost_usd": 0.020113,
+          "latency_ms": 18726
+        }
+      },
+      "by_model": {
+        "nano": {
+          "calls": 6,
+          "failed": 0,
+          "empty": 1,
+          "bad_json": 0,
+          "prompt_tokens": 7484,
+          "completion_tokens": 3286,
+          "reasoning_tokens": 0,
+          "total_tokens": 10770,
+          "cost_usd": 0.001238,
+          "latency_ms": 16486
+        },
+        "vl": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 6379,
+          "completion_tokens": 642,
+          "reasoning_tokens": 0,
+          "total_tokens": 7021,
+          "cost_usd": 0.001969,
+          "latency_ms": 2568
+        },
+        "super": {
+          "calls": 6,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 10222,
+          "completion_tokens": 1353,
+          "reasoning_tokens": 0,
+          "total_tokens": 11575,
+          "cost_usd": 0.004284,
+          "latency_ms": 9531
+        },
+        "ultra": {
+          "calls": 1,
+          "failed": 0,
+          "empty": 0,
+          "bad_json": 0,
+          "prompt_tokens": 2677,
+          "completion_tokens": 5812,
+          "reasoning_tokens": 4621,
+          "total_tokens": 8489,
+          "cost_usd": 0.020113,
+          "latency_ms": 18726
+        }
+      },
+      "calls": [
+        {
+          "stage": "health",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "default",
+          "max_tokens": 5,
+          "prompt_text_chars": 30,
+          "ok": true,
+          "ms": 156,
+          "prompt_tokens": 23,
+          "completion_tokens": 5,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 13,
+          "content_chars": 0,
+          "finish": "length",
+          "cost_usd": 0.00000258,
+          "json_ok": null,
+          "empty": true
+        },
+        {
+          "stage": "label",
+          "role": "vl",
+          "model": "nvidia/Nemotron-3.5-Super-VL",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 2301,
+          "video_bytes": 231201,
+          "ok": true,
+          "ms": 2568,
+          "prompt_tokens": 6379,
+          "completion_tokens": 642,
+          "reasoning_tokens": 0,
+          "cached_tokens": 2176,
+          "reasoning_chars": 0,
+          "content_chars": 1925,
+          "finish": "stop",
+          "cost_usd": 0.00196926,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "objects": 3,
+            "steps": 4,
+            "open_questions": 1,
+            "used_fallback": false
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 4870,
+          "ok": true,
+          "ms": 2735,
+          "prompt_tokens": 1459,
+          "completion_tokens": 537,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 1977,
+          "finish": "stop",
+          "cost_usd": 0.00021642,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "label",
+            "steps": 4,
+            "ops": 10,
+            "asks": 3
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 4850,
+          "ok": true,
+          "ms": 1045,
+          "prompt_tokens": 1429,
+          "completion_tokens": 96,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 430,
+          "finish": "stop",
+          "cost_usd": 0.0005151,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 1,
+            "closing": false,
+            "done": false,
+            "question_chars": 127,
+            "chips": 3,
+            "changes": 0,
+            "applied": 0
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 5149,
+          "ok": true,
+          "ms": 1066,
+          "prompt_tokens": 1504,
+          "completion_tokens": 138,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 485,
+          "finish": "stop",
+          "cost_usd": 0.0005754,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 2,
+            "closing": false,
+            "done": false,
+            "question_chars": 100,
+            "chips": 4,
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 4970,
+          "ok": true,
+          "ms": 4075,
+          "prompt_tokens": 1492,
+          "completion_tokens": 723,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 2685,
+          "finish": "stop",
+          "cost_usd": 0.00026304,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 1",
+            "steps": 4,
+            "ops": 13,
+            "asks": 3
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 5559,
+          "ok": true,
+          "ms": 1355,
+          "prompt_tokens": 1609,
+          "completion_tokens": 86,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 338,
+          "finish": "stop",
+          "cost_usd": 0.0005601,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 3,
+            "closing": false,
+            "done": false,
+            "question_chars": 109,
+            "chips": 3,
+            "changes": 0,
+            "applied": 0
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 4970,
+          "ok": true,
+          "ms": 1837,
+          "prompt_tokens": 1492,
+          "completion_tokens": 363,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 1216,
+          "finish": "stop",
+          "cost_usd": 0.00017664,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 2",
+            "steps": 4,
+            "ops": 9,
+            "asks": 2
+          }
+        },
+        {
+          "stage": "interview",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 1200,
+          "prompt_text_chars": 5577,
+          "ok": true,
+          "ms": 628,
+          "prompt_tokens": 1629,
+          "completion_tokens": 29,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 94,
+          "finish": "stop",
+          "cost_usd": 0.0005148,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "turn": 4,
+            "closing": false,
+            "done": true,
+            "question_chars": 0,
+            "chips": 0,
+            "changes": 0,
+            "applied": 0
+          }
+        },
+        {
+          "stage": "compile",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 4970,
+          "ok": true,
+          "ms": 4637,
+          "prompt_tokens": 1492,
+          "completion_tokens": 1037,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 3906,
+          "finish": "stop",
+          "cost_usd": 0.0003384,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "answer 3",
+            "steps": 4,
+            "ops": 20,
+            "asks": 9
+          }
+        },
+        {
+          "stage": "saboteur",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 6310,
+          "ok": true,
+          "ms": 4019,
+          "prompt_tokens": 1860,
+          "completion_tokens": 857,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 2679,
+          "finish": "stop",
+          "cost_usd": 0.0013292999999999998,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "scenarios": 5,
+            "expected_fail": 1,
+            "gravities": [
+              null
+            ]
+          }
+        },
+        {
+          "stage": "notes",
+          "role": "super",
+          "model": "nvidia/nemotron-3-super-120b-a12b",
+          "thinking": "off",
+          "max_tokens": 800,
+          "prompt_text_chars": 6315,
+          "ok": true,
+          "ms": 1418,
+          "prompt_tokens": 2191,
+          "completion_tokens": 147,
+          "reasoning_tokens": 0,
+          "cached_tokens": 0,
+          "reasoning_chars": 0,
+          "content_chars": 629,
+          "finish": "stop",
+          "cost_usd": 0.0007896,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "changes": 1,
+            "applied": 1
+          }
+        },
+        {
+          "stage": "notes",
+          "role": "nano",
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "thinking": "off",
+          "max_tokens": 3000,
+          "prompt_text_chars": 5079,
+          "ok": true,
+          "ms": 3046,
+          "prompt_tokens": 1526,
+          "completion_tokens": 621,
+          "reasoning_tokens": null,
+          "cached_tokens": null,
+          "reasoning_chars": 0,
+          "content_chars": 2061,
+          "finish": "stop",
+          "cost_usd": 0.0002406,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "after": "notes patch",
+            "steps": 5,
+            "ops": 12,
+            "asks": 0
+          }
+        },
+        {
+          "stage": "reshoot",
+          "role": "ultra",
+          "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+          "thinking": "default",
+          "max_tokens": 16000,
+          "prompt_text_chars": 8555,
+          "ok": true,
+          "ms": 18726,
+          "prompt_tokens": 2677,
+          "completion_tokens": 5812,
+          "reasoning_tokens": 4621,
+          "cached_tokens": 0,
+          "reasoning_chars": 19422,
+          "content_chars": 4989,
+          "finish": "stop",
+          "cost_usd": 0.020113,
+          "json_ok": true,
+          "empty": false,
+          "shape": {
+            "failure_classes": 1,
+            "reshoot_items": 8,
+            "open_risks": 6
+          }
+        }
+      ]
+    }
+  ]
+}

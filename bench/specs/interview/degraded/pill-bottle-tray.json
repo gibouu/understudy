@@ -1,0 +1,148 @@
+{
+  "removed": [
+    {
+      "field": "fit",
+      "path": "objects[tray].pocket_clearance_mm"
+    },
+    {
+      "field": "aperture",
+      "path": "objects[bottle].size_mm"
+    },
+    {
+      "field": "success",
+      "path": "steps[s2].success"
+    },
+    {
+      "field": "via",
+      "path": "steps[s2].via_points"
+    },
+    {
+      "field": "precondition",
+      "path": "steps[s2].preconditions"
+    }
+  ],
+  "spec": {
+    "version": 1,
+    "title": "pill bottle into a tray",
+    "summary": "Put a soft plastic pill bottle into a free well of a pharmacy tray without squeezing it.",
+    "objects": [
+      {
+        "id": "bottle",
+        "name": "pill bottle",
+        "shape": "cylinder",
+        "size_mm": [
+          60,
+          60,
+          119
+        ],
+        "symmetry": "axial",
+        "role": "manipulated",
+        "pose": {
+          "xyz_mm": [
+            140,
+            110,
+            35
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.3,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "tray",
+        "name": "pharmacy tray",
+        "shape": "box",
+        "size_mm": [
+          200,
+          120,
+          30
+        ],
+        "symmetry": "none",
+        "role": "fixture",
+        "pose": {
+          "xyz_mm": [
+            210,
+            -60,
+            15
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.9,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "steps": [
+      {
+        "id": "s1",
+        "verb": "grasp",
+        "object": "bottle",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "contact_both_pads",
+            "object": "bottle"
+          }
+        ],
+        "tolerances": {
+          "x_mm": 5,
+          "y_mm": 5
+        },
+        "t_start_s": 1,
+        "t_end_s": 2,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s2",
+        "verb": "insert",
+        "object": "bottle",
+        "target": {
+          "fixture": "pocket",
+          "frame": "tray"
+        },
+        "via_points": [],
+        "preconditions": [],
+        "success": [],
+        "tolerances": {
+          "x_mm": 4,
+          "y_mm": 4
+        },
+        "t_start_s": 2,
+        "t_end_s": 6,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s3",
+        "verb": "retract",
+        "object": "bottle",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "no_collision"
+          }
+        ],
+        "tolerances": {},
+        "t_start_s": 6,
+        "t_end_s": 7,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "anchor": {
+      "t_s": 2,
+      "confidence": 0.8
+    },
+    "warnings": [],
+    "open_questions": [
+      "objects[bottle].size_mm: the pill bottle's size is a guess (no scale in frame); how wide is it where the hand grips it?"
+    ],
+    "sources": {}
+  }
+}

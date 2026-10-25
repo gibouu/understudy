@@ -1,0 +1,145 @@
+{
+  "removed": [
+    {
+      "field": "fit",
+      "path": "steps[s2].tolerances"
+    },
+    {
+      "field": "aperture",
+      "path": "objects[box].size_mm"
+    },
+    {
+      "field": "success",
+      "path": "steps[s2].success"
+    },
+    {
+      "field": "via",
+      "path": "steps[s2].via_points"
+    },
+    {
+      "field": "precondition",
+      "path": "steps[s2].preconditions"
+    }
+  ],
+  "spec": {
+    "version": 1,
+    "title": "small box onto a shelf",
+    "summary": "Lift a small box from the table onto a low shelf and leave it flat.",
+    "objects": [
+      {
+        "id": "box",
+        "name": "small cardboard box",
+        "shape": "box",
+        "size_mm": [
+          85,
+          85,
+          68
+        ],
+        "symmetry": "none",
+        "role": "manipulated",
+        "pose": {
+          "xyz_mm": [
+            130,
+            110,
+            20
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.3,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "shelf",
+        "name": "low shelf board",
+        "shape": "box",
+        "size_mm": [
+          250,
+          150,
+          15
+        ],
+        "symmetry": "none",
+        "role": "fixture",
+        "pose": {
+          "xyz_mm": [
+            200,
+            -40,
+            200
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.9,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "steps": [
+      {
+        "id": "s1",
+        "verb": "grasp",
+        "object": "box",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "contact_both_pads",
+            "object": "box"
+          }
+        ],
+        "tolerances": {
+          "x_mm": 5,
+          "y_mm": 5
+        },
+        "t_start_s": 1,
+        "t_end_s": 2,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s2",
+        "verb": "place",
+        "object": "box",
+        "target": {
+          "fixture": "stack",
+          "frame": "shelf"
+        },
+        "via_points": [],
+        "preconditions": [],
+        "success": [],
+        "tolerances": {},
+        "t_start_s": 2,
+        "t_end_s": 6,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s3",
+        "verb": "retract",
+        "object": "box",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "no_collision"
+          }
+        ],
+        "tolerances": {},
+        "t_start_s": 6,
+        "t_end_s": 7,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "anchor": {
+      "t_s": 2,
+      "confidence": 0.8
+    },
+    "warnings": [],
+    "open_questions": [
+      "objects[box].size_mm: the small cardboard box's size is a guess (no scale in frame); how wide is it where the hand grips it?"
+    ],
+    "sources": {}
+  }
+}

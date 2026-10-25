@@ -1,0 +1,148 @@
+{
+  "removed": [
+    {
+      "field": "fit",
+      "path": "objects[rack].pocket_clearance_mm"
+    },
+    {
+      "field": "aperture",
+      "path": "objects[marker].size_mm"
+    },
+    {
+      "field": "success",
+      "path": "steps[s2].success"
+    },
+    {
+      "field": "via",
+      "path": "steps[s2].via_points"
+    },
+    {
+      "field": "precondition",
+      "path": "steps[s2].preconditions"
+    }
+  ],
+  "spec": {
+    "version": 1,
+    "title": "capped marker into a cardboard rack",
+    "summary": "Pick a capped marker from the table and drop it upright into a hole of a home-made cardboard rack.",
+    "objects": [
+      {
+        "id": "marker",
+        "name": "capped marker",
+        "shape": "cylinder",
+        "size_mm": [
+          11,
+          11,
+          84
+        ],
+        "symmetry": "axial",
+        "role": "manipulated",
+        "pose": {
+          "xyz_mm": [
+            140,
+            110,
+            9
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.3,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "rack",
+        "name": "cardboard rack",
+        "shape": "box",
+        "size_mm": [
+          150,
+          60,
+          80
+        ],
+        "symmetry": "none",
+        "role": "fixture",
+        "pose": {
+          "xyz_mm": [
+            210,
+            -60,
+            40
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.9,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "steps": [
+      {
+        "id": "s1",
+        "verb": "grasp",
+        "object": "marker",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "contact_both_pads",
+            "object": "marker"
+          }
+        ],
+        "tolerances": {
+          "x_mm": 5,
+          "y_mm": 5
+        },
+        "t_start_s": 1,
+        "t_end_s": 2,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s2",
+        "verb": "insert",
+        "object": "marker",
+        "target": {
+          "fixture": "pocket",
+          "frame": "rack"
+        },
+        "via_points": [],
+        "preconditions": [],
+        "success": [],
+        "tolerances": {
+          "x_mm": 3,
+          "y_mm": 3
+        },
+        "t_start_s": 2,
+        "t_end_s": 6,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s3",
+        "verb": "retract",
+        "object": "marker",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "no_collision"
+          }
+        ],
+        "tolerances": {},
+        "t_start_s": 6,
+        "t_end_s": 7,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "anchor": {
+      "t_s": 2,
+      "confidence": 0.8
+    },
+    "warnings": [],
+    "open_questions": [
+      "objects[marker].size_mm: the capped marker's size is a guess (no scale in frame); how wide is it where the hand grips it?"
+    ],
+    "sources": {}
+  }
+}
