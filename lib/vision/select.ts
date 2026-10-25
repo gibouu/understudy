@@ -12,14 +12,25 @@ import type { HandGap, HandSide, HandTokens, Point3, PoseTokens, TokenFrame } fr
 export const POSE = {
   LEFT_SHOULDER: 11,
   RIGHT_SHOULDER: 12,
+  LEFT_ELBOW: 13,
+  RIGHT_ELBOW: 14,
   LEFT_WRIST: 15,
   RIGHT_WRIST: 16,
+  LEFT_PINKY: 17,
+  RIGHT_PINKY: 18,
+  LEFT_INDEX: 19,
+  RIGHT_INDEX: 20,
+  LEFT_THUMB: 21,
+  RIGHT_THUMB: 22,
   LEFT_HIP: 23,
   RIGHT_HIP: 24,
 } as const;
 
 /** A hand as the Hand Landmarker returns it, before it is matched to a person. */
 export type DetectedHand = Omit<HandTokens, "interpolated">;
+
+/** A hand found on a wrist crop, attached to the person and the wrist the crop was made for. */
+export type CropHand = { person: number; side: HandSide; hand: DetectedHand };
 
 type Point2 = { x: number; y: number };
 
@@ -171,37 +182,59 @@ export function matchHands(
   return { left: best.left, right: best.right };
 }
 
-/** One sampled frame from raw detections: track the person, match their hands. */
+/**
+ * One sampled frame for a person already chosen (`person` indexes `poses`, or
+ * null when nobody is): match their hands from the full frame, then fill a
+ * wrist still empty with the crop find made for that person and that wrist,
+ * never another's. A crop find never replaces a full-frame hand.
+ */
+export function assembleFrame(
+  t_s: number,
+  poses: PoseTokens[],
+  hands: DetectedHand[],
+  person: number | null,
+  aspect: number,
+  cropHands: CropHand[] = [],
+): TokenFrame {
+  const frame: TokenFrame = {
+    t_s,
+    person_index: person,
+    pose: person === null ? null : poses[person],
+    left_hand: null,
+    right_hand: null,
+  };
+  if (person === null) return frame;
+  const m = matchHands(
+    poses.map((p) => p.image),
+    person,
+    hands.map((h) => h.image),
+    aspect,
+  );
+  if (m.left !== null) frame.left_hand = { ...hands[m.left], interpolated: false };
+  if (m.right !== null) frame.right_hand = { ...hands[m.right], interpolated: false };
+  for (const c of cropHands) {
+    if (c.person !== person) continue;
+    const key = c.side === "left" ? "left_hand" : "right_hand";
+    if (frame[key] === null) frame[key] = { ...c.hand, cropped: true, interpolated: false };
+  }
+  return frame;
+}
+
+/** One sampled frame from raw detections: track the person, then `assembleFrame`. */
 export function selectFrame(
   t_s: number,
   poses: PoseTokens[],
   hands: DetectedHand[],
   state: TrackState,
   aspect: number,
+  cropHands: CropHand[] = [],
 ): { frame: TokenFrame; state: TrackState } {
   const tracked = trackPerson(
     poses.map((p) => p.image),
     state,
     { aspect },
   );
-  const frame: TokenFrame = {
-    t_s,
-    person_index: tracked.index,
-    pose: tracked.index === null ? null : poses[tracked.index],
-    left_hand: null,
-    right_hand: null,
-  };
-  if (tracked.index !== null) {
-    const m = matchHands(
-      poses.map((p) => p.image),
-      tracked.index,
-      hands.map((h) => h.image),
-      aspect,
-    );
-    if (m.left !== null) frame.left_hand = { ...hands[m.left], interpolated: false };
-    if (m.right !== null) frame.right_hand = { ...hands[m.right], interpolated: false };
-  }
-  return { frame, state: tracked.state };
+  return { frame: assembleFrame(t_s, poses, hands, tracked.index, aspect, cropHands), state: tracked.state };
 }
 
 const HAND_KEY = { left: "left_hand", right: "right_hand" } as const;

@@ -26,6 +26,8 @@ export type HandTokens = {
   score: number;
   /** true when filled in across a short gap rather than detected */
   interpolated: boolean;
+  /** true when found on a zoomed crop around the wrist, not on the full frame (far cameras) */
+  cropped?: boolean;
 };
 
 export type TokenFrame = {
