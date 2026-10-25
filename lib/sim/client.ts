@@ -1,5 +1,7 @@
 /** Main-thread handle on the MuJoCo worker. Requests carry ids; errors reach their caller. */
+import type { Mode, Program, Scenario, TaskSpec } from "@/lib/spec/schema";
 import type { Approach, IkResult } from "./ik";
+import type { Rollout } from "./interpreter";
 import type { Frame, FromWorker, SimMeta, ToWorker, Waypoint } from "./protocol";
 import { SO101_ASSET_BASE } from "./so101";
 
@@ -12,7 +14,7 @@ export type SimEvents = {
 
 type JacobianResult = Extract<FromWorker, { type: "jacobian" }>;
 type IkReply = Extract<FromWorker, { type: "ik" }>;
-type GraspReply = Extract<FromWorker, { type: "grasp" }>;
+type RunReply = Extract<FromWorker, { type: "run" }>;
 type Pending = { resolve: (v: never) => void; reject: (e: Error) => void };
 
 export class SimClient {
@@ -38,11 +40,10 @@ export class SimClient {
   }
 
   /** `mujocoBase` serves mujoco.js and mujoco.wasm (copied there by scripts/copy-assets.mjs). */
-  load(
-    options: { mujocoBase?: string; assetBase?: string; gravityG?: number; worldbody?: string; graspable?: string[] } = {},
-  ): Promise<SimMeta> {
-    const { mujocoBase = "/mujoco", assetBase = SO101_ASSET_BASE, gravityG = 1, worldbody = "", graspable = [] } = options;
-    return this.request<SimMeta>((id) => ({ type: "load", id, mujocoBase, assetBase, gravityG, worldbody, graspable }));
+  /** Set up the world: the arm plus the spec's objects, perturbed by `scenario` if given. */
+  load(options: { spec: TaskSpec; scenario?: Scenario; gravityG?: number; mujocoBase?: string; assetBase?: string }): Promise<SimMeta> {
+    const { mujocoBase = "/mujoco", assetBase = SO101_ASSET_BASE, ...world } = options;
+    return this.request<SimMeta>((id) => ({ type: "load", id, mujocoBase, assetBase, ...world }));
   }
   setGravity(g: number) {
     this.send({ type: "setGravity", g });
@@ -69,12 +70,9 @@ export class SimClient {
   async ik(target: [number, number, number], approach: Approach, site?: string): Promise<IkResult> {
     return (await this.request<IkReply>((id) => ({ type: "ik", id, target, approach, site }))).result;
   }
-  /** Close the gripper on `body`; resolves once it is welded or the jaws closed on nothing. */
-  async grasp(body: string): Promise<GraspReply["result"]> {
-    return (await this.request<GraspReply>((id) => ({ type: "grasp", id, body }))).result;
-  }
-  release() {
-    this.send({ type: "release" });
+  /** Tell the simulation what to do: runs `program` in real time and resolves with the rollout. */
+  async run(program: Program, mode: Mode = "sensed", from: "home" | "here" = "home"): Promise<Rollout> {
+    return (await this.request<RunReply>((id) => ({ type: "run", id, program, mode, from }))).result;
   }
   dispose() {
     this.rejectAll(new Error("sim client disposed"));
@@ -123,7 +121,7 @@ export class SimClient {
         break;
       case "jacobian":
       case "ik":
-      case "grasp":
+      case "run":
         this.settle(msg.id, msg);
         break;
       case "error":

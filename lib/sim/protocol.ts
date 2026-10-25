@@ -3,7 +3,9 @@
  * physics; the main thread only renders what it is told. Requests that expect
  * an answer carry an `id` so errors reach the right caller.
  */
+import type { Mode, Program, Scenario, TaskSpec } from "@/lib/spec/schema";
 import type { Approach, IkResult } from "./ik";
+import type { Rollout } from "./interpreter";
 
 /** mjtGeom values we render. */
 export const GEOM_PLANE = 0;
@@ -72,7 +74,8 @@ export type Frame = {
 export type Waypoint = { t: number; q: number[] };
 
 export type ToWorker =
-  | { type: "load"; id: number; mujocoBase: string; assetBase: string; gravityG?: number; worldbody?: string; graspable?: string[] }
+  /** build the world from a task spec, perturbed by `scenario` if given; `gravityG` overrides the scenario's */
+  | { type: "load"; id: number; mujocoBase: string; assetBase: string; spec: TaskSpec; scenario?: Scenario; gravityG?: number }
   | { type: "setGravity"; g: number }
   | { type: "nudge"; body: string; velocity: [number, number, number] }
   | { type: "setCtrl"; ctrl: number[] }
@@ -82,10 +85,8 @@ export type ToWorker =
   | { type: "jacobian"; id: number; site: string }
   /** solve IK from the current state for `site` (the tip unless given); `target` in world metres; nothing moves */
   | { type: "ik"; id: number; target: [number, number, number]; approach: Approach; site?: string }
-  /** close the gripper; weld `body` once both jaws hold it, or fail after GRASP_TIMEOUT_S */
-  | { type: "grasp"; id: number; body: string }
-  /** unweld and open; the object keeps the velocity it had */
-  | { type: "release" };
+  /** run a program in real time; `from: "here"` continues from the current state instead of home */
+  | { type: "run"; id: number; program: Program; mode: Mode; from?: "home" | "here" };
 
 export type FromWorker =
   | { type: "status"; message: string; progress?: number }
@@ -93,6 +94,5 @@ export type FromWorker =
   | { type: "frame"; frame: Frame }
   | { type: "jacobian"; id: number; site: string; nv: number; jacp: Float64Array; jacr: Float64Array }
   | { type: "ik"; id: number; result: IkResult }
-  /** `jaw`: the gripper angle the worker now holds; keep it in later ctrl so a move does not squeeze or let go */
-  | { type: "grasp"; id: number; result: { ok: boolean; body: string; jaw: number; message?: string } }
+  | { type: "run"; id: number; result: Rollout }
   | { type: "error"; id?: number; message: string };

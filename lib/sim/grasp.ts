@@ -61,10 +61,10 @@ export function graspIndex(mujoco: MainModule, model: MjModel, body: string): Gr
   };
 }
 
-/** Both jaws within TOUCH_M of the object. */
+/** Both jaws within TOUCH_M of the object (mj_geomDistance returns TOUCH_M itself when nothing is closer). */
 export function jawsTouch(mujoco: MainModule, model: MjModel, data: MjData, g: Grasp): boolean {
   const near = (jaw: number[]) =>
-    jaw.some((j) => g.objectGeoms.some((o) => mujoco.mj_geomDistance(model, data, j, o, TOUCH_M, null) <= TOUCH_M));
+    jaw.some((j) => g.objectGeoms.some((o) => mujoco.mj_geomDistance(model, data, j, o, TOUCH_M, null) < TOUCH_M));
   return near(g.jaws[0]) && near(g.jaws[1]);
 }
 

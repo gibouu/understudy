@@ -2,13 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SimClient } from "@/lib/sim/client";
-import { DEMO_SPEC } from "@/lib/sim/demo-spec";
+import { DEMO_PROGRAMS, DEMO_SPEC } from "@/lib/sim/demo-spec";
 import type { Approach, IkResult } from "@/lib/sim/ik";
 import type { Frame, SimMeta } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { buildScene } from "@/lib/sim/scene";
 import { GRIPPER_OPEN, SO101_GRASP_SITE, SO101_HELD_SITE, SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
-import { APPROACHES, GRAVITIES, type GravityName } from "@/lib/spec/schema";
+import { APPROACHES, GRAVITIES, type GravityName, type Program } from "@/lib/spec/schema";
 
 const SCENE = buildScene(DEMO_SPEC);
 const TUBE = SCENE.names.tube;
@@ -51,7 +51,8 @@ export function StageView() {
   const [approach, setApproach] = useState<Approach>("top");
   const [ik, setIk] = useState<(IkResult & { asked: string }) | null>(null);
   const [attached, setAttached] = useState<string | null>(null);
-  const [graspNote, setGraspNote] = useState<string | null>(null);
+  const [runNote, setRunNote] = useState<string | null>(null);
+  const lastCtrl = useRef<number[]>(SO101_HOME);
   const lastUi = useRef(0);
   /** a left-button, primary-pointer press: right/middle buttons pan and a second finger pinches */
   const pressAt = useRef<[number, number] | null>(null);
@@ -72,6 +73,7 @@ export function StageView() {
       })
       .on("frame", (frame: Frame) => {
         renderer.update(frame);
+        lastCtrl.current = Array.from(frame.ctrl);
         const now = performance.now();
         if (now - lastUi.current > 100) {
           lastUi.current = now;
@@ -88,7 +90,7 @@ export function StageView() {
         }
       });
     clientRef.current = client;
-    client.load({ worldbody: SCENE.worldbody, graspable: SCENE.manipulated }).catch((err: Error) => {
+    client.load({ spec: DEMO_SPEC }).catch((err: Error) => {
       if (alive) setError(err.message);
     });
     return () => {
@@ -173,22 +175,19 @@ export function StageView() {
     setCtrl(next);
   };
 
-  const graspTube = async () => {
-    setGraspNote(null);
+  /** Run a program and report it; the sliders then follow where the program left the actuators. */
+  const runProgram = async (label: string, program: Program, from: "home" | "here") => {
+    setRunNote(`${label}: running`);
     try {
-      const r = await clientRef.current?.grasp(TUBE);
+      const r = await clientRef.current?.run(program, "sensed", from);
       if (!r) return;
-      setCtrl((c) => c.map((v, i) => (i === 5 ? r.jaw : v)));
-      setGraspNote(r.ok ? null : r.message ?? "missed");
+      setRunNote(`${label}: ${r.pass ? "pass" : `fail${r.failed_step_id ? ` at ${r.failed_step_id}` : ""}, ${r.why}`} (${r.t.toFixed(1)} s)`);
     } catch (err) {
-      setGraspNote((err as Error).message);
+      setRunNote(`${label}: ${(err as Error).message}`);
     }
+    setCtrl(lastCtrl.current);
   };
-
-  const release = () => {
-    clientRef.current?.release();
-    setCtrl((c) => c.map((v, i) => (i === 5 ? GRIPPER_OPEN : v)));
-  };
+  const one = (op: Program["steps"][number]["ops"][number]): Program => ({ spec_title: DEMO_SPEC.title, warnings: [], steps: [{ step_id: op.op, ops: [op] }] });
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -309,7 +308,7 @@ export function StageView() {
           >
             1. Go to the tube
           </button>
-          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" disabled={!meta || !!attached} onClick={graspTube}>
+          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" disabled={!meta || !!attached} onClick={() => runProgram("grasp", one({ op: "grasp", object: "tube", aperture_mm: 17 }), "here")}>
             2. Grasp
           </button>
           <button
@@ -326,12 +325,20 @@ export function StageView() {
           >
             3. Over the pocket
           </button>
-          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" disabled={!meta} onClick={release}>
+          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" disabled={!meta} onClick={() => runProgram("release", one({ op: "release" }), "here")}>
             4. Release
           </button>
           <span className="font-mono text-neutral-600">{attached ? `holding ${attached}` : "empty"}</span>
-          {graspNote && <span className="text-red-700">{graspNote}</span>}
         </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs" aria-label="run a program">
+          <span className="text-neutral-500">run program</span>
+          {(Object.keys(DEMO_PROGRAMS) as (keyof typeof DEMO_PROGRAMS)[]).map((name) => (
+            <button key={name} className="rounded border px-3 py-1" disabled={!meta} onClick={() => runProgram(name, DEMO_PROGRAMS[name], "home")}>
+              {name.replaceAll("_", " ")}
+            </button>
+          ))}
+        </div>
+        {runNote && <p className="font-mono text-[11px] text-neutral-700">{runNote}</p>}
         <p className="text-xs text-neutral-500">Or click the floor: the tip goes above that point at height z, switching approach if the chosen one cannot reach.</p>
         {ik && (
           <div className={`rounded border p-2 font-mono text-[11px] leading-5 ${ik.ok ? "bg-neutral-50" : "border-red-300 bg-red-50 text-red-800"}`}>

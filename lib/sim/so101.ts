@@ -75,7 +75,7 @@ export const G_M_S2 = 9.81;
 export function stageXml(extraWorldbody = "", options: { gravity_g?: number; graspable?: string[] } = {}): string {
   const g = options.gravity_g ?? 1;
   const welds = (options.graspable ?? []).map(
-    (b) => `<weld name="${graspWeld(b)}" body1="${SO101_GRIPPER_BODY}" body2="${b}" active="false"/>`,
+    (b) => `<weld name="${graspWeld(b)}" body1="${SO101_GRIPPER_BODY}" body2="${b}" active="false" solref="0.01 1"/>`,
   );
   return `<mujoco model="understudy-stage">
   <include file="${SO101_XML}"/>
