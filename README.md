@@ -18,9 +18,21 @@ An understudy learns a role by watching the lead, then rehearses it on stage. Un
 
 ## Why
 
-On a space station every crew hour is scarce and every mistake is expensive. The robots meant to take over routine crew work (Canadarm2 and Dextre, Astrobee, GITAI's arm on the ISS, the arms planned for commercial stations and lunar bases) need three things a station already produces by the hour: a clear task, a rehearsed program, and labelled data. NASA films crew procedures all the time. Understudy turns one such clip into all three, and rehearses the result under Earth gravity and in orbit, because a program that works on a bench can fail the moment a released object drifts instead of resting. The same loop serves satellite servicing and refuelling, where the stakes are a spacecraft rather than a sample.
+On a space station every crew hour is scarce and every mistake is expensive: NASA prices an hour of ISS crew time at $130,000 for commercial activities, and the station costs it about $3 billion a year. The robots meant to take over routine crew work (Canadarm2 and Dextre, Astrobee, GITAI's arm on the ISS, the arms planned for commercial stations and lunar bases) need three things a station already produces by the hour: a clear task, a rehearsed program, and labelled data. NASA films crew procedures all the time. Understudy turns one such clip into all three, and rehearses the result under Earth gravity and in orbit, because a program that works on a bench can fail the moment a released object drifts instead of resting. The same loop serves satellite servicing and refuelling, where the stakes are a spacecraft rather than a sample.
 
-The need is the same on the ground. Collecting human demonstrations is an industry now: recorders at about $15 an hour, data factories, teleoperation farms. The waste comes after collection: a fifth to a third of demos get discarded, re-collection eats a third to a half of a campaign budget, and nobody asks the person who did the task what mattered. Understudy is the briefing and QA layer in front of collection, on a lab bench or on a station: *what exactly is this task*, and *what does a robot need to perceive to do it*.
+The need is the same on the ground. Teaching a robot is expensive: NVIDIA's GR00T N1 took about 50,000 H100 GPU-hours to pretrain, and Physical Intelligence's pi0 more than 10,000 hours of robot data. Collecting human demonstrations is an industry now, and the waste comes after collection. In DROID about one recorded trajectory in six was marked failed, and one vendor's cost model puts re-collection after the first policy evaluation at 30 to 50 percent of the original budget. Nobody asks the person who did the task what mattered. Understudy is the briefing and QA layer in front of collection, on a lab bench or on a station: *what exactly is this task*, and *what does a robot need to perceive to do it*.
+
+| What | Number | Source |
+|---|---|---|
+| NASA's reimbursable value of one hour of ISS crew time, commercial activities | $130,000 | [NASA pricing policy](https://www.nasa.gov/leo-economy/commercial-use/pricing-policy/) |
+| What the ISS costs NASA a year | about $3 billion, a third of its human spaceflight budget | [NASA OIG, IG-22-005](https://oig.nasa.gov/docs/IG-22-005.pdf) |
+| Compute to pretrain NVIDIA's GR00T N1 | about 50,000 H100 GPU-hours | [GR00T N1 paper](https://arxiv.org/html/2503.14734) |
+| Synthetic data for GR00T N1 | 780,000 trajectories, worth 6,500 human hours, made in 11 hours | [GR00T N1 paper](https://arxiv.org/html/2503.14734) |
+| DROID trajectories marked failed at recording | about 1 in 6 | [DROID paper](https://arxiv.org/html/2403.12945v2) |
+| Re-collection after the first policy evaluation (one vendor's model) | 30 to 50% of the original budget | [Robotics Center](https://roboticscenter.ai/blog/robot-data-collection-cost) |
+| An Understudy session, estimated at list prices | about 18 calls, under $0.10 | [docs/FEEDBACK.md](docs/FEEDBACK.md) |
+
+The full brief, with the cost model for a 500-demonstration campaign and all 43 sources, is in [docs/research/market.md](docs/research/market.md).
 
 ## Where this comes from
 
@@ -56,7 +68,7 @@ Gravity is a scenario axis. The contract carries `gravity_g` on every scenario a
 | `nvidia/nemotron-3-super-120b-a12b` | interviews, writes the saboteur scenarios, proposes patches | reasoning with chips streamed as they close |
 | `nvidia/Nemotron-3-Ultra-550b-a55b` | failure classes, reshoot list, open risks | the deep pass, once per session, in the background |
 
-Every call goes through the OpenAI SDK with `base_url` set to `https://api.tokenfactory.nebius.com/v1/`. A session makes about 18 requests and costs under ten cents. The cost ledger on screen prices them from `GET /v1/models?verbose=true`.
+Every call goes through the OpenAI SDK with `base_url` set to `https://api.tokenfactory.nebius.com/v1/`. A session is estimated at about 18 requests and under ten cents at list prices; the labelling call measured on 23 October cost about a fifth of a cent. The cost ledger on screen prices every call from `GET /v1/models?verbose=true`.
 
 Other Nebius services: a Serverless Job (`jobs/validate_groot.py`) loads a real export with Isaac-GR00T's dataset loader and the log goes here when it has run.
 

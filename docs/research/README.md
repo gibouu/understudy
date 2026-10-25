@@ -9,5 +9,6 @@ Understudy rests on a month of internal research into robot demonstration data: 
 | `token-factory.md` | the Token Factory API, model catalog, prices, limits and credits, and Nebius AI Cloud's serverless jobs |
 | `tooling.md` | the browser and simulation toolchain (MediaPipe, MuJoCo WebAssembly, LeRobot v2.1, GR00T's loader) with versions and licences |
 | `design-review.md` | the adversarial review the first spec went through before the build, which shaped spec v2 |
+| `market.md` | the market brief: what an hour of crew time costs and which robots work in orbit, what it costs to teach a robot, where demonstration data leaks, and a cost model for Understudy; 43 sources, every external number checked twice against its page on 25 October 2026 |
 
 The measured behaviour of the models during the build (image caps, thinking toggles, token costs) is in `../FEEDBACK.md`.
