@@ -31,7 +31,7 @@ Decisions frozen in `lib/providers/tokenfactory.ts`: Label input is a 480p 4 fps
 
 ## Per tool
 
-Measured on 25 October 2026 during the experiments in `docs/MEASUREMENTS.md` (about 9,000 calls, US$12.44 at list prices, all logged in `bench/results/ledger.jsonl`).
+Measured on 25 October 2026 during the experiments in `docs/MEASUREMENTS.md` (about 9,000 calls, US$13.73 at list prices, all logged in `bench/results/ledger.jsonl`).
 
 For each: used for, what worked, what needs work, minutes to hello-world, would we build on it again.
 
@@ -39,7 +39,7 @@ For each: used for, what worked, what needs work, minutes to hello-world, would 
 ### Nemotron 3.5 Super VL
 
 - **Used for:** labelling a clip into a task spec, from a 480p video proxy sent as a `video_url` data URI.
-- **Worked:** valid JSON in every one of about 90 calls; 2.4 to 3.9 s for a 36 s clip; about US$0.0024 per label.
+- **Worked:** valid JSON in all but 4 of 105 label calls (one a truncation with thinking off); 2.4 to 3.9 s for a 36 s clip; about US$0.0024 per label.
 - **Needs work:**
   - **Fine manipulation:** on the NASA ISS clip (an astronaut placing seed film into plant pillows) it never named the film as the object moved: 0 of 35 labels across seven input conditions. In 23 it called the pillows "battery packs" or "hard drives". A one-line context hint cut that to 1 of 5. Only a hint naming the task got the film named.
   - **Video tokens are fixed per clip:** 6,379 tokens for that clip at 2, 4 or 8 fps and at 480 or 960 px wide, so the service resamples the video. That is good for cost, but undocumented. Image inputs do scale with resolution.
@@ -64,12 +64,12 @@ For each: used for, what worked, what needs work, minutes to hello-world, would 
   - the perturbation scenarios
   - the patches that repair a failing program
 - **Worked:**
-  - **Patching from the simulator's failure notes alone** (measured facts, never the answer), across four tasks at four gravities:
+  - **Patching from the simulator's failure notes alone** (measured facts, never the answer), across four tasks at four gravities: Rates are of the solvable failures (180 of 186):
     - with thinking off, it fixed 69% of failing rehearsals within five patches, at US$0.0015 per fix
     - with thinking on (4k), 94%
-    - starting with thinking off and escalating to thinking on when stuck, also 94%, at US$0.0024 per fix
+    - starting with thinking off and escalating to thinking on when stuck, also 94% (91% of all failures), at US$0.0024 per fix
   - **Rules from earlier repairs:** two rules it distilled from 16 Earth and Mars repairs raised first-try success on the Moon and in orbit by 28 points with thinking off and 18 with thinking on, against matched controls.
-  - **Infeasible tasks:** with thinking off it correctly declared pouring beads in orbit infeasible in 12 of 12 runs, and never wrongly on a surface.
+  - **Infeasible tasks:** with thinking off it declared pouring beads in orbit infeasible in 12 of 12 runs, and never wrongly on a surface.
 - **Needs work:**
   - **Stuck patches:** with thinking off, about a quarter of its patches changed nothing. It rarely used a measured offset ("4.1 mm from the pocket centre") to correct an insertion: 58 of 1,079 patches did, mostly late, and 38 had the wrong sign.
   - **Saboteur:** it sometimes returned 5 scenarios instead of 12, and twice left out gravity despite the rule.

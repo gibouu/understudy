@@ -34,7 +34,7 @@ Machine for the local runs: Apple M4, Node 24, one thread, MuJoCo WebAssembly 3.
 | Reshoot | Ultra | 1 | US$0.0274 | 24.9 s |
 | **Session** | | **16.7** | **US$0.0375** | **71 s** |
 
-Ultra's reshoot list is 73% of the cost and most of its variance (4.6k to 10.1k reasoning tokens). No call returned an error, an empty answer or invalid JSON. Found on the way: the saboteur sometimes wrote 5 scenarios instead of 12 and twice left gravity out; Nano with thinking off sometimes compiled a program without its `ask` slots.
+Ultra's reshoot list is 73% of the cost and most of its variance (4.6k to 10.1k reasoning tokens). No call returned an error or invalid JSON, and none came back empty apart from the 5-token health probe, which Nano spends on reasoning. Found on the way: the saboteur sometimes wrote 5 scenarios instead of 12 and twice left gravity out; Nano with thinking off sometimes compiled a program without its `ask` slots.
 
 ## 2. Hands on far, gloved footage
 
@@ -129,18 +129,18 @@ The learning curve for the escalating patcher, share of failing rehearsals fixed
 | Super, thinking on | 67% vs 48% | +18 points [6 to 30] | 100% vs 100% | +0 [-3 to 3] |
 | Escalation | 33% vs 5% | +28 points [18 to 37] | 94% vs 93% | +2 [-5 to 8] |
 
-The rules make the first try right more often; within five patches the loop gets there anyway, and no lift is distinguishable from zero. With reasoning, the set-up call alone does much of the work: it takes the first try from 5% to 48% without any rules. The cheap model never uses the set-up call (0 of 120 changed anything). Declaring the orbit bead pour infeasible up front (12 of 12) also happens without the rules, so it is not their doing.
+The rules make the first try right more often; within five patches the loop gets there anyway, and no lift is distinguishable from zero. With reasoning, the set-up call alone does much of the work: it takes the first try from 5% to 48% without any rules. The cheap model never uses the set-up call (0 of 120 changed anything). Declaring the orbit bead pour infeasible happens before the first rollout in 11 of 12 runs, and by the fourth patch in the twelfth, with the rules and without them alike, so it is not their doing.
 
 **The liquid model changes the pour.** Re-run on the liquid solver (600 particles, one-way coupled), the same loop fixes far fewer pours: 19% [10 to 32] with Super thinking off and 48% [34 to 62] with thinking on, against 79% and 88% with beads. Most failures sit at 75 to 88% of the water in the target, lost along the lip as the water wets the walls. And in orbit, turning the cup over in one second and waiting lands the water and keeps it there in 3 of 6 seeds, so "pouring in orbit is infeasible" was an artefact of the bead model. No patcher found that throw. This is the reason to keep the liquid model: it changes conclusions, not only numbers.
 
-Limits: the program is 2 to 4 bounded knobs, not the full interpreter; the failure notes are written by the probes (measured facts, never knob names or answers, checked by a test); seeds mostly vary the model's sampling. Spend for both rounds: US$10.60.
+Limits: the program is 2 to 4 bounded knobs, not the full interpreter; the failure notes are written by the probes (measured facts, never knob names or answers, checked by a test); seeds mostly vary the model's sampling. Spend: US$10.60 for the two rounds and US$1.28 for the matched controls.
 
 ## 9. What this changes in the savings model
 
 The market brief (`docs/research/market.md`, section 5) prices the saving on a 500-demonstration campaign from one vendor's re-collection figure (30 to 50% of the original budget) and a share of that re-collection avoided. That share is still a model: it can only be measured on a real collection campaign, before and after. What is now measured is everything around it:
 
 - **What finding a failure costs.** A naive, human-like program fails 86% of the disturbed runs above, and the simulator finds each of those failures in a single probe rollout, with no robot and no operator. The arm's physics runs a 24-rollout grid in 0.3 s per gravity (section 3); timing the full detection with the interpreter's checks waits for the interpreter.
-- **What fixing one costs.** The escalating patcher fixes 94% of them within five patches, for US$0.0024 of model calls per fixed case and about 16 s of model time.
+- **What fixing one costs.** The escalating patcher fixes 94% of the solvable failures (91% of all of them) within five patches, for US$0.0024 of model calls per fixed case and about 16 s of model time.
 - **What a session costs.** US$0.0375 on average for the whole session, measured.
 - **What the bench cannot see.** Orbit and the Moon turn passing programs into failing ones (a tube let go at the slot mouth seats on Earth and floats in orbit; a free-standing tube topples at a sixth of the push on the Moon), and the liquid model turns an "infeasible" task into a feasible one. Each of those would otherwise surface on the real system.
 
