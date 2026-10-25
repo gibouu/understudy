@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { startDetector, type Detector } from "@/lib/vision/detector";
 import { sampleVideo, type SampleProgress } from "@/lib/vision/sampler";
-import { fillHandGaps, selectFrame, TRACK_START, wristSpeed } from "@/lib/vision/select";
+import { assembleFrame, fillHandGaps, wristSpeed } from "@/lib/vision/select";
 import { COLOURS, drawSkeleton } from "@/lib/vision/skeleton";
 import type { HandGap, TokenFrame, WatchTokens } from "@/lib/vision/types";
 import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
@@ -106,7 +106,6 @@ export default function WatchPage() {
       setDelegate(ready.delegate);
       ready.newRun();
       setStage(running("Watching", 0));
-      let track = TRACK_START;
       let lastSamples = -1;
       detectMs.current = null;
       const startedAt = performance.now();
@@ -117,16 +116,15 @@ export default function WatchPage() {
         async onFrame(bitmap, t) {
           const { width, height } = bitmap;
           setSize((s) => (s?.width === width && s.height === height ? s : { width, height }));
-          // the hip tracked so far, so the worker spends its crops on this person first
-          const { poses, hands, cropHands, ms } = await ready.detect(bitmap, t, track.hip);
+          // the worker tracks the person (frames reach it in order) and crops for them
+          const { poses, hands, person, cropHands, ms } = await ready.detect(bitmap, t);
           if (abort.signal.aborted) return;
-          const next = selectFrame(t, poses, hands, track, width / height, cropHands);
+          const next = assembleFrame(t, poses, hands, person, width / height, cropHands);
           detectMs.current =
             detectMs.current === null
               ? ms
               : { pose: 0.9 * detectMs.current.pose + 0.1 * ms.pose, hand: 0.9 * detectMs.current.hand + 0.1 * ms.hand };
-          track = next.state;
-          frames.current.push(next.frame);
+          frames.current.push(next);
           show(frames.current.length - 1);
         },
         onProgress(p) {

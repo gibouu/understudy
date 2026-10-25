@@ -9,12 +9,12 @@
  * A crop is made for one person's one wrist (or both, when they are close),
  * and what it finds is attached to that wrist only: it never joins the pool of
  * full-frame hands, so it cannot steal another wrist. A find must also be the
- * person's own by the frame-wide nearest-wrist rule, and the crop budget goes
- * to the tracked person first. Pure geometry here; the canvas work is in
- * `mediapipe.ts`.
+ * person's own by the frame-wide nearest-wrist rule. Only the person the
+ * worker tracks gets crops. Pure geometry and orchestration here; the canvas
+ * and model calls are in `mediapipe.ts`.
  */
-import { matchHands, pickPerson, POSE, torso } from "./select";
-import type { HandSide, Point3 } from "./types";
+import { matchHands, POSE, torso, type CropHand, type DetectedHand } from "./select";
+import type { HandSide, Point3, PoseTokens } from "./types";
 
 /** A square window in the sampled frame, pixels. */
 export type Crop = { x0: number; y0: number; side: number };
@@ -297,20 +297,46 @@ export function pickCropHands(candidates: Point3[][], ctx: PickContext): Partial
 }
 
 /**
- * The order in which people get crops, so the cap goes to the person who
- * matters first: nearest the page's tracked hip (`focus`, from the previous
- * frame), or, before tracking starts, the person `pickPerson` would choose,
- * then everyone else in detection order.
+ * The whole second look for one frame, with the model call passed in as `run`
+ * (which crops the frame to `win`, runs the Hand Landmarker and returns the
+ * detections in full-frame coordinates). Only the `person` the worker tracks
+ * gets crops, so the budget is at most two crops, both spent on the person the
+ * page will show. Returns the finds attached to that person's wrists and the
+ * number of crops run.
  */
-export function cropOrder(poses: Point3[][], aspect: number, focus: { x: number; y: number } | null): number[] {
-  const idx = poses.map((_, i) => i);
-  if (focus) {
-    const d = idx.map((i) => {
-      const hip = torso(poses[i], aspect).hip;
-      return Math.hypot((hip.x - focus.x) * aspect, hip.y - focus.y);
-    });
-    return idx.sort((a, b) => d[a] - d[b] || a - b);
+export function cropPass(
+  poses: PoseTokens[],
+  hands: Point3[][],
+  person: number | null,
+  width: number,
+  height: number,
+  run: (win: Crop) => DetectedHand[],
+): { cropHands: CropHand[]; crops: number } {
+  const cropHands: CropHand[] = [];
+  if (person === null || !poses[person]) return { cropHands, crops: 0 };
+  const aspect = width / height;
+  const poseImages = poses.map((x) => x.image);
+  const missing = missingWrists(poseImages, person, hands, aspect);
+  if (missing.length === 0) return { cropHands, crops: 0 };
+  // the person's full-frame hands, on the wrists that are not missing
+  const m = matchHands(poseImages, person, hands, aspect);
+  const held = [m.left, m.right].flatMap((i) => (i === null ? [] : [hands[i]]));
+  const taken = [...hands];
+  const plan = cropPlan(poses[person], missing, width, height);
+  let crops = 0;
+  for (const { win, sides } of plan.windows) {
+    crops++;
+    const found = run(win);
+    const picks = pickCropHands(
+      found.map((f) => f.image),
+      { poses: poseImages, person, sides, aspect, close: plan.close, taken, held },
+    );
+    for (const side of sides) {
+      const i = picks[side];
+      if (i === undefined) continue;
+      taken.push(found[i].image);
+      cropHands.push({ person, side, hand: { ...found[i], cropped: true } });
+    }
   }
-  const first = pickPerson(poses, aspect);
-  return first === null ? idx : [first, ...idx.filter((i) => i !== first)];
+  return { cropHands, crops };
 }

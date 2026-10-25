@@ -5,8 +5,8 @@
  * `detector.ts`.
  */
 import { HandLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
-import { cropOrder, cropPlan, missingWrists, pickCropHands, uncrop } from "./crop";
-import { matchHands, type CropHand, type DetectedHand } from "./select";
+import { cropPass, uncrop } from "./crop";
+import { TRACK_START, trackPerson, type CropHand, type DetectedHand, type TrackState } from "./select";
 import type { Point3, PoseTokens } from "./types";
 
 const BASE = "/mediapipe";
@@ -33,27 +33,29 @@ export type Detections = {
   poses: PoseTokens[];
   /** hands found on the full frame */
   hands: DetectedHand[];
-  /** hands found on wrist crops, each attached to the person and wrist its crop was made for (see crop.ts) */
+  /**
+   * index into `poses` of the person being followed, tracked here in the
+   * worker (frames arrive in order) so the crops and the page's frame are about
+   * the same person; null when nobody is
+   */
+  person: number | null;
+  /** hands found on wrist crops, each attached to the tracked person's wrist its crop was made for (see crop.ts) */
   cropHands: CropHand[];
   /** wall time of each model on this frame; `hand` includes the crops */
   ms: { pose: number; hand: number };
-  /** wrist crops the Hand Landmarker ran on, after the full frame */
+  /** wrist crops the Hand Landmarker ran on, after the full frame: at most two, for the tracked person */
   crops: number;
 };
-
-/** Most wrist crops per frame: two people's two hands. */
-export const MAX_CROPS = 4;
 
 export type Delegate = "GPU" | "CPU";
 
 export type Landmarkers = {
   /**
-   * Runs both models on one frame, then the wrist crops. `t_s` must increase
-   * within a run. `focus` is the tracked person's hip from the previous frame,
-   * so the crop budget goes to them first.
+   * Runs both models on one frame, tracks the person, then the wrist crops for
+   * them. `t_s` must increase within a run.
    */
-  detect(frame: ImageBitmap, t_s: number, focus?: { x: number; y: number } | null): Detections;
-  /** Call before a new clip: VIDEO mode needs timestamps that never go back. */
+  detect(frame: ImageBitmap, t_s: number): Detections;
+  /** Call before a new clip: VIDEO mode needs timestamps that never go back, and tracking starts over. */
   newRun(): void;
   delegate: Delegate;
   close(): void;
@@ -119,12 +121,14 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
   const filtered = "filter" in ctx;
   let last = -1;
   let offset = 0;
+  let track: TrackState = TRACK_START;
   return {
     delegate,
     newRun() {
       offset = last + 1;
+      track = TRACK_START;
     },
-    detect(frame, t_s, focus = null) {
+    detect(frame, t_s) {
       const ts = Math.max(last + 1, offset + Math.round(t_s * 1000));
       last = ts;
       const t0 = performance.now();
@@ -141,49 +145,29 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
         world: (h.worldLandmarks[i] ?? []).map(point),
         score: h.handedness[i]?.[0]?.score ?? 0,
       }));
-      // Second look: a crop around every wrist the full frame gave no hand. The
-      // finds are attached to that wrist and never join the full-frame pool.
+      // Follow the person here, where frames arrive in order, so the crops and the
+      // page's frame are about the same person.
       const { width, height } = frame;
       const aspect = width / height;
-      const poseImages = poses.map((x) => x.image);
-      const fullImages = hands.map((x) => x.image);
-      // every hand placed so far this frame; crop finds are added as they are attached
-      const taken = [...fullImages];
-      const cropHands: CropHand[] = [];
-      let crops = 0;
-      for (const p_i of cropOrder(poseImages, aspect, focus)) {
-        if (crops >= MAX_CROPS) break;
-        const person = poses[p_i];
-        const missing = missingWrists(poseImages, p_i, fullImages, aspect);
-        if (missing.length === 0) continue;
-        // the person's full-frame hands, on the wrists that are not missing
-        const m = matchHands(poseImages, p_i, fullImages, aspect);
-        const held = [m.left, m.right].flatMap((i) => (i === null ? [] : [fullImages[i]]));
-        const plan = cropPlan(person, missing, width, height);
-        for (const { win, sides } of plan.windows) {
-          if (crops >= MAX_CROPS) break;
-          crops++;
-          canvas.width = win.side;
-          canvas.height = win.side;
-          if (filtered) ctx.filter = CROP_FILTER;
-          ctx.drawImage(frame, win.x0, win.y0, win.side, win.side, 0, 0, win.side, win.side);
-          const c = crop.detect(canvas);
-          const found = c.landmarks.map((image) => image.map((l) => uncrop(l, win, width, height)));
-          const picks = pickCropHands(found, { poses: poseImages, person: p_i, sides, aspect, close: plan.close, taken, held });
-          for (const side of sides) {
-            const i = picks[side];
-            if (i === undefined) continue;
-            taken.push(found[i]);
-            cropHands.push({
-              person: p_i,
-              side,
-              hand: { image: found[i], world: (c.worldLandmarks[i] ?? []).map(point), score: c.handedness[i]?.[0]?.score ?? 0, cropped: true },
-            });
-          }
-        }
-      }
+      const tracked = trackPerson(poses.map((x) => x.image), track, { aspect });
+      track = tracked.state;
+      // Second look: a crop around each of their wrists the full frame gave no
+      // hand. The finds are attached to that wrist and never join the pool.
+      const { cropHands, crops } = cropPass(poses, hands.map((x) => x.image), tracked.index, width, height, (win) => {
+        canvas.width = win.side;
+        canvas.height = win.side;
+        if (filtered) ctx.filter = CROP_FILTER;
+        ctx.drawImage(frame, win.x0, win.y0, win.side, win.side, 0, 0, win.side, win.side);
+        const c = crop.detect(canvas);
+        return c.landmarks.map((image, i) => ({
+          image: image.map((l) => uncrop(l, win, width, height)),
+          world: (c.worldLandmarks[i] ?? []).map(point),
+          score: c.handedness[i]?.[0]?.score ?? 0,
+          cropped: true,
+        }));
+      });
       const t2 = performance.now();
-      return { ms: { pose: t1 - t0, hand: t2 - t1 }, poses, hands, cropHands, crops };
+      return { ms: { pose: t1 - t0, hand: t2 - t1 }, poses, hands, person: tracked.index, cropHands, crops };
     },
     close() {
       pose.close();

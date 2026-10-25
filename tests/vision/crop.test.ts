@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CROP_FOREARMS, CROP_SHIFT, cropOrder, cropPlan, hull, MIN_CROP_PX, MIN_FOREARM_PX, missingWrists, pickCropHands, sameHand, uncrop, wristCrop, wristsClose, type Crop, type PickContext } from "@/lib/vision/crop";
-import { POSE, selectFrame, TRACK_START, type CropHand } from "@/lib/vision/select";
+import { CROP_FOREARMS, CROP_SHIFT, cropPass, cropPlan, hull, landmarkDistance, MIN_CROP_PX, MIN_FOREARM_PX, missingWrists, pickCropHands, sameHand, uncrop, wristCrop, wristsClose, type Crop, type PickContext } from "@/lib/vision/crop";
+import { assembleFrame, POSE, selectFrame, TRACK_START, type CropHand, type DetectedHand } from "@/lib/vision/select";
 import type { Point3 } from "@/lib/vision/types";
 
 const W = 960;
@@ -222,15 +222,19 @@ const ctx = (p: { image: Point3[] }, sides: PickContext["sides"], over: Partial<
 });
 
 describe("pickCropHands", () => {
-  it("with close wrists and one hand held, sets aside the detection most like the held hand, even past sameHand's cutoff", () => {
-    // a 22 px hand held on the left wrist; the right wrist's crop sees it again 5 px off (past sameHand's 4.3 px
-    // cutoff, the case that used to attach) and the right hand, 7.2 px from the held one in landmark terms. The
-    // rule is relative, so it holds while the jitter stays under the gap between the two real hands; beyond that
-    // no position-based rule can tell them apart.
+  it("with close wrists and one hand held, sets aside the detection most like the held hand, even when it sits nearer the wrist", () => {
+    // a 22 px hand held on the left wrist. The right wrist's crop sees it again 5 px off (past sameHand's 4.3 px
+    // cutoff, the case that used to attach) and the right hand 6 px off its wrist. The copy is NEARER the right
+    // wrist than the real hand, so distance alone would pick it; only setting aside the held hand's likeness
+    // gets this right. The rule holds while jitter stays under the gap between the two real hands.
     const held = fanned({ x: 0.5, y: 0.6, z: 0 }, 0.6, 0.04);
     const copy = shift(held, 5, 0);
+    const right = shift(fanned({ x: 0.51, y: 0.6, z: 0 }, -0.6, 0.04), 6, 0);
     expect(sameHand(held, copy, ASPECT)).toBe(false);
-    const right = fanned({ x: 0.51, y: 0.6, z: 0 }, -0.6, 0.04);
+    expect(landmarkDistance(held, copy, ASPECT)).toBeLessThan(landmarkDistance(held, right, ASPECT));
+    const rightWrist = close.image[POSE.RIGHT_WRIST];
+    const fromWrist = (h: Point3[]) => Math.hypot((h[0].x - rightWrist.x) * ASPECT, h[0].y - rightWrist.y);
+    expect(fromWrist(copy)).toBeLessThan(fromWrist(right));
     expect(pickCropHands([copy, right], ctx(close, ["right"], { held: [held], taken: [held] }))).toEqual({ right: 1 });
     expect(pickCropHands([right, copy], ctx(close, ["right"], { held: [held], taken: [held] }))).toEqual({ right: 0 });
   });
@@ -277,24 +281,6 @@ describe("pickCropHands", () => {
   });
 });
 
-describe("cropOrder", () => {
-  const at = (x: number) => {
-    const p = pose({ leftElbow: { x, y: 0.5, z: 0 }, leftWrist: { x, y: 0.6, z: 0 }, rightElbow: { x: x + 0.05, y: 0.5, z: 0 }, rightWrist: { x: x + 0.05, y: 0.6, z: 0 } });
-    for (const i of [POSE.LEFT_SHOULDER, POSE.LEFT_HIP]) p.image[i] = { ...p.image[i], x };
-    for (const i of [POSE.RIGHT_SHOULDER, POSE.RIGHT_HIP]) p.image[i] = { ...p.image[i], x: x + 0.1 };
-    return p.image;
-  };
-  const three = [at(0.05), at(0.75), at(0.45)];
-  it("puts the person nearest the tracked hip first", () => {
-    expect(cropOrder(three, ASPECT, { x: 0.5, y: 0.6 })[0]).toBe(2);
-    expect(cropOrder(three, ASPECT, { x: 0.1, y: 0.6 })[0]).toBe(0);
-  });
-  it("before tracking starts, puts the person pickPerson would choose first", () => {
-    expect(cropOrder(three, ASPECT, null)[0]).toBe(2);
-    expect([...cropOrder(three, ASPECT, null)].sort()).toEqual([0, 1, 2]);
-  });
-});
-
 describe("selectFrame with crop finds", () => {
   const toks = (p: { image: Point3[]; visibility: number[] }) => ({ image: p.image, world: p.image, visibility: p.visibility });
   const found = (wrist: Point3) => ({ image: fanned(wrist, 0), world: [], score: 0.8, cropped: true });
@@ -331,5 +317,91 @@ describe("selectFrame with crop finds", () => {
     const { frame } = selectFrame(0, [toks(apart)], [full], TRACK_START, ASPECT, crops);
     expect(frame.right_hand?.cropped).toBeUndefined();
     expect(frame.right_hand?.image).toBe(full.image);
+  });
+});
+
+describe("assembleFrame", () => {
+  const toks = (p: { image: Point3[]; visibility: number[] }) => ({ image: p.image, world: p.image, visibility: p.visibility });
+  it("builds the frame for the person it is given, whoever pickPerson would choose", () => {
+    const other = pose({ leftElbow: { x: 0.1, y: 0.5, z: 0 }, leftWrist: { x: 0.1, y: 0.6, z: 0 }, rightElbow: { x: 0.2, y: 0.5, z: 0 }, rightWrist: { x: 0.2, y: 0.6, z: 0 } });
+    for (const i of [POSE.LEFT_SHOULDER, POSE.RIGHT_SHOULDER, POSE.LEFT_HIP, POSE.RIGHT_HIP]) other.image[i] = { ...other.image[i], x: other.image[i].x - 0.5 };
+    const crops: CropHand[] = [{ person: 1, side: "left", hand: { image: fanned({ x: 0.1, y: 0.6, z: 0 }, 0), world: [], score: 0.8 } }];
+    // pickPerson would choose index 0 (apart, centred); the worker says 1
+    const frame = assembleFrame(0, [toks(apart), toks(other)], [], 1, ASPECT, crops);
+    expect(frame.person_index).toBe(1);
+    expect(frame.left_hand?.cropped).toBe(true);
+    expect(frame.right_hand).toBeNull();
+  });
+  it("is empty for nobody", () => {
+    const frame = assembleFrame(0, [toks(apart)], [], null, ASPECT, []);
+    expect(frame).toMatchObject({ person_index: null, pose: null, left_hand: null, right_hand: null });
+  });
+});
+
+describe("cropPass", () => {
+  const toks = (p: { image: Point3[]; visibility: number[] }) => ({ image: p.image, world: p.image, visibility: p.visibility });
+  const det = (image: Point3[]): DetectedHand => ({ image, world: [], score: 0.7, cropped: true });
+  /** A fake model: returns the scripted hands that lie inside the crop window, and records the windows. */
+  const fake = (hands: Point3[][]) => {
+    const windows: Crop[] = [];
+    const run = (win: Crop) => {
+      windows.push(win);
+      return hands
+        .filter((h) => {
+          const x = h[0].x * W;
+          const y = h[0].y * H;
+          return x >= win.x0 && x <= win.x0 + win.side && y >= win.y0 && y <= win.y0 + win.side;
+        })
+        .map(det);
+    };
+    return { run, windows };
+  };
+  const bystander = (x: number) => {
+    const p = pose({ leftElbow: { x, y: 0.5, z: 0 }, leftWrist: { x, y: 0.6, z: 0 }, rightElbow: { x: x + 0.05, y: 0.5, z: 0 }, rightWrist: { x: x + 0.05, y: 0.6, z: 0 } });
+    for (const i of [POSE.LEFT_SHOULDER, POSE.LEFT_HIP]) p.image[i] = { ...p.image[i], x };
+    for (const i of [POSE.RIGHT_SHOULDER, POSE.RIGHT_HIP]) p.image[i] = { ...p.image[i], x: x + 0.1 };
+    return p;
+  };
+  it("runs crops only for the tracked person, at most one per missing wrist, and attaches their hands", () => {
+    const people = [toks(bystander(0.05)), toks(bystander(0.2)), toks(apart)];
+    const left = fanned({ x: 0.4, y: 0.61, z: 0 }, 0.2);
+    const right = fanned({ x: 0.6, y: 0.61, z: 0 }, -0.2);
+    const theirs = fanned({ x: 0.05, y: 0.61, z: 0 }, 0);
+    const { run, windows } = fake([left, right, theirs]);
+    const out = cropPass(people, [], 2, W, H, run);
+    expect(out.crops).toBe(2);
+    expect(windows).toHaveLength(2);
+    expect(out.cropHands.map((c) => [c.person, c.side])).toEqual([[2, "left"], [2, "right"]]);
+    expect(out.cropHands.find((c) => c.side === "left")?.hand.image).toBe(left);
+  });
+  it("runs nothing for nobody, and nothing when the full frame already gave both hands", () => {
+    const { run, windows } = fake([]);
+    expect(cropPass([toks(apart)], [], null, W, H, run)).toEqual({ cropHands: [], crops: 0 });
+    const both = [fanned({ x: 0.4, y: 0.61, z: 0 }, 0), fanned({ x: 0.6, y: 0.61, z: 0 }, 0)];
+    expect(cropPass([toks(apart)], both, 0, W, H, run)).toEqual({ cropHands: [], crops: 0 });
+    expect(windows).toHaveLength(0);
+  });
+  it("shares one crop between close wrists and gives its two hands one wrist each", () => {
+    const a = fanned({ x: 0.5, y: 0.6, z: 0 }, 0.6, 0.04);
+    const b = fanned({ x: 0.51, y: 0.6, z: 0 }, -0.6, 0.04);
+    const { run, windows } = fake([a, b]);
+    const out = cropPass([toks(close)], [], 0, W, H, run);
+    expect(windows).toHaveLength(1);
+    expect(out.cropHands).toHaveLength(2);
+    expect(new Set(out.cropHands.map((c) => c.side))).toEqual(new Set(["left", "right"]));
+  });
+  it("with close wrists and one hand held, never attaches the held hand's copy to the other wrist", () => {
+    const held = fanned({ x: 0.5, y: 0.6, z: 0 }, 0.6, 0.04);
+    const { run } = fake([shift(held, 5, 0)]);
+    const out = cropPass([toks(close)], [held], 0, W, H, run);
+    expect(out.crops).toBe(1);
+    expect(out.cropHands).toEqual([]);
+  });
+  it("does not attach a neighbour's hand to the tracked person", () => {
+    const neighbour = pose({ leftElbow: { x: 0.6, y: 0.7, z: 0 }, leftWrist: { x: 0.6, y: 0.61, z: 0 }, rightElbow: { x: 0.8, y: 0.7, z: 0 }, rightWrist: { x: 0.8, y: 0.6, z: 0 } });
+    const theirs = fanned({ x: 0.6, y: 0.612, z: 0 }, 0);
+    const { run } = fake([theirs]);
+    const out = cropPass([toks(apart), toks(neighbour)], [], 0, W, H, run);
+    expect(out.cropHands.filter((c) => c.side === "right")).toEqual([]);
   });
 });
