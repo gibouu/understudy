@@ -5,7 +5,7 @@
  * `detector.ts`.
  */
 import { HandLandmarker, PoseLandmarker } from "@mediapipe/tasks-vision";
-import { cropPlan, missingWrists, pickCropHands, uncrop } from "./crop";
+import { cropOrder, cropPlan, missingWrists, pickCropHands, uncrop } from "./crop";
 import { matchHands, type CropHand, type DetectedHand } from "./select";
 import type { Point3, PoseTokens } from "./types";
 
@@ -47,8 +47,12 @@ export const MAX_CROPS = 4;
 export type Delegate = "GPU" | "CPU";
 
 export type Landmarkers = {
-  /** Runs both models on one frame. `t_s` must increase within a run. */
-  detect(frame: ImageBitmap, t_s: number): Detections;
+  /**
+   * Runs both models on one frame, then the wrist crops. `t_s` must increase
+   * within a run. `focus` is the tracked person's hip from the previous frame,
+   * so the crop budget goes to them first.
+   */
+  detect(frame: ImageBitmap, t_s: number, focus?: { x: number; y: number } | null): Detections;
   /** Call before a new clip: VIDEO mode needs timestamps that never go back. */
   newRun(): void;
   delegate: Delegate;
@@ -120,7 +124,7 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
     newRun() {
       offset = last + 1;
     },
-    detect(frame, t_s) {
+    detect(frame, t_s, focus = null) {
       const ts = Math.max(last + 1, offset + Math.round(t_s * 1000));
       last = ts;
       const t0 = performance.now();
@@ -143,14 +147,18 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
       const aspect = width / height;
       const poseImages = poses.map((x) => x.image);
       const fullImages = hands.map((x) => x.image);
+      // every hand placed so far this frame; crop finds are added as they are attached
+      const taken = [...fullImages];
       const cropHands: CropHand[] = [];
       let crops = 0;
-      for (const [p_i, person] of poses.entries()) {
+      for (const p_i of cropOrder(poseImages, aspect, focus)) {
         if (crops >= MAX_CROPS) break;
+        const person = poses[p_i];
         const missing = missingWrists(poseImages, p_i, fullImages, aspect);
         if (missing.length === 0) continue;
+        // the person's full-frame hands, on the wrists that are not missing
         const m = matchHands(poseImages, p_i, fullImages, aspect);
-        const existing = [m.left, m.right].flatMap((i) => (i === null ? [] : [fullImages[i]]));
+        const held = [m.left, m.right].flatMap((i) => (i === null ? [] : [fullImages[i]]));
         const plan = cropPlan(person, missing, width, height);
         for (const { win, sides } of plan.windows) {
           if (crops >= MAX_CROPS) break;
@@ -161,11 +169,11 @@ export async function loadLandmarkers(): Promise<Landmarkers> {
           ctx.drawImage(frame, win.x0, win.y0, win.side, win.side, 0, 0, win.side, win.side);
           const c = crop.detect(canvas);
           const found = c.landmarks.map((image) => image.map((l) => uncrop(l, win, width, height)));
-          const picks = pickCropHands(found, person.image, sides, aspect, plan.close, existing);
+          const picks = pickCropHands(found, { poses: poseImages, person: p_i, sides, aspect, close: plan.close, taken, held });
           for (const side of sides) {
             const i = picks[side];
             if (i === undefined) continue;
-            existing.push(found[i]);
+            taken.push(found[i]);
             cropHands.push({
               person: p_i,
               side,

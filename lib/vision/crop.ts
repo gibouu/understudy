@@ -8,10 +8,12 @@
  *
  * A crop is made for one person's one wrist (or both, when they are close),
  * and what it finds is attached to that wrist only: it never joins the pool of
- * full-frame hands, so it cannot steal another wrist or another person's hand.
- * Pure geometry here; the canvas work is in `mediapipe.ts`.
+ * full-frame hands, so it cannot steal another wrist. A find must also be the
+ * person's own by the frame-wide nearest-wrist rule, and the crop budget goes
+ * to the tracked person first. Pure geometry here; the canvas work is in
+ * `mediapipe.ts`.
  */
-import { matchHands, POSE, torso } from "./select";
+import { matchHands, pickPerson, POSE, torso } from "./select";
 import type { HandSide, Point3 } from "./types";
 
 /** A square window in the sampled frame, pixels. */
@@ -36,8 +38,8 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), h
 
 /**
  * The window around one hand, or null when the wrist or the elbow is not
- * visible enough or the forearm is shorter than `MIN_FOREARM_PX`. Centred on the hand: the pose
- * model's own pinky, index and thumb points when they are visible, else a
+ * visible enough or the forearm is shorter than `MIN_FOREARM_PX`. Centred on
+ * the hand: the pose model's own pinky, index and thumb points when they are visible, else a
  * point past the wrist along the forearm. `CROP_FOREARMS` forearms wide, at
  * least `MIN_CROP_PX`, never larger than the frame, kept inside it.
  */
@@ -109,6 +111,14 @@ export function missingWrists(poses: Point3[][], selected: number, hands: Point3
 /** Below this mean landmark distance (frame heights, about a pixel at 540 px) two detections are one hand whatever their span. */
 export const SAME_HAND_FLOOR = 0.002;
 
+/** Mean distance between corresponding landmarks of two hands, frame heights; Infinity when they cannot be compared. */
+export function landmarkDistance(a: Point3[], b: Point3[], aspect: number): number {
+  if (a.length === 0 || a.length !== b.length) return Infinity;
+  let mean = 0;
+  for (let i = 0; i < a.length; i++) mean += dist(a[i], b[i], aspect);
+  return mean / a.length;
+}
+
 /**
  * Two detections are the same hand when their landmarks lie on top of each
  * other: the mean landmark distance is under a fifth of the hand's own span.
@@ -116,14 +126,10 @@ export const SAME_HAND_FLOOR = 0.002;
  * stay apart.
  */
 export function sameHand(a: Point3[], b: Point3[], aspect: number): boolean {
-  if (a.length === 0 || a.length !== b.length) return false;
-  let mean = 0;
+  const mean = landmarkDistance(a, b, aspect);
+  if (!Number.isFinite(mean)) return false;
   let span = 0;
-  for (let i = 0; i < a.length; i++) {
-    mean += dist(a[i], b[i], aspect);
-    span = Math.max(span, dist(a[0], a[i], aspect));
-  }
-  mean /= a.length;
+  for (const q of a) span = Math.max(span, dist(a[0], q, aspect));
   return mean < Math.max(SAME_HAND_FLOOR, 0.2 * span);
 }
 
@@ -191,41 +197,79 @@ export function cropPlan(
   return { close, windows: [...wins.entries()].map(([side, win]) => ({ win, sides: [side] })) };
 }
 
+/** What the picker needs to know about the frame around one crop. */
+export type PickContext = {
+  /** every pose in the frame, image landmarks */
+  poses: Point3[][];
+  /** index into `poses` of the person the crop was made for */
+  person: number;
+  /** the wrists the crop was made for */
+  sides: HandSide[];
+  aspect: number;
+  /** the person's wrists are close (`wristsClose`) */
+  close: boolean;
+  /** every hand already placed this frame: full-frame detections and earlier crop finds */
+  taken: Point3[][];
+  /** the person's own full-frame hands, on the wrists not in `sides` */
+  held: Point3[][];
+};
+
 /**
- * Which of a crop's detections belong to which of `sides` of `pose`. A
- * detection can go to a wrist when its wrist landmark is within `matchHands`'
- * reach of it (half a torso height, at least 0.05 frame heights), when it is
- * nearer that wrist than the other one (unless the wrists are `close`, where
- * that test means nothing), and when it is not the same hand as one the person
- * already has (`existing`: their full-frame hands and earlier crop finds).
- * Then the one-to-one assignment that places the most hands, then the shortest
- * total distance. Returns the detection index per side.
+ * Which of a crop's detections belong to which of `ctx.sides`. A detection can
+ * go to a wrist when:
+ * - its wrist landmark is within `matchHands`' reach of that wrist (half a
+ *   torso height, at least 0.05 frame heights);
+ * - its nearest wrist among everyone in the frame is this person's, as in
+ *   `matchHands` (a neighbour's hand stays the neighbour's);
+ * - it is nearer this wrist than the person's other wrist, unless the wrists
+ *   are close and that test means nothing;
+ * - it is not the same hand as one already placed this frame.
+ * When the wrists are close and one of them already holds a hand, the crop
+ * sees that hand too: the detection most like it is set aside, and a crop with
+ * a single detection attaches nothing, since there is no telling which hand
+ * it saw. Then the one-to-one assignment that places the most hands, then the
+ * shortest total distance. Returns the detection index per side.
  */
-export function pickCropHands(
-  candidates: Point3[][],
-  pose: Point3[],
-  sides: HandSide[],
-  aspect: number,
-  close: boolean,
-  existing: Point3[][],
-): Partial<Record<HandSide, number>> {
+export function pickCropHands(candidates: Point3[][], ctx: PickContext): Partial<Record<HandSide, number>> {
+  const { poses, person, sides, aspect, close, taken, held } = ctx;
+  const pose = poses[person];
+  let pool = candidates.map((_, i) => i);
+  if (close && held.length > 0) {
+    if (candidates.length < 2) return {};
+    let copy = -1;
+    let nearest = Infinity;
+    for (const i of pool) {
+      const d = Math.min(...held.map((h) => landmarkDistance(h, candidates[i], aspect)));
+      if (d < nearest) {
+        nearest = d;
+        copy = i;
+      }
+    }
+    pool = pool.filter((i) => i !== copy);
+  }
   const limit = Math.max(0.05, torso(pose, aspect).height / 2);
+  const own = [wristOf(pose, "left"), wristOf(pose, "right")].filter((w): w is Point3 => Boolean(w));
+  const others = poses.flatMap((p, k) =>
+    k === person ? [] : [wristOf(p, "left"), wristOf(p, "right")].filter((w): w is Point3 => Boolean(w)),
+  );
   const reach = (i: number, side: HandSide): number | null => {
     const c = candidates[i];
     const w = wristOf(pose, side);
     if (!c?.[0] || !w) return null;
     const d = dist(c[0], w, aspect);
     if (d > limit) return null;
+    const mine = Math.min(...own.map((x) => dist(c[0], x, aspect)));
+    if (others.some((x) => dist(c[0], x, aspect) <= mine)) return null;
     if (!close) {
       const o = wristOf(pose, otherSide(side));
       if (o && !(d < dist(c[0], o, aspect))) return null;
     }
-    if (existing.some((e) => sameHand(e, c, aspect))) return null;
+    if (taken.some((e) => sameHand(e, c, aspect))) return null;
     return d;
   };
   const options = sides.map((side) => [
     null,
-    ...candidates.flatMap((_, i) => {
+    ...pool.flatMap((i) => {
       const d = reach(i, side);
       return d === null ? [] : [{ i, d }];
     }),
@@ -250,4 +294,23 @@ export function pickCropHands(
     if (pick !== null && pick !== undefined) out[side] = pick;
   });
   return out;
+}
+
+/**
+ * The order in which people get crops, so the cap goes to the person who
+ * matters first: nearest the page's tracked hip (`focus`, from the previous
+ * frame), or, before tracking starts, the person `pickPerson` would choose,
+ * then everyone else in detection order.
+ */
+export function cropOrder(poses: Point3[][], aspect: number, focus: { x: number; y: number } | null): number[] {
+  const idx = poses.map((_, i) => i);
+  if (focus) {
+    const d = idx.map((i) => {
+      const hip = torso(poses[i], aspect).hip;
+      return Math.hypot((hip.x - focus.x) * aspect, hip.y - focus.y);
+    });
+    return idx.sort((a, b) => d[a] - d[b] || a - b);
+  }
+  const first = pickPerson(poses, aspect);
+  return first === null ? idx : [first, ...idx.filter((i) => i !== first)];
 }

@@ -117,7 +117,8 @@ export default function WatchPage() {
         async onFrame(bitmap, t) {
           const { width, height } = bitmap;
           setSize((s) => (s?.width === width && s.height === height ? s : { width, height }));
-          const { poses, hands, cropHands, ms } = await ready.detect(bitmap, t);
+          // the hip tracked so far, so the worker spends its crops on this person first
+          const { poses, hands, cropHands, ms } = await ready.detect(bitmap, t, track.hip);
           if (abort.signal.aborted) return;
           const next = selectFrame(t, poses, hands, track, width / height, cropHands);
           detectMs.current =

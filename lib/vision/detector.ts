@@ -7,7 +7,7 @@ import type { Delegate, Detections } from "./mediapipe";
 export type WorkerRequest =
   | { type: "load" }
   | { type: "run" }
-  | { type: "detect"; id: number; frame: ImageBitmap; t_s: number };
+  | { type: "detect"; id: number; frame: ImageBitmap; t_s: number; focus: { x: number; y: number } | null };
 
 export type WorkerReply =
   | { type: "loaded"; delegate: Delegate }
@@ -16,8 +16,11 @@ export type WorkerReply =
 
 export type Detector = {
   delegate: Delegate;
-  /** Transfers `frame` to the worker. `t_s` must increase within a run. */
-  detect(frame: ImageBitmap, t_s: number): Promise<Detections>;
+  /**
+   * Transfers `frame` to the worker. `t_s` must increase within a run. `focus`
+   * is the tracked person's hip, so wrist crops go to them first.
+   */
+  detect(frame: ImageBitmap, t_s: number, focus?: { x: number; y: number } | null): Promise<Detections>;
   /** Call before a new clip. */
   newRun(): void;
   /** false once the worker failed or was closed */
@@ -47,11 +50,11 @@ export function startDetector(): Promise<Detector> {
       if (data.type === "loaded") {
         resolve({
           delegate: data.delegate,
-          detect(frame, t_s) {
+          detect(frame, t_s, focus = null) {
             const id = nextId++;
             return new Promise((res, rej) => {
               pending.set(id, { resolve: res, reject: rej });
-              post({ type: "detect", id, frame, t_s }, [frame]);
+              post({ type: "detect", id, frame, t_s, focus }, [frame]);
             });
           },
           newRun: () => post({ type: "run" }),

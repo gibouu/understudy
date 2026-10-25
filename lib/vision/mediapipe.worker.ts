@@ -22,7 +22,7 @@ scope.onmessage = async ({ data }) => {
       (await landmarkers!).newRun();
     } else if (data.type === "detect") {
       try {
-        const detections = (await landmarkers!).detect(data.frame, data.t_s);
+        const detections = (await landmarkers!).detect(data.frame, data.t_s, data.focus);
         scope.postMessage({ type: "detections", id: data.id, detections });
       } finally {
         data.frame.close();
