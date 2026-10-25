@@ -127,7 +127,9 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   }
 
   if (from === "home") {
-    // start from home, open, and let the scene settle
+    // start from home, open, and let the scene settle; nothing stays welded from an earlier run
+    if (held) detach(data, held);
+    held = null;
     ctrl.set([...SO101_HOME.slice(0, ARM), GRIPPER_OPEN]);
     yield* moveArm(SO101_HOME.slice(0, ARM));
   }
@@ -136,84 +138,89 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   const world = () => ({ ...sim, spec: env.spec, names: env.names, t });
   for (const s of program.steps) {
     for (const op of s.ops) {
-      switch (op.op) {
-        case "move_to": {
-          const f = op.frame === "world" ? { xyz_m: [0, 0, 0], yaw_rad: 0 } : beliefs[op.frame];
-          if (!f) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `move_to: no frame "${op.frame}"` });
-          const [x, y, z] = op.offset_mm.map((v) => v * MM);
-          const c = Math.cos(f.yaw_rad);
-          const sn = Math.sin(f.yaw_rad);
-          const target: [number, number, number] = [f.xyz_m[0] + c * x - sn * y, f.xyz_m[1] + sn * x + c * y, f.xyz_m[2] + z];
-          const scratch = new mujoco.MjData(model);
-          let ik;
-          try {
-            (scratch.qpos as Float64Array).set(data.qpos as Float64Array);
-            const site = held ? SO101_HELD_SITE : SO101_GRASP_SITE;
-            ik = solveIk(mujoco, model, scratch, target, op.approach, undefined, site);
-            const o = env.spec.objects.find((x) => x.id === op.frame);
-            // shortcut: only top-down onto a box is squared; side and front approaches keep the solver's roll
-            if (ik.ok && !held && op.approach === "top" && o?.shape === "box") ik = squareTo({ mujoco, model, data: scratch }, ik, target, f.yaw_rad, site);
-          } finally {
-            scratch.delete();
+      // a compiled program may name an object the scene lacks: predicates throw, and that is a spec gap, not a crash
+      try {
+        switch (op.op) {
+          case "move_to": {
+            const f = op.frame === "world" ? { xyz_m: [0, 0, 0], yaw_rad: 0 } : Object.hasOwn(beliefs, op.frame) ? beliefs[op.frame] : undefined;
+            if (!f) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `move_to: no frame "${op.frame}"` });
+            const [x, y, z] = op.offset_mm.map((v) => v * MM);
+            const c = Math.cos(f.yaw_rad);
+            const sn = Math.sin(f.yaw_rad);
+            const target: [number, number, number] = [f.xyz_m[0] + c * x - sn * y, f.xyz_m[1] + sn * x + c * y, f.xyz_m[2] + z];
+            const scratch = new mujoco.MjData(model);
+            let ik;
+            try {
+              (scratch.qpos as Float64Array).set(data.qpos as Float64Array);
+              const site = held ? SO101_HELD_SITE : SO101_GRASP_SITE;
+              ik = solveIk(mujoco, model, scratch, target, op.approach, undefined, site);
+              const o = env.spec.objects.find((x) => x.id === op.frame);
+              // shortcut: only top-down onto a box is squared; side and front approaches keep the solver's roll
+              if (ik.ok && !held && op.approach === "top" && o?.shape === "box") ik = squareTo({ mujoco, model, data: scratch }, ik, target, f.yaw_rad, site);
+            } finally {
+              scratch.delete();
+            }
+            const at = `${op.frame} + (${op.offset_mm.join(", ")}) mm from ${op.approach}`;
+            if (!ik.ok) return fail({ failed_step_id: s.step_id, failure_class: "embodiment_limit", why: `move_to ${at}: out of reach by ${ik.pos_err_mm.toFixed(1)} mm` });
+            log.push(`${t.toFixed(2)} move_to ${at}`);
+            yield* moveArm(ik.q);
+            break;
           }
-          const at = `${op.frame} + (${op.offset_mm.join(", ")}) mm from ${op.approach}`;
-          if (!ik.ok) return fail({ failed_step_id: s.step_id, failure_class: "embodiment_limit", why: `move_to ${at}: out of reach by ${ik.pos_err_mm.toFixed(1)} mm` });
-          log.push(`${t.toFixed(2)} move_to ${at}`);
-          yield* moveArm(ik.q);
-          break;
-        }
-        case "grasp": {
-          const name = env.names[op.object];
-          if (!name || !env.graspable.includes(name)) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `grasp: "${op.object}" is not a graspable object` });
-          if (held) return fail({ failed_step_id: s.step_id, why: `grasp: already holding ${held.body}` });
-          const g = graspIndex(mujoco, model, name);
-          // close at CLOSE_RAD_S: a jaw slammed shut knocks the object over, and in orbit nothing holds it down
-          const open = ctrl[GRIPPER];
-          let ok = false;
-          for (let w = 0; w < GRASP_TIMEOUT_S && !ok; w += dt) {
-            ctrl[GRIPPER] = Math.max(GRIPPER_CLOSED, open - CLOSE_RAD_S * w);
-            yield* step();
-            ok = holding(mujoco, model, data, g);
+          case "grasp": {
+            const name = Object.hasOwn(env.names, op.object) ? env.names[op.object] : undefined;
+            if (!name || !env.graspable.includes(name)) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `grasp: "${op.object}" is not a graspable object` });
+            if (held) return fail({ failed_step_id: s.step_id, why: `grasp: already holding ${held.body}` });
+            const g = graspIndex(mujoco, model, name);
+            // close at CLOSE_RAD_S: a jaw slammed shut knocks the object over, and in orbit nothing holds it down
+            const open = ctrl[GRIPPER];
+            let ok = false;
+            for (let w = 0; w < GRASP_TIMEOUT_S && !ok; w += dt) {
+              ctrl[GRIPPER] = Math.max(GRIPPER_CLOSED, open - CLOSE_RAD_S * w);
+              yield* step();
+              ok = holding(mujoco, model, data, g);
+            }
+            if (ok) {
+              ctrl[GRIPPER] = attach(model, data, g); // hold, don't squeeze against the weld
+              held = g;
+            } else ctrl[GRIPPER] = Math.max(open, GRIPPER_OPEN); // reopen, so a retry can close again
+            // a miss is not a failure by itself: the object stays free, and the program's checks find out
+            log.push(`${t.toFixed(2)} grasp ${op.object}: ${ok ? "held" : "missed"}`);
+            break;
           }
-          if (ok) {
-            ctrl[GRIPPER] = attach(model, data, g); // hold, don't squeeze against the weld
-            held = g;
+          case "release": {
+            let at = "";
+            if (held) {
+              const p = Array.from(toNumbers(data.xpos)).slice(3 * held.bodyId, 3 * held.bodyId + 3);
+              at = ` ${held.body} at (${p.map((v) => (v / MM).toFixed(1)).join(", ")}) mm`;
+              detach(data, held);
+            }
+            held = null;
+            ctrl[GRIPPER] = GRIPPER_OPEN;
+            log.push(`${t.toFixed(2)} release${at}`);
+            for (let w = 0; w < RELEASE_S; w += dt) yield* step();
+            break;
           }
-          // a miss is not a failure by itself: the object stays free, and the program's checks find out
-          log.push(`${t.toFixed(2)} grasp ${op.object}: ${ok ? "held" : "missed"}`);
-          break;
-        }
-        case "release": {
-          let at = "";
-          if (held) {
-            const p = Array.from(toNumbers(data.xpos)).slice(3 * held.bodyId, 3 * held.bodyId + 3);
-            at = ` ${held.body} at (${p.map((v) => (v / MM).toFixed(1)).join(", ")}) mm`;
-            detach(data, held);
+          case "wait_until": {
+            let c = evaluate(world(), op.predicate);
+            for (let w = 0; !c.ok && w < op.timeout_s; w += dt) {
+              yield* step();
+              c = evaluate(world(), op.predicate);
+            }
+            log.push(`${t.toFixed(2)} wait_until ${op.predicate.kind}: ${c.why}`);
+            if (!c.ok) return fail({ failed_step_id: s.step_id, failed_predicate: op.predicate, why: `timed out after ${op.timeout_s} s: ${c.why}` });
+            break;
           }
-          held = null;
-          ctrl[GRIPPER] = GRIPPER_OPEN;
-          log.push(`${t.toFixed(2)} release${at}`);
-          for (let w = 0; w < RELEASE_S; w += dt) yield* step();
-          break;
-        }
-        case "wait_until": {
-          let c = evaluate(world(), op.predicate);
-          for (let w = 0; !c.ok && w < op.timeout_s; w += dt) {
-            yield* step();
-            c = evaluate(world(), op.predicate);
+          case "assert": {
+            const c = evaluate(world(), op.predicate);
+            log.push(`${t.toFixed(2)} assert ${op.predicate.kind}: ${c.why}`);
+            if (!c.ok) return fail({ failed_step_id: s.step_id, failed_predicate: op.predicate, why: c.why });
+            break;
           }
-          log.push(`${t.toFixed(2)} wait_until ${op.predicate.kind}: ${c.why}`);
-          if (!c.ok) return fail({ failed_step_id: s.step_id, failed_predicate: op.predicate, why: `timed out after ${op.timeout_s} s: ${c.why}` });
-          break;
+          case "ask":
+            return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `unanswered: ${op.question}` });
         }
-        case "assert": {
-          const c = evaluate(world(), op.predicate);
-          log.push(`${t.toFixed(2)} assert ${op.predicate.kind}: ${c.why}`);
-          if (!c.ok) return fail({ failed_step_id: s.step_id, failed_predicate: op.predicate, why: c.why });
-          break;
-        }
-        case "ask":
-          return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `unanswered: ${op.question}` });
+      } catch (err) {
+        return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `${op.op}: ${(err as Error).message}` });
       }
     }
   }

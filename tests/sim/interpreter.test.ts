@@ -55,6 +55,14 @@ describe("the program interpreter", () => {
     expect(sensed.pass, sensed.log.join("\n")).toBe(true);
   }, 60_000);
 
+  it("turns a program naming an unknown object into a spec gap, not a crash", () => {
+    const bad = Program.parse({ spec_title: "", steps: [{ step_id: "s1", ops: [{ op: "assert", predicate: { kind: "object_still", object: "ghost" } }] }] });
+    const r = rollout(bad, "sensed");
+    expect(r.pass).toBe(false);
+    expect(r.failure_class).toBe("spec_gap");
+    expect(r.why).toContain("ghost");
+  }, 60_000);
+
   it("reports an unreachable target as an embodiment limit", () => {
     const far = { spec_title: "", warnings: [], steps: [{ step_id: "s1", ops: [{ op: "move_to" as const, frame: "world", offset_mm: [800, 0, 100] as [number, number, number], approach: "top" as const }] }] };
     const r = rollout(far, "sensed");

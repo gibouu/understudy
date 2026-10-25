@@ -144,7 +144,10 @@ function bodyId(w: World, name: string) {
 function siteId(w: World, name: string) {
   return w.mujoco.mj_name2id(w.model, w.mujoco.mjtObj.mjOBJ_SITE.value, name);
 }
-const vec = (field: unknown, i: number, n: number) => Array.from({ length: n }, (_, k) => toNumbers(field)[n * i + k]);
+const vec = (field: unknown, i: number, n: number) => {
+  const a = toNumbers(field);
+  return Array.from({ length: n }, (_, k) => a[n * i + k]);
+};
 const pos = (w: World, b: number) => vec(w.data.xpos, b, 3);
 const mat = (w: World, b: number) => vec(w.data.xmat, b, 9);
 /** Lowest point of an upright object: centre minus half its height (tilt is tilt_under's business). */
@@ -152,7 +155,9 @@ const bottom = (w: World, id: string) => pos(w, bodyId(w, body(w, id)))[2] - (he
 /** Linear (m/s) and angular (rad/s) speed of a free body. */
 function speed(w: World, id: string): [number, number] {
   const b = bodyId(w, body(w, id));
-  const dof = toNumbers(w.model.jnt_dofadr)[toNumbers(w.model.body_jntadr)[b]];
+  const jnt = toNumbers(w.model.body_jntadr)[b];
+  if (jnt < 0) return [0, 0]; // a fixture has no joint: it never moves
+  const dof = toNumbers(w.model.jnt_dofadr)[jnt];
   const v = vec(w.data.qvel, 0, w.model.nv as number).slice(dof, dof + 6);
   return [Math.hypot(v[0], v[1], v[2]), Math.hypot(v[3], v[4], v[5])];
 }

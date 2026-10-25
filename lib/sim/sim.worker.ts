@@ -408,9 +408,16 @@ function tick() {
   let steps = 0;
   while (backlog >= dt) {
     if (running) {
-      const r = running.it.next();
-      if (r.done) {
-        post({ type: "run", id: running.id, result: r.value });
+      const { id, it } = running;
+      try {
+        const r = it.next();
+        if (r.done) {
+          post({ type: "run", id, result: r.value });
+          running = null;
+        }
+      } catch (err) {
+        // the interpreter turns spec gaps into failed rollouts; anything else still reaches the caller
+        post({ type: "error", id, message: errorText(err, mujoco) });
         running = null;
       }
     } else if (playing) {
