@@ -28,6 +28,8 @@ export class StageRenderer {
   private objects = new Map<number, THREE.Object3D>();
   private raf = 0;
   private resizeObserver: ResizeObserver;
+  /** the move_to target */
+  private marker = new THREE.Mesh(new THREE.SphereGeometry(0.006, 16, 12), new THREE.MeshBasicMaterial({ color: 0xd9480f }));
 
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -44,6 +46,8 @@ export class StageRenderer {
     const sun = new THREE.DirectionalLight(0xffffff, 1.6);
     sun.position.set(1, -1, 2);
     this.scene.add(sun);
+    this.marker.visible = false;
+    this.scene.add(this.marker);
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(canvas.parentElement ?? canvas);
@@ -63,6 +67,22 @@ export class StageRenderer {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+  }
+
+  /** Where a click at client coordinates meets the floor, world metres; null when the ray misses it. */
+  floorPoint(clientX: number, clientY: number): [number, number] | null {
+    const r = this.canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    const ray = new THREE.Raycaster();
+    ray.setFromCamera(ndc, this.camera);
+    const hit = ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), new THREE.Vector3());
+    return hit ? [hit.x, hit.y] : null;
+  }
+
+  /** Show the move_to target (world metres); null hides it. */
+  setTarget(p: [number, number, number] | null) {
+    this.marker.visible = p !== null;
+    if (p) this.marker.position.set(...p);
   }
 
   setMeta(meta: SimMeta) {
@@ -161,6 +181,7 @@ export class StageRenderer {
     cancelAnimationFrame(this.raf);
     this.resizeObserver.disconnect();
     this.controls.dispose();
+    disposeObject(this.marker);
     for (const o of this.objects.values()) {
       this.scene.remove(o);
       disposeObject(o);

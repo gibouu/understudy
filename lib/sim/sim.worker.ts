@@ -10,6 +10,7 @@
  * serialized, a second load while one is running is refused.
  */
 import type { MainModule, MjData, MjModel, MjVFS } from "@mujoco/mujoco";
+import { solveIk, type Approach } from "./ik";
 import { decodeName, sampleWaypoints, toNumbers } from "./names";
 import {
   GEOM_MESH,
@@ -99,6 +100,9 @@ ctx.onmessage = async (e) => {
         break;
       case "jacobian":
         jacobian(msg.id, msg.site);
+        break;
+      case "ik":
+        ik(msg.id, msg.target, msg.approach);
         break;
     }
   } catch (err) {
@@ -440,5 +444,21 @@ function jacobian(id: number, site: string) {
   } finally {
     jacp.delete();
     jacr.delete();
+  }
+}
+
+/** IK on a scratch copy of the current state, seeded with the arm where it is now. */
+function ik(id: number, target: [number, number, number], approach: Approach) {
+  if (!runtime) throw new Error("model not loaded");
+  const { mujoco, model, data } = runtime;
+  const scratch = new mujoco.MjData(model);
+  try {
+    const qpos = Array.from(toNumbers(data.qpos));
+    const view = scratch.qpos as unknown;
+    if (ArrayBuffer.isView(view)) (view as unknown as Float64Array).set(qpos);
+    else qpos.forEach((v, i) => (view as { set: (i: number, v: number) => boolean }).set(i, v));
+    post({ type: "ik", id, result: solveIk(mujoco, model, scratch, target, approach, qpos.slice(0, 5)) });
+  } finally {
+    scratch.delete();
   }
 }

@@ -66,6 +66,8 @@ export type Frame = {
   siteXpos: Float64Array;
 };
 
+import type { Approach, IkResult } from "./ik";
+
 export type Waypoint = { t: number; q: number[] };
 
 export type ToWorker =
@@ -76,11 +78,14 @@ export type ToWorker =
   | { type: "play"; waypoints: Waypoint[]; loop?: boolean }
   | { type: "stop" }
   | { type: "reset" }
-  | { type: "jacobian"; id: number; site: string };
+  | { type: "jacobian"; id: number; site: string }
+  /** solve IK from the current state; `target` in world metres; nothing moves */
+  | { type: "ik"; id: number; target: [number, number, number]; approach: Approach };
 
 export type FromWorker =
   | { type: "status"; message: string; progress?: number }
   | { type: "loaded"; id: number; meta: SimMeta }
   | { type: "frame"; frame: Frame }
   | { type: "jacobian"; id: number; site: string; nv: number; jacp: Float64Array; jacr: Float64Array }
+  | { type: "ik"; id: number; result: IkResult }
   | { type: "error"; id?: number; message: string };

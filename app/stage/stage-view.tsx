@@ -2,12 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SimClient } from "@/lib/sim/client";
+import type { Approach, IkResult } from "@/lib/sim/ik";
 import type { Frame, SimMeta } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
-import { GRAVITIES, type GravityName } from "@/lib/spec/schema";
+import { APPROACHES, GRAVITIES, type GravityName } from "@/lib/spec/schema";
 
 type Jac = { nv: number; norm: number; rows: string[] } | null;
+
+/** Known targets: the first four reachable, the last three not. */
+const PRESETS: [[number, number, number], Approach, string][] = [
+  [[250, 0, 50], "top", "down, centre"],
+  [[200, 100, 30], "top", "down, left"],
+  [[300, 0, 100], "front", "front, level"],
+  [[50, 250, 80], "side", "side, wrist rolled"],
+  [[200, 0, 100], "top", "down, too high"],
+  [[800, 0, 100], "top", "too far"],
+  [[200, 200, 30], "front", "front, off-axis"],
+];
 
 export function StageView() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -23,7 +35,11 @@ export function StageView() {
   const [dropped, setDropped] = useState(0);
   const [jac, setJac] = useState<Jac>(null);
   const [gravity, setGravity] = useState<GravityName>("earth");
+  const [target, setTarget] = useState<[number, number, number]>([250, 0, 50]);
+  const [approach, setApproach] = useState<Approach>("top");
+  const [ik, setIk] = useState<(IkResult & { asked: string }) | null>(null);
   const lastUi = useRef(0);
+  const pressAt = useRef<[number, number]>([0, 0]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -104,10 +120,41 @@ export function StageView() {
     setJac({ nv: r.nv, norm: Math.sqrt(norm), rows });
   };
 
+  const moveTo = async (to = target, from = approach) => {
+    setTarget(to);
+    setApproach(from);
+    const m = to.map((v) => v / 1000) as [number, number, number];
+    rendererRef.current?.setTarget(m);
+    let r: IkResult | undefined;
+    try {
+      r = await clientRef.current?.ik(m, from);
+    } catch (err) {
+      setError((err as Error).message);
+      return;
+    }
+    if (!r) return;
+    setIk({ ...r, asked: `(${to.join(", ")}) mm ${from}` });
+    if (!r.ok) return;
+    const next = [...r.q, ctrl[5]];
+    clientRef.current?.play([{ t: 0, q: ctrl }, { t: 1.5, q: next }]);
+    setCtrl(next);
+  };
+
   return (
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border bg-[#f4f1ea]">
-        <canvas ref={canvasRef} className="h-full w-full" />
+        <canvas
+          ref={canvasRef}
+          className="h-full w-full"
+          onPointerDown={(e) => (pressAt.current = [e.clientX, e.clientY])}
+          onPointerUp={(e) => {
+            // a click, not an orbit drag: move the tip above that floor point at the current height
+            const [x0, y0] = pressAt.current;
+            if (!meta || Math.hypot(e.clientX - x0, e.clientY - y0) > 5) return;
+            const p = rendererRef.current?.floorPoint(e.clientX, e.clientY);
+            if (p) moveTo([Math.round(p[0] * 1000), Math.round(p[1] * 1000), target[2]]);
+          }}
+        />
         <div className="pointer-events-none absolute left-3 top-3 rounded bg-white/80 px-2 py-1 text-xs text-neutral-700">
           {error ? <span className="text-red-700">error: {error}</span> : status.message}
           {status.progress !== undefined && status.progress < 1 && (
@@ -157,6 +204,60 @@ export function StageView() {
             Jacobian check
           </button>
         </div>
+
+        <form
+          className="flex flex-wrap items-center gap-2 text-xs"
+          aria-label="move the tip"
+          onSubmit={(e) => {
+            e.preventDefault();
+            moveTo();
+          }}
+        >
+          <span className="text-neutral-500">move_to</span>
+          {(["x", "y", "z"] as const).map((axis, i) => (
+            <label key={axis} className="flex items-center gap-1 font-mono">
+              {axis}
+              <input
+                type="number"
+                step={5}
+                className="w-16 rounded border px-1 py-0.5"
+                value={target[i]}
+                onChange={(e) => setTarget(target.map((v, k) => (k === i ? Number(e.target.value) : v)) as [number, number, number])}
+              />
+            </label>
+          ))}
+          <span className="text-neutral-500">mm</span>
+          <select className="rounded border px-1 py-0.5" value={approach} onChange={(e) => setApproach(e.target.value as Approach)} aria-label="approach">
+            {APPROACHES.map((a) => (
+              <option key={a}>{a}</option>
+            ))}
+          </select>
+          <button className="rounded border px-3 py-1" disabled={!meta}>
+            Go
+          </button>
+        </form>
+        <div className="flex flex-wrap items-center gap-1 text-xs">
+          <span className="text-neutral-500">try</span>
+          {PRESETS.map(([to, from, label]) => (
+            <button key={label} className="rounded border px-2 py-0.5" disabled={!meta} onClick={() => moveTo(to, from)} title={`(${to.join(", ")}) mm ${from}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          className="self-start rounded border border-orange-600 px-3 py-1 text-xs text-orange-700"
+          disabled={!meta || !tube}
+          onClick={() => tube && moveTo(tube.map((v) => Math.round(v * 1000)) as [number, number, number])}
+        >
+          Go to the tube ({approach})
+        </button>
+        <p className="text-xs text-neutral-500">Or click the floor: the tip goes above that point at height z.</p>
+        {ik && (
+          <div className={`rounded border p-2 font-mono text-[11px] leading-5 ${ik.ok ? "bg-neutral-50" : "border-red-300 bg-red-50 text-red-800"}`}>
+            {ik.asked}: {ik.ok ? "reached" : ik.failure_class} · tip off by {ik.pos_err_mm.toFixed(1)} mm · axis off by {ik.axis_err_deg.toFixed(1)}°
+            {ik.approach_deg > 0.05 && ` · approach projected ${ik.approach_deg.toFixed(1)}°`}
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           {SO101_JOINT_NAMES.map((name, i) => {
