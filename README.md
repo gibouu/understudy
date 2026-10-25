@@ -30,7 +30,8 @@ The need is the same on the ground. Teaching a robot is expensive: NVIDIA's GR00
 | Synthetic data for GR00T N1 | 780,000 trajectories, worth 6,500 human hours, made in 11 hours | [GR00T N1 paper](https://arxiv.org/html/2503.14734) |
 | DROID trajectories marked failed at recording | about 1 in 6 | [DROID paper](https://arxiv.org/html/2403.12945v2) |
 | Re-collection after the first policy evaluation (one vendor's model) | 30 to 50% of the original budget | [Robotics Center](https://roboticscenter.ai/blog/robot-data-collection-cost) |
-| An Understudy session, estimated at list prices | about 18 calls, under $0.10 | [docs/FEEDBACK.md](docs/FEEDBACK.md) |
+| An Understudy session, measured on Token Factory | 16.7 calls, $0.0375 on average ($0.028 to $0.052), 71 s | [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md) |
+| Failing rehearsals fixed by the model from simulator notes | 94% within 5 patches, $0.0024 per fixed case | [docs/MEASUREMENTS.md](docs/MEASUREMENTS.md) |
 
 The full brief, with the cost model for a 500-demonstration campaign and all 43 sources, is in [docs/research/market.md](docs/research/market.md).
 
@@ -68,7 +69,7 @@ Gravity is a scenario axis. The contract carries `gravity_g` on every scenario a
 | `nvidia/nemotron-3-super-120b-a12b` | interviews, writes the saboteur scenarios, proposes patches | reasoning with chips streamed as they close |
 | `nvidia/Nemotron-3-Ultra-550b-a55b` | failure classes, reshoot list, open risks | the deep pass, once per session, in the background |
 
-Every call goes through the OpenAI SDK with `base_url` set to `https://api.tokenfactory.nebius.com/v1/`. A session is estimated at about 18 requests and under ten cents at list prices; the labelling call measured on 23 October cost about a fifth of a cent. The cost ledger on screen prices every call from `GET /v1/models?verbose=true`.
+Every call goes through the OpenAI SDK with `base_url` set to `https://api.tokenfactory.nebius.com/v1/`. A session measured on 25 October made 16.7 calls on average and cost $0.0375 ($0.028 to $0.052 over three runs), Ultra's reshoot list being three quarters of it. The cost ledger on screen prices every call from `GET /v1/models?verbose=true`.
 
 Other Nebius services: a Serverless Job (`jobs/validate_groot.py`) loads a real export with Isaac-GR00T's dataset loader and the log goes here when it has run.
 
@@ -107,7 +108,9 @@ Credits for the hackathon: promo code `NEBIUS-DEVPOST-GLOBAL26` on Token Factory
 
 ## How it improves
 
-Every version of the program is scored on the same 24 rollouts, so improvement is a number next to its cost. Iteration 0 is the standard approach: the human trajectory retargeted and replayed, no interview. Iteration 1 is the interviewed spec. Each Notes patch adds an iteration. The scoreboard on the stage and `understudy/iterations.json` in the export keep the whole curve, pass counts, perception budget per axis, tokens and seconds. Patches that fixed a failure become playbook rules with their evidence, and the next clip's program starts from them, so later clips start higher than earlier ones did. No policy is trained here; the simulator is the reward signal and the model is the policy editor, and the exported episodes carry the pass and fail labels a fine-tune would need. The measured curve for the three sample clips lands here with the day-five build (issues #55 and #56).
+Every version of the program is scored on the same 24 rollouts, so improvement is a number next to its cost. Iteration 0 is the standard approach: the human trajectory retargeted and replayed, no interview. Iteration 1 is the interviewed spec. Each Notes patch adds an iteration. The scoreboard on the stage and `understudy/iterations.json` in the export keep the whole curve, pass counts, perception budget per axis, tokens and seconds. Patches that fixed a failure become playbook rules with their evidence, and the next clip's program starts from them, so later clips start higher than earlier ones did. No policy is trained here; the simulator is the reward signal and the model is the policy editor, and the exported episodes carry the pass and fail labels a fine-tune would need.
+
+That loop is measured ([docs/MEASUREMENTS.md](docs/MEASUREMENTS.md), section 8), on four tasks (insert, place, pour, carry under acceleration) at Earth, Mars, Moon and orbit gravity with disturbances. A naive, human-like program fails 86% of the runs. From the simulator's failure notes alone, Nemotron Super with thinking off fixes 69% within five patches; escalating to reasoning when it gets stuck fixes 94% (95% interval 89 to 97%), at $0.0024 per fixed case. Rules learned on Earth and Mars make the first try on the Moon and in orbit right more often: +28 points with the cheap model (5% to 33%) and +18 with reasoning (48% to 67%), each against a matched control; within five patches the loop gets there with or without them. The curve for the three sample clips on the full interpreter lands with issues #55 and #56.
 
 ## Simulated versus real
 

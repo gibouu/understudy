@@ -1,0 +1,148 @@
+{
+  "removed": [
+    {
+      "field": "fit",
+      "path": "objects[pouch].pocket_clearance_mm"
+    },
+    {
+      "field": "aperture",
+      "path": "objects[driver].size_mm"
+    },
+    {
+      "field": "success",
+      "path": "steps[s2].success"
+    },
+    {
+      "field": "via",
+      "path": "steps[s2].via_points"
+    },
+    {
+      "field": "precondition",
+      "path": "steps[s2].preconditions"
+    }
+  ],
+  "spec": {
+    "version": 1,
+    "title": "stow a tool in a pouch aboard a station",
+    "summary": "Slide a hex driver into a fabric tool pouch that is clipped to the rack, so it does not float away.",
+    "objects": [
+      {
+        "id": "driver",
+        "name": "hex driver",
+        "shape": "cylinder",
+        "size_mm": [
+          37,
+          37,
+          289
+        ],
+        "symmetry": "axial",
+        "role": "manipulated",
+        "pose": {
+          "xyz_mm": [
+            120,
+            130,
+            11
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.3,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "pouch",
+        "name": "fabric tool pouch",
+        "shape": "box",
+        "size_mm": [
+          70,
+          40,
+          190
+        ],
+        "symmetry": "none",
+        "role": "fixture",
+        "pose": {
+          "xyz_mm": [
+            200,
+            -80,
+            95
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.9,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "steps": [
+      {
+        "id": "s1",
+        "verb": "grasp",
+        "object": "driver",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "contact_both_pads",
+            "object": "driver"
+          }
+        ],
+        "tolerances": {
+          "x_mm": 5,
+          "y_mm": 5
+        },
+        "t_start_s": 1,
+        "t_end_s": 3,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s2",
+        "verb": "insert",
+        "object": "driver",
+        "target": {
+          "fixture": "pocket",
+          "frame": "pouch"
+        },
+        "via_points": [],
+        "preconditions": [],
+        "success": [],
+        "tolerances": {
+          "x_mm": 8,
+          "y_mm": 8
+        },
+        "t_start_s": 3,
+        "t_end_s": 7,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s3",
+        "verb": "retract",
+        "object": "driver",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "no_collision"
+          }
+        ],
+        "tolerances": {},
+        "t_start_s": 7,
+        "t_end_s": 8,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "anchor": {
+      "t_s": 3,
+      "confidence": 0.8
+    },
+    "warnings": [],
+    "open_questions": [
+      "objects[driver].size_mm: the hex driver's size is a guess (no scale in frame); how wide is it where the hand grips it?"
+    ],
+    "sources": {}
+  }
+}

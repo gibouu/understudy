@@ -1,0 +1,132 @@
+{
+  "name": "fluid-slosh",
+  "title": "d. Slosh: 1500 particles (d = 4 mm), 10 x 2 cm box filled 4.8 cm, surface angle averaged over the last second",
+  "measured_at": "2026-10-25T18:03:11.973Z",
+  "machine": "Apple M4",
+  "node": "v24.21.0",
+  "head": [
+    "body",
+    "a (g0)",
+    "how",
+    "atan(a/g) (deg)",
+    "measured (deg)",
+    "error (deg)",
+    "swing in last s (deg)"
+  ],
+  "rows": [
+    [
+      "earth",
+      "0.10",
+      "box frame, gravity (-a, 0, -g)",
+      "5.71",
+      "5.80",
+      "0.09",
+      "0.32"
+    ],
+    [
+      "earth",
+      "0.30",
+      "box frame, gravity (-a, 0, -g)",
+      "16.70",
+      "16.66",
+      "-0.03",
+      "0.29"
+    ],
+    [
+      "moon",
+      "0.10",
+      "box frame, gravity (-a, 0, -g)",
+      "31.16",
+      "31.17",
+      "0.01",
+      "0.19"
+    ],
+    [
+      "moon",
+      "0.30",
+      "box frame, gravity (-a, 0, -g)",
+      "61.13",
+      "61.16",
+      "0.03",
+      "1.16"
+    ],
+    [
+      "earth",
+      "0.30",
+      "walls driven at a, true gravity",
+      "16.70",
+      "16.66",
+      "-0.04",
+      "0.43"
+    ]
+  ],
+  "notes": [
+    "Tolerance 2 degrees. The surface is the top particle per 4 mm bin, fitted by least squares in its own frame (iterated 4 times)."
+  ],
+  "params": {
+    "d": 0.004,
+    "L": 0.1,
+    "W": 0.02,
+    "H": 0.16,
+    "t": 0.01,
+    "fill": 0.048,
+    "solver": "defaults"
+  },
+  "results": [
+    {
+      "body": "earth",
+      "g": 1,
+      "a": 0.1,
+      "seconds": 3,
+      "driven": false,
+      "expected": 5.710593137499643,
+      "n": 1500,
+      "deg": 5.796980292862438,
+      "spread": 0.32216893316185047
+    },
+    {
+      "body": "earth",
+      "g": 1,
+      "a": 0.3,
+      "seconds": 3,
+      "driven": false,
+      "expected": 16.69924423399362,
+      "n": 1500,
+      "deg": 16.664704700273987,
+      "spread": 0.2886879922834247
+    },
+    {
+      "body": "moon",
+      "g": 0.1654,
+      "a": 0.1,
+      "seconds": 6,
+      "driven": false,
+      "expected": 31.15694476371471,
+      "n": 1500,
+      "deg": 31.168445093711608,
+      "spread": 0.19441905337201248
+    },
+    {
+      "body": "moon",
+      "g": 0.1654,
+      "a": 0.3,
+      "seconds": 6,
+      "driven": false,
+      "expected": 61.13058717165252,
+      "n": 1500,
+      "deg": 61.16064746285823,
+      "spread": 1.1583995792956898
+    },
+    {
+      "body": "earth",
+      "g": 1,
+      "a": 0.3,
+      "seconds": 3,
+      "driven": true,
+      "expected": 16.69924423399362,
+      "n": 1500,
+      "deg": 16.66286428539208,
+      "spread": 0.42874539903834474
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "measurement": "release-drift",
+  "generated_at": "2026-10-25T08:50:38.439Z",
+  "engine": "MuJoCo WebAssembly (@mujoco/mujoco 3.17) in Node",
+  "g_m_s2": 9.81,
+  "timestep_s": 0.002,
+  "parameters": {
+    "tube_mm": [
+      17,
+      100
+    ],
+    "friction": "1 0.005 0.0001",
+    "release_gap_above_surface_mm": 0.5,
+    "residual_velocity_direction": "+x (horizontal)",
+    "residual_speeds_mm_s": [
+      0,
+      2,
+      5
+    ],
+    "duration_s": 2,
+    "rest_threshold_mm_s": 1
+  },
+  "results": [
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "v0_mm_s": 0,
+      "horizontal_mm": 1.7553131089182818e-12,
+      "lowest_above_surface_mm": -0.1421529977833555,
+      "speed_mm_s": 1.7258932551027303e-9,
+      "tilt_deg": 0,
+      "state": "resting on the surface"
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "v0_mm_s": 2,
+      "horizontal_mm": 0.03595010156958982,
+      "lowest_above_surface_mm": -0.14215312442997236,
+      "speed_mm_s": 0.000001432891441640558,
+      "tilt_deg": 8.537736462515939e-7,
+      "state": "resting on the surface"
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "v0_mm_s": 5,
+      "horizontal_mm": 0.08987627346664896,
+      "lowest_above_surface_mm": -0.14215312442995154,
+      "speed_mm_s": 0.0000025362645566005713,
+      "tilt_deg": 8.537736462515939e-7,
+      "state": "resting on the surface"
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "v0_mm_s": 0,
+      "horizontal_mm": 6.898928419520952e-15,
+      "lowest_above_surface_mm": -0.055030031471524354,
+      "speed_mm_s": 4.827594098939248e-9,
+      "tilt_deg": 0,
+      "state": "resting on the surface"
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "v0_mm_s": 2,
+      "horizontal_mm": 0.04821881099946323,
+      "lowest_above_surface_mm": -0.055030158262872664,
+      "speed_mm_s": 5.313474122415046e-7,
+      "tilt_deg": 8.537736462515939e-7,
+      "state": "resting on the surface"
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "v0_mm_s": 5,
+      "horizontal_mm": 0.12054812682048091,
+      "lowest_above_surface_mm": -0.055030158262858786,
+      "speed_mm_s": 3.96382368141589e-7,
+      "tilt_deg": 8.537736462515939e-7,
+      "state": "resting on the surface"
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "v0_mm_s": 0,
+      "horizontal_mm": 3.164879128120476e-15,
+      "lowest_above_surface_mm": -0.024087813815687475,
+      "speed_mm_s": 1.7093030525621215e-9,
+      "tilt_deg": 0,
+      "state": "resting on the surface"
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "v0_mm_s": 2,
+      "horizontal_mm": 0.06432793725043172,
+      "lowest_above_surface_mm": -0.024088624784653526,
+      "speed_mm_s": 0.00008642659435939168,
+      "tilt_deg": 0.0000054668187275950014,
+      "state": "resting on the surface"
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "v0_mm_s": 5,
+      "horizontal_mm": 0.1608076770462055,
+      "lowest_above_surface_mm": -0.024087813766428268,
+      "speed_mm_s": 7.614156747873565e-7,
+      "tilt_deg": 0,
+      "state": "resting on the surface"
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "v0_mm_s": 0,
+      "horizontal_mm": 0,
+      "lowest_above_surface_mm": 0.5000000000000004,
+      "speed_mm_s": 0,
+      "tilt_deg": 0,
+      "state": "hovering 0.5 mm above, still"
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "v0_mm_s": 2,
+      "horizontal_mm": 4.00000000000006,
+      "lowest_above_surface_mm": 0.5000000000000004,
+      "speed_mm_s": 2,
+      "tilt_deg": 0,
+      "state": "moving at 2.0 mm/s, 0.5 mm above"
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "v0_mm_s": 5,
+      "horizontal_mm": 9.99999999999976,
+      "lowest_above_surface_mm": 0.5000000000000004,
+      "speed_mm_s": 5,
+      "tilt_deg": 0,
+      "state": "moving at 5.0 mm/s, 0.5 mm above"
+    }
+  ]
+}

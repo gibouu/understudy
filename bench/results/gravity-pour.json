@@ -1,0 +1,379 @@
+{
+  "measurement": "pour",
+  "generated_at": "2026-10-25T08:50:57.285Z",
+  "engine": "MuJoCo WebAssembly (@mujoco/mujoco 3.17) in Node",
+  "g_m_s2": 9.81,
+  "timestep_s": 0.002,
+  "parameters": {
+    "particles": {
+      "count": 80,
+      "radius_m": 0.0035,
+      "density": 1000,
+      "condim": 1,
+      "friction": "0.1 0.005 0.0001",
+      "grid": 5,
+      "pitch_m": 0.008,
+      "layer_m": 0.0075,
+      "note": "condim 1 = frictionless contacts, a low-friction liquid stand-in"
+    },
+    "cross_check_particles": {
+      "condim": 3,
+      "friction": "0.3 0.005 0.0001"
+    },
+    "solver": "CG",
+    "source_cup": {
+      "inner_mm": [
+        40,
+        40,
+        50
+      ],
+      "wall_mm": 4,
+      "rim_z_mm": 100,
+      "pivot": "outer top edge on the pour side",
+      "tilt_deg": 120,
+      "tilt_s": 1.5,
+      "profile": "cosine ease, then held",
+      "settle_before_tilt_s": 1
+    },
+    "target_cup": {
+      "inner_mm": [
+        60,
+        60,
+        30
+      ],
+      "wall_mm": 10,
+      "centre_x_mm": 80,
+      "rim_z_mm": 40
+    },
+    "measure_at_s": 3,
+    "horizon_s": 8,
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "stop_thresholds_mm_s": [
+      5,
+      1
+    ]
+  },
+  "results": [
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "seed": 1,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.41,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 5.4,
+        "1_mm_s": null
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "seed": 2,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.4000000000000001,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 5.272,
+        "1_mm_s": null
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "seed": 3,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.41,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 5.066,
+        "1_mm_s": null
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "seed": 1,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.58,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 2.89,
+        "1_mm_s": 3.052
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "seed": 2,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.58,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 6.698,
+        "1_mm_s": 7.014
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "seed": 3,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.58,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 3.94,
+        "1_mm_s": 4.614
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "seed": 1,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.86,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 3.162,
+        "1_mm_s": 3.442
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "seed": 2,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.84,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 3.3240000000000003,
+        "1_mm_s": 4.07
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "seed": 3,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.85,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 3.68,
+        "1_mm_s": 4.006
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "seed": 1,
+      "at_3s": {
+        "target": 0,
+        "source": 37,
+        "out": 43
+      },
+      "at_horizon": {
+        "target": 0,
+        "source": 14,
+        "out": 66
+      },
+      "t_target_90pct_s": null,
+      "t_poured_slower_than_s": {
+        "5_mm_s": null,
+        "1_mm_s": null
+      },
+      "poured": 66
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "seed": 2,
+      "at_3s": {
+        "target": 0,
+        "source": 39,
+        "out": 41
+      },
+      "at_horizon": {
+        "target": 0,
+        "source": 11,
+        "out": 69
+      },
+      "t_target_90pct_s": null,
+      "t_poured_slower_than_s": {
+        "5_mm_s": null,
+        "1_mm_s": null
+      },
+      "poured": 69
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "seed": 3,
+      "at_3s": {
+        "target": 0,
+        "source": 38,
+        "out": 42
+      },
+      "at_horizon": {
+        "target": 0,
+        "source": 16,
+        "out": 64
+      },
+      "t_target_90pct_s": null,
+      "t_poured_slower_than_s": {
+        "5_mm_s": null,
+        "1_mm_s": null
+      },
+      "poured": 64
+    }
+  ],
+  "cross_check": [
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "seed": 1,
+      "at_3s": {
+        "target": 76,
+        "source": 0,
+        "out": 4
+      },
+      "at_horizon": {
+        "target": 76,
+        "source": 0,
+        "out": 4
+      },
+      "t_target_90pct_s": 1.46,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 3.712,
+        "1_mm_s": null
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "seed": 1,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.6300000000000001,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 2.066,
+        "1_mm_s": 4.048
+      },
+      "poured": 80
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "seed": 1,
+      "at_3s": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "at_horizon": {
+        "target": 80,
+        "source": 0,
+        "out": 0
+      },
+      "t_target_90pct_s": 1.87,
+      "t_poured_slower_than_s": {
+        "5_mm_s": 4.838,
+        "1_mm_s": 5.056
+      },
+      "poured": 80
+    }
+  ]
+}

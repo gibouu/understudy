@@ -1,0 +1,89 @@
+{
+  "name": "fluid-drain",
+  "title": "b. Drain of 2016 particles (d = 5 mm, 7 cm deep in a 6 x 6 cm tank) through a 1.5 x 6 cm slot at the foot of one wall",
+  "measured_at": "2026-10-25T18:02:53.476Z",
+  "machine": "Apple M4",
+  "node": "v24.21.0",
+  "head": [
+    "body",
+    "g (m/s^2)",
+    "t50 (s)",
+    "t90 (s)",
+    "t50 / Earth",
+    "t90 / Earth",
+    "Torricelli sqrt(g_E/g)",
+    "t50 dev",
+    "t90 dev"
+  ],
+  "rows": [
+    [
+      "earth",
+      "9.81",
+      "0.319",
+      "0.824",
+      "1.000",
+      "1.000",
+      "1.000",
+      "0.0%",
+      "0.0%"
+    ],
+    [
+      "mars",
+      "3.72",
+      "0.531",
+      "1.334",
+      "1.664",
+      "1.620",
+      "1.624",
+      "2.5%",
+      "-0.3%"
+    ],
+    [
+      "moon",
+      "1.62",
+      "0.806",
+      "2.031",
+      "2.527",
+      "2.466",
+      "2.459",
+      "2.8%",
+      "0.3%"
+    ]
+  ],
+  "notes": [
+    "Times from the gate opening, interpolated between frames; tolerance 20% on each ratio."
+  ],
+  "params": {
+    "d": 0.005,
+    "W": 0.06,
+    "slot": 0.015,
+    "t": 0.01,
+    "fill": 0.07,
+    "solver": "defaults",
+    "settle_s": [
+      0.5,
+      0.812176462882395,
+      1.2294255990122585
+    ]
+  },
+  "results": [
+    {
+      "body": "earth",
+      "g": 1,
+      "t50": 0.31888888888888883,
+      "t90": 0.8235897435897436
+    },
+    {
+      "body": "mars",
+      "g": 0.379,
+      "t50": 0.5307692307692308,
+      "t90": 1.3344444444444445
+    },
+    {
+      "body": "moon",
+      "g": 0.1654,
+      "t50": 0.8058333333333333,
+      "t90": 2.0313333333333334
+    }
+  ]
+}

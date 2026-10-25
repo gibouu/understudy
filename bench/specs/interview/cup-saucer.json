@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "title": "cup onto saucer",
+  "summary": "Lift a full espresso cup and set it down on its saucer without spilling.",
+  "objects": [
+    {
+      "id": "cup",
+      "name": "espresso cup",
+      "shape": "cylinder",
+      "size_mm": [
+        55,
+        55,
+        65
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+        "xyz_mm": [
+          130,
+          120,
+          33
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench"
+    },
+    {
+      "id": "saucer",
+      "name": "saucer",
+      "shape": "cylinder",
+      "size_mm": [
+        150,
+        150,
+        15
+      ],
+      "symmetry": "axial",
+      "role": "fixture",
+      "pose": {
+        "xyz_mm": [
+          210,
+          -50,
+          8
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "cup",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "contact_both_pads",
+          "object": "cup"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 5,
+        "y_mm": 5
+      },
+      "t_start_s": 1,
+      "t_end_s": 2,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s2",
+      "verb": "place",
+      "object": "cup",
+      "target": {
+        "fixture": "zone",
+        "frame": "saucer"
+      },
+      "via_points": [
+        {
+          "frame": "saucer",
+          "xyz_mm": [
+            0,
+            0,
+            120
+          ],
+          "source": "gt#bench"
+        }
+      ],
+      "preconditions": [
+        {
+          "kind": "tilt_under",
+          "object": "cup",
+          "value": 5
+        }
+      ],
+      "success": [
+        {
+          "kind": "inside_zone",
+          "object": "cup",
+          "target": "saucer"
+        },
+        {
+          "kind": "object_still",
+          "object": "cup"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 12,
+        "y_mm": 12
+      },
+      "t_start_s": 2,
+      "t_end_s": 5,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s3",
+      "verb": "retract",
+      "object": "cup",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "no_collision"
+        }
+      ],
+      "tolerances": {},
+      "t_start_s": 5,
+      "t_end_s": 6,
+      "source": "gt#bench"
+    }
+  ],
+  "anchor": {
+    "t_s": 2,
+    "confidence": 0.8
+  },
+  "warnings": [],
+  "open_questions": []
+}

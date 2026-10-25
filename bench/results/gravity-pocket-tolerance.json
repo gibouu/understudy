@@ -1,0 +1,1446 @@
+{
+  "measurement": "pocket-tolerance",
+  "generated_at": "2026-10-25T08:50:39.348Z",
+  "engine": "MuJoCo WebAssembly (@mujoco/mujoco 3.17) in Node",
+  "g_m_s2": 9.81,
+  "timestep_s": 0.002,
+  "parameters": {
+    "clearance_mm": 3,
+    "pocket_inner_mm": [
+      20,
+      20
+    ],
+    "pocket_depth_mm": 32,
+    "tube_mm": [
+      17,
+      100
+    ],
+    "release_above_entrance_mm": 5,
+    "offsets_mm": [
+      0,
+      0.5,
+      1,
+      1.5,
+      2,
+      2.5,
+      3,
+      3.5,
+      4,
+      4.5,
+      5,
+      5.5,
+      6,
+      6.5,
+      7,
+      7.5,
+      8
+    ],
+    "offset_axis": "x",
+    "duration_s": 3,
+    "seated": {
+      "floor_mm": 2,
+      "tilt_deg": 5
+    },
+    "friction_tube_and_rack": "1 0.005 0.0001",
+    "contacts": {
+      "default": "MuJoCo default solref 0.02 1",
+      "stiff": "solref 0.004 1 (2 x timestep)"
+    }
+  },
+  "results": [
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 0,
+      "lowest_above_floor_mm": -0.12454469084317854,
+      "tilt_deg": 0.10536559020230732,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 0.5,
+      "lowest_above_floor_mm": -0.12495345889426517,
+      "tilt_deg": 0.10840933274898447,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 1,
+      "lowest_above_floor_mm": -0.12522409636071125,
+      "tilt_deg": 0.10927171707260713,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 1.5,
+      "lowest_above_floor_mm": -0.12206056758959707,
+      "tilt_deg": 0.09057676514336335,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 2,
+      "lowest_above_floor_mm": -0.12145773206390965,
+      "tilt_deg": 0.0872075640910439,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 2.5,
+      "lowest_above_floor_mm": -0.12219771480516221,
+      "tilt_deg": 0.09130740312005223,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 3,
+      "lowest_above_floor_mm": -0.12263170404939842,
+      "tilt_deg": 0.09346835979409569,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 3.5,
+      "lowest_above_floor_mm": -0.12101667419074473,
+      "tilt_deg": 0.08401685156277423,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 4,
+      "lowest_above_floor_mm": -16.348953236181742,
+      "tilt_deg": 85.28506495603973,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 4.5,
+      "lowest_above_floor_mm": -8.207234779459494,
+      "tilt_deg": 89.99999999935832,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 5,
+      "lowest_above_floor_mm": -8.20723477893894,
+      "tilt_deg": 89.99999999991662,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 5.5,
+      "lowest_above_floor_mm": -8.208082987778154,
+      "tilt_deg": 57.5881178207637,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 6,
+      "lowest_above_floor_mm": -8.207537843734306,
+      "tilt_deg": 57.28863157136459,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 6.5,
+      "lowest_above_floor_mm": -8.207234778872099,
+      "tilt_deg": 89.99999999996082,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 7,
+      "lowest_above_floor_mm": -8.207091748022739,
+      "tilt_deg": 57.033838570309435,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 7.5,
+      "lowest_above_floor_mm": -8.207234779779645,
+      "tilt_deg": 89.99999999895259,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "default",
+      "offset_mm": 8,
+      "lowest_above_floor_mm": -8.207234779043779,
+      "tilt_deg": 89.99999999985252,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 0,
+      "lowest_above_floor_mm": -0.04623875549352417,
+      "tilt_deg": 0.031054814262148234,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 0.5,
+      "lowest_above_floor_mm": -0.04721663720002288,
+      "tilt_deg": 0.03662443940650621,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 1,
+      "lowest_above_floor_mm": -0.04746839564675684,
+      "tilt_deg": 0.03816163918724089,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 1.5,
+      "lowest_above_floor_mm": -0.0452686032902834,
+      "tilt_deg": 0.024844150736964637,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 2,
+      "lowest_above_floor_mm": -0.04776918957852781,
+      "tilt_deg": 0.04018337139603688,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 2.5,
+      "lowest_above_floor_mm": -0.046928200679273446,
+      "tilt_deg": 0.03522797530816603,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 3,
+      "lowest_above_floor_mm": -8.08084929596504,
+      "tilt_deg": 54.719720317404395,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 3.5,
+      "lowest_above_floor_mm": -8.080670756950678,
+      "tilt_deg": 54.21946148827873,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 4,
+      "lowest_above_floor_mm": -8.080723463321531,
+      "tilt_deg": 54.37770107112726,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 4.5,
+      "lowest_above_floor_mm": -8.082201691891047,
+      "tilt_deg": 89.99998235552904,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 5,
+      "lowest_above_floor_mm": -8.080786059113786,
+      "tilt_deg": 54.539677755577756,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 5.5,
+      "lowest_above_floor_mm": -8.08093167476338,
+      "tilt_deg": 54.957974468237225,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 6,
+      "lowest_above_floor_mm": -8.080982681879803,
+      "tilt_deg": 55.02506655168186,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 6.5,
+      "lowest_above_floor_mm": -8.08094079434617,
+      "tilt_deg": 54.93672466307669,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 7,
+      "lowest_above_floor_mm": -8.080789365004035,
+      "tilt_deg": 54.56108951949969,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 7.5,
+      "lowest_above_floor_mm": -8.082168785632803,
+      "tilt_deg": 89.99999999991407,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "default",
+      "offset_mm": 8,
+      "lowest_above_floor_mm": -8.0821687857844,
+      "tilt_deg": 89.99999999990474,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 0,
+      "lowest_above_floor_mm": -0.020601305487076907,
+      "tilt_deg": 0.015763241331168784,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 0.5,
+      "lowest_above_floor_mm": -0.02039356177393689,
+      "tilt_deg": 0.014547493717582776,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 1,
+      "lowest_above_floor_mm": -0.019955614985947903,
+      "tilt_deg": 0.011834735021458806,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 1.5,
+      "lowest_above_floor_mm": -0.02021191113914765,
+      "tilt_deg": 0.013447892100387392,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 2,
+      "lowest_above_floor_mm": -0.020371756537074237,
+      "tilt_deg": 0.014397097773552024,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 2.5,
+      "lowest_above_floor_mm": -8.035381797412501,
+      "tilt_deg": 53.75941138225371,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 3,
+      "lowest_above_floor_mm": -8.035407365580193,
+      "tilt_deg": 53.971921552504796,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 3.5,
+      "lowest_above_floor_mm": -8.035401104979353,
+      "tilt_deg": 53.922320593866914,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 4,
+      "lowest_above_floor_mm": -8.035396635478198,
+      "tilt_deg": 53.88609232236774,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 4.5,
+      "lowest_above_floor_mm": -8.03540489972274,
+      "tilt_deg": 53.95428991878497,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 5,
+      "lowest_above_floor_mm": -8.035399984253182,
+      "tilt_deg": 53.922338828819946,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 5.5,
+      "lowest_above_floor_mm": -8.035397156974183,
+      "tilt_deg": 53.89639238357199,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 6,
+      "lowest_above_floor_mm": -8.035417919452495,
+      "tilt_deg": 54.05324476856844,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 6.5,
+      "lowest_above_floor_mm": -8.035435228108158,
+      "tilt_deg": 54.17969811947415,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 7,
+      "lowest_above_floor_mm": -8.035395054826727,
+      "tilt_deg": 53.872505947882,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 7.5,
+      "lowest_above_floor_mm": -8.03542497059267,
+      "tilt_deg": 54.10899530745217,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "default",
+      "offset_mm": 8,
+      "lowest_above_floor_mm": -8.03536886465551,
+      "tilt_deg": 53.6450460739754,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 0,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 0.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 1,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 1.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 2,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 2.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 3,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 3.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 4,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 4.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 5.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 6,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 6.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 7,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 7.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "default",
+      "offset_mm": 8,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 0,
+      "lowest_above_floor_mm": -0.00504072519089821,
+      "tilt_deg": 0.004286074490424755,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 0.5,
+      "lowest_above_floor_mm": -0.005125267072499454,
+      "tilt_deg": 0.004659529728885125,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 1,
+      "lowest_above_floor_mm": -0.005000733817006955,
+      "tilt_deg": 0.003957303294956147,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 1.5,
+      "lowest_above_floor_mm": -0.004717903956780525,
+      "tilt_deg": 0.0021531712646166187,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 2,
+      "lowest_above_floor_mm": -8.008676517839469,
+      "tilt_deg": 56.09642588862034,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 2.5,
+      "lowest_above_floor_mm": -8.008743405338748,
+      "tilt_deg": 89.99999999985894,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 3,
+      "lowest_above_floor_mm": -8.008743405294481,
+      "tilt_deg": 89.9999999999097,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 3.5,
+      "lowest_above_floor_mm": -8.008743405314524,
+      "tilt_deg": 89.99999999988674,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 4,
+      "lowest_above_floor_mm": -8.008743405314416,
+      "tilt_deg": 89.99999999988687,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 4.5,
+      "lowest_above_floor_mm": -8.008743405275185,
+      "tilt_deg": 89.99999999993642,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 5,
+      "lowest_above_floor_mm": -8.008743405308708,
+      "tilt_deg": 89.99999999989342,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 5.5,
+      "lowest_above_floor_mm": -8.008655726566008,
+      "tilt_deg": 55.76054863740199,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 6,
+      "lowest_above_floor_mm": -8.008658257221343,
+      "tilt_deg": 55.80356800396366,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 6.5,
+      "lowest_above_floor_mm": -8.008743405313426,
+      "tilt_deg": 89.99999999988798,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 7,
+      "lowest_above_floor_mm": -8.008743405365554,
+      "tilt_deg": 89.99999999982828,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 7.5,
+      "lowest_above_floor_mm": -8.008743405309172,
+      "tilt_deg": 89.99999999989288,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "contacts": "stiff",
+      "offset_mm": 8,
+      "lowest_above_floor_mm": -8.008743405310689,
+      "tilt_deg": 89.99999999989113,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 0,
+      "lowest_above_floor_mm": -0.001905186006683976,
+      "tilt_deg": 0.0015446074891575965,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 0.5,
+      "lowest_above_floor_mm": -0.0018467241337978557,
+      "tilt_deg": 0.0011841926650991864,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 1,
+      "lowest_above_floor_mm": -0.0019321617893003351,
+      "tilt_deg": 0.001724901698682426,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 1.5,
+      "lowest_above_floor_mm": -0.0019647887659259705,
+      "tilt_deg": 0.0018830906328907886,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 2,
+      "lowest_above_floor_mm": -8.003393780275088,
+      "tilt_deg": 89.99995974713407,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 2.5,
+      "lowest_above_floor_mm": -8.00327675077352,
+      "tilt_deg": 55.56557675539887,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 3,
+      "lowest_above_floor_mm": -8.003275501686057,
+      "tilt_deg": 55.50590651250159,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 3.5,
+      "lowest_above_floor_mm": -8.00331401574154,
+      "tilt_deg": 89.99999999999446,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 4,
+      "lowest_above_floor_mm": -8.00327234456856,
+      "tilt_deg": 55.34866432164995,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 4.5,
+      "lowest_above_floor_mm": -8.003272896343109,
+      "tilt_deg": 55.377166378885626,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 5,
+      "lowest_above_floor_mm": -8.003314015887632,
+      "tilt_deg": 89.99999999982704,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 5.5,
+      "lowest_above_floor_mm": -8.003275136335944,
+      "tilt_deg": 55.48986629255728,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 6,
+      "lowest_above_floor_mm": -8.00337076458588,
+      "tilt_deg": 56.99058436359899,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 6.5,
+      "lowest_above_floor_mm": -8.003259419187014,
+      "tilt_deg": 54.618866388938045,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 7,
+      "lowest_above_floor_mm": -8.003267003051905,
+      "tilt_deg": 55.06766463126659,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 7.5,
+      "lowest_above_floor_mm": -8.043075037457013,
+      "tilt_deg": 89.97774152175106,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "contacts": "stiff",
+      "offset_mm": 8,
+      "lowest_above_floor_mm": -8.00325900539344,
+      "tilt_deg": 54.65230130677617,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 0,
+      "lowest_above_floor_mm": -0.0008701306379397394,
+      "tilt_deg": 0.0009182104357068207,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 0.5,
+      "lowest_above_floor_mm": -0.0008224233621952765,
+      "tilt_deg": 0.0006211512798419478,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 1,
+      "lowest_above_floor_mm": -0.0008140084848517332,
+      "tilt_deg": 0.0005772248643978083,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 1.5,
+      "lowest_above_floor_mm": -0.0007895717214732867,
+      "tilt_deg": 0.00042434439816588525,
+      "in_pocket": true,
+      "seated": true
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 2,
+      "lowest_above_floor_mm": -8.001442225358854,
+      "tilt_deg": 56.7171953081231,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 2.5,
+      "lowest_above_floor_mm": -8.00143656565686,
+      "tilt_deg": 56.22127008407426,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 3,
+      "lowest_above_floor_mm": -8.001437746096219,
+      "tilt_deg": 56.33131354717341,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 3.5,
+      "lowest_above_floor_mm": -8.001446290758857,
+      "tilt_deg": 89.99999999988441,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 4,
+      "lowest_above_floor_mm": -8.001426989033133,
+      "tilt_deg": 55.216538167373386,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 4.5,
+      "lowest_above_floor_mm": -8.001426193936414,
+      "tilt_deg": 55.119327658470596,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 5,
+      "lowest_above_floor_mm": -8.001428734857571,
+      "tilt_deg": 55.420503271371466,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 5.5,
+      "lowest_above_floor_mm": -8.001431571851905,
+      "tilt_deg": 55.72874450558403,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 6,
+      "lowest_above_floor_mm": -8.001423973793123,
+      "tilt_deg": 54.83033376338314,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 6.5,
+      "lowest_above_floor_mm": -8.001422106468869,
+      "tilt_deg": 54.56780761830092,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 7,
+      "lowest_above_floor_mm": -8.001421645582633,
+      "tilt_deg": 54.48938303975361,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 7.5,
+      "lowest_above_floor_mm": -8.001421428957979,
+      "tilt_deg": 54.45790748534386,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "contacts": "stiff",
+      "offset_mm": 8,
+      "lowest_above_floor_mm": -8.001428373203897,
+      "tilt_deg": 55.37919120333997,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 0,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 0.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 1,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 1.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 2,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 2.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 3,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 3.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 4,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 4.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 5.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 6,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 6.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 7,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 7.5,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "contacts": "stiff",
+      "offset_mm": 8,
+      "lowest_above_floor_mm": 37,
+      "tilt_deg": 0,
+      "in_pocket": false,
+      "seated": false
+    }
+  ],
+  "summary": [
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "largest_seated_offset_mm": {
+        "default": 3.5,
+        "stiff": 1.5
+      }
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "largest_seated_offset_mm": {
+        "default": 2.5,
+        "stiff": 1.5
+      }
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "largest_seated_offset_mm": {
+        "default": 2,
+        "stiff": 1.5
+      }
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "largest_seated_offset_mm": {
+        "default": null,
+        "stiff": null
+      }
+    }
+  ]
+}

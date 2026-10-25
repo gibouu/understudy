@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "title": "pour water into a plant pillow reservoir aboard a station",
+  "summary": "Bring an open water pouch over the reservoir of a plant pillow and squeeze the water in, spout up until it is over the reservoir.",
+  "objects": [
+    {
+      "id": "pouch",
+      "name": "water pouch with spout",
+      "shape": "box",
+      "size_mm": [
+        55,
+        25,
+        110
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+        "xyz_mm": [
+          130,
+          120,
+          55
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench"
+    },
+    {
+      "id": "reservoir",
+      "name": "plant pillow reservoir",
+      "shape": "box",
+      "size_mm": [
+        100,
+        100,
+        40
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+        "xyz_mm": [
+          220,
+          -40,
+          20
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "pouch",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "contact_both_pads",
+          "object": "pouch"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 5,
+        "y_mm": 5
+      },
+      "t_start_s": 1,
+      "t_end_s": 3,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s2",
+      "verb": "place",
+      "object": "pouch",
+      "target": {
+        "fixture": "zone",
+        "frame": "reservoir"
+      },
+      "via_points": [
+        {
+          "frame": "reservoir",
+          "xyz_mm": [
+            0,
+            0,
+            90
+          ],
+          "source": "gt#bench"
+        }
+      ],
+      "preconditions": [
+        {
+          "kind": "tilt_under",
+          "object": "pouch",
+          "value": 10
+        }
+      ],
+      "success": [
+        {
+          "kind": "inside_zone",
+          "object": "pouch",
+          "target": "reservoir"
+        },
+        {
+          "kind": "time_under",
+          "value": 20
+        }
+      ],
+      "tolerances": {
+        "x_mm": 6,
+        "y_mm": 6
+      },
+      "t_start_s": 3,
+      "t_end_s": 15,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s3",
+      "verb": "retract",
+      "object": "pouch",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "no_collision"
+        }
+      ],
+      "tolerances": {},
+      "t_start_s": 15,
+      "t_end_s": 16,
+      "source": "gt#bench"
+    }
+  ],
+  "anchor": {
+    "t_s": 3,
+    "confidence": 0.8
+  },
+  "warnings": [],
+  "open_questions": []
+}

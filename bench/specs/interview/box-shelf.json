@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "title": "small box onto a shelf",
+  "summary": "Lift a small box from the table onto a low shelf and leave it flat.",
+  "objects": [
+    {
+      "id": "box",
+      "name": "small cardboard box",
+      "shape": "box",
+      "size_mm": [
+        50,
+        50,
+        40
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+        "xyz_mm": [
+          130,
+          110,
+          20
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench"
+    },
+    {
+      "id": "shelf",
+      "name": "low shelf board",
+      "shape": "box",
+      "size_mm": [
+        250,
+        150,
+        15
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+        "xyz_mm": [
+          200,
+          -40,
+          200
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "box",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "contact_both_pads",
+          "object": "box"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 5,
+        "y_mm": 5
+      },
+      "t_start_s": 1,
+      "t_end_s": 2,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s2",
+      "verb": "place",
+      "object": "box",
+      "target": {
+        "fixture": "stack",
+        "frame": "shelf"
+      },
+      "via_points": [
+        {
+          "frame": "shelf",
+          "xyz_mm": [
+            0,
+            0,
+            60
+          ],
+          "source": "gt#bench"
+        }
+      ],
+      "preconditions": [
+        {
+          "kind": "height_above",
+          "object": "box",
+          "value": 230
+        }
+      ],
+      "success": [
+        {
+          "kind": "inside_zone",
+          "object": "box",
+          "target": "shelf"
+        },
+        {
+          "kind": "tilt_under",
+          "object": "box",
+          "value": 3
+        }
+      ],
+      "tolerances": {
+        "x_mm": 20,
+        "y_mm": 15
+      },
+      "t_start_s": 2,
+      "t_end_s": 6,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s3",
+      "verb": "retract",
+      "object": "box",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "no_collision"
+        }
+      ],
+      "tolerances": {},
+      "t_start_s": 6,
+      "t_end_s": 7,
+      "source": "gt#bench"
+    }
+  ],
+  "anchor": {
+    "t_s": 2,
+    "confidence": 0.8
+  },
+  "warnings": [],
+  "open_questions": []
+}

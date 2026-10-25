@@ -1,0 +1,148 @@
+{
+  "removed": [
+    {
+      "field": "fit",
+      "path": "objects[rack].pocket_clearance_mm"
+    },
+    {
+      "field": "aperture",
+      "path": "objects[tube].size_mm"
+    },
+    {
+      "field": "success",
+      "path": "steps[s2].success"
+    },
+    {
+      "field": "via",
+      "path": "steps[s2].via_points"
+    },
+    {
+      "field": "precondition",
+      "path": "steps[s2].preconditions"
+    }
+  ],
+  "spec": {
+    "version": 1,
+    "title": "insert a sample tube into a rack aboard a station",
+    "summary": "Take a capped sample tube from the work surface and insert it upright into a free slot of a sample rack, in microgravity.",
+    "objects": [
+      {
+        "id": "tube",
+        "name": "capped sample tube",
+        "shape": "cylinder",
+        "size_mm": [
+          8,
+          8,
+          60
+        ],
+        "symmetry": "axial",
+        "role": "manipulated",
+        "pose": {
+          "xyz_mm": [
+            150,
+            110,
+            50
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.3,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "rack",
+        "name": "sample tube rack",
+        "shape": "box",
+        "size_mm": [
+          130,
+          40,
+          60
+        ],
+        "symmetry": "none",
+        "role": "fixture",
+        "pose": {
+          "xyz_mm": [
+            210,
+            -70,
+            30
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.9,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "steps": [
+      {
+        "id": "s1",
+        "verb": "grasp",
+        "object": "tube",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "contact_both_pads",
+            "object": "tube"
+          }
+        ],
+        "tolerances": {
+          "x_mm": 5,
+          "y_mm": 5
+        },
+        "t_start_s": 1,
+        "t_end_s": 3,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s2",
+        "verb": "insert",
+        "object": "tube",
+        "target": {
+          "fixture": "pocket",
+          "frame": "rack"
+        },
+        "via_points": [],
+        "preconditions": [],
+        "success": [],
+        "tolerances": {
+          "x_mm": 1.5,
+          "y_mm": 1.5
+        },
+        "t_start_s": 3,
+        "t_end_s": 8,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s3",
+        "verb": "retract",
+        "object": "tube",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "no_collision"
+          }
+        ],
+        "tolerances": {},
+        "t_start_s": 8,
+        "t_end_s": 9,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "anchor": {
+      "t_s": 3,
+      "confidence": 0.8
+    },
+    "warnings": [],
+    "open_questions": [
+      "objects[tube].size_mm: the capped sample tube's size is a guess (no scale in frame); how wide is it where the hand grips it?"
+    ],
+    "sources": {}
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "title": "vial into a centrifuge rotor",
+  "summary": "Put a small sample vial into a free slot of a benchtop centrifuge rotor; the rotor must be stopped.",
+  "objects": [
+    {
+      "id": "vial",
+      "name": "sample vial",
+      "shape": "cylinder",
+      "size_mm": [
+        11,
+        11,
+        40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+        "xyz_mm": [
+          140,
+          120,
+          20
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench"
+    },
+    {
+      "id": "rotor",
+      "name": "centrifuge rotor",
+      "shape": "cylinder",
+      "size_mm": [
+        200,
+        200,
+        60
+      ],
+      "symmetry": "axial",
+      "role": "fixture",
+      "pose": {
+        "xyz_mm": [
+          200,
+          -70,
+          30
+        ],
+        "yaw_deg": 0,
+        "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "gt#bench",
+      "pocket_clearance_mm": 0.8
+    }
+  ],
+  "steps": [
+    {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "vial",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "contact_both_pads",
+          "object": "vial"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 5,
+        "y_mm": 5
+      },
+      "t_start_s": 1,
+      "t_end_s": 2,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s2",
+      "verb": "insert",
+      "object": "vial",
+      "target": {
+        "fixture": "pocket",
+        "frame": "rotor"
+      },
+      "via_points": [
+        {
+          "frame": "rotor",
+          "xyz_mm": [
+            0,
+            0,
+            90
+          ],
+          "source": "gt#bench"
+        }
+      ],
+      "preconditions": [
+        {
+          "kind": "object_still",
+          "object": "rotor"
+        }
+      ],
+      "success": [
+        {
+          "kind": "inside_zone",
+          "object": "vial",
+          "target": "rotor"
+        },
+        {
+          "kind": "object_still",
+          "object": "vial"
+        }
+      ],
+      "tolerances": {
+        "x_mm": 0.8,
+        "y_mm": 0.8
+      },
+      "t_start_s": 2,
+      "t_end_s": 6,
+      "source": "gt#bench"
+    },
+    {
+      "id": "s3",
+      "verb": "retract",
+      "object": "vial",
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+        {
+          "kind": "no_collision"
+        }
+      ],
+      "tolerances": {},
+      "t_start_s": 6,
+      "t_end_s": 7,
+      "source": "gt#bench"
+    }
+  ],
+  "anchor": {
+    "t_s": 2,
+    "confidence": 0.8
+  },
+  "warnings": [],
+  "open_questions": []
+}

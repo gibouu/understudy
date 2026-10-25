@@ -2,9 +2,9 @@
 
 **Rehearse the robot task before paying to collect it.**
 
-Nebius x NVIDIA Global AI Hackathon, Physical AI track | Built in Paris, 23 to 30 October 2026 | 5 to 10 minutes per session, no robot | Estimated under US$0.10 per session in model calls
+Nebius x NVIDIA Global AI Hackathon, Physical AI track | Built in Paris, 23 to 30 October 2026 | 71 s of model time per session, no robot | US$0.0375 per session in model calls, measured
 
-Robots learn manipulation from human demonstrations, and collecting them is slow and costly. In DROID, about one trajectory in six was marked failed at recording.<sup>1</sup> One vendor's cost model (Robotics Center, March 2026) puts re-collection after the first policy evaluation at 30 to 50 per cent of the original budget.<sup>2</sup> Understudy turns one clip of a person at work into a task spec, completed by interviewing that person, then into a robot program and a rehearsal on a simulated SO-101 arm. The rehearsal is designed to run 12 perturbation scenarios, each blind (no camera feedback) and sensed (with it), under Earth, Moon and orbit gravity, and to return a reshoot list before any data is collected. A session is designed to take 5 to 10 minutes in the browser and is estimated at under US$0.10 in model calls. If it avoids a quarter of re-collection, a 500-demonstration campaign would save about 10% of its original collection budget; this share is assumed, not yet measured. Understudy does not train a policy or replace collection: it is the briefing and quality layer in front of it.
+Robots learn manipulation from human demonstrations, and collecting them is slow and costly. In DROID, about one trajectory in six was marked failed at recording.<sup>1</sup> One vendor's cost model (Robotics Center, March 2026) puts re-collection after the first policy evaluation at 30 to 50 per cent of the original budget.<sup>2</sup> Understudy turns one clip of a person at work into a task spec, completed by interviewing that person, then into a robot program and a rehearsal on a simulated SO-101 arm. The rehearsal is designed to run 12 perturbation scenarios, each blind (no camera feedback) and sensed (with it), under Earth, Moon and orbit gravity, and to return a reshoot list before any data is collected. A session measured on 25 October 2026 cost US$0.0375 in model calls on average. In rehearsal, the model fixed 94% of failing programs from the simulator's notes alone, at US$0.0024 per fix. If that avoids a quarter of re-collection, a 500-demonstration campaign would save about 10% of its original collection budget; that share can only be measured on a real campaign. Understudy does not train a policy or replace collection: it is the briefing and quality layer in front of it.
 
 ## 1. Crew time is the budget
 
@@ -76,7 +76,7 @@ Understudy sits in front of collection. It is built to brief the task and rehear
 
 | Step | Today | With Understudy | Basis |
 |---|---|---|---|
-| 1. Brief the task | Written by the team; no published cost | Interviewed task spec with per-field provenance from one clip: 5-10 min, about 18 requests, under $0.10 in model calls | Product measurement, 23 Oct 2026<sup>41</sup> |
+| 1. Brief the task | Written by the team; no published cost | Interviewed task spec with per-field provenance from one clip: 17 calls, US$0.0375 in model calls, measured | Product measurement, 23 Oct 2026<sup>41</sup> |
 | 2. Check before collecting | One vendor guide recommends a pilot run (2-5% of budget) and a written task spec before collecting | Planned: 24 rollouts per gravity (12 scenarios, blind and sensed) at Earth, Moon (0.1654 g) and orbit (0 g), reshoot list, perception budget. Built: gravity as a scenario axis on the simulated arm | Vendor guide<sup>40</sup>; product facts<sup>42</sup> |
 | 3. Record | About 1 in 6 recorded trajectories marked failed by the collector | Unchanged in this model | DROID<sup>1</sup> |
 | 4. Filter | 20-30% of episodes discarded | Unchanged in this model | One vendor's cost model (Robotics Center, March 2026)<sup>2</sup> |
@@ -105,7 +105,7 @@ In dollars, using two anchors from one vendor's cost model (Robotics Center, Mar
 - At US$3.75 to US$20 per usable demonstration in a mature operation: 15 demonstrations come to US$56 to US$300, 50 to US$188 to US$1,000, and 125 to US$469 to US$2,500. The vendor says first projects typically cost two to three times as much.
 - At US$50,000 to US$200,000 for a dataset of 500 or more demonstrations: 3% comes to US$1,500 to US$6,000, 10% to US$5,000 to US$20,000, and 25% to US$12,500 to US$50,000. This anchor covers equipment, staffing and data processing, but not researchers' engineering time. It includes hardware, which the saving estimate otherwise excludes.
 
-Against this, an Understudy session is estimated at under US$0.10 in model calls, and a patch at under a cent. The saving covers operator collection hours only. It excludes hardware, the team's engineering time and compute. It also leaves out any gain from fewer recording failures or discards, any change in policy success, and the value of the perception budget and orbit rehearsal.
+Against this, an Understudy session costs US$0.0375 in model calls on average (measured), and fixing a failing program in rehearsal US$0.0024 (measured, see `docs/MEASUREMENTS.md`). The saving covers operator collection hours only. It excludes hardware, the team's engineering time and compute. It also leaves out any gain from fewer recording failures or discards, any change in policy success, and the value of the perception budget and orbit rehearsal.
 
 ## 6. The learning curve
 
@@ -120,7 +120,7 @@ The loop is designed to compound through step 4: each clip leaves rules behind, 
 
 The demo will use NASA public-domain footage of an astronaut placing seed film into the ISS Veggie plant pillows. The same program will run on Earth and in orbit, where a released object drifts instead of resting. The scoreboard will show passes out of 24 per iteration and per gravity, with the perception budget per axis.
 
-**What is measured and what is planned.** On 23 October 2026, Nemotron-3.5-Super-VL labelled a 30-second clip in 3.3 seconds, for 5,024 input and 781 output tokens, about US$0.002 at list prices. The compile and interview models answered a test prompt in about one second each. A full session of about 18 calls is estimated at under US$0.10; it will be measured when the pipeline runs end to end. The simulated arm already runs under Earth, Moon and orbit gravity in the browser. The 24-rollout rehearsal, the scoreboard and the iteration log are being built this week. No learning curve has been measured yet.
+**What is measured and what is planned.** Measured on 25 October 2026 (`docs/MEASUREMENTS.md`): a full session costs US$0.0375 in model calls on average; on four tasks at four gravities, a naive program fails 86% of runs and the loop fixes 94% of those within five patches when it escalates to reasoning; rules learned on Earth and Mars add 28 points of first-try success on the Moon and in orbit against a matched control. Those runs use a small program of bounded knobs; the full interpreter, the 24-rollout scoreboard and the iteration log for the sample clips are being built this week.
 
 ## 7. Sources
 
@@ -168,6 +168,6 @@ On 25 October 2026 every external number below was checked twice against its pag
 | 38 | CUPID curation | Curated subset under a third of the data; state-of-the-art diffusion policies on simulated RoboMimic | https://arxiv.org/abs/2506.19121 | 2025-09-23 |
 | 39 | AgiBot World verified data | +0.18 completion score (528 verified vs 1,010 mixed) | https://arxiv.org/html/2503.06669 | 2025-03 |
 | 40 | Vendor guide: pilot and task spec before collecting (Claru) | Pilot at 2-5% of budget; written spec with an explicit success condition | https://claru.ai/guides/how-to-create-a-robot-demonstration-dataset | 2026 |
-| 41 | Understudy calls (measured) and session (estimated) | Label call: 30 s clip in 3.3 s, 5,024 in / 781 out tokens, about $0.002; compile and interview test prompts about 1 s each; session of about 18 calls estimated under $0.10 | Team measurement (docs/FEEDBACK.md) and list prices (tests/fixtures/models.json) | 2026-10-23 |
-| 42 | Understudy rehearsal and iteration | Built: gravity as a scenario axis on the simulated SO-101. Planned: 24 rollouts per gravity, scoreboard; a patch estimated under a cent at list prices | Product facts (repository) | 2026-10-25 |
+| 41 | Understudy session (measured) | 16.7 calls, US$0.0375 on average (US$0.028 to US$0.052 over 3 runs), 71 s; label call 6,379 tokens | Team measurement, `docs/MEASUREMENTS.md` and `bench/results/session.json` | 2026-10-25 |
+| 42 | Understudy rehearsal and repair loop (measured) | naive program fails 93 of 108 runs (86%) at four gravities; escalating patcher fixes 94% [89 to 97] within 5 patches at US$0.0024 per fix; rules learned on Earth and Mars add 28 points of first-try success on the Moon and in orbit (matched control) | Team measurement, `docs/MEASUREMENTS.md` and `bench/results/patch-loop.json` | 2026-10-25 |
 | 43 | Robot data needed to fine-tune pi0 to a new task | 1 to 20 hours | https://pi.website/blog/openpi | 2025-02-04 |

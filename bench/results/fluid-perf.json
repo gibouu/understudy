@@ -1,0 +1,176 @@
+{
+  "name": "fluid-perf",
+  "title": "f. Performance on Apple M4, Node v24.21.0, one thread, dam break in full flow (d = 5 mm)",
+  "measured_at": "2026-10-25T18:03:21.887Z",
+  "machine": "Apple M4",
+  "node": "v24.21.0",
+  "head": [
+    "particles",
+    "substeps",
+    "iterations",
+    "ms per 1/60 s frame (median of 3)",
+    "range",
+    "frames/s",
+    "M particle-substeps/s"
+  ],
+  "rows": [
+    [
+      1000,
+      4,
+      4,
+      "7.5",
+      "7.5-7.6",
+      "133",
+      "0.53"
+    ],
+    [
+      2016,
+      4,
+      4,
+      "15.0",
+      "15.0-15.0",
+      "66",
+      "0.54"
+    ],
+    [
+      4096,
+      4,
+      4,
+      "30.7",
+      "30.1-31.1",
+      "33",
+      "0.53"
+    ],
+    [
+      8000,
+      4,
+      4,
+      "60.3",
+      "58.4-61.1",
+      "17",
+      "0.53"
+    ],
+    [
+      2016,
+      4,
+      3,
+      "13.0",
+      "12.9-13.1",
+      "77",
+      "0.62"
+    ]
+  ],
+  "notes": [
+    "About 7.50 us per particle per frame at 4 x 4: ~2225 particles fill a whole 16.7 ms frame, ~1066 fit an 8 ms share next to MuJoCo and rendering. Not asserted."
+  ],
+  "params": {
+    "runs": [
+      {
+        "side": [
+          10,
+          10,
+          10
+        ]
+      },
+      {
+        "side": [
+          12,
+          12,
+          14
+        ]
+      },
+      {
+        "side": [
+          16,
+          16,
+          16
+        ]
+      },
+      {
+        "side": [
+          20,
+          20,
+          20
+        ]
+      },
+      {
+        "side": [
+          12,
+          12,
+          14
+        ],
+        "iterations": 3
+      }
+    ],
+    "windows": 3,
+    "frames_per_window": 10,
+    "warmup_frames": 10
+  },
+  "results": [
+    {
+      "n": 1000,
+      "substeps": 4,
+      "iterations": 4,
+      "ms_per_frame": 7.520870799999829,
+      "ms_windows": [
+        7.501254199999676,
+        7.555849999999919,
+        7.520870799999829
+      ],
+      "particle_substeps_per_s": 531853.3061357856
+    },
+    {
+      "n": 2016,
+      "substeps": 4,
+      "iterations": 4,
+      "ms_per_frame": 15.044229199999972,
+      "ms_windows": [
+        14.99989579999965,
+        15.049179200000072,
+        15.044229199999972
+      ],
+      "particle_substeps_per_s": 536019.4857972527
+    },
+    {
+      "n": 4096,
+      "substeps": 4,
+      "iterations": 4,
+      "ms_per_frame": 30.730412500000238,
+      "ms_windows": [
+        30.126920799999787,
+        30.730412500000238,
+        31.131991699999343
+      ],
+      "particle_substeps_per_s": 533152.622015727
+    },
+    {
+      "n": 8000,
+      "substeps": 4,
+      "iterations": 4,
+      "ms_per_frame": 60.2581124999997,
+      "ms_windows": [
+        58.36112920000014,
+        60.2581124999997,
+        61.07303749999992
+      ],
+      "particle_substeps_per_s": 531048.8276578553
+    },
+    {
+      "n": 2016,
+      "substeps": 4,
+      "iterations": 3,
+      "ms_per_frame": 13.037774999999964,
+      "ms_windows": [
+        12.902749999999651,
+        13.037774999999964,
+        13.070204199999717
+      ],
+      "particle_substeps_per_s": 618510.4436915058
+    }
+  ],
+  "budget": {
+    "ms_per_particle_frame": 0.007504523063633856,
+    "fits_16_7ms": 2225,
+    "fits_8ms": 1066
+  }
+}

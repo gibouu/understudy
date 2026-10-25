@@ -1,0 +1,86 @@
+{
+  "name": "fluid-coupling",
+  "title": "e. MuJoCo-driven pour: 1008 particles (d = 4 mm) in a 5 x 5 cm cup tilted 120 deg over 1.5 s by a position actuator, read at 4 s",
+  "measured_at": "2026-10-25T18:03:16.943Z",
+  "machine": "Apple M4",
+  "node": "v24.21.0",
+  "head": [
+    "gravity",
+    "landed in target cup",
+    "left in source cup",
+    "first landing (s, hinge deg)",
+    "50% landed (s)",
+    "final hinge (deg)",
+    "ms/frame (MuJoCo + liquid)"
+  ],
+  "rows": [
+    [
+      "1 g",
+      "100.0%",
+      "0.0%",
+      "1.00 s, 88 deg",
+      "1.20",
+      "120.2",
+      "8.9"
+    ],
+    [
+      "0 g",
+      "0.0%",
+      "100.0%",
+      "never",
+      "never",
+      "120.0",
+      "11.2"
+    ]
+  ],
+  "notes": [
+    "One-way coupling: MuJoCo's geom poses drive the walls each frame; the liquid does not load the cup."
+  ],
+  "params": {
+    "cup": {
+      "a": 0.025,
+      "tw": 0.002,
+      "floorZ": -0.014,
+      "rim": 0.056,
+      "hingeZ": 0.2
+    },
+    "target": {
+      "x0": -0.02,
+      "x1": 0.14,
+      "y": 0.05,
+      "top": 0.13,
+      "depth": 0.06
+    },
+    "tilt_deg": 120,
+    "tilt_s": 1.5,
+    "read_at_s": 4,
+    "mujoco_geoms_bound": 10,
+    "solver": "defaults, d = 4 mm"
+  },
+  "results": [
+    {
+      "g": 1,
+      "n": 1008,
+      "landed": 1,
+      "inCup": 0,
+      "firstLanding": 1,
+      "angleAtFirst": 88.43417535123533,
+      "halfLanded": 1.2,
+      "finalDeg": 120.24266252312874,
+      "msFrame": 8.943299133333342,
+      "walls": 10
+    },
+    {
+      "g": 0,
+      "n": 1008,
+      "landed": 0,
+      "inCup": 1,
+      "firstLanding": null,
+      "angleAtFirst": null,
+      "halfLanded": null,
+      "finalDeg": 119.99999999999991,
+      "msFrame": 11.248455383333324,
+      "walls": 10
+    }
+  ]
+}

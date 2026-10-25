@@ -1,0 +1,127 @@
+{
+  "name": "arm-ik-accuracy",
+  "measured_at": "2026-10-25T17:59:05.942Z",
+  "machine": {
+    "cpu": "Apple M4",
+    "cores": 10,
+    "platform": "darwin 27.0.0 arm64",
+    "node": "v24.21.0",
+    "mujoco_wasm": "3.17.0",
+    "threads_used": 1,
+    "loadavg_1m_at_start": 2.43,
+    "git_head": "b92a604"
+  },
+  "parameters": {
+    "grid": {
+      "x_m": [
+        0.1,
+        0.4
+      ],
+      "y_m": [
+        -0.25,
+        0.25
+      ],
+      "step_m": 0.025,
+      "z_m": [
+        0.02,
+        0.06,
+        0.12
+      ]
+    },
+    "check": "mj_kinematics on a separate MjData from the returned q; same MuJoCo model, so it checks the solver, not the model against the real arm"
+  },
+  "rows": [
+    {
+      "approach": "top",
+      "solved": 285,
+      "tip_err_mm": {
+        "median": 0.264,
+        "p95": 0.761,
+        "max": 0.938
+      },
+      "axis_err_deg": {
+        "median": 0.6,
+        "max": 1
+      },
+      "iterations_median": 12,
+      "solve_ms_ok": {
+        "median": 0.08,
+        "p95": 0.27
+      },
+      "solve_ms_not_ok": {
+        "n": 534,
+        "median": 66.4,
+        "p95": 93.2
+      }
+    },
+    {
+      "approach": "side",
+      "solved": 10,
+      "tip_err_mm": {
+        "median": 0.179,
+        "p95": 0.377,
+        "max": 0.377
+      },
+      "axis_err_deg": {
+        "median": 0.87,
+        "max": 0.99
+      },
+      "iterations_median": 20,
+      "solve_ms_ok": {
+        "median": 0.17,
+        "p95": 10.48
+      },
+      "solve_ms_not_ok": {
+        "n": 809,
+        "median": 0.2,
+        "p95": 50.7
+      }
+    },
+    {
+      "approach": "front",
+      "solved": 141,
+      "tip_err_mm": {
+        "median": 0.282,
+        "p95": 0.953,
+        "max": 1.876
+      },
+      "axis_err_deg": {
+        "median": 0.52,
+        "max": 1.06
+      },
+      "iterations_median": 16,
+      "solve_ms_ok": {
+        "median": 0.1,
+        "p95": 8.67
+      },
+      "solve_ms_not_ok": {
+        "n": 678,
+        "median": 19.3,
+        "p95": 52.5
+      }
+    },
+    {
+      "approach": "all",
+      "solved": 436,
+      "tip_err_mm": {
+        "median": 0.272,
+        "p95": 0.84,
+        "max": 1.876
+      },
+      "axis_err_deg": {
+        "median": 0.59,
+        "max": 1.06
+      },
+      "iterations_median": 13,
+      "solve_ms_ok": {
+        "median": 0.09,
+        "p95": 7.82
+      },
+      "solve_ms_not_ok": {
+        "n": 2021,
+        "median": 27.2,
+        "p95": 86.4
+      }
+    }
+  ]
+}

@@ -1,0 +1,277 @@
+{
+  "measurement": "motion",
+  "generated_at": "2026-10-25T08:51:00.506Z",
+  "engine": "MuJoCo WebAssembly (@mujoco/mujoco 3.17) in Node",
+  "g_m_s2": 9.81,
+  "timestep_s": 0.002,
+  "tipping": [
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "a_over_g_stiff": 0.1623046875,
+      "a_m_s2_stiff": 1.592208984375,
+      "a_over_g_default": 0.1251953125,
+      "a_m_s2_default": 1.228166015625
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "a_over_g_stiff": 0.1642578125,
+      "a_m_s2_stiff": 0.610708904296875,
+      "a_over_g_default": 0.1427734375,
+      "a_m_s2_default": 0.530830212890625
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "a_over_g_stiff": 0.1662109375,
+      "a_m_s2_stiff": 0.269689545703125,
+      "a_over_g_default": 0.1525390625,
+      "a_m_s2_default": 0.24750591679687498
+    }
+  ],
+  "parameters": {
+    "model": "accelerating frame = gravity vector with a lateral component (a frame accelerating at +a along x sees -a along x), applied as a step after settling",
+    "conditions": [
+      {
+        "id": "earth-0.05g",
+        "label": "Earth, vehicle accelerating at 0.05 g",
+        "base": [
+          0,
+          0,
+          -9.81
+        ],
+        "moving": [
+          -0.49050000000000005,
+          0,
+          -9.81
+        ]
+      },
+      {
+        "id": "earth-0.2g",
+        "label": "Earth, vehicle accelerating at 0.2 g",
+        "base": [
+          0,
+          0,
+          -9.81
+        ],
+        "moving": [
+          -1.9620000000000002,
+          0,
+          -9.81
+        ]
+      },
+      {
+        "id": "orbit-0.02g",
+        "label": "orbit, 0.02 g thrust sideways",
+        "base": [
+          0,
+          0,
+          0
+        ],
+        "moving": [
+          -0.1962,
+          0,
+          0
+        ]
+      },
+      {
+        "id": "orbit-0.02g-axial",
+        "label": "orbit, 0.02 g thrust toward the cup's base (extra)",
+        "base": [
+          0,
+          0,
+          0
+        ],
+        "moving": [
+          0,
+          0,
+          0.1962
+        ]
+      }
+    ],
+    "duration_s": 3,
+    "settle_s": {
+      "tubes": 0.5,
+      "particles": 1
+    },
+    "pocket_tube": {
+      "mm": [
+        17,
+        100
+      ],
+      "pocket": "demo rack, 20 x 20 mm opening, 32 mm deep",
+      "seated": {
+        "floor_mm": 2,
+        "tilt_deg": 5
+      }
+    },
+    "standing_tube": {
+      "mm": [
+        17,
+        100
+      ],
+      "friction": "1 0.005 0.0001",
+      "static_tip_ratio_r_over_h": 0.17
+    },
+    "cups": {
+      "inner_mm": [
+        40,
+        40
+      ],
+      "depths_mm": [
+        50,
+        25
+      ],
+      "particles": {
+        "count": 80,
+        "radius_m": 0.0035,
+        "density": 1000,
+        "condim": 1,
+        "friction": "0.1 0.005 0.0001",
+        "grid": 5,
+        "pitch_m": 0.008,
+        "layer_m": 0.0075
+      }
+    },
+    "solver_particles": "CG"
+  },
+  "results": [
+    {
+      "condition": "Earth, vehicle accelerating at 0.05 g",
+      "gravity_m_s2": [
+        -0.49050000000000005,
+        0,
+        -9.81
+      ],
+      "pocket_tube": {
+        "seated": true,
+        "in_pocket": true,
+        "max_tilt_deg": 0.4423219099566149,
+        "end_tilt_deg": 0.43185158346044605,
+        "end_above_floor_mm": -0.17037610044725973
+      },
+      "standing_tube": {
+        "max_tilt_deg": 0.7157620750161829,
+        "end_tilt_deg": 0.6352947180014583,
+        "moved_mm": 1.5584003967280264
+      },
+      "cups": [
+        {
+          "depth_mm": 50,
+          "out_at_end": 0,
+          "ever_out": 0,
+          "fill_height_mm": 16.815550625025683
+        },
+        {
+          "depth_mm": 25,
+          "out_at_end": 0,
+          "ever_out": 0,
+          "fill_height_mm": 16.815550625025693
+        }
+      ]
+    },
+    {
+      "condition": "Earth, vehicle accelerating at 0.2 g",
+      "gravity_m_s2": [
+        -1.9620000000000002,
+        0,
+        -9.81
+      ],
+      "pocket_tube": {
+        "seated": true,
+        "in_pocket": true,
+        "max_tilt_deg": 2.983998238639285,
+        "end_tilt_deg": 1.1034557276131167,
+        "end_above_floor_mm": -0.19442709041046694
+      },
+      "standing_tube": {
+        "max_tilt_deg": 89.99280209559777,
+        "end_tilt_deg": 89.99280209323129,
+        "moved_mm": 86.30270147759978
+      },
+      "cups": [
+        {
+          "depth_mm": 50,
+          "out_at_end": 0,
+          "ever_out": 0,
+          "fill_height_mm": 16.815550625025683
+        },
+        {
+          "depth_mm": 25,
+          "out_at_end": 0,
+          "ever_out": 0,
+          "fill_height_mm": 16.815550625025693
+        }
+      ]
+    },
+    {
+      "condition": "orbit, 0.02 g thrust sideways",
+      "gravity_m_s2": [
+        -0.1962,
+        0,
+        0
+      ],
+      "pocket_tube": {
+        "seated": false,
+        "in_pocket": true,
+        "max_tilt_deg": 6.100693203038037,
+        "end_tilt_deg": 6.100693203038037,
+        "end_above_floor_mm": 0.2523944271946958
+      },
+      "standing_tube": {
+        "max_tilt_deg": 0,
+        "end_tilt_deg": 0,
+        "moved_mm": 883.4886000000009
+      },
+      "cups": [
+        {
+          "depth_mm": 50,
+          "out_at_end": 0,
+          "ever_out": 0,
+          "fill_height_mm": 30
+        },
+        {
+          "depth_mm": 25,
+          "out_at_end": 5,
+          "ever_out": 5,
+          "fill_height_mm": 30
+        }
+      ]
+    },
+    {
+      "condition": "orbit, 0.02 g thrust toward the cup's base (extra)",
+      "gravity_m_s2": [
+        0,
+        0,
+        0.1962
+      ],
+      "pocket_tube": {
+        "seated": false,
+        "in_pocket": false,
+        "max_tilt_deg": 0,
+        "end_tilt_deg": 0,
+        "end_above_floor_mm": 883.4886000000008
+      },
+      "standing_tube": {
+        "max_tilt_deg": 0,
+        "end_tilt_deg": 0,
+        "moved_mm": 883.4886000000008
+      },
+      "cups": [
+        {
+          "depth_mm": 50,
+          "out_at_end": 80,
+          "ever_out": 80,
+          "fill_height_mm": 30
+        },
+        {
+          "depth_mm": 25,
+          "out_at_end": 80,
+          "ever_out": 80,
+          "fill_height_mm": 30
+        }
+      ]
+    }
+  ]
+}

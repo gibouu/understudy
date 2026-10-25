@@ -1,0 +1,148 @@
+{
+  "removed": [
+    {
+      "field": "fit",
+      "path": "objects[rotor].pocket_clearance_mm"
+    },
+    {
+      "field": "aperture",
+      "path": "objects[vial].size_mm"
+    },
+    {
+      "field": "success",
+      "path": "steps[s2].success"
+    },
+    {
+      "field": "via",
+      "path": "steps[s2].via_points"
+    },
+    {
+      "field": "precondition",
+      "path": "steps[s2].preconditions"
+    }
+  ],
+  "spec": {
+    "version": 1,
+    "title": "vial into a centrifuge rotor",
+    "summary": "Put a small sample vial into a free slot of a benchtop centrifuge rotor; the rotor must be stopped.",
+    "objects": [
+      {
+        "id": "vial",
+        "name": "sample vial",
+        "shape": "cylinder",
+        "size_mm": [
+          7,
+          7,
+          24
+        ],
+        "symmetry": "axial",
+        "role": "manipulated",
+        "pose": {
+          "xyz_mm": [
+            140,
+            120,
+            20
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.3,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "rotor",
+        "name": "centrifuge rotor",
+        "shape": "cylinder",
+        "size_mm": [
+          200,
+          200,
+          60
+        ],
+        "symmetry": "axial",
+        "role": "fixture",
+        "pose": {
+          "xyz_mm": [
+            200,
+            -70,
+            30
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.9,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "steps": [
+      {
+        "id": "s1",
+        "verb": "grasp",
+        "object": "vial",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "contact_both_pads",
+            "object": "vial"
+          }
+        ],
+        "tolerances": {
+          "x_mm": 5,
+          "y_mm": 5
+        },
+        "t_start_s": 1,
+        "t_end_s": 2,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s2",
+        "verb": "insert",
+        "object": "vial",
+        "target": {
+          "fixture": "pocket",
+          "frame": "rotor"
+        },
+        "via_points": [],
+        "preconditions": [],
+        "success": [],
+        "tolerances": {
+          "x_mm": 0.8,
+          "y_mm": 0.8
+        },
+        "t_start_s": 2,
+        "t_end_s": 6,
+        "source": "gt#bench",
+        "sources": {}
+      },
+      {
+        "id": "s3",
+        "verb": "retract",
+        "object": "vial",
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "no_collision"
+          }
+        ],
+        "tolerances": {},
+        "t_start_s": 6,
+        "t_end_s": 7,
+        "source": "gt#bench",
+        "sources": {}
+      }
+    ],
+    "anchor": {
+      "t_s": 2,
+      "confidence": 0.8
+    },
+    "warnings": [],
+    "open_questions": [
+      "objects[vial].size_mm: the sample vial's size is a guess (no scale in frame); how wide is it where the hand grips it?"
+    ],
+    "sources": {}
+  }
+}

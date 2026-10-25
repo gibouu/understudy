@@ -1,0 +1,56 @@
+{
+  "measurement": "settle-time",
+  "generated_at": "2026-10-25T08:50:57.334Z",
+  "engine": "MuJoCo WebAssembly (@mujoco/mujoco 3.17) in Node",
+  "g_m_s2": 9.81,
+  "timestep_s": 0.002,
+  "parameters": {
+    "tube_mm": [
+      17,
+      100
+    ],
+    "drop_height_mm": 20,
+    "horizon_s": 10,
+    "rest_threshold_mm_s": 1,
+    "rest_requires_contact": "lowest point < 0.5 mm above the surface",
+    "contacts": "MuJoCo default solref 0.02 1"
+  },
+  "results": [
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "free_fall_s": 0.06385508568141009,
+      "first_contact_s": 0.064,
+      "settle_s": 0.224,
+      "after_contact_s": 0.16,
+      "final_tilt_deg": 8.537736462515939e-7
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "free_fall_s": 0.10372319525155982,
+      "first_contact_s": 0.10400000000000001,
+      "settle_s": 0.26,
+      "after_contact_s": 0.156,
+      "final_tilt_deg": 8.537736462515939e-7
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "free_fall_s": 0.15701015392769338,
+      "first_contact_s": 0.158,
+      "settle_s": 0.308,
+      "after_contact_s": 0.15,
+      "final_tilt_deg": 0
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "free_fall_s": null,
+      "first_contact_s": null,
+      "settle_s": null,
+      "after_contact_s": null,
+      "final_tilt_deg": 0
+    }
+  ]
+}

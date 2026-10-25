@@ -1,0 +1,89 @@
+{
+  "name": "fluid-rest",
+  "title": "a. Rest: 2304 particles (d = 5 mm) dam-break in a 12 x 6 cm box at 1 g, after 3 s",
+  "measured_at": "2026-10-25T18:02:45.803Z",
+  "machine": "Apple M4",
+  "node": "v24.21.0",
+  "head": [
+    "quantity",
+    "measured",
+    "tolerance"
+  ],
+  "rows": [
+    [
+      "particles inside the box",
+      "2304 / 2304",
+      "2304 / 2304"
+    ],
+    [
+      "mean compression max(0, rho/rho0 - 1)",
+      "1.1%",
+      "< 3%"
+    ],
+    [
+      "mean abs density error, interior (567 particles)",
+      "1.5%",
+      "< 3%"
+    ],
+    [
+      "max compression (bottom layer)",
+      "4.6%",
+      "reported"
+    ],
+    [
+      "volume from the surface height vs n d^3 (bins of d / 2d)",
+      "-5.6% / -5.2%",
+      "reported (see note)"
+    ],
+    [
+      "kinetic energy (J)",
+      "1.04e-5",
+      "< 1e-4"
+    ],
+    [
+      "ms per 1/60 s frame (4 substeps x 4 iterations)",
+      "18.2",
+      "reported"
+    ]
+  ],
+  "notes": [
+    "Volume from the height is not asserted: about 2 points of it are the 4 x 4 budget's compression (it falls to -3.4% at 16 iterations, where the kernel compression is 0.14%),",
+    "the rest is where a disordered particle surface sits against the lattice convention 'top centre + d/2', which this 5 mm resolution cannot settle. Count about 0.95 d^3 of liquid per particle."
+  ],
+  "params": {
+    "spacing": 0.005,
+    "substeps": 4,
+    "iterations": 4,
+    "cohesion": 0.05,
+    "xsph": 0.01,
+    "scorrK": 0.005,
+    "box_m": [
+      0.12,
+      0.06,
+      0.15
+    ],
+    "block_m": [
+      0.06,
+      0.06,
+      0.08
+    ],
+    "seconds": 3
+  },
+  "results": {
+    "n": 2304,
+    "inside": 2304,
+    "density": {
+      "meanCompression": 0.011239639808501005,
+      "maxCompression": 0.04625589330961333,
+      "meanAbsInterior": 0.015403018428184407,
+      "interiorCount": 567,
+      "meanSigned": 0.009197565975473044
+    },
+    "volume_error_bins_d_2d": [
+      -0.05558747619052029,
+      -0.0522544205421307
+    ],
+    "kinetic_energy_J": 0.000010373272799621807,
+    "ms_per_frame": 18.186629861111115
+  }
+}

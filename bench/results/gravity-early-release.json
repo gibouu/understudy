@@ -1,0 +1,112 @@
+{
+  "measurement": "early-release",
+  "generated_at": "2026-10-25T08:50:38.525Z",
+  "engine": "MuJoCo WebAssembly (@mujoco/mujoco 3.17) in Node",
+  "g_m_s2": 9.81,
+  "timestep_s": 0.002,
+  "parameters": {
+    "pocket_inner_mm": [
+      20,
+      20
+    ],
+    "pocket_depth_mm": 32,
+    "pocket_floor_z_mm": 8,
+    "rack_top_z_mm": 40,
+    "tube_mm": [
+      17,
+      100
+    ],
+    "duration_s": 3,
+    "cases": [
+      {
+        "id": "early",
+        "label": "let go at the slot mouth (bottom 30 mm above the pocket floor, 2 mm inside the entrance)",
+        "above_mm": 30
+      },
+      {
+        "id": "seated",
+        "label": "held until seated, then let go",
+        "above_mm": 0
+      }
+    ],
+    "seated": {
+      "floor_mm": 2,
+      "tilt_deg": 5
+    },
+    "seated_from": "time after which the seated test holds to the end"
+  },
+  "results": [
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "release": "early",
+      "lowest_above_floor_mm": -0.12066487225539761,
+      "tilt_deg": 0.08149534799719492,
+      "seated": true,
+      "seated_after_s": 0.074
+    },
+    {
+      "gravity": "Earth 1 g",
+      "g": 1,
+      "release": "seated",
+      "lowest_above_floor_mm": -0.11944150874340295,
+      "tilt_deg": 0.07427994012245778,
+      "seated": true,
+      "seated_after_s": 0
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "release": "early",
+      "lowest_above_floor_mm": -0.0471645009977803,
+      "tilt_deg": 0.036359875779020216,
+      "seated": true,
+      "seated_after_s": 0.12
+    },
+    {
+      "gravity": "Mars 0.379 g",
+      "g": 0.379,
+      "release": "seated",
+      "lowest_above_floor_mm": -0.04781129882885059,
+      "tilt_deg": 0.040388436466449004,
+      "seated": true,
+      "seated_after_s": 0
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "release": "early",
+      "lowest_above_floor_mm": -0.020210249495587057,
+      "tilt_deg": 0.013232660578133125,
+      "seated": true,
+      "seated_after_s": 0.184
+    },
+    {
+      "gravity": "Moon 0.1654 g",
+      "g": 0.1654,
+      "release": "seated",
+      "lowest_above_floor_mm": -0.020125680004175542,
+      "tilt_deg": 0.012946835126696499,
+      "seated": true,
+      "seated_after_s": 0
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "release": "early",
+      "lowest_above_floor_mm": 29.999999999999993,
+      "tilt_deg": 0,
+      "seated": false,
+      "seated_after_s": null
+    },
+    {
+      "gravity": "orbit 0 g",
+      "g": 0,
+      "release": "seated",
+      "lowest_above_floor_mm": 0,
+      "tilt_deg": 0,
+      "seated": true,
+      "seated_after_s": 0
+    }
+  ]
+}
