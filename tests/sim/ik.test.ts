@@ -80,6 +80,18 @@ describe("IK on the SO-101 tip site", () => {
     expect(c.axis).toEqual([0, 0, -1]);
     expect(c.approach_deg).toBeCloseTo(90, 6);
   });
+  it("accepts a small projection and calls a large one an embodiment limit", () => {
+    const small = solveIk(mujoco, model, data, [0.3, 0.05, 0.1], "front");
+    expect(small.approach_deg).toBeGreaterThan(5);
+    expect(small.approach_deg).toBeLessThan(20);
+    expect(small.ok).toBe(true);
+    // the tip gets there, but pointing straight down instead of from the side
+    const large = solveIk(mujoco, model, data, [0.25, 0, 0.05], "side");
+    expect(large.approach_deg).toBeGreaterThan(20);
+    expect(large.pos_err_mm).toBeLessThan(2);
+    expect(large.ok).toBe(false);
+    expect(large.failure_class).toBe("embodiment_limit");
+  });
   it("flags straight down from high above the table, which the wrist cannot bend to", () => {
     expect(solveIk(mujoco, model, data, [0.2, 0, 0.1], "top").failure_class).toBe("embodiment_limit");
   });

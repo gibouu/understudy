@@ -22,6 +22,8 @@ const AXIS_TOL_RAD = (1 * Math.PI) / 180;
 /** Reachable when the best solution is within these. */
 const REACH_POS_M = 0.002;
 const REACH_AXIS_RAD = (2 * Math.PI) / 180;
+/** An approach the pitch plane bends further than this is not the approach asked for. */
+const MAX_APPROACH_DEG = 20;
 /** Metres of tip error worth one unit of axis error: 1 rad of axis counts like 5 cm. */
 const AXIS_WEIGHT = 0.05;
 const DAMPING = 0.01;
@@ -48,7 +50,7 @@ export type IkResult = {
   pos_err_mm: number;
   /** the axis IK aimed for: the asked approach projected onto the arm's pitch plane */
   axis: Vec3;
-  /** degrees between the asked approach and `axis` (0 for `top`) */
+  /** degrees between the asked approach and `axis` (0 for `top`); over 20 is an embodiment limit */
   approach_deg: number;
   /** degrees between `axis` and the reached tool axis */
   axis_err_deg: number;
@@ -95,6 +97,7 @@ export function solveIk(
     if (best.ok) break;
   }
   const out = best!;
+  if (out.approach_deg > MAX_APPROACH_DEG) out.ok = false;
   if (!out.ok) out.failure_class = "embodiment_limit";
   setArm(data, arm.qposadr, out.q);
   mujoco.mj_kinematics(model, data);
