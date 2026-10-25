@@ -70,7 +70,7 @@ export type Frame = {
 export type Waypoint = { t: number; q: number[] };
 
 export type ToWorker =
-  | { type: "load"; id: number; mujocoBase: string; assetBase: string; gravityG?: number; demoTube?: boolean }
+  | { type: "load"; id: number; mujocoBase: string; assetBase: string; gravityG?: number; worldbody?: string }
   | { type: "setGravity"; g: number }
   | { type: "nudge"; body: string; velocity: [number, number, number] }
   | { type: "setCtrl"; ctrl: number[] }

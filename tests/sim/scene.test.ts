@@ -3,7 +3,15 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { TaskSpec, type Scenario } from "@/lib/spec/schema";
 import { apply, buildScene, layoutMissingPoses, matToQuat, mjcfName, perturb, SceneError, standaloneXml, WALL_M, worldPoses } from "@/lib/sim/scene";
-import { demoTubeXml, stageXml, SO101_XML } from "@/lib/sim/so101";
+import { stageXml, SO101_XML } from "@/lib/sim/so101";
+
+/** A free test tube above the table: the orbit demo for the gravity check. */
+function demoTubeXml(): string {
+  return `<body name="demo_tube" pos="0.25 -0.1 0.12">
+      <freejoint name="demo_tube_free"/>
+      <geom name="demo_tube_geom" type="cylinder" size="0.0085 0.05" rgba="0.93 0.52 0.2 1" friction="1 0.005 0.0001"/>
+    </body>`;
+}
 
 const spec = TaskSpec.parse({
   version: 1,

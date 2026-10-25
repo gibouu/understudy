@@ -2,11 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { SimClient } from "@/lib/sim/client";
+import { DEMO_SPEC } from "@/lib/sim/demo-spec";
 import type { Approach, IkResult } from "@/lib/sim/ik";
 import type { Frame, SimMeta } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
+import { buildScene } from "@/lib/sim/scene";
 import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
 import { APPROACHES, GRAVITIES, type GravityName } from "@/lib/spec/schema";
+
+const SCENE = buildScene(DEMO_SPEC);
+const TUBE = SCENE.names.tube;
+const POCKET_SITE = `${SCENE.names.rack}_pocket`;
 
 type Jac = { nv: number; norm: number; rows: string[] } | null;
 
@@ -31,6 +37,7 @@ export function StageView() {
   const [ctrl, setCtrl] = useState<number[]>(SO101_HOME);
   const [tip, setTip] = useState<[number, number, number] | null>(null);
   const [tube, setTube] = useState<[number, number, number] | null>(null);
+  const [pocket, setPocket] = useState<[number, number, number] | null>(null);
   const [simT, setSimT] = useState(0);
   const [dropped, setDropped] = useState(0);
   const [jac, setJac] = useState<Jac>(null);
@@ -63,20 +70,17 @@ export function StageView() {
           lastUi.current = now;
           setSimT(frame.t);
           setDropped(frame.dropped_s);
-          const tubeGeom = client.meta?.geoms.find((g) => g.name === "demo_tube_geom");
-          if (tubeGeom) {
-            const i = 3 * tubeGeom.id;
-            setTube([frame.geomXpos[i], frame.geomXpos[i + 1], frame.geomXpos[i + 2]]);
-          }
-          const site = client.meta?.sites.find((s) => s.name === SO101_TIP_SITE);
-          if (site) {
-            const i = 3 * site.id;
-            setTip([frame.siteXpos[i], frame.siteXpos[i + 1], frame.siteXpos[i + 2]]);
-          }
+          const xyz = (list: { id: number; name: string }[] | undefined, xpos: Float64Array, name: string) => {
+            const i = 3 * (list?.find((x) => x.name === name)?.id ?? -1);
+            return i < 0 ? null : ([xpos[i], xpos[i + 1], xpos[i + 2]] as [number, number, number]);
+          };
+          setTube(xyz(client.meta?.geoms, frame.geomXpos, `${TUBE}_geom`));
+          setTip(xyz(client.meta?.sites, frame.siteXpos, SO101_TIP_SITE));
+          setPocket(xyz(client.meta?.sites, frame.siteXpos, POCKET_SITE));
         }
       });
     clientRef.current = client;
-    client.load({ demoTube: true }).catch((err: Error) => {
+    client.load({ worldbody: SCENE.worldbody }).catch((err: Error) => {
       if (alive) setError(err.message);
     });
     return () => {
@@ -121,21 +125,26 @@ export function StageView() {
     setJac({ nv: r.nv, norm: Math.sqrt(norm), rows });
   };
 
-  const moveTo = async (to = target, from = approach) => {
+  /** Always moves: on a miss the arm goes to the solver's closest pose and the readout says so. `fallback` also tries the other approaches. */
+  const moveTo = async (to = target, from = approach, fallback = false) => {
     setTarget(to);
-    setApproach(from);
     const m = to.map((v) => v / 1000) as [number, number, number];
     rendererRef.current?.setTarget(m);
     let r: IkResult | undefined;
     try {
-      r = await clientRef.current?.ik(m, from);
+      for (const a of fallback ? [from, ...APPROACHES.filter((x) => x !== from)] : [from]) {
+        const tried = await clientRef.current?.ik(m, a);
+        if (!tried) return;
+        if (!r || tried.ok || tried.pos_err_mm < r.pos_err_mm) [r, from] = [tried, a];
+        if (tried.ok) break;
+      }
     } catch (err) {
       setError((err as Error).message);
       return;
     }
     if (!r) return;
+    setApproach(from);
     setIk({ ...r, asked: `(${to.join(", ")}) mm ${from}` });
-    if (!r.ok) return;
     const next = [...r.q, ctrl[5]];
     clientRef.current?.play([{ t: 0, q: ctrl }, { t: 1.5, q: next }]);
     setCtrl(next);
@@ -154,7 +163,7 @@ export function StageView() {
             pressAt.current = null;
             if (!meta || !start || e.button !== 0 || Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 5) return;
             const p = rendererRef.current?.floorPoint(e.clientX, e.clientY);
-            if (p) moveTo([Math.round(p[0] * 1000), Math.round(p[1] * 1000), target[2]]);
+            if (p) moveTo([Math.round(p[0] * 1000), Math.round(p[1] * 1000), target[2]], approach, true);
           }}
         />
         <div className="pointer-events-none absolute left-3 top-3 rounded bg-white/80 px-2 py-1 text-xs text-neutral-700">
@@ -184,7 +193,7 @@ export function StageView() {
               {name} {GRAVITIES[name]} g
             </button>
           ))}
-          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" onClick={() => clientRef.current?.nudge("demo_tube", [0.04, 0.03, 0.12])} disabled={!meta}>
+          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" onClick={() => clientRef.current?.nudge(TUBE, [0.04, 0.03, 0.12])} disabled={!meta}>
             Nudge the tube
           </button>
         </div>
@@ -253,10 +262,18 @@ export function StageView() {
         >
           Go to the tube ({approach})
         </button>
-        <p className="text-xs text-neutral-500">Or click the floor: the tip goes above that point at height z.</p>
+        <button
+          className="self-start rounded border border-orange-600 px-3 py-1 text-xs text-orange-700"
+          disabled={!meta || !pocket}
+          // where the tip is when a tube gripped at mid-height has its bottom at the opening
+          onClick={() => pocket && moveTo([Math.round(pocket[0] * 1000), Math.round(pocket[1] * 1000), Math.round(pocket[2] * 1000) + 50])}
+        >
+          Go 50 mm above the pocket ({approach})
+        </button>
+        <p className="text-xs text-neutral-500">Or click the floor: the tip goes above that point at height z, switching approach if the chosen one cannot reach.</p>
         {ik && (
           <div className={`rounded border p-2 font-mono text-[11px] leading-5 ${ik.ok ? "bg-neutral-50" : "border-red-300 bg-red-50 text-red-800"}`}>
-            {ik.asked}: {ik.ok ? "reached" : ik.failure_class} · tip off by {ik.pos_err_mm.toFixed(1)} mm · axis off by {ik.axis_err_deg.toFixed(1)}°
+            {ik.asked}: {ik.ok ? "reached" : `${ik.failure_class}, closest pose shown`} · tip off by {ik.pos_err_mm.toFixed(1)} mm · axis off by {ik.axis_err_deg.toFixed(1)}°
             {ik.approach_deg > 0.05 && ` · approach projected ${ik.approach_deg.toFixed(1)}°`}
           </div>
         )}
@@ -292,8 +309,9 @@ export function StageView() {
 
         <p className="text-xs text-neutral-500">
           SO-101 from MuJoCo Menagerie (Apache-2.0), MuJoCo 3.17 WebAssembly in a Web Worker,
-          three.js on the main thread. Drag to orbit, scroll to zoom. The orange tube is a free
-          body: nudge it on Earth and it falls back; nudge it in orbit and it keeps drifting.
+          three.js on the main thread. Drag to orbit, scroll to zoom. The scene is built from a
+          task spec: the tube is a free body, the rack a fixture with a pocket. Nudge the tube on
+          Earth and it falls back; nudge it in orbit and it keeps drifting.
         </p>
       </div>
     </div>
