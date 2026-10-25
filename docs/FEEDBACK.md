@@ -31,12 +31,60 @@ Decisions frozen in `lib/providers/tokenfactory.ts`: Label input is a 480p 4 fps
 
 ## Per tool
 
+Measured on 25 October 2026 during the experiments in `docs/MEASUREMENTS.md` (about 9,000 calls, US$12.44 at list prices, all logged in `bench/results/ledger.jsonl`).
+
 For each: used for, what worked, what needs work, minutes to hello-world, would we build on it again.
 
 ### Token Factory onboarding and credits
 ### Nemotron 3.5 Super VL
+
+- **Used for:** labelling a clip into a task spec, from a 480p video proxy sent as a `video_url` data URI.
+- **Worked:** valid JSON in every one of about 90 calls; 2.4 to 3.9 s for a 36 s clip; about US$0.0024 per label.
+- **Needs work:**
+  - **Fine manipulation:** on the NASA ISS clip (an astronaut placing seed film into plant pillows) it never named the film as the object moved: 0 of 35 labels across seven input conditions. In 26 it called the pillows "battery packs" or "hard drives". A one-line context hint cut that to 1 of 5. Only a hint naming the task got the film named.
+  - **Video tokens are fixed per clip:** 6,379 tokens for that clip at 2, 4 or 8 fps and at 480 or 960 px wide, so the service resamples the video. That is good for cost, but undocumented. Image inputs do scale with resolution.
+  - **Thinking:** turning it on (4k budget) made labels worse and hit the budget with empty content in 3 of 10 runs.
+- **Prompt caching:** reported 2,176 cached tokens on repeated video.
+- **Build again:** yes, with a short task hint from the user.
 ### Nemotron 3 Nano
+
+- **Used for:**
+  - compiling a spec into a program with `ask` slots, about 5 calls per session
+  - the health probe
+- **Worked:** cheap (US$0.0017 per session for compiles) and valid JSON.
+- **Needs work:**
+  - **Thinking off is erratic for compiling:** some programs came back without their `ask` slots, and asks per compile ranged from 0 to 10. A rule with an example ("a missing value is an ask, not a warning") fixed most of it.
+  - **It never asked for a via-point height:** 0 of 150 compiles.
+  - **Default thinking eats small budgets:** a 5-token health call always returns empty, and a 3,000-token compile budget came back empty 3 of 3 times.
+  - **Pretty-printing is slow:** indented JSON output makes compiles take 0.3 to 9.3 s.
 ### Nemotron 3 Super
+
+- **Used for:**
+  - the interview
+  - the perturbation scenarios
+  - the patches that repair a failing program
+- **Worked:**
+  - **Patching from the simulator's failure notes alone** (measured facts, never the answer), across four tasks at four gravities:
+    - with thinking off, it fixed 69% of failing rehearsals within five patches, at US$0.0015 per fix
+    - with thinking on (4k), 94%
+    - starting with thinking off and escalating to thinking on when stuck, also 94%, at US$0.0024 per fix
+  - **Rules from earlier repairs:** two rules it distilled from 16 Earth and Mars repairs took first-try success on the Moon and in orbit from 5% to 67%.
+  - **Infeasible tasks:** with thinking off it correctly declared pouring beads in orbit infeasible in 12 of 12 runs, and never wrongly on a surface.
+- **Needs work:**
+  - **Stuck patches:** with thinking off, about a quarter of its patches changed nothing. It never used a measured offset ("4.1 mm from the pocket centre") to correct an insertion.
+  - **Saboteur:** it sometimes returned 5 scenarios instead of 12, and twice left out gravity despite the rule.
+  - **Interview:** in a single call per turn it dropped 39% of answers that carried the missing value. A separate call that turns each answer into spec changes fixed that, and recovery rose from 21% to 43%.
+- **Prompt caching:** reported 0 cached tokens on interview turns that share a long prefix.
+- **Build again:** yes.
 ### Nemotron 3 Ultra
+
+- **Used for:** the reshoot list and failure classes, once per session, in the background.
+- **Worked:**
+  - **Patching:** with 16k of reasoning it fixed 94% of failing rehearsals, 80% on the first patch. That is the best first-patch rate of any configuration.
+  - **Validity:** every output was valid JSON.
+- **Needs work:**
+  - **Cost:** it is 73% of a session's cost, US$0.027 of US$0.0375. Reasoning ran 4.6k to 10.1k tokens per call and drives all of the session's cost variance.
+  - **Reasoning budget:** at a 4k budget, 138 of 239 patch calls ran out with no content. It needs 16k or thinking off.
+- **Build again:** yes for the deep pass; thinking off is enough for patching.
 ### Tavily
 ### Nebius Serverless Jobs
