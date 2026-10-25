@@ -125,19 +125,25 @@ export function StageView() {
     setJac({ nv: r.nv, norm: Math.sqrt(norm), rows });
   };
 
-  const moveTo = async (to = target, from = approach) => {
+  /** `fallback`: if `from` misses, try the other approaches and keep the first that reaches */
+  const moveTo = async (to = target, from = approach, fallback = false) => {
     setTarget(to);
-    setApproach(from);
     const m = to.map((v) => v / 1000) as [number, number, number];
     rendererRef.current?.setTarget(m);
     let r: IkResult | undefined;
     try {
-      r = await clientRef.current?.ik(m, from);
+      for (const a of fallback ? [from, ...APPROACHES.filter((x) => x !== from)] : [from]) {
+        const tried = await clientRef.current?.ik(m, a);
+        if (!tried) return;
+        if (!r || tried.ok) [r, from] = [tried, a];
+        if (tried.ok) break;
+      }
     } catch (err) {
       setError((err as Error).message);
       return;
     }
     if (!r) return;
+    setApproach(from);
     setIk({ ...r, asked: `(${to.join(", ")}) mm ${from}` });
     if (!r.ok) return;
     const next = [...r.q, ctrl[5]];
@@ -158,7 +164,7 @@ export function StageView() {
             pressAt.current = null;
             if (!meta || !start || e.button !== 0 || Math.hypot(e.clientX - start[0], e.clientY - start[1]) > 5) return;
             const p = rendererRef.current?.floorPoint(e.clientX, e.clientY);
-            if (p) moveTo([Math.round(p[0] * 1000), Math.round(p[1] * 1000), target[2]]);
+            if (p) moveTo([Math.round(p[0] * 1000), Math.round(p[1] * 1000), target[2]], approach, true);
           }}
         />
         <div className="pointer-events-none absolute left-3 top-3 rounded bg-white/80 px-2 py-1 text-xs text-neutral-700">
@@ -265,7 +271,7 @@ export function StageView() {
         >
           Go 50 mm above the pocket ({approach})
         </button>
-        <p className="text-xs text-neutral-500">Or click the floor: the tip goes above that point at height z.</p>
+        <p className="text-xs text-neutral-500">Or click the floor: the tip goes above that point at height z, switching approach if the chosen one cannot reach.</p>
         {ik && (
           <div className={`rounded border p-2 font-mono text-[11px] leading-5 ${ik.ok ? "bg-neutral-50" : "border-red-300 bg-red-50 text-red-800"}`}>
             {ik.asked}: {ik.ok ? "reached" : ik.failure_class} · tip off by {ik.pos_err_mm.toFixed(1)} mm · axis off by {ik.axis_err_deg.toFixed(1)}°
