@@ -10,7 +10,9 @@
  * serialized, a second load while one is running is refused.
  */
 import type { MainModule, MjData, MjModel, MjVFS } from "@mujoco/mujoco";
+import { graspIndex, isAttached, type Grasp } from "./grasp";
 import { solveIk, type Approach } from "./ik";
+import { environment, run, type Environment, type Rollout, type Tick } from "./interpreter";
 import { decodeName, sampleWaypoints, toNumbers } from "./names";
 import {
   GEOM_MESH,
@@ -30,7 +32,7 @@ type WorkerCtx = {
 };
 const ctx = self as unknown as WorkerCtx;
 
-type Runtime = { mujoco: MainModule; model: MjModel; data: MjData; meta: SimMeta };
+type Runtime = { mujoco: MainModule; model: MjModel; data: MjData; meta: SimMeta; env: Environment; grasps: Grasp[] };
 
 /** Simulated seconds of backlog we are willing to catch up per tick; beyond it time is dropped and reported. */
 const MAX_BACKLOG_S = 0.25;
@@ -44,6 +46,8 @@ let wantedGravity: number | null = null;
 /** mjtJoint.mjJNT_FREE */
 const FREE_JOINT = 0;
 let playing: { waypoints: Waypoint[]; loop: boolean; start: number } | null = null;
+/** a program running in real time: the tick advances it one physics step at a time */
+let running: { id: number; it: Generator<Tick, Rollout> } | null = null;
 let simTime = 0;
 let backlog = 0;
 let dropped = 0;
@@ -74,20 +78,23 @@ ctx.onmessage = async (e) => {
       case "load":
         if (loading) throw new Error("a load is already in progress");
         wantedGravity = null; // the load's own gravity is the latest instruction
-        loading = load(msg.id, msg.mujocoBase, msg.assetBase, msg.gravityG ?? 1, msg.worldbody ?? "").finally(() => {
+        loading = load(msg.id, msg.mujocoBase, msg.assetBase, environment(msg.spec, msg.scenario), msg.gravityG).finally(() => {
           loading = null;
         });
         await loading;
         break;
       case "setCtrl":
         playing = null;
+        cancelRun("the arm was driven by hand");
         setCtrl(msg.ctrl);
         break;
       case "play":
+        cancelRun("the arm was driven by hand");
         playing = { waypoints: msg.waypoints, loop: msg.loop ?? false, start: simTime };
         break;
       case "stop":
         playing = null;
+        cancelRun("stopped");
         break;
       case "reset":
         reset();
@@ -102,8 +109,16 @@ ctx.onmessage = async (e) => {
         jacobian(msg.id, msg.site);
         break;
       case "ik":
-        ik(msg.id, msg.target, msg.approach);
+        ik(msg.id, msg.target, msg.approach, msg.site);
         break;
+      case "run": {
+        if (!runtime) throw new Error("model not loaded");
+        cancelRun("a newer program replaced it");
+        playing = null;
+        const { mujoco, model, data, env } = runtime;
+        running = { id: msg.id, it: run({ mujoco, model, data }, env, msg.program, msg.mode, { from: msg.from }) };
+        break;
+      }
     }
   } catch (err) {
     post({ type: "error", id, message: errorText(err, runtime?.mujoco) });
@@ -126,7 +141,8 @@ async function engine(mujocoBase: string): Promise<MainModule> {
   return enginePromise;
 }
 
-async function load(id: number, mujocoBase: string, assetBase: string, gravityG: number, worldbody: string) {
+/** `gravityG` overrides the scenario's gravity (the /stage switch). */
+async function load(id: number, mujocoBase: string, assetBase: string, env: Environment, gravityG = env.gravity_g) {
   const mujoco = await engine(mujocoBase);
   status("engine ready; fetching the SO-101", 0.05);
   const vfs = new mujoco.MjVFS();
@@ -139,13 +155,13 @@ async function load(id: number, mujocoBase: string, assetBase: string, gravityG:
     await loadMeshes(vfs, assetBase, mujoco);
 
     status("compiling the model", 0.7);
-    model = mujoco.MjModel.from_xml_string(stageXml(worldbody, { gravity_g: gravityG }), vfs);
+    model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: gravityG, graspable: env.graspable }), vfs);
     data = new mujoco.MjData(model);
     mujoco.mj_forward(model, data);
     const meta = { ...extractMeta(model), gravity_g: gravityG };
 
     const previous = runtime;
-    runtime = { mujoco, model, data, meta: { ...meta, meshes: [] } };
+    runtime = { mujoco, model, data, meta: { ...meta, meshes: [] }, env, grasps: env.graspable.map((b) => graspIndex(mujoco, model!, b)) };
     if (wantedGravity !== null) {
       // the user changed gravity while this load was in flight
       const g = wantedGravity;
@@ -160,6 +176,7 @@ async function load(id: number, mujocoBase: string, assetBase: string, gravityG:
       previous.model.delete();
     }
     playing = null;
+    cancelRun("the model was reloaded");
     simTime = 0;
     backlog = 0;
     dropped = 0;
@@ -365,6 +382,7 @@ function nudge(body: string, velocity: [number, number, number]) {
 function reset() {
   if (!runtime) return;
   playing = null;
+  cancelRun("the physics was reset"); // mj_resetData also switches every weld back off
   runtime.mujoco.mj_resetData(runtime.model, runtime.data);
   runtime.mujoco.mj_forward(runtime.model, runtime.data);
   simTime = 0;
@@ -389,7 +407,20 @@ function tick() {
   const dt = meta.timestep;
   let steps = 0;
   while (backlog >= dt) {
-    if (playing) {
+    if (running) {
+      const { id, it } = running;
+      try {
+        const r = it.next();
+        if (r.done) {
+          post({ type: "run", id, result: r.value });
+          running = null;
+        }
+      } catch (err) {
+        // the interpreter turns spec gaps into failed rollouts; anything else still reaches the caller
+        post({ type: "error", id, message: errorText(err, mujoco) });
+        running = null;
+      }
+    } else if (playing) {
       const wp = playing.waypoints;
       const span = wp.length ? wp[wp.length - 1].t : 0;
       let t = simTime - playing.start;
@@ -413,6 +444,7 @@ function tick() {
     geomXpos: Float64Array.from(toNumbers(data.geom_xpos)),
     geomXmat: Float64Array.from(toNumbers(data.geom_xmat)),
     siteXpos: Float64Array.from(toNumbers(data.site_xpos)),
+    attached: runtime.grasps.find((g) => isAttached(data, g))?.body ?? null,
   };
   post({ type: "frame", frame }, [
     frame.qpos.buffer,
@@ -448,7 +480,7 @@ function jacobian(id: number, site: string) {
 }
 
 /** IK on a scratch copy of the current state, seeded with the arm where it is now. */
-function ik(id: number, target: [number, number, number], approach: Approach) {
+function ik(id: number, target: [number, number, number], approach: Approach, site?: string) {
   if (!runtime) throw new Error("model not loaded");
   const { mujoco, model, data } = runtime;
   const scratch = new mujoco.MjData(model);
@@ -457,8 +489,14 @@ function ik(id: number, target: [number, number, number], approach: Approach) {
     const view = scratch.qpos as unknown;
     if (ArrayBuffer.isView(view)) (view as unknown as Float64Array).set(qpos);
     else qpos.forEach((v, i) => (view as { set: (i: number, v: number) => boolean }).set(i, v));
-    post({ type: "ik", id, result: solveIk(mujoco, model, scratch, target, approach) });
+    post({ type: "ik", id, result: solveIk(mujoco, model, scratch, target, approach, undefined, site) });
   } finally {
     scratch.delete();
   }
+}
+
+function cancelRun(message: string) {
+  if (!running) return;
+  post({ type: "error", id: running.id, message: `program cancelled: ${message}` });
+  running = null;
 }

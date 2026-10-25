@@ -66,7 +66,7 @@ export function approachVector(approach: Approach, target: Vec3): Vec3 {
 }
 
 /**
- * Solve for the tip site at `target` (world metres) coming in along `approach`.
+ * Solve for `site` (the tip unless given) at `target` (world metres) coming in along `approach`.
  * `data` is scratch: its arm qpos is overwritten; other joints (gripper, free
  * bodies) are read as they are. `seed` (IK_JOINTS order) is tried first;
  * without one, the arm's pose in `data`.
@@ -78,8 +78,9 @@ export function solveIk(
   target: Vec3,
   approach: Approach,
   seed?: number[],
+  site: string = SO101_TIP_SITE,
 ): IkResult {
-  const arm = armIndex(model);
+  const arm = armIndex(model, site);
   const qpos = toNumbers(data.qpos);
   seed ??= arm.qposadr.map((adr) => qpos[adr]);
   setArm(data, arm.qposadr, seed);
@@ -123,10 +124,10 @@ export function reachability(
 
 type ArmIndex = { qposadr: number[]; dofadr: number[]; range: [number, number][]; panJoint: number; site: number };
 
-function armIndex(model: MjModel): ArmIndex {
+function armIndex(model: MjModel, siteName: string): ArmIndex {
   const names = toNumbers(model.names);
   const jntName = toNumbers(model.name_jntadr);
-  const siteName = toNumbers(model.name_siteadr);
+  const siteAdr = toNumbers(model.name_siteadr);
   const qposadr = toNumbers(model.jnt_qposadr);
   const dofadr = toNumbers(model.jnt_dofadr);
   const range = toNumbers(model.jnt_range);
@@ -136,8 +137,8 @@ function armIndex(model: MjModel): ArmIndex {
   };
   const ids = IK_JOINTS.map(joint);
   let site = -1;
-  for (let s = 0; s < (model.nsite as number); s++) if (decodeName(names, siteName[s]) === SO101_TIP_SITE) site = s;
-  if (site < 0) throw new Error(`no site named ${SO101_TIP_SITE}`);
+  for (let s = 0; s < (model.nsite as number); s++) if (decodeName(names, siteAdr[s]) === siteName) site = s;
+  if (site < 0) throw new Error(`no site named ${siteName}`);
   return {
     qposadr: ids.map((j) => qposadr[j]),
     dofadr: ids.map((j) => dofadr[j]),

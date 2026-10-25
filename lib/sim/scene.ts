@@ -64,6 +64,8 @@ export type SceneBuild = {
   frames: Record<string, WorldPose>;
   /** MJCF body name per object id */
   names: Record<string, string>;
+  /** MJCF body names of the free bodies, the ones the arm can grasp */
+  manipulated: string[];
   /** pocket openings by fixture id: inner size and usable depth, m */
   pockets: Record<string, { inner_m: [number, number]; depth_m: number }>;
   warnings: string[];
@@ -369,6 +371,7 @@ export function buildScene(spec: TaskSpec, tilts: Record<string, Tilt> = {}): Sc
   const names = dict<string>();
   const pockets = dict<{ inner_m: [number, number]; depth_m: number }>();
   const parts: string[] = [];
+  const manipulated: string[] = [];
 
   for (const o of s.objects) {
     const name = mjcfName(o.id);
@@ -380,7 +383,10 @@ export function buildScene(spec: TaskSpec, tilts: Record<string, Tilt> = {}): Sc
     const lines = [`<body name="${name}" pos="${v(xyz)}" quat="${v(quat)}">`];
     const rgba = COLORS[o.role];
     const pocket = o.role === "fixture" ? pocketFor(s, o) : null;
-    if (o.role === "manipulated") lines.push(`  <freejoint name="${name}_free"/>`);
+    if (o.role === "manipulated") {
+      lines.push(`  <freejoint name="${name}_free"/>`);
+      manipulated.push(name);
+    }
     if (pocket) {
       if (o.shape !== "box") warnings.push(`fixture "${o.id}" is a ${o.shape}; its pocket is built as a box`);
       const [X, Y] = footprintMm(o).map((x) => x * MM);
@@ -410,7 +416,7 @@ export function buildScene(spec: TaskSpec, tilts: Record<string, Tilt> = {}): Sc
     lines.push(`</body>`);
     parts.push(lines.join("\n"));
   }
-  return { worldbody: parts.join("\n"), frames, names, pockets, warnings, laidOut: laid.laidOut };
+  return { worldbody: parts.join("\n"), frames, names, manipulated, pockets, warnings, laidOut: laid.laidOut };
 }
 
 /** A self-contained model for tests: the objects on a floor, no arm, under a given gravity. */
