@@ -7,12 +7,17 @@ import type { Approach, IkResult } from "@/lib/sim/ik";
 import type { Frame, SimMeta } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { buildScene } from "@/lib/sim/scene";
-import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
+import { GRIPPER_OPEN, SO101_GRASP_SITE, SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
 import { APPROACHES, GRAVITIES, type GravityName } from "@/lib/spec/schema";
 
 const SCENE = buildScene(DEMO_SPEC);
 const TUBE = SCENE.names.tube;
 const POCKET_SITE = `${SCENE.names.rack}_pocket`;
+const TUBE_HALF_MM = DEMO_SPEC.objects.find((o) => o.id === "tube")!.size_mm[2] / 2;
+/** grip 17 mm below the tube's top, so the jaws stay above the rack once the tube is seated */
+const GRIP_BELOW_TOP_MM = 17;
+/** a via point this far above a pick or place, so the jaws come down onto the tube instead of sweeping into it */
+const CLEAR_MM = 35;
 
 type Jac = { nv: number; norm: number; rows: string[] } | null;
 
@@ -45,6 +50,8 @@ export function StageView() {
   const [target, setTarget] = useState<[number, number, number]>([250, 0, 50]);
   const [approach, setApproach] = useState<Approach>("top");
   const [ik, setIk] = useState<(IkResult & { asked: string }) | null>(null);
+  const [attached, setAttached] = useState<string | null>(null);
+  const [graspNote, setGraspNote] = useState<string | null>(null);
   const lastUi = useRef(0);
   /** a left-button, primary-pointer press: right/middle buttons pan and a second finger pinches */
   const pressAt = useRef<[number, number] | null>(null);
@@ -77,10 +84,11 @@ export function StageView() {
           setTube(xyz(client.meta?.geoms, frame.geomXpos, `${TUBE}_geom`));
           setTip(xyz(client.meta?.sites, frame.siteXpos, SO101_TIP_SITE));
           setPocket(xyz(client.meta?.sites, frame.siteXpos, POCKET_SITE));
+          setAttached(frame.attached);
         }
       });
     clientRef.current = client;
-    client.load({ worldbody: SCENE.worldbody }).catch((err: Error) => {
+    client.load({ worldbody: SCENE.worldbody, graspable: SCENE.manipulated }).catch((err: Error) => {
       if (alive) setError(err.message);
     });
     return () => {
@@ -125,15 +133,30 @@ export function StageView() {
     setJac({ nv: r.nv, norm: Math.sqrt(norm), rows });
   };
 
-  /** Always moves: on a miss the arm goes to the solver's closest pose and the readout says so. `fallback` also tries the other approaches. */
-  const moveTo = async (to = target, from = approach, fallback = false) => {
+  /**
+   * Always moves: on a miss the arm goes to the solver's closest pose and the readout says so. `fallback` also tries the
+   * other approaches. `site` is what lands on the target (the tip, or the point between the pads); `via` goes first,
+   * `gripper` replaces the current gripper angle.
+   */
+  const moveTo = async (
+    to = target,
+    from = approach,
+    fallback = false,
+    { site, via = [], gripper = ctrl[5] }: { site?: string; via?: [number, number, number][]; gripper?: number } = {},
+  ) => {
     setTarget(to);
     const m = to.map((v) => v / 1000) as [number, number, number];
     rendererRef.current?.setTarget(m);
+    const vias: number[][] = [];
     let r: IkResult | undefined;
     try {
+      for (const p of via) {
+        const v = await clientRef.current?.ik(p.map((x) => x / 1000) as [number, number, number], from, site);
+        if (!v) return;
+        vias.push([...v.q, gripper]);
+      }
       for (const a of fallback ? [from, ...APPROACHES.filter((x) => x !== from)] : [from]) {
-        const tried = await clientRef.current?.ik(m, a);
+        const tried = await clientRef.current?.ik(m, a, site);
         if (!tried) return;
         if (!r || tried.ok || tried.pos_err_mm < r.pos_err_mm) [r, from] = [tried, a];
         if (tried.ok) break;
@@ -145,9 +168,26 @@ export function StageView() {
     if (!r) return;
     setApproach(from);
     setIk({ ...r, asked: `(${to.join(", ")}) mm ${from}` });
-    const next = [...r.q, ctrl[5]];
-    clientRef.current?.play([{ t: 0, q: ctrl }, { t: 1.5, q: next }]);
+    const next = [...r.q, gripper];
+    clientRef.current?.play([ctrl, ...vias, next].map((q, i) => ({ t: 1.5 * i, q })));
     setCtrl(next);
+  };
+
+  const graspTube = async () => {
+    setGraspNote(null);
+    try {
+      const r = await clientRef.current?.grasp(TUBE);
+      if (!r) return;
+      setCtrl((c) => c.map((v, i) => (i === 5 ? r.jaw : v)));
+      setGraspNote(r.ok ? null : r.message ?? "missed");
+    } catch (err) {
+      setGraspNote((err as Error).message);
+    }
+  };
+
+  const release = () => {
+    clientRef.current?.release();
+    setCtrl((c) => c.map((v, i) => (i === 5 ? GRIPPER_OPEN : v)));
   };
 
   return (
@@ -255,21 +295,43 @@ export function StageView() {
             </button>
           ))}
         </div>
-        <button
-          className="self-start rounded border border-orange-600 px-3 py-1 text-xs text-orange-700"
-          disabled={!meta || !tube}
-          onClick={() => tube && moveTo(tube.map((v) => Math.round(v * 1000)) as [number, number, number])}
-        >
-          Go to the tube ({approach})
-        </button>
-        <button
-          className="self-start rounded border border-orange-600 px-3 py-1 text-xs text-orange-700"
-          disabled={!meta || !pocket}
-          // where the tip is when a tube gripped at mid-height has its bottom at the opening
-          onClick={() => pocket && moveTo([Math.round(pocket[0] * 1000), Math.round(pocket[1] * 1000), Math.round(pocket[2] * 1000) + 50])}
-        >
-          Go 50 mm above the pocket ({approach})
-        </button>
+        <div className="flex flex-wrap items-center gap-2 text-xs" aria-label="pick and place">
+          <span className="text-neutral-500">pick and place (top)</span>
+          <button
+            className="rounded border border-orange-600 px-3 py-1 text-orange-700"
+            disabled={!meta || !tube || !!attached}
+            onClick={() => {
+              if (!tube) return;
+              const [x, y, z] = tube.map((v) => Math.round(v * 1000));
+              const grip: [number, number, number] = [x, y, z + TUBE_HALF_MM - GRIP_BELOW_TOP_MM];
+              moveTo(grip, "top", false, { site: SO101_GRASP_SITE, via: [[x, y, grip[2] + CLEAR_MM]], gripper: GRIPPER_OPEN });
+            }}
+          >
+            1. Go to the tube
+          </button>
+          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" disabled={!meta || !!attached} onClick={graspTube}>
+            2. Grasp
+          </button>
+          <button
+            className="rounded border border-orange-600 px-3 py-1 text-orange-700"
+            disabled={!meta || !pocket || !tube}
+            onClick={() => {
+              if (!pocket || !tube) return;
+              // the tube's bottom 2 mm above the opening; lift the tube straight up first
+              const [x, y, z] = pocket.map((v) => Math.round(v * 1000));
+              const over: [number, number, number] = [x, y, z + 2 + 2 * TUBE_HALF_MM - GRIP_BELOW_TOP_MM];
+              const [tx, ty] = tube.map((v) => Math.round(v * 1000));
+              moveTo(over, "top", false, { site: SO101_GRASP_SITE, via: [[tx, ty, over[2]]] });
+            }}
+          >
+            3. Over the pocket
+          </button>
+          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" disabled={!meta} onClick={release}>
+            4. Release
+          </button>
+          <span className="font-mono text-neutral-600">{attached ? `holding ${attached}` : "empty"}</span>
+          {graspNote && <span className="text-red-700">{graspNote}</span>}
+        </div>
         <p className="text-xs text-neutral-500">Or click the floor: the tip goes above that point at height z, switching approach if the chosen one cannot reach.</p>
         {ik && (
           <div className={`rounded border p-2 font-mono text-[11px] leading-5 ${ik.ok ? "bg-neutral-50" : "border-red-300 bg-red-50 text-red-800"}`}>

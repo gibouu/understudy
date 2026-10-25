@@ -12,6 +12,7 @@ export type SimEvents = {
 
 type JacobianResult = Extract<FromWorker, { type: "jacobian" }>;
 type IkReply = Extract<FromWorker, { type: "ik" }>;
+type GraspReply = Extract<FromWorker, { type: "grasp" }>;
 type Pending = { resolve: (v: never) => void; reject: (e: Error) => void };
 
 export class SimClient {
@@ -37,9 +38,11 @@ export class SimClient {
   }
 
   /** `mujocoBase` serves mujoco.js and mujoco.wasm (copied there by scripts/copy-assets.mjs). */
-  load(options: { mujocoBase?: string; assetBase?: string; gravityG?: number; worldbody?: string } = {}): Promise<SimMeta> {
-    const { mujocoBase = "/mujoco", assetBase = SO101_ASSET_BASE, gravityG = 1, worldbody = "" } = options;
-    return this.request<SimMeta>((id) => ({ type: "load", id, mujocoBase, assetBase, gravityG, worldbody }));
+  load(
+    options: { mujocoBase?: string; assetBase?: string; gravityG?: number; worldbody?: string; graspable?: string[] } = {},
+  ): Promise<SimMeta> {
+    const { mujocoBase = "/mujoco", assetBase = SO101_ASSET_BASE, gravityG = 1, worldbody = "", graspable = [] } = options;
+    return this.request<SimMeta>((id) => ({ type: "load", id, mujocoBase, assetBase, gravityG, worldbody, graspable }));
   }
   setGravity(g: number) {
     this.send({ type: "setGravity", g });
@@ -62,9 +65,16 @@ export class SimClient {
   jacobian(site: string): Promise<JacobianResult> {
     return this.request<JacobianResult>((id) => ({ type: "jacobian", id, site }));
   }
-  /** Joint angles that put the tip at `target` (world metres) from `approach`; does not move the arm. */
-  async ik(target: [number, number, number], approach: Approach): Promise<IkResult> {
-    return (await this.request<IkReply>((id) => ({ type: "ik", id, target, approach }))).result;
+  /** Joint angles that put `site` (the tip unless given) at `target` (world metres) from `approach`; does not move the arm. */
+  async ik(target: [number, number, number], approach: Approach, site?: string): Promise<IkResult> {
+    return (await this.request<IkReply>((id) => ({ type: "ik", id, target, approach, site }))).result;
+  }
+  /** Close the gripper on `body`; resolves once it is welded or the jaws closed on nothing. */
+  async grasp(body: string): Promise<GraspReply["result"]> {
+    return (await this.request<GraspReply>((id) => ({ type: "grasp", id, body }))).result;
+  }
+  release() {
+    this.send({ type: "release" });
   }
   dispose() {
     this.rejectAll(new Error("sim client disposed"));
@@ -113,6 +123,7 @@ export class SimClient {
         break;
       case "jacobian":
       case "ik":
+      case "grasp":
         this.settle(msg.id, msg);
         break;
       case "error":

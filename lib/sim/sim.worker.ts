@@ -10,6 +10,7 @@
  * serialized, a second load while one is running is refused.
  */
 import type { MainModule, MjData, MjModel, MjVFS } from "@mujoco/mujoco";
+import { attach, detach, GRASP_TIMEOUT_S, graspIndex, holding, type Grasp } from "./grasp";
 import { solveIk, type Approach } from "./ik";
 import { decodeName, sampleWaypoints, toNumbers } from "./names";
 import {
@@ -22,7 +23,16 @@ import {
   type ToWorker,
   type Waypoint,
 } from "./protocol";
-import { G_M_S2, SO101_MESH_BUNDLE, SO101_MESHES, SO101_XML, stageXml } from "./so101";
+import {
+  G_M_S2,
+  GRIPPER_CLOSED,
+  GRIPPER_OPEN,
+  SO101_JOINT_NAMES,
+  SO101_MESH_BUNDLE,
+  SO101_MESHES,
+  SO101_XML,
+  stageXml,
+} from "./so101";
 
 type WorkerCtx = {
   postMessage: (message: FromWorker, transfer?: Transferable[]) => void;
@@ -44,6 +54,11 @@ let wantedGravity: number | null = null;
 /** mjtJoint.mjJNT_FREE */
 const FREE_JOINT = 0;
 let playing: { waypoints: Waypoint[]; loop: boolean; start: number } | null = null;
+/** the gripper's actuator index */
+const GRIPPER = SO101_JOINT_NAMES.indexOf("gripper");
+/** the body welded to the gripper, and a grasp waiting for the jaws to close */
+let attached: Grasp | null = null;
+let grasping: { id: number; grasp: Grasp; until: number } | null = null;
 let simTime = 0;
 let backlog = 0;
 let dropped = 0;
@@ -74,7 +89,7 @@ ctx.onmessage = async (e) => {
       case "load":
         if (loading) throw new Error("a load is already in progress");
         wantedGravity = null; // the load's own gravity is the latest instruction
-        loading = load(msg.id, msg.mujocoBase, msg.assetBase, msg.gravityG ?? 1, msg.worldbody ?? "").finally(() => {
+        loading = load(msg.id, msg.mujocoBase, msg.assetBase, msg.gravityG ?? 1, msg.worldbody ?? "", msg.graspable ?? []).finally(() => {
           loading = null;
         });
         await loading;
@@ -102,7 +117,13 @@ ctx.onmessage = async (e) => {
         jacobian(msg.id, msg.site);
         break;
       case "ik":
-        ik(msg.id, msg.target, msg.approach);
+        ik(msg.id, msg.target, msg.approach, msg.site);
+        break;
+      case "grasp":
+        grasp(msg.id, msg.body);
+        break;
+      case "release":
+        release();
         break;
     }
   } catch (err) {
@@ -126,7 +147,7 @@ async function engine(mujocoBase: string): Promise<MainModule> {
   return enginePromise;
 }
 
-async function load(id: number, mujocoBase: string, assetBase: string, gravityG: number, worldbody: string) {
+async function load(id: number, mujocoBase: string, assetBase: string, gravityG: number, worldbody: string, graspable: string[]) {
   const mujoco = await engine(mujocoBase);
   status("engine ready; fetching the SO-101", 0.05);
   const vfs = new mujoco.MjVFS();
@@ -139,7 +160,7 @@ async function load(id: number, mujocoBase: string, assetBase: string, gravityG:
     await loadMeshes(vfs, assetBase, mujoco);
 
     status("compiling the model", 0.7);
-    model = mujoco.MjModel.from_xml_string(stageXml(worldbody, { gravity_g: gravityG }), vfs);
+    model = mujoco.MjModel.from_xml_string(stageXml(worldbody, { gravity_g: gravityG, graspable }), vfs);
     data = new mujoco.MjData(model);
     mujoco.mj_forward(model, data);
     const meta = { ...extractMeta(model), gravity_g: gravityG };
@@ -160,6 +181,8 @@ async function load(id: number, mujocoBase: string, assetBase: string, gravityG:
       previous.model.delete();
     }
     playing = null;
+    attached = null;
+    cancelGrasp("the model was reloaded");
     simTime = 0;
     backlog = 0;
     dropped = 0;
@@ -365,6 +388,9 @@ function nudge(body: string, velocity: [number, number, number]) {
 function reset() {
   if (!runtime) return;
   playing = null;
+  if (attached) detach(runtime.data, attached);
+  attached = null;
+  cancelGrasp("the physics was reset");
   runtime.mujoco.mj_resetData(runtime.model, runtime.data);
   runtime.mujoco.mj_forward(runtime.model, runtime.data);
   simTime = 0;
@@ -399,6 +425,7 @@ function tick() {
     }
     mujoco.mj_step(model, data);
     simTime += dt;
+    if (grasping) checkGrasp();
     backlog -= dt;
     steps++;
   }
@@ -413,6 +440,7 @@ function tick() {
     geomXpos: Float64Array.from(toNumbers(data.geom_xpos)),
     geomXmat: Float64Array.from(toNumbers(data.geom_xmat)),
     siteXpos: Float64Array.from(toNumbers(data.site_xpos)),
+    attached: attached?.body ?? null,
   };
   post({ type: "frame", frame }, [
     frame.qpos.buffer,
@@ -448,7 +476,7 @@ function jacobian(id: number, site: string) {
 }
 
 /** IK on a scratch copy of the current state, seeded with the arm where it is now. */
-function ik(id: number, target: [number, number, number], approach: Approach) {
+function ik(id: number, target: [number, number, number], approach: Approach, site?: string) {
   if (!runtime) throw new Error("model not loaded");
   const { mujoco, model, data } = runtime;
   const scratch = new mujoco.MjData(model);
@@ -457,8 +485,57 @@ function ik(id: number, target: [number, number, number], approach: Approach) {
     const view = scratch.qpos as unknown;
     if (ArrayBuffer.isView(view)) (view as unknown as Float64Array).set(qpos);
     else qpos.forEach((v, i) => (view as { set: (i: number, v: number) => boolean }).set(i, v));
-    post({ type: "ik", id, result: solveIk(mujoco, model, scratch, target, approach) });
+    post({ type: "ik", id, result: solveIk(mujoco, model, scratch, target, approach, undefined, site) });
   } finally {
     scratch.delete();
   }
+}
+
+function setGripper(value: number) {
+  const ctrl = Array.from(toNumbers(runtime!.data.ctrl));
+  ctrl[GRIPPER] = value;
+  setCtrl(ctrl);
+}
+
+/** Closes the gripper; the tick welds `body` once both jaws hold it and the jaw has stopped (checkGrasp). */
+function grasp(id: number, body: string) {
+  if (!runtime) throw new Error("model not loaded");
+  if (attached) throw new Error(`already holding ${attached.body}`);
+  cancelGrasp("a newer grasp replaced it");
+  const g = graspIndex(runtime.mujoco, runtime.model, body);
+  playing = null;
+  setGripper(GRIPPER_CLOSED);
+  grasping = { id, grasp: g, until: simTime + GRASP_TIMEOUT_S };
+}
+
+function checkGrasp() {
+  const { mujoco, model, data } = runtime!;
+  const { id, grasp: g, until } = grasping!;
+  if (holding(mujoco, model, data, g)) {
+    const jaw = attach(model, data, g);
+    setGripper(jaw); // hold, don't squeeze: squeezing pushes the object against the weld
+    attached = g;
+    grasping = null;
+    post({ type: "grasp", id, result: { ok: true, body: g.body, jaw } });
+  } else if (simTime >= until) {
+    grasping = null;
+    const jaw = toNumbers(data.qpos)[g.jawQpos];
+    post({ type: "grasp", id, result: { ok: false, body: g.body, jaw, message: `the jaws closed without holding ${g.body}` } });
+  }
+}
+
+function cancelGrasp(message: string) {
+  if (!grasping) return;
+  post({ type: "error", id: grasping.id, message: `grasp cancelled: ${message}` });
+  grasping = null;
+}
+
+/** No push and no damping: the object leaves with the velocity the gripper gave it. */
+function release() {
+  if (!runtime) return;
+  cancelGrasp("released");
+  if (attached) detach(runtime.data, attached);
+  attached = null;
+  playing = null;
+  setGripper(GRIPPER_OPEN);
 }
