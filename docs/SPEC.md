@@ -62,7 +62,7 @@ Row 1: the video with a canvas skeleton of the selected person and the anchor ma
 
 **Engine:** `@mujoco/mujoco` 3.17.0 single-threaded build in a Web Worker (no COOP/COEP); the main thread renders three.js from posted joint arrays, so the grid paints and the interview stays live. Menagerie `robotstudio_so101` as shipped, STLs written into MEMFS under exact paths Friday evening; the Menagerie scene file and the binding exports (`mj_jacSite`, `eq_active`, `from_xml_string`) are confirmed Friday (§21). The rack is a box with a 20 mm pocket for the 17 mm tube; obstacles are boxes.
 
-**Embodiment honesty:** five arm joints plus gripper. IK solves position plus approach axis (five constraints) with `mj_jacSite` on a tip site, damped least squares; the approach is projected onto the reachable wrist-pitch plane and the angle recorded. A reachability pre-check per scenario reports unreachable targets as "embodiment limit".
+**Embodiment honesty:** five arm joints plus gripper. IK solves position plus approach axis (five constraints) with `mj_jacSite` on a tip site, damped least squares; the approach is projected onto the reachable wrist-pitch plane and the angle recorded; a projection over 20° counts as an embodiment limit. A reachability pre-check per scenario reports unreachable targets as "embodiment limit".
 
 **Via-points, not retargeting:** per VL segment, three to five wrist via-points in the anchored object or zone frame, timing-scaled, `source: pose#segN`; perturbations transform them per segment (the MimicGen mechanism). The ghost line is those via-points.
 

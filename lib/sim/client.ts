@@ -1,4 +1,5 @@
 /** Main-thread handle on the MuJoCo worker. Requests carry ids; errors reach their caller. */
+import type { Approach, IkResult } from "./ik";
 import type { Frame, FromWorker, SimMeta, ToWorker, Waypoint } from "./protocol";
 import { SO101_ASSET_BASE } from "./so101";
 
@@ -10,6 +11,7 @@ export type SimEvents = {
 };
 
 type JacobianResult = Extract<FromWorker, { type: "jacobian" }>;
+type IkReply = Extract<FromWorker, { type: "ik" }>;
 type Pending = { resolve: (v: never) => void; reject: (e: Error) => void };
 
 export class SimClient {
@@ -60,6 +62,10 @@ export class SimClient {
   jacobian(site: string): Promise<JacobianResult> {
     return this.request<JacobianResult>((id) => ({ type: "jacobian", id, site }));
   }
+  /** Joint angles that put the tip at `target` (world metres) from `approach`; does not move the arm. */
+  async ik(target: [number, number, number], approach: Approach): Promise<IkResult> {
+    return (await this.request<IkReply>((id) => ({ type: "ik", id, target, approach }))).result;
+  }
   dispose() {
     this.rejectAll(new Error("sim client disposed"));
     this.worker.terminate();
@@ -106,6 +112,7 @@ export class SimClient {
         this.listeners.frame?.(msg.frame);
         break;
       case "jacobian":
+      case "ik":
         this.settle(msg.id, msg);
         break;
       case "error":
