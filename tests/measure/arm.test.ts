@@ -21,7 +21,7 @@ import os from "node:os";
 import path from "node:path";
 import type { MainModule, MjData, MjModel, MjVFS } from "@mujoco/mujoco";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DEMO_SPEC } from "@/lib/sim/demo-spec";
+import { MEASURE_SPEC as DEMO_SPEC } from "./measure-spec";
 import { IK_JOINTS, reachability, solveIk, type Approach, type IkResult } from "@/lib/sim/ik";
 import { sampleWaypoints } from "@/lib/sim/names";
 import type { Waypoint } from "@/lib/sim/protocol";
@@ -536,7 +536,7 @@ describe("arm measurements", () => {
     expect(summary.loads_in_mujoco).toBe(summary.builds);
     writeResult("scenario-coverage", {
       parameters: {
-        spec: "lib/sim/demo-spec.ts DEMO_SPEC",
+        spec: "tests/measure/measure-spec.ts MEASURE_SPEC (the demo scene as of 25 October)",
         scenarios: SCENARIOS,
         differs_measurably: "perturb().applied, no 'changes nothing measurable' or 'world is unchanged' warning, and the built worldbody or the gravity differs from nominal",
         loads: "stageXml(buildScene(...).worldbody, { gravity_g }) compiles with the SO-101 and steps 0.5 s with the arm held at home without non-finite qpos",

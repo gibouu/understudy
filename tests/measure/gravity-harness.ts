@@ -14,7 +14,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
-import { DEMO_SPEC } from "@/lib/sim/demo-spec";
+import { MEASURE_SPEC as DEMO_SPEC } from "./measure-spec";
 import { buildScene, DEFAULT_CLEARANCE_MM, MM } from "@/lib/sim/scene";
 import { G_M_S2 } from "@/lib/sim/so101";
 
