@@ -125,7 +125,7 @@ export function StageView() {
     setJac({ nv: r.nv, norm: Math.sqrt(norm), rows });
   };
 
-  /** `fallback`: if `from` misses, try the other approaches and keep the first that reaches */
+  /** Always moves: on a miss the arm goes to the solver's closest pose and the readout says so. `fallback` also tries the other approaches. */
   const moveTo = async (to = target, from = approach, fallback = false) => {
     setTarget(to);
     const m = to.map((v) => v / 1000) as [number, number, number];
@@ -135,7 +135,7 @@ export function StageView() {
       for (const a of fallback ? [from, ...APPROACHES.filter((x) => x !== from)] : [from]) {
         const tried = await clientRef.current?.ik(m, a);
         if (!tried) return;
-        if (!r || tried.ok) [r, from] = [tried, a];
+        if (!r || tried.ok || tried.pos_err_mm < r.pos_err_mm) [r, from] = [tried, a];
         if (tried.ok) break;
       }
     } catch (err) {
@@ -145,7 +145,6 @@ export function StageView() {
     if (!r) return;
     setApproach(from);
     setIk({ ...r, asked: `(${to.join(", ")}) mm ${from}` });
-    if (!r.ok) return;
     const next = [...r.q, ctrl[5]];
     clientRef.current?.play([{ t: 0, q: ctrl }, { t: 1.5, q: next }]);
     setCtrl(next);
@@ -274,7 +273,7 @@ export function StageView() {
         <p className="text-xs text-neutral-500">Or click the floor: the tip goes above that point at height z, switching approach if the chosen one cannot reach.</p>
         {ik && (
           <div className={`rounded border p-2 font-mono text-[11px] leading-5 ${ik.ok ? "bg-neutral-50" : "border-red-300 bg-red-50 text-red-800"}`}>
-            {ik.asked}: {ik.ok ? "reached" : ik.failure_class} · tip off by {ik.pos_err_mm.toFixed(1)} mm · axis off by {ik.axis_err_deg.toFixed(1)}°
+            {ik.asked}: {ik.ok ? "reached" : `${ik.failure_class}, closest pose shown`} · tip off by {ik.pos_err_mm.toFixed(1)} mm · axis off by {ik.axis_err_deg.toFixed(1)}°
             {ik.approach_deg > 0.05 && ` · approach projected ${ik.approach_deg.toFixed(1)}°`}
           </div>
         )}
