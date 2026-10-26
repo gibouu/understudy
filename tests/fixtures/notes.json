@@ -1,0 +1,722 @@
+[
+ {
+  "program": {
+   "spec_title": "ISS Veggie seed film placement into plant pillows",
+   "steps": [
+    {
+     "step_id": "s1",
+     "ops": [
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        62
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        12
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "grasp",
+       "object": "obj1",
+       "aperture_mm": 10
+      },
+      {
+       "op": "wait_until",
+       "predicate": {
+        "kind": "contact_both_pads",
+        "object": "obj1"
+       },
+       "timeout_s": 1
+      },
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        50
+       ],
+       "approach": "top"
+      }
+     ]
+    },
+    {
+     "step_id": "s2",
+     "ops": [
+      {
+       "op": "move_to",
+       "frame": "obj2",
+       "offset_mm": [
+        0,
+        0,
+        55
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "move_to",
+       "frame": "obj2",
+       "offset_mm": [
+        0,
+        0,
+        36
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "release"
+      },
+      {
+       "op": "wait_until",
+       "predicate": {
+        "kind": "object_still",
+        "object": "obj1"
+       },
+       "timeout_s": 2
+      },
+      {
+       "op": "assert",
+       "predicate": {
+        "kind": "inside_zone",
+        "object": "obj1",
+        "target": "obj2"
+       }
+      }
+     ]
+    }
+   ],
+   "warnings": [
+    "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+   ]
+  },
+  "attempt": 0,
+  "result": {
+   "status": "done",
+   "value": {
+    "program": {
+     "spec_title": "ISS Veggie seed film placement into plant pillows",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "obj1",
+         "aperture_mm": 10
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "obj1"
+         },
+         "timeout_s": 1
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          55
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          36
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "obj1"
+         },
+         "timeout_s": 5
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "obj1",
+          "target": "obj2"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": [
+      "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+     ]
+    },
+    "set": {
+     "s2.op3.timeout_s": 5
+    },
+    "changes": [
+     {
+      "name": "s2.op3.timeout_s",
+      "from": 2,
+      "to": 5
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "In orbit, the seed film packet continued moving at 16.9 mm/s after release due to lack of damping, requiring more time to settle than the 2 s timeout allowed.",
+    "expect": "With a 5 s timeout, the packet will have sufficient time to come to rest inside the pocket in both Earth and orbit conditions.",
+    "note": "earth (1 g): PASS in 6.2 s. At the end: obj1's centre at (0.4, 4.8, 13.1) mm from obj2's centre, its bottom 0.1 mm above obj2's pocket floor (21.9 mm below its rim), moving at 1.1 mm/s, not held, seated in obj2.\norbit (0 g): FAIL after 8.1 s at s2 op 3 (wait_until object_still obj1 (up to 2 s)).\n  Measured: timed out after 2 s: obj1 moving at 16.9 mm/s.\n  Let go at 5.8 s with obj1's centre at (0.3, 0.3, 35.7) mm from obj2's centre, its bottom 22.7 mm above obj2's pocket floor (0.7 mm above its rim).\n  At the end: obj1's centre at (25.9, -44.0, 56.1) mm from obj2's centre, its bottom 43.1 mm above obj2's pocket floor (21.1 mm above its rim), moving at 16.9 mm/s, not held, not seated: obj1 is 51.1 mm from obj2's centre, not inside it.",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": false,
+    "escalation": null,
+    "tokens": 1188,
+    "cost_usd": 0.0004104
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 1098,
+     "completion_tokens": 90,
+     "cached_tokens": 0,
+     "seconds": 1.136,
+     "usd": 0.0004104
+    }
+   ]
+  }
+ },
+ {
+  "program": {
+   "spec_title": "ISS Veggie seed film placement into plant pillows",
+   "steps": [
+    {
+     "step_id": "s1",
+     "ops": [
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        62
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        12
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "grasp",
+       "object": "obj1",
+       "aperture_mm": 10
+      },
+      {
+       "op": "wait_until",
+       "predicate": {
+        "kind": "contact_both_pads",
+        "object": "obj1"
+       },
+       "timeout_s": 1
+      },
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        50
+       ],
+       "approach": "top"
+      }
+     ]
+    },
+    {
+     "step_id": "s2",
+     "ops": [
+      {
+       "op": "move_to",
+       "frame": "obj2",
+       "offset_mm": [
+        0,
+        0,
+        55
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "move_to",
+       "frame": "obj2",
+       "offset_mm": [
+        0,
+        0,
+        36
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "release"
+      },
+      {
+       "op": "wait_until",
+       "predicate": {
+        "kind": "object_still",
+        "object": "obj1"
+       },
+       "timeout_s": 5
+      },
+      {
+       "op": "assert",
+       "predicate": {
+        "kind": "inside_zone",
+        "object": "obj1",
+        "target": "obj2"
+       }
+      }
+     ]
+    }
+   ],
+   "warnings": [
+    "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+   ]
+  },
+  "attempt": 1,
+  "result": {
+   "status": "done",
+   "value": {
+    "program": {
+     "spec_title": "ISS Veggie seed film placement into plant pillows",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "obj1",
+         "aperture_mm": 10
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "obj1"
+         },
+         "timeout_s": 1
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          55
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          36
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "obj1"
+         },
+         "timeout_s": 10
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "obj1",
+          "target": "obj2"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": [
+      "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+     ]
+    },
+    "set": {
+     "s2.op3.timeout_s": 10
+    },
+    "changes": [
+     {
+      "name": "s2.op3.timeout_s",
+      "from": 5,
+      "to": 10
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "In orbit, obj1 continued moving at 16.9 mm/s after release due to lack of damping, requiring more time to settle.",
+    "expect": "With a 10-second timeout, obj1 will come to rest inside the pocket in both Earth and orbit conditions.",
+    "note": "earth (1 g): PASS in 6.2 s. At the end: obj1's centre at (0.4, 4.8, 13.1) mm from obj2's centre, its bottom 0.1 mm above obj2's pocket floor (21.9 mm below its rim), moving at 1.1 mm/s, not held, seated in obj2.\norbit (0 g): FAIL after 11.1 s at s2 op 3 (wait_until object_still obj1 (up to 5 s)).\n  Measured: timed out after 5 s: obj1 moving at 16.9 mm/s.\n  Let go at 5.8 s with obj1's centre at (0.3, 0.3, 35.7) mm from obj2's centre, its bottom 22.7 mm above obj2's pocket floor (0.7 mm above its rim).\n  At the end: obj1's centre at (69.3, -65.1, 71.6) mm from obj2's centre, its bottom 58.6 mm above obj2's pocket floor (36.6 mm above its rim), moving at 16.9 mm/s, not held, not seated: obj1 is 95.1 mm from obj2's centre, not inside it.",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": false,
+    "escalation": null,
+    "tokens": 1237,
+    "cost_usd": 0.0004185
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 1158,
+     "completion_tokens": 79,
+     "cached_tokens": 0,
+     "seconds": 1.345,
+     "usd": 0.0004185
+    }
+   ]
+  }
+ },
+ {
+  "program": {
+   "spec_title": "ISS Veggie seed film placement into plant pillows",
+   "steps": [
+    {
+     "step_id": "s1",
+     "ops": [
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        62
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        12
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "grasp",
+       "object": "obj1",
+       "aperture_mm": 10
+      },
+      {
+       "op": "wait_until",
+       "predicate": {
+        "kind": "contact_both_pads",
+        "object": "obj1"
+       },
+       "timeout_s": 1
+      },
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        50
+       ],
+       "approach": "top"
+      }
+     ]
+    },
+    {
+     "step_id": "s2",
+     "ops": [
+      {
+       "op": "move_to",
+       "frame": "obj2",
+       "offset_mm": [
+        0,
+        0,
+        55
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "move_to",
+       "frame": "obj2",
+       "offset_mm": [
+        0,
+        0,
+        36
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "release"
+      },
+      {
+       "op": "wait_until",
+       "predicate": {
+        "kind": "object_still",
+        "object": "obj1"
+       },
+       "timeout_s": 10
+      },
+      {
+       "op": "assert",
+       "predicate": {
+        "kind": "inside_zone",
+        "object": "obj1",
+        "target": "obj2"
+       }
+      }
+     ]
+    }
+   ],
+   "warnings": [
+    "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+   ]
+  },
+  "attempt": 2,
+  "result": {
+   "status": "done",
+   "value": {
+    "program": {
+     "spec_title": "ISS Veggie seed film placement into plant pillows",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "obj1",
+         "aperture_mm": 10
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "obj1"
+         },
+         "timeout_s": 1
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          55
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          13
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "obj1"
+         },
+         "timeout_s": 10
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "obj1",
+          "target": "obj2"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": [
+      "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+     ]
+    },
+    "set": {
+     "s2.op1.z_mm": 13
+    },
+    "changes": [
+     {
+      "name": "s2.op1.z_mm",
+      "from": 36,
+      "to": 13
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "The failure note shows the object was released while still moving at 16.9 mm/s because it was left above the rim; lowering the final placement to the pocket floor (centre z = 13 mm) lets it contact and stop before release.",
+    "expect": "With the packet seated on the floor, its speed will drop to ≈0 mm/s well before the 10 s timeout, so object_still will succeed and the rollout will pass in both 1 g and 0 g.",
+    "note": "earth (1 g): PASS in 6.2 s. At the end: obj1's centre at (0.4, 4.8, 13.1) mm from obj2's centre, its bottom 0.1 mm above obj2's pocket floor (21.9 mm below its rim), moving at 1.1 mm/s, not held, seated in obj2.\norbit (0 g): FAIL after 16.1 s at s2 op 3 (wait_until object_still obj1 (up to 10 s)).\n  Measured: timed out after 10 s: obj1 moving at 16.9 mm/s.\n  Let go at 5.8 s with obj1's centre at (0.3, 0.3, 35.7) mm from obj2's centre, its bottom 22.7 mm above obj2's pocket floor (0.7 mm above its rim).\n  At the end: obj1's centre at (141.6, -100.1, 97.4) mm from obj2's centre, its bottom 84.4 mm above obj2's pocket floor (62.4 mm above its rim), moving at 16.9 mm/s, not held, not seated: obj1 is 173.4 mm from obj2's centre, not inside it.",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": true,
+    "escalation": "two_failed",
+    "tokens": 3336,
+    "cost_usd": 0.0022674
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 1225,
+     "completion_tokens": 2111,
+     "cached_tokens": 0,
+     "seconds": 10.547,
+     "usd": 0.0022674
+    }
+   ]
+  }
+ }
+]
