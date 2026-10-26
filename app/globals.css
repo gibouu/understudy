@@ -58,6 +58,11 @@
   --color-neutral-900: var(--ink);
   --color-neutral-950: var(--ink-deep);
 
+  /* Tailwind's status text shades are tuned for white; on paper and its tints these keep small text AA (5:1 or more) */
+  --color-amber-700: #9a4500;
+  --color-orange-700: #b23000;
+  --color-emerald-700: #00684a;
+
   --font-sans: var(--font-text), "Iowan Old Style", Georgia, serif;
   --font-serif: var(--font-text), "Iowan Old Style", Georgia, serif;
   --font-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
