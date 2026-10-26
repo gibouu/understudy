@@ -21,6 +21,11 @@
 //   j  d with 1280-wide keyframes (full source width) instead of 640
 //   k  i + the plausible hint of e
 //
+// --model <id> labels with another vision model from Token Factory instead of Super VL (issue #96, see
+// scripts/compare-models.mjs): its own reasoning switch in place of enable_thinking, its spend on the ledger as
+// compare-label under the comparison's cap, results in bench/results/compare-label.json by default. A model that
+// cannot switch reasoning off gets max_tokens 8000 in every condition, so its reasoning fits.
+//
 // Every call: the prototype LABEL_PROMPT of scripts/bench-session.mjs (copied verbatim), json_object,
 // temperature left at the model default, thinking off except f, max_tokens 3000 except f, no retries
 // beyond one after a 429/5xx/timeout. Prices are list prices from tests/fixtures/models.json; every
@@ -33,8 +38,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BudgetError, charge, costOf, guard, loadPrices, spent } from "./bench-ledger.mjs";
 import { logCall } from "./call-log.mjs";
+import { COMPARATORS, COMPARE_CAP_USD, COMPARE_CATALOGUE, COMPARE_SCRIPTS } from "./compare-models.mjs";
 
-const SCRIPT = "bench-label";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 process.loadEnvFile(process.env.UNDERSTUDY_ENV_FILE ?? ".env.local");
 if (!process.env.NEBIUS_API_KEY) throw new Error("NEBIUS_API_KEY missing from the env file");
@@ -50,18 +55,26 @@ for (let i = 0; i < argv.length; i++) {
   args[argv[i].slice(2)] = next === undefined || next.startsWith("--") ? true : next;
 }
 const RUNS = Number(args.runs ?? 5);
-const OUT = path.resolve(ROOT, args.out ?? "bench/results/label.json");
-/** my share of the experiment credit, shared with scripts/bench-interview.mjs */
-const MY_CAP_USD = Number(args["cap-usd"] ?? 15);
-const MINE = ["bench-label", "bench-interview"];
+/** the model labelling: Super VL, or a comparator that reads video (issue #96) */
+const MODEL = typeof args.model === "string" ? args.model : MODELS.vl;
+const OTHER = MODEL === MODELS.vl ? null : COMPARATORS[MODEL];
+if (MODEL !== MODELS.vl && !OTHER?.video) throw new Error(`${MODEL} is not a video comparator in scripts/compare-models.mjs`);
+const SCRIPT = OTHER ? "compare-label" : "bench-label";
+const OUT = path.resolve(ROOT, args.out ?? (OTHER ? "bench/results/compare-label.json" : "bench/results/label.json"));
+/** my share of the experiment credit, shared with scripts/bench-interview.mjs; a comparator runs under the comparison's cap */
+const MY_CAP_USD = OTHER ? COMPARE_CAP_USD : Number(args["cap-usd"] ?? 15);
+const MINE = OTHER ? COMPARE_SCRIPTS : ["bench-label", "bench-interview"];
 const CLIPS = String(args.clips ?? "iss,dev").split(",");
 const CONDITIONS = String(args.conditions ?? "a,b,c,d,e,f,g").split(",");
-const REPRODUCE = `UNDERSTUDY_ENV_FILE=<path to .env.local> node scripts/bench-label.mjs --runs ${RUNS} --conditions ${CONDITIONS.join(",")}${args.out ? ` --out ${args.out}` : ""}`;
+const REPRODUCE = `UNDERSTUDY_ENV_FILE=<path to .env.local> node scripts/bench-label.mjs --runs ${RUNS} --clips ${CLIPS.join(",")} --conditions ${CONDITIONS.join(",")}${OTHER ? ` --model ${MODEL}` : ""}${args.out ? ` --out ${args.out}` : ""}`;
 
 const client = tokenFactory({ timeout: 290_000, maxRetries: 0 });
 
 // --- Prices: list prices from tests/fixtures/models.json; refuses to run when one is missing ---------
-const PRICES = loadPrices([MODELS.vl]);
+const PRICES = OTHER ? loadPrices([MODEL], COMPARE_CATALOGUE) : loadPrices([MODELS.vl]);
+/** the request change for thinking off or on: enable_thinking for Nemotron, the comparator's own switch otherwise */
+const reasoning = (thinking) => (OTHER ? (thinking === "off" ? OTHER.off : OTHER.on) : thinking === "off" ? thinkingOff() : {});
+const maxTokens = (def) => (OTHER?.always_reasons ? 8000 : def.maxTokens);
 
 // --- Prompt (verbatim from scripts/bench-session.mjs) ----------------------------
 const LABEL_PROMPT = `You label a short video of one person doing a hands-on task (aboard a station or on a bench) so that a robot arm can try to repeat it. Watch the whole clip. Return one JSON object only, no prose, shaped like this:
@@ -258,15 +271,14 @@ function inputFor(clip, cond) {
 
 async function label(clip, cond, run) {
   const def = CONDITION_DEFS[cond];
-  const model = MODELS.vl;
+  const model = MODEL;
   const input = inputFor(clip, cond);
   const parts = content(clip, cond, input);
   const p = PRICES[model];
   const imgTokens = input.kind === "video" ? (input.width / 480) ** 2 * input.fps * 36 * 60 : 8 * 1500;
-  const worst = (6000 + imgTokens) * p.prompt + def.maxTokens * p.completion;
-  const params = { model, messages: [{ role: "user", content: parts }], max_tokens: def.maxTokens, response_format: { type: "json_object" } };
-  if (def.thinking === "off") Object.assign(params, thinkingOff());
-  const rec = { clip, condition: cond, run, model, thinking: def.thinking, max_tokens: def.maxTokens, attempts: 0, estimated_usd: 0 };
+  const worst = (6000 + imgTokens) * p.prompt + maxTokens(def) * p.completion;
+  const params = { model, messages: [{ role: "user", content: parts }], max_tokens: maxTokens(def), response_format: { type: "json_object" }, ...reasoning(def.thinking) };
+  const rec = { clip, condition: cond, run, model, thinking: def.thinking, max_tokens: maxTokens(def), attempts: 0, estimated_usd: 0 };
   const meta = { model, stage: "label", clip, condition: cond, run };
   for (let attempt = 1; attempt <= 2; attempt++) {
     rec.attempts = attempt;
@@ -333,6 +345,8 @@ try {
         if (CONDITION_DEFS[cond].clips && !CONDITION_DEFS[cond].clips.includes(clip)) continue;
         const rec = await label(clip, cond, r);
         runs.push(rec);
+        // a model the host no longer serves fails every call alike: stop rather than charge them all (the call is recorded above)
+        if (rec.status === 404) throw new BudgetError(`${rec.model}: HTTP 404, not served by Token Factory any more`);
         const s = rec.score;
         console.log(`${clip} ${cond} run ${r}: ${rec.ok ? `${String(rec.ms).padStart(6)} ms in ${String(rec.prompt_tokens).padStart(6)} out ${String(rec.completion_tokens).padStart(5)} $${rec.cost_usd.toFixed(5)} ${rec.finish}` : `FAILED ${rec.status}: ${rec.error}`}  score ${s.score}/5 [${["verb", "object", "fixture", "steps", "size"].map((k) => (s[k] ? k : "-")).join(" ")}]${clip === "iss" && s.parsed ? ` scene ${s.scene ? "ok" : "WRONG"}` : ""}  main="${rec.label ? mainObject({ objects: rec.label.objects, steps: rec.label.steps.map((x) => ({ ...x })) })?.name ?? "" : ""}"`);
       }
@@ -375,25 +389,27 @@ const inputInfo = Object.fromEntries(
   Object.entries(inputs).map(([k, v]) => [k, v.kind === "video" ? { kind: "video", width: v.width, height: v.height, fps: v.fps, crop: v.crop, crf: CRF, bytes: v.bytes } : { kind: "keyframes", keyframes: v.frames.map((f) => ({ t_s: f.t, bytes: f.bytes })), montage_bytes: v.montage_bytes, width: v.width, note: "6 keyframes at the centres of 6 equal segments, JPEG q4; montage 12 frames 320 wide in a 4x3 tile" }]),
 );
 const result = {
-  benchmark: "Label robustness: Super VL on the two sample clips under several input conditions",
+  benchmark: `Label robustness: ${OTHER ? OTHER.name : "Super VL"} on the sample clips under several input conditions`,
   date: new Date().toISOString(),
   reproduce: REPRODUCE,
   stopped,
   conditions: {
     base_url: TOKEN_FACTORY_BASE_URL,
-    model: MODELS.vl,
+    model: MODEL,
     defs: Object.fromEntries(CONDITIONS.map((c) => [c, CONDITION_DEFS[c].name])),
     hints: { context: HINTS, task: TASK_HINTS },
     crops: CROPS,
     prompt: "LABEL_PROMPT of scripts/bench-session.mjs, verbatim; d adds one line saying the clip comes as captioned keyframes and a montage",
     temperature: "model default (not sent)",
     response_format: "json_object",
-    thinking: "chat_template_kwargs.enable_thinking=false except f (default, on)",
-    max_tokens: "3000, f 4000",
+    thinking: OTHER ? `off: ${JSON.stringify(OTHER.off)}${OTHER.off_note ? ` (${OTHER.off_note})` : ""}; f: the model's default` : "chat_template_kwargs.enable_thinking=false except f (default, on)",
+    max_tokens: OTHER?.always_reasons ? "8000 in every condition (its reasoning cannot be switched off)" : "3000, f 4000",
     order: "run-major: run 1 of every clip and condition, then run 2, ...; sequential, one call at a time",
     retries: "one retry after 5 s on a timeout, 429 or 5xx; none happened unless attempts > 1",
     inputs: inputInfo,
-    prices: "list prices from tests/fixtures/models.json ($0.30 in / $0.90 out per million for Super VL); video tokens priced as prompt tokens; a failed or timed-out call is charged at its reserved worst case",
+    prices: OTHER
+      ? `list prices from tests/fixtures/models-compare.json ($${(PRICES[MODEL].prompt * 1e6).toFixed(2)} in / $${(PRICES[MODEL].completion * 1e6).toFixed(2)} out per million); video tokens priced as prompt tokens; a failed or timed-out call is charged at its reserved worst case`
+      : "list prices from tests/fixtures/models.json ($0.30 in / $0.90 out per million for Super VL); video tokens priced as prompt tokens; a failed or timed-out call is charged at its reserved worst case",
   },
   ground_truth: Object.fromEntries(CLIPS.map((c) => [c, TRUTH[c]])),
   rubric: Object.fromEntries(CLIPS.map((c) => [c, RUBRIC[c]])),
