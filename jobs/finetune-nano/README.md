@@ -15,14 +15,14 @@ Checked before any spend: `prepare.py` on the committed dataset and the model's 
 
 H100 US$4.50 per GPU-hour, no separate CPU or RAM line for that platform ([compute pricing](https://docs.nebius.com/compute/resources/pricing.md)); disks and the bucket cost cents. Every step has a stop: jobs a `--timeout` that Nebius enforces (1 hour at least); endpoints have no timeout in Nebius, so a watchdog on this Mac deletes them at a wall-clock deadline, keeps the Mac from idle sleep meanwhile (`caffeinate -i`) and retries the deletion until the endpoint is gone. A closed lid still suspends the watchdog, and the endpoint bills until the Mac wakes: keep the Mac open and awake while an endpoint lives, and run the evaluation in the same sitting.
 
-| Step | Hard stop | Expected |
+| Step | Stop | Expected |
 |---|---|---|
 | 1. Smoke job, 10 steps | `--timeout 1h`: US$4.50 | about 30 minutes, mostly the 60 GB download |
 | 2. Smoke endpoint: vLLM loads the smoke adapter and answers one request | watchdog 40 min: US$3.00 | about 20 minutes |
 | 3. Full job, 3 epochs | `--timeout 2h`: US$9.00 | about 1 hour |
 | 4. Evaluation endpoint | watchdog 2 h: US$9.00 | about 1.5 hours |
 
-Worst case with every stop reached, the Mac awake: US$25.50, under the US$30 approved. The full job starts only after steps 1 and 2 pass, so a recipe or serving problem costs at most US$7.50.
+If every stop works: US$25.50 at most, under the US$30 approved. Two things can keep an endpoint billing past its stop, and no watchdog on this Mac can prevent them: the Mac asleep (a closed lid), and Nebius refusing the deletion (an outage, or the CLI login expired). The watchdog then keeps retrying and logs every failure to `$TMPDIR/understudy-ft-watchdog.log`; whoever runs the evaluation stays at the Mac, reads that log at each deadline, and deletes the endpoint from the console if the CLI cannot. The full job starts only after steps 1 and 2 pass, so a recipe or serving problem costs at most US$7.50.
 
 ## Commands
 
@@ -44,13 +44,16 @@ ENDPOINT=(nebius ai endpoint create --parent-id "$PROJECT_ID" --subnet-id "$SUBN
   --image vllm/vllm-openai:v0.18.0-cu130 --platform gpu-h100-sxm --preset 1gpu-16vcpu-200gb --disk-size 250Gi --shm-size 16Gi
   --volume "$BUCKET_ID:/mnt/data:ro" --container-port 8000 --public --auth token --container-command bash
   --args "-c \"$FETCH $RAW/serve.sh /tmp/serve.sh && bash /tmp/serve.sh\"" --format json)
-# a watchdog on this Mac: at a wall-clock deadline, delete the endpoint and retry until Nebius says it is
-# gone; caffeinate keeps the Mac from idle sleep until then (a closed lid still suspends it)
+# a watchdog on this Mac: at a wall-clock deadline, delete the endpoint and retry every 30 s until it is
+# deleted or Nebius answers NotFound (its code, case-sensitive: a shell's "command not found" never matches);
+# the CLI's absolute path is taken now, so a PATH change later cannot fake a deletion; caffeinate keeps the
+# Mac from idle sleep until then (a closed lid still suspends it)
 watchdog() {
-  local deadline=$(( $(date +%s) + $2 * 60 ))
+  local cli deadline=$(( $(date +%s) + $2 * 60 ))
+  cli=$(command -v nebius) || { echo "watchdog: no nebius CLI on PATH, endpoint $1 has no deadline" >&2; return 1; }
   nohup caffeinate -i sh -c "
     while [ \$(date +%s) -lt $deadline ]; do sleep 20; done
-    until out=\$(nebius ai endpoint delete $1 2>&1) || echo \"\$out\" | grep -qiE 'not.?found'; do echo \"\$out\"; sleep 30; done
+    until out=\$('$cli' ai endpoint delete $1 2>&1) || echo \"\$out\" | grep -q 'NotFound'; do echo \"\$(date -u +%FT%TZ) \$out\"; sleep 30; done
     echo \"\$(date -u +%FT%TZ) $1 deleted\"" >> "${TMPDIR:-/tmp}/understudy-ft-watchdog.log" 2>&1 &
 }
 
