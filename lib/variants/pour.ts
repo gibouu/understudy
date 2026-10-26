@@ -10,10 +10,11 @@ import type { SpecObject, Step, TaskSpec } from "@/lib/spec/schema";
 
 const DEG = Math.PI / 180;
 
-export type Pour = Step & { pour: NonNullable<Step["pour"]> };
+/** A pour step: the schema lets only a gesture leave out its object, so a pour always names the container it holds. */
+export type Pour = Step & { object: string; pour: NonNullable<Step["pour"]> };
 
 /** The rehearsed pour of a spec: its first step that pours, whole (lib/sim/liquid.ts fills that one's container). */
-export const pourOf = (spec: TaskSpec): Pour | undefined => spec.steps.find((s): s is Pour => s.verb === "pour" && s.pour !== undefined);
+export const pourOf = (spec: TaskSpec): Pour | undefined => spec.steps.find((s): s is Pour => s.verb === "pour" && s.pour !== undefined && s.object !== undefined);
 
 /** Half the width of a container's footprint along the unit direction `u` of the table, turned `yaw` degrees: the scene builds every container as an open box, whatever its shape. */
 export function halfAlong(o: SpecObject, yaw: number, u: [number, number]): number {
