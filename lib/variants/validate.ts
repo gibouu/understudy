@@ -40,11 +40,12 @@ const REST_MM = 2;
 export const MIN_SIZE_MM = 6;
 const DEG = Math.PI / 180;
 /**
- * Actions the rehearsal cannot run yet (it runs one grasp, then one insert
- * or place): a variant whose name or summary claims one is not offered, even
- * when its changes alone would run. The prompt lists the same ones.
+ * Pouring (#93) and waving (#94) are not supported yet: a variant whose name
+ * or summary claims either is not offered, even when its changes alone
+ * would run. Other actions the rehearsal does not run are left to the prompt,
+ * since their words are also object names (a stirring rod, a wet wipe).
  */
-const NOT_YET_ACTIONS = /\b(pour(s|ing|ed)?|wav(e|es|ing|ed)|wip(e|es|ing|ed)|stir(s|ring|red)?|shak(e|es|ing)|screwing|folding|tying)\b/i;
+const NOT_YET_ACTIONS = /\b(pour(s|ing|ed)?|wav(e|es|ing|ed))\b/i;
 
 export type Edit = { path: string; before: unknown; after: unknown };
 export type Variant = {
@@ -114,9 +115,12 @@ function opening(spec: TaskSpec, f: SpecObject): [number, number] {
   return [Math.max(...users.map((o) => footprintMm(o)[0])) + c, Math.max(...users.map((o) => footprintMm(o)[1])) + c];
 }
 
-/** Half extents of an object's footprint in another frame, turned by `yaw` degrees against it. */
+const round = (o: SpecObject) => o.shape !== "box";
+
+/** Half extents of an object's footprint along another frame's axes, turned by `yaw` degrees against it. */
 function halfExtents(o: SpecObject, yaw: number): [number, number] {
   const [a, b] = footprintMm(o);
+  if (round(o)) return [a / 2, a / 2];
   const [c, s] = [Math.abs(Math.cos(yaw * DEG)), Math.abs(Math.sin(yaw * DEG))];
   return [(c * a + s * b) / 2, (s * a + c * b) / 2];
 }
@@ -124,8 +128,8 @@ function halfExtents(o: SpecObject, yaw: number): [number, number] {
 /**
  * The world must exist as posed: sizes the scene can build, every object
  * within the arm's reach and above the table, no two objects in the same
- * place (a held object inside a pocket's opening or on a fixture's top is
- * not a clash), and the held object resting on what is under it.
+ * place (a held object standing in a pocket's opening or on a fixture's top
+ * is not a clash), and the held object resting on what is under it.
  */
 function geometryProblem(spec: TaskSpec): string | null {
   for (const o of spec.objects) {
@@ -147,44 +151,60 @@ function geometryProblem(spec: TaskSpec): string | null {
     if (r < MIN_REACH_MM) return `${o.name} would be ${Math.round(r)} mm from the robot's base, too close to reach down to`;
     if (bottom(o) < -REST_MM) return `${o.name} would be partly below the table`;
   }
-  /** Where `o`'s centre sits over fixture `f`: on its top, in its pocket's opening, or not over it. */
-  const over = (o: SpecObject, f: SpecObject): "top" | "opening" | null => {
-    const w = world[f.id];
-    const at = world[o.id].xyz_mm;
-    const local = apply(transpose(w.R), [at[0] - w.xyz_mm[0], at[1] - w.xyz_mm[1], at[2] - w.xyz_mm[2]]);
-    const [fx, fy] = footprintMm(f);
-    if (Math.abs(local[0]) > fx / 2 || Math.abs(local[1]) > fy / 2) return null;
-    if (!usedAsPocket(spec, f.id)) return "top";
+  /** `q`'s centre in `p`'s frame, mm. */
+  const localIn = (p: SpecObject, q: SpecObject) => {
+    const w = world[p.id];
+    const at = world[q.id].xyz_mm;
+    return apply(transpose(w.R), [at[0] - w.xyz_mm[0], at[1] - w.xyz_mm[1], at[2] - w.xyz_mm[2]]);
+  };
+  const floorTop = (f: SpecObject) => world[f.id].xyz_mm[2] - heightMm(f) / 2 + Math.min(WALL_M / MM, heightMm(f) / 2);
+  /** Whether `o`'s whole footprint stands inside pocket fixture `f`'s opening, on or above its floor. */
+  const inOpening = (o: SpecObject, f: SpecObject) => {
+    if (!usedAsPocket(spec, f.id) || bottom(o) < floorTop(f) - REST_MM) return false;
+    const [lx, ly] = localIn(f, o);
     const [ix, iy] = opening(spec, f);
-    const [ex, ey] = halfExtents(o, world[o.id].yaw_deg - w.yaw_deg);
-    return Math.abs(local[0]) + ex <= ix / 2 + 0.5 && Math.abs(local[1]) + ey <= iy / 2 + 0.5 ? "opening" : "top";
+    const [ex, ey] = halfExtents(o, world[o.id].yaw_deg - world[f.id].yaw_deg);
+    return Math.abs(lx) + ex <= ix / 2 + 0.5 && Math.abs(ly) + ey <= iy / 2 + 0.5;
+  };
+  /** Whether the footprints of `a` and `b` overlap: separating axes for boxes, distance for round ones. */
+  const footprintsOverlap = (a: SpecObject, b: SpecObject) => {
+    if (round(a) && round(b)) {
+      const d = Math.hypot(world[a.id].xyz_mm[0] - world[b.id].xyz_mm[0], world[a.id].xyz_mm[1] - world[b.id].xyz_mm[1]);
+      return d < footprintMm(a)[0] / 2 + footprintMm(b)[0] / 2;
+    }
+    for (const [p, q] of [
+      [a, b],
+      [b, a],
+    ]) {
+      const [lx, ly] = localIn(p, q);
+      const [px, py] = halfExtents(p, 0);
+      const [qx, qy] = halfExtents(q, world[q.id].yaw_deg - world[p.id].yaw_deg);
+      if (Math.abs(lx) >= px + qx || Math.abs(ly) >= py + qy) return false;
+    }
+    return true;
   };
   for (let i = 0; i < spec.objects.length; i++) {
     for (let j = i + 1; j < spec.objects.length; j++) {
       const [a, b] = [spec.objects[i], spec.objects[j]];
-      const d = Math.hypot(world[a.id].xyz_mm[0] - world[b.id].xyz_mm[0], world[a.id].xyz_mm[1] - world[b.id].xyz_mm[1]);
-      const disc = (o: SpecObject) => Math.hypot(...footprintMm(o)) / 2; // under any yaw
       const z = Math.min(bottom(a) + heightMm(a), bottom(b) + heightMm(b)) - Math.max(bottom(a), bottom(b));
-      if (d >= disc(a) + disc(b) || z <= REST_MM) continue;
-      if ((a.role === "manipulated" && over(a, b) === "opening") || (b.role === "manipulated" && over(b, a) === "opening")) continue;
+      if (z <= REST_MM || !footprintsOverlap(a, b)) continue;
+      if ((a.role === "manipulated" && inOpening(a, b)) || (b.role === "manipulated" && inOpening(b, a))) continue;
       return `${a.name} and ${b.name} would be in the same place`;
     }
   }
   for (const o of spec.objects.filter((x) => x.role === "manipulated")) {
-    // what is under the object's centre: a fixture's top or its pocket's floor, else the table
-    const supports: number[] = [];
+    // the surfaces under the object's centre: the table, a fixture's top, a pocket's floor
+    const supports = [0];
     for (const f of spec.objects.filter((x) => x !== o && x.role !== "manipulated")) {
-      const where = over(o, f);
-      if (!where) continue;
-      const top = heightMm(f) / 2;
-      supports.push(world[f.id].xyz_mm[2] + (where === "opening" ? -top + Math.min(WALL_M / MM, top) : top));
+      const [lx, ly] = localIn(f, o);
+      const [fx, fy] = footprintMm(f);
+      const under = round(f) ? Math.hypot(lx, ly) <= fx / 2 : Math.abs(lx) <= fx / 2 && Math.abs(ly) <= fy / 2;
+      if (under) supports.push(inOpening(o, f) ? floorTop(f) : world[f.id].xyz_mm[2] + heightMm(f) / 2);
     }
-    if (supports.length === 0) supports.push(0);
-    const gaps = supports.map((s) => bottom(o) - s);
-    const gap = gaps.reduce((p, g) => (Math.abs(g) < Math.abs(p) ? g : p));
-    if (Math.abs(gap) > REST_MM) {
-      return `${o.name} would start ${gap > 0 ? "in mid-air" : "sunk into what is under it"}, ${Math.round(Math.abs(gap))} mm ${gap > 0 ? "above" : "below"} the surface under it`;
-    }
+    // it rests on the highest surface at or below its bottom
+    const below = supports.filter((s) => s <= bottom(o) + REST_MM);
+    const gap = bottom(o) - Math.max(...below);
+    if (gap > REST_MM) return `${o.name} would start in mid-air, ${Math.round(gap)} mm above the surface under it`;
   }
   return null;
 }

@@ -108,7 +108,7 @@ describe("a variant of the ISS sample", () => {
     expect(why(build(pose("obj1", [175, 40, 20])))).toBe("seed film packet and Veggie plant pillow tray would be in the same place");
     expect(why(build(pose("obj1", [200, -100, 60])))).toMatch(/start in mid-air, 40 mm above/);
     expect(why(build(pose("obj1", [0, 0, 25], "obj2")))).toMatch(/start in mid-air, 12 mm above/);
-    expect(why(build(pose("obj1", [0, 0, 5], "obj2")))).toMatch(/sunk into what is under it/);
+    expect(why(build(pose("obj1", [0, 0, 5], "obj2")))).toBe("seed film packet and Veggie plant pillow tray would be in the same place");
     expect(why(build(pose("obj2", [175, 100, 5])))).toMatch(/partly below the table/);
   });
 
@@ -131,8 +131,26 @@ describe("a variant of the ISS sample", () => {
   it("does not offer a variant that claims an action the rehearsal does not run", () => {
     const pour = buildVariant(base, { title: "Pour into tray", summary: "The arm pours into the tray.", changes: [{ path: "objects[obj2].pocket_clearance_mm", value: 2 }] }, 1);
     expect(why(pour)).toBe('not yet: "pour" is not something the rehearsal runs; it runs one grasp and then one insert or place');
-    const noun = buildVariant(base, { title: "Longer screw", summary: "A screw folded into the kit.", changes: [{ path: "objects[obj2].pocket_clearance_mm", value: 2 }] }, 1);
+    const noun = buildVariant(base, { title: "Tighter holder", summary: "The arm inserts the stirring rod into a tighter holder, wiping nothing.", changes: [{ path: "objects[obj2].pocket_clearance_mm", value: 2 }] }, 1);
     expect(why(noun)).toBe("");
+  });
+
+  it("judges footprints by their real shape", () => {
+    // 30 mm of table between the packet and the tray: bounding discs would overlap
+    expect(why(build(["objects[obj1].pose", { xyz_mm: [175, -10, 20], yaw_deg: 0, frame: "world" }]))).toBe("");
+    // a round object fits a pocket however it is turned
+    const cyl = (yaw: number) => build(["objects[obj1].shape", "cylinder"], ["objects[obj1].size_mm", [20, 20, 40]], ["objects[obj1].pose", { xyz_mm: [0, 0, 13], yaw_deg: yaw, frame: "obj2" }]);
+    expect(why(cyl(0))).toBe("");
+    expect(why(cyl(45))).toBe("");
+    // past a round target's edge there is no support, though its square bounds reach that far
+    const plate = (xyz: number[]) => build(["objects[obj2].shape", "cylinder"], ["objects[obj2].size_mm", [100, 100, 30]], ["steps[s2].verb", "place"], ["steps[s2].target.fixture", "zone"], ["objects[obj1].pose", { xyz_mm: xyz, yaw_deg: 0, frame: "obj2" }]);
+    expect(why(plate([0, 0, 35]))).toBe("");
+    expect(why(plate([42, 42, 35]))).toBe("seed film packet would start in mid-air, 30 mm above the surface under it");
+  });
+
+  it("finds the table under a raised fixture", () => {
+    const r = build(["objects[obj2].pose", { xyz_mm: [175, 100, 60], yaw_deg: 0, frame: "world" }], ["objects[obj1].pose", { xyz_mm: [175, 100, 20], yaw_deg: 0, frame: "world" }]);
+    expect(why(r)).toBe("");
   });
 
   it("keeps the grasp a grasp", () => {
