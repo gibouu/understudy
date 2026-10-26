@@ -8,9 +8,10 @@ import { formFor } from "@/lib/spec/answer";
 import { applyChanges } from "@/lib/spec/apply";
 import type { Predicate, Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
+import { gateNote } from "@/lib/unlock/messages";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
 import { withGesturePaths } from "@/lib/vision/trace";
-import { FilmYourself, UnlockPrompt, unlockCode } from "./capture";
+import { FilmYourself, keepSampleToken, liveAuth, UnlockPrompt } from "./capture";
 import { GroundChips } from "./ground-chips";
 import { ProgramView, type Failure } from "./program-view";
 
@@ -28,7 +29,7 @@ const asksOf = (p: Program): Ask[] => p.steps.flatMap((s) => s.ops).filter((op):
 
 async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
   try {
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...liveAuth(), ...(body as object) }) });
     return (await res.json()) as StageResult<T>;
   } catch (err) {
     return failed((err as Error).message);
@@ -103,8 +104,9 @@ export function Flow() {
     const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: await clipSha256(clip.blob) }));
     if (id !== gen.current) return;
     setLabel(running("Super VL is watching the clip"));
-    const labelled = await post<TaskSpec>("/api/label", { ...body, hint, unlock: unlockCode() });
+    const labelled = await post<TaskSpec>("/api/label", { ...body, hint });
     if (id !== gen.current) return;
+    keepSampleToken((labelled as { sample_token?: string }).sample_token);
     // a gesture's hand path is measured here, in the browser, before the fit
     const { result: r, notes: traced } = await withGesturePaths(labelled, clip.blob, (note) => id === gen.current && setLabel(running(note)));
     if (id !== gen.current) return;
@@ -283,7 +285,7 @@ function Section({ n, title, model, children }: { n: number; title: string; mode
 function Status<T>({ result }: { result: StageResult<T> }) {
   if (result.status === "running") return <p className="animate-pulse text-sm text-neutral-600">{result.note}…</p>;
   if (result.status === "failed") return <p className="text-sm text-red-700">{result.message}</p>;
-  if (result.status === "done" && result.warnings.some((w) => w.startsWith("replay"))) return <p className="mb-2 text-xs text-amber-700">replayed from a recording</p>;
+  if (result.status === "done" && result.warnings.some((w) => w.startsWith("replay"))) return <p className="mb-2 text-xs text-amber-700">{gateNote(result.warnings) ?? "replayed from a recording"}</p>;
   return null;
 }
 

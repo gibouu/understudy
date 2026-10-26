@@ -31,6 +31,7 @@ import type { LedgerEntry, StageResult } from "@/lib/spec/stage-result";
 import { knobsOf, type Applied } from "@/lib/notes/knobs";
 import { outcomeLine } from "@/lib/notes/note";
 import { MAX_PATCHES, type Attempt, type NotePatch } from "@/lib/notes/patch";
+import { UNLOCK_ENV } from "@/lib/unlock/check";
 import { answerFor, CLIP_ANSWERS, DEFAULT_ANSWERS, slotWords } from "./answers";
 import { rehearseAll, rollouts, summary, type Engine } from "./rehearse";
 import { Session, type Answer, type Call, type Iteration, type Turn } from "./session";
@@ -97,8 +98,9 @@ const calls = (stage: Call["stage"], ledger: LedgerEntry[] = []): Call[] =>
   ledger.map((e) => ({ stage, model: e.model, prompt_tokens: e.prompt_tokens, completion_tokens: e.completion_tokens, cached_tokens: e.cached_tokens, seconds: round(e.seconds, 2), usd: round(priceOf(e), 8) }));
 
 type Handler = (req: Request) => Promise<Response>;
+/** Carries the unlock code when one is set here, so the spend guard (lib/unlock/check.ts) lets the recording go live. */
 async function post<T>(handler: Handler, route: string, body: unknown): Promise<StageResult<T>> {
-  const res = await handler(new Request(`http://localhost${route}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
+  const res = await handler(new Request(`http://localhost${route}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ unlock: process.env[UNLOCK_ENV], ...(body as object) }) }));
   return (await res.json()) as StageResult<T>;
 }
 

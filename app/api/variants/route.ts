@@ -5,8 +5,10 @@
  * writes one, or says what the arm cannot do yet. Each idea is checked and
  * fitted to the bench here (lib/variants/validate.ts) and comes back with its
  * spec ready for /api/compile, numbered from `first`; ideas that cannot be
- * rehearsed come back under `not_yet` with the reason. Replay
- * (no key, or ?replay=1) answers from tests/fixtures/variants.json: Super's
+ * rehearsed come back under `not_yet` with the reason. `unlock` or
+ * `sample_token` lets it go live (lib/unlock/check.ts). Replay (no key,
+ * ?replay=1, or no way past the spend guard) answers from
+ * tests/fixtures/variants.json: Super's
  * recorded reply to the same request, for this task's title if there is one,
  * checked against the spec posted now.
  */
@@ -19,6 +21,7 @@ import { askSuper, cleanRequest } from "@/lib/variants/ask";
 import { VariantReply } from "@/lib/variants/parse";
 import { MAX_REQUEST_CHARS } from "@/lib/variants/prompt";
 import { checkReply, type Checked } from "@/lib/variants/validate";
+import { explain, liveGate } from "@/lib/unlock/check";
 
 export const maxDuration = 60;
 
@@ -45,10 +48,11 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Check
   const request = cleanRequest(body?.request, MAX_REQUEST_CHARS);
   const first = Number.isInteger(body?.first) && body.first >= 1 && body.first < 10_000 ? (body.first as number) : 1;
 
-  const client = wantsReplay(req) ? null : tokenFactory({ timeout: 25_000, maxRetries: 1 });
+  const gate = wantsReplay(req) ? null : await liveGate("variants", body);
+  const client = gate?.live ? tokenFactory({ timeout: 25_000, maxRetries: 1 }) : null;
   // a failed answer still cost its calls: the page counts them from this
   const billed: LedgerEntry[] = [];
-  const result = client ? await askSuper(client, spec.data, request, billed) : replay(spec.data, request);
+  const result = client ? await askSuper(client, spec.data, request, billed) : explain(replay(spec.data, request), gate);
   if (result.status !== "done") return NextResponse.json({ ...result, ledger: billed });
   let checked: Checked;
   try {

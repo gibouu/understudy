@@ -5,8 +5,11 @@ import { outcomeLine, type WorldRun } from "@/lib/notes/note";
 import { MAX_PATCHES, type Attempt, type NotePatch } from "@/lib/notes/patch";
 import { GRAVITIES, type Program, type TaskSpec } from "@/lib/spec/schema";
 import { failed, type StageResult } from "@/lib/spec/stage-result";
+import { gateNote } from "@/lib/unlock/messages";
+import { liveAuth } from "./capture";
 
-type Iteration = { n: number; state: "asking" | "rehearsing" | "done" | "failed"; patch?: NotePatch; replayed?: boolean; runs?: WorldRun[]; message?: string };
+/** `replayed`: what the patch line says when it came from a recording, the spend guard's reason when that is why */
+type Iteration = { n: number; state: "asking" | "rehearsing" | "done" | "failed"; patch?: NotePatch; replayed?: string; runs?: WorldRun[]; message?: string };
 
 const WHY_THINKING = { noop: "thinking on: the cheap patch changed nothing", two_failed: "thinking on: two patches failed" } as const;
 
@@ -49,7 +52,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
         break;
       }
       const p = r.value;
-      update(n, { state: "rehearsing", patch: p, replayed: r.warnings.some((w) => w.startsWith("replay")) });
+      update(n, { state: "rehearsing", patch: p, replayed: r.warnings.some((w) => w.startsWith("replay")) ? (gateNote(r.warnings) ?? "replayed from a recording") : undefined });
       let runs: WorldRun[];
       try {
         runs = p.noop ? last : await rehearse(p.program);
@@ -93,7 +96,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
                 {x.patch && (
                   <span className="text-xs text-neutral-500">
                     {x.patch.thinking ? (x.patch.escalation ? WHY_THINKING[x.patch.escalation] : "thinking on") : "thinking off"} · {x.patch.tokens.toLocaleString()} tokens · ${x.patch.cost_usd.toFixed(4)}
-                    {x.replayed ? " · replayed from a recording" : ""}
+                    {x.replayed ? ` · ${x.replayed}` : ""}
                   </span>
                 )}
               </div>
@@ -136,7 +139,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
 
 async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
   try {
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...liveAuth(), ...(body as object) }) });
     return (await res.json()) as StageResult<T>;
   } catch (err) {
     return failed((err as Error).message);

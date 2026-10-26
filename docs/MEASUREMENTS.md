@@ -250,8 +250,8 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 |---|---|---|---|
 | Earth, Node (`tests/sim/wave-fixture.test.ts`) | 66 of 66 | 0.3 mm | 0 s |
 | Orbit (0 g), Node | 66 of 66 | 0.3 mm | 0 s |
-| Earth, browser worker, two runs | 66 of 66 | 0.5 and 0.8 mm | |
-| Orbit, browser worker, two runs | 66 of 66 | 0.6 mm | |
+| Earth, browser worker, three runs | 66 of 66 | 0.5 to 0.8 mm | |
+| Orbit, browser worker, three runs | 66 of 66 | 0.4 to 0.6 mm | |
 
 On the first sample clip (a slower palm wave, replaced because an agency placard and flags were in view, so these numbers are no longer reproducible from the repository), at the clip's own pace the joints turned at up to 2.9 rad/s and the arm reached 238 of 240 points within 5 mm, the farthest 5.2 mm off; held to 2 rad/s it reached all 240 within 1.1 mm. That is where the cap comes from; it was chosen in the simulator, not from a real servo. The reach box, 240 mm across and z 200 to 330 mm in the plane x = 220 mm, is checked corner by corner and with a circle that fills it, at 1 g and 0 g (`tests/sim/follow.test.ts`). Live spend for this section, about US$0.04: Super VL labels of the two sample clips and of two camera takes while the label prompt and clean-up were tuned, and three Nano compiles before a program made only of gestures stopped needing a model.
 

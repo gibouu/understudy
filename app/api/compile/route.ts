@@ -2,10 +2,12 @@
  * POST /api/compile {spec, previous?}: Nano turns a task spec into a Program,
  * with an `ask` op for every value it would otherwise have to guess. It runs
  * again after every interview answer; `previous` is the program kept when a
- * recompile comes back unusable. Replay (no key, or ?replay=1) answers from
- * tests/fixtures/compile.json: the recording of the same spec, else the latest
- * one with the same title. A spec of gestures alone has nothing to guess: its
- * program, a follow op per step, is written here, live or replayed alike.
+ * recompile comes back unusable; `unlock` or `sample_token` lets it go live
+ * (lib/unlock/check.ts). Replay (no key, ?replay=1, or no way past the spend
+ * guard) answers from tests/fixtures/compile.json: the recording of the same
+ * spec, else the latest one with the same title. A spec of gestures alone has
+ * nothing to guess: its program, a follow op per step, is written here with no
+ * model, live or replayed alike.
  */
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/compile.json";
@@ -19,6 +21,7 @@ import { canonicalSlot, valueAt } from "@/lib/spec/apply";
 import { askable, withRequiredAsks } from "@/lib/spec/answer";
 import { gestureProgram } from "@/lib/sim/gesture";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
+import { explain, liveGate } from "@/lib/unlock/check";
 
 export const maxDuration = 60;
 
@@ -135,7 +138,8 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   const gestures = gestureProgram(spec.data);
   if (gestures) return NextResponse.json(done(gestures, ["every step is a gesture: the program follows each path and needs no model"]));
 
-  const client = wantsReplay(req) ? null : tokenFactory({ timeout: 25_000, maxRetries: 1 });
+  const gate = wantsReplay(req) ? null : await liveGate("compile", body);
+  const client = gate?.live ? tokenFactory({ timeout: 25_000, maxRetries: 1 }) : null;
   const result = client
     ? await callModel(client, {
         role: "nano",
@@ -147,7 +151,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
         check: (p) => lintProgram(resolveFixtureNames(p, spec.data).program, spec.data),
         previous,
       })
-    : replay(spec.data);
+    : explain(replay(spec.data), gate);
   if (result.status !== "done") return NextResponse.json(result);
   const resolved = resolveFixtureNames(result.value, spec.data);
   const warnings = [...result.warnings, ...resolved.warnings];

@@ -10,6 +10,8 @@ import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib
 import { costOf } from "@/lib/variants/cost";
 import { MAX_VARIANTS, type NotYet } from "@/lib/variants/parse";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
+import { gateNote } from "@/lib/unlock/messages";
+import { liveAuth } from "./capture";
 import { PatchLoop } from "./patch-loop";
 
 /** The same two worlds as the rehearsal above. */
@@ -24,7 +26,7 @@ type Call = { what: string; ledger: LedgerEntry[]; replayed: boolean; failed: bo
 
 async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
   try {
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...liveAuth(), ...(body as object) }) });
     return (await res.json()) as StageResult<T>;
   } catch (err) {
     return failed((err as Error).message);
@@ -377,7 +379,7 @@ function VariantPatch({ id, setOwner, ...loop }: Omit<React.ComponentProps<typeo
 function StatusLine({ result }: { result: StageResult<Checked> }) {
   if (result.status === "running") return <span className="animate-pulse text-sm text-[color:var(--muted,#737373)]">{result.note}…</span>;
   if (result.status === "failed") return <span className="text-sm text-red-700">{result.message}</span>;
-  if (replayed(result)) return <span className="text-xs text-amber-700">replayed from a recording</span>;
+  if (replayed(result) && result.status === "done") return <span className="text-xs text-amber-700">{gateNote(result.warnings) ?? "replayed from a recording"}</span>;
   return null;
 }
 
@@ -432,7 +434,7 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
           {cost && (
             <p className="mt-1 text-xs text-[color:var(--muted,#737373)]">
               Its program: {cost.calls} Nano call{cost.calls === 1 ? "" : "s"}, {usd(cost.usd)}
-              {replayed(run.compile) && " (recorded)"}
+              {run.compile.status === "done" && replayed(run.compile) && ` (${gateNote(run.compile.warnings) ?? "recorded"})`}
             </p>
           )}
           {patch}
