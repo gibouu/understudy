@@ -54,10 +54,11 @@ export function clearAround(spec?: TaskSpec): Box {
   }
   for (const o of spec.objects) {
     const at = frames[o.id]?.xyz_m;
-    if (!at) continue;
     const r = (Math.hypot(...o.size_mm) * MM) / 2;
+    if (!at || ![...at, r].every(Number.isFinite)) continue; // no room is built around an object of no finite size
     for (let k = 0; k < 3; k++) {
-      if (k < 2) box.min[k] = Math.min(box.min[k], at[k] - r); // the floor stays the work surface
+      // the work surface stays at z = 0, where the bench's floor is: what pokes below it is cut the same on both
+      if (k < 2) box.min[k] = Math.min(box.min[k], at[k] - r);
       box.max[k] = Math.max(box.max[k], at[k] + r);
     }
   }
