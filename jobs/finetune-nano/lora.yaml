@@ -1,0 +1,100 @@
+# LoRA of Nemotron 3 Nano 30B-A3B on the patch-loop repairs (issue #97), one H100.
+#
+# NVIDIA's single-GPU recipe (NeMo AutoModel r0.7.0,
+# examples/llm_finetune/nemotron/nemotron_nano_v3_singlegpu_lora.yaml) with our data:
+# ChatDataset on bench/finetune/{train,val}.jsonl, loss on the final answer only, 3 epochs,
+# LoRA rank 16 as in NVIDIA's chat recipe (customizer_nemotron_nano_peft.yaml), checkpoints in
+# the mounted bucket. prepare.py fills the paths, the chat template (thinking off by default,
+# as the patcher is served), the model revision and, for a smoke run, max_steps.
+
+recipe: TrainFinetuneRecipeForNextTokenPrediction
+
+step_scheduler:
+  global_batch_size: 8
+  local_batch_size: 1
+  num_epochs: 3
+  # 881 examples / 8 = about 110 steps an epoch: a checkpoint per epoch, validation twice an epoch
+  ckpt_every_steps: 110
+  val_every_steps: 55
+
+dist_env:
+  backend: nccl
+  timeout_minutes: 30
+
+rng:
+  _target_: nemo_automodel.components.training.rng.StatefulRNG
+  seed: 1111
+  ranked: true
+
+model:
+  _target_: nemo_automodel.NeMoAutoModelForCausalLM.from_pretrained
+  pretrained_model_name_or_path: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+  backend:
+    _target_: nemo_automodel.components.models.common.BackendConfig
+    rms_norm: torch_fp32
+    linear: torch
+    dispatcher: torch
+
+compile:
+  enabled: false
+
+checkpoint:
+  enabled: true
+  checkpoint_dir: null # prepare.py
+  model_save_format: safetensors
+  save_consolidated: true
+
+peft:
+  _target_: nemo_automodel.components._peft.lora.PeftConfig
+  exclude_modules: ["*.out_proj"] # mamba out_proj uses custom kernels; LoRA doesn't apply
+  dim: 16
+  alpha: 32
+  use_triton: true
+  use_memory_efficient_lora: true
+
+distributed:
+  strategy: fsdp2
+  dp_size: 1
+  tp_size: 1
+  cp_size: 1
+  ep_size: 1
+  sequence_parallel: false
+  activation_checkpointing: true
+
+loss_fn:
+  _target_: nemo_automodel.components.loss.masked_ce.MaskedCrossEntropy
+
+dataset:
+  _target_: nemo_automodel.components.datasets.llm.chat_dataset.ChatDataset
+  path_or_dataset_id: null # prepare.py
+  chat_template: null # prepare.py
+  seq_length: 2048
+  mask_history: true
+  mask_generation_prompt: true
+
+validation_dataset:
+  _target_: nemo_automodel.components.datasets.llm.chat_dataset.ChatDataset
+  path_or_dataset_id: null # prepare.py
+  chat_template: null # prepare.py
+  seq_length: 2048
+  mask_history: true
+  mask_generation_prompt: true
+
+packed_sequence:
+  packed_sequence_size: 0
+
+dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+  shuffle: true
+
+validation_dataloader:
+  _target_: torchdata.stateful_dataloader.StatefulDataLoader
+  collate_fn: nemo_automodel.components.datasets.utils.default_collater
+
+optimizer:
+  _target_: torch.optim.Adam
+  betas: [0.9, 0.999]
+  eps: 1e-8
+  lr: 1.0e-4
+  weight_decay: 0

@@ -32,6 +32,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BudgetError, charge, costOf, guard, loadPrices, spent } from "./bench-ledger.mjs";
+import { logCall } from "./call-log.mjs";
 
 const SCRIPT = "bench-label";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -279,6 +280,7 @@ async function label(clip, cond, run) {
       // the server may have done the work before the error or timeout: charge the reserved estimate
       const status = err?.status ?? null;
       charge(SCRIPT, worst, { ...meta, attempt, estimated: true, failed: true, status }, reservation);
+      logCall(SCRIPT, { stage: "label", params, error: `${status ?? "?"} ${redact(err?.message ?? err)}`.slice(0, 300), cost_usd: worst, meta: { ...meta, attempt, estimated: true } });
       rec.estimated_usd += worst;
       Object.assign(rec, { ok: false, ms: Math.round(performance.now() - started), status, error: redact(err?.message ?? err).slice(0, 300), cost_usd: 0, score: score(clip, null) });
       if (attempt === 1 && (status === null || status === 429 || status >= 500)) {
@@ -292,6 +294,7 @@ async function label(clip, cond, run) {
     const u = usageOf(res);
     const cost = costOf(PRICES, model, u);
     charge(SCRIPT, cost, { ...meta, attempt, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens }, reservation);
+    logCall(SCRIPT, { stage: "label", params, res, usage: u, cost_usd: cost, meta: { ...meta, attempt } });
     const parsed = parseJson(text);
     Object.assign(rec, {
       ok: true,
