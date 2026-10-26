@@ -1,9 +1,9 @@
 /**
- * The one model call every route makes: JSON mode and thinking off, one retry
- * without those optional parameters when Token Factory answers 400, one more
- * ask when the output does not parse, and then the caller's previous value
- * (when it has one) instead of a failure, so a bad recompile never loses a
- * working program. Spec v2 risk 3.
+ * The one model call every route makes: JSON mode and thinking off (unless
+ * asked for), one retry without those optional parameters when Token Factory
+ * answers 400, one more ask when the output does not parse, and then the
+ * caller's previous value (when it has one) instead of a failure, so a bad
+ * recompile never loses a working program. Spec v2 risk 3.
  */
 import OpenAI from "openai";
 import type { z } from "zod";
@@ -27,6 +27,8 @@ export type CallOptions<T> = {
   previous?: T;
   /** problems a parsed value still has; the model is asked once to fix them, and what remains becomes warnings */
   check?: (value: T) => string[];
+  /** reason before answering (the model's default); maxTokens then covers reasoning and answer */
+  thinking?: boolean;
 };
 
 export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<StageResult<T>> {
@@ -44,7 +46,7 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
     const params = { model, messages, max_tokens: o.maxTokens };
     let res;
     try {
-      res = await client.chat.completions.create(optional ? { ...params, response_format: { type: "json_object" }, ...thinkingOff() } : params);
+      res = await client.chat.completions.create(optional ? { ...params, response_format: { type: "json_object" }, ...(o.thinking ? {} : thinkingOff()) } : params);
     } catch (err) {
       if (!(optional && err instanceof OpenAI.APIError && err.status === 400)) throw err;
       optional = false;
