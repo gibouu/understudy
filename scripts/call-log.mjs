@@ -30,14 +30,16 @@ function fileFor(script) {
   return files.get(script);
 }
 
-// any case ("DATA:", ";BASE64,"); a payload wrapped over lines is taken whole
-const DATA_URI = /data:([\w.+-]+\/[\w.+-]+)?((?:;[\w.+-]+=[^;,\s]*)*);base64,((?:[A-Za-z0-9+/]|\r?\n)*={0,2})/gi;
+// any case ("DATA:", ";BASE64,"); a payload wrapped over lines is taken whole. One character
+// class, no alternation: V8 then matches a clip of many megabytes without recursing.
+const DATA_URI = /data:([\w.+-]+\/[\w.+-]+)?((?:;[\w.+-]+=[^;,\s]*)*);base64,([A-Za-z0-9+/\r\n]*={0,2})/gi;
 /** every base64 data: URI anywhere in the value becomes a short description of it */
 export function scrub(v) {
   if (typeof v === "string") {
     return v.replace(DATA_URI, (_m, mime, _params, raw) => {
       const body = raw.replace(/\s/g, "");
-      return `<data URI ${mime || "?"}, ${Math.floor((body.length * 3) / 4)} bytes, sha256 ${createHash("sha256").update(body).digest("hex").slice(0, 16)}>`;
+      const bytes = Math.floor((body.length * 3) / 4) - (body.endsWith("==") ? 2 : body.endsWith("=") ? 1 : 0);
+      return `<data URI ${mime || "?"}, ${bytes} bytes, sha256 ${createHash("sha256").update(body).digest("hex").slice(0, 16)}>`;
     });
   }
   if (Array.isArray(v)) return v.map(scrub);

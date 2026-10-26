@@ -62,6 +62,9 @@ describe("call log (scripts/call-log.mjs)", () => {
       expect(out).toMatch(/^x <data URI image\/png, 600 bytes, sha256 [0-9a-f]{16}>$/);
       expect(out).toBe(String(scrub(`x data:image/png;base64,${b64}`)));
     }
+    // a clip of 10 MB, plain and wrapped, in one pass
+    const clip = Buffer.alloc(10_000_000, 3).toString("base64");
+    for (const body of [clip, clip.match(/.{1,76}/g)!.join("\r\n")]) expect(String(scrub(`data:video/mp4;base64,${body}`))).toMatch(/^<data URI video\/mp4, 10000000 bytes, sha256 [0-9a-f]{16}>$/);
     const echo = logCall("unit", { stage: "patch", params, res: { choices: [{ message: { content: `echo data:video/mp4;base64,${b64}` } }] }, error: `400 bad data:;base64,${b64}` });
     const echoed = readFileSync(path.join(dir, files[0]), "utf8").trim().split("\n").map((l) => JSON.parse(l)).find((r) => r.id === echo);
     expect(JSON.stringify(echoed)).not.toContain(b64.slice(0, 40));
