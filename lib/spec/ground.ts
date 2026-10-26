@@ -245,12 +245,13 @@ export type GroundFilter = z.infer<typeof GroundFilter>;
 
 /**
  * A number with its unit, whole. Before it: no digit or decimal mark, no
- * fraction bar, power or minus even with spaces ("1/2 mm", "1 / 2 mm" are
- * not 2 mm), and no exponent ("1e2 mm"); a leading-dot decimal is read as one
- * (".5 mm" is 0.5). After the unit: no rate or power, even with spaces
- * ("2 mm/s", "2 mm / s", "2 mm²").
+ * digit group ("1 000 mm" is not 0 mm), no fraction bar, power or minus even
+ * with spaces ("1/2 mm", "1 / 2 mm", "−2 mm" are not 2 mm), and no exponent
+ * ("1e2 mm"); a leading-dot decimal is read as one (".5 mm" is 0.5). After
+ * the unit: no rate or power, even with spaces or in words ("2 mm/s",
+ * "2 mm / s", "2 mm per second", "2 mm²").
  */
-const QUANTITY = /(?<![\d.,])(?<![/^\-–]\s*)(?<!\d[eE][+-]?)(\d+(?:[.,]\d+)?|[.,]\d+)\s?(millimet(?:er|re)s?|mm|centimet(?:er|re)s?|cm|met(?:er|re)s?|m|inch(?:es)?|degrees?|deg|°)(?!\s*[/²³^]|[a-z\d])/gi;
+const QUANTITY = /(?<![\d.,])(?<!\d[\s  '’])(?<![/^\-–−]\s*)(?<!\d[eE][+-]?)(\d+(?:[.,]\d+)?|[.,]\d+)\s?(millimet(?:er|re)s?|mm|centimet(?:er|re)s?|cm|met(?:er|re)s?|m|inch(?:es)?|degrees?|deg|°)(?!\s*(?:[/²³^]|per\b)|[a-z\d])/gi;
 
 /** Factor to the slot's unit for a unit written in a sentence, or undefined when they measure different things. */
 function factor(written: string, unit: string): number | undefined {

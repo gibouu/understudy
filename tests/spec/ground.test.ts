@@ -196,6 +196,9 @@ describe("chipsFrom", () => {
     expect(one("Push the marker in at 2 mm / s or slower, never faster.", gap, 2)).toBe(false);
     expect(one("Keep a gap of 1e2 mm around the barrel of the marker.", gap, 2)).toBe(false);
     expect(one("Keep a gap of 0.01 mm around the barrel of the marker.", gap, 0)).toBe(false);
+    expect(one("Push the marker in at 2 mm per second or slower, never faster.", gap, 2)).toBe(false);
+    expect(one("Keep the marker 1 000 mm from the edge of the rack at least.", gap, 0)).toBe(false);
+    expect(one("Offset the marker by \u22122 mm from the centre of the slot.", gap, 2)).toBe(false);
     expect(one("Keep a gap of approx. 2 mm around the barrel of the marker.", gap, 2)).toBe(true);
     expect(one("Keep a gap of 0.3 cm around the barrel of the marker.", gap, 3)).toBe(true);
   });
