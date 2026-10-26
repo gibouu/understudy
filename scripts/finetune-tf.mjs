@@ -278,7 +278,7 @@ async function main() {
       const perHour = Number(opt("--usd-per-gpu-hour") ?? 5.6);
       if (!weights) throw new Error("--custom-weights-id: the tuned weights, once Support has switched custom weights on");
       if (!(minutes >= 10 && minutes <= 180)) throw new Error("--minutes: the endpoint's lifetime, 10 to 180; the watchdog deletes it then");
-      const tf = client();
+      client();
       const root = BASE_URL.replace(/\/v1\/?$/, "");
       const auth = { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` };
       const list = async () => ((await (await fetch(`${root}/v0/dedicated_endpoints`, { headers: auth })).json()).data ?? []);
