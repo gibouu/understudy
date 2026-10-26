@@ -101,7 +101,8 @@ async function ground(spec: TaskSpec, ledger: LedgerEntry[], warnings: string[],
     schema: GroundFilter,
   });
   if (r.status !== "done") {
-    warnings.push(r.status === "failed" ? r.message : "nano: no answer");
+    // callModel's message can quote an SDK error, cut to a length the redaction no longer matches: say what happened in our words
+    warnings.push(r.status === "failed" ? `nano: ${r.retryable ? "no answer (network, rate limit or timeout)" : "no usable answer"}` : "nano: no answer");
     return { query, pages: sources, chips: [] };
   }
   ledger.push(...(r.ledger ?? []));

@@ -74,13 +74,22 @@ const METADATA = /^(?:Title|URL Source|Published Time|Markdown Content):/;
 /** Past this a page is cut: a few sentences are all a chip needs, and parsing stays fast on hostile input. */
 const MAX_PAGE_CHARS = 20_000;
 
+/** The text up to MAX_PAGE_CHARS, ending at a paragraph or sentence end, so a cut never keeps an instruction without its "unless". */
+function whole(text: string): string {
+  if (text.length <= MAX_PAGE_CHARS) return text;
+  const cut = text.slice(0, MAX_PAGE_CHARS);
+  const paragraph = cut.lastIndexOf("\n\n");
+  if (paragraph > 0) return cut.slice(0, paragraph);
+  const sentence = Math.max(...[...cut.matchAll(/[.!?]\s/g)].map((m) => m.index + 1), 0);
+  return cut.slice(0, sentence);
+}
+
 /**
  * Markdown from an extract (or a search snippet) as plain statements of a
  * useful length. Every pattern is bounded, so the work is linear in the text.
  */
 export function sentencesOf(markdown: string): string[] {
-  const plain = markdown
-    .slice(0, MAX_PAGE_CHARS)
+  const plain = whole(markdown)
     .replace(/!\[[^\]\n]{0,300}\]\([^)\s]{0,500}\)/g, " ")
     .replace(/\[([^\]\n]{0,300})\]\([^)\s]{0,500}\)/g, "$1")
     // a tag starts with a letter: "< 2 mm ... > 3 mm" is a comparison, not a tag
@@ -230,7 +239,12 @@ export const GroundFilter = z.object({
 });
 export type GroundFilter = z.infer<typeof GroundFilter>;
 
-const QUANTITY = /(\d+(?:[.,]\d+)?)\s?(millimet(?:er|re)s?|mm|centimet(?:er|re)s?|cm|met(?:er|re)s?|m|inch(?:es)?|degrees?|deg|°)(?![a-z])/gi;
+/**
+ * A number with its unit, whole: nothing numeric or a fraction bar before it
+ * ("1/2 mm" is not 2 mm), a leading-dot decimal read as one (".5 mm" is
+ * 0.5), and no rate or power after the unit ("2 mm/s", "2 mm²").
+ */
+const QUANTITY = /(?<![\d.,/-])(\d+(?:[.,]\d+)?|[.,]\d+)\s?(millimet(?:er|re)s?|mm|centimet(?:er|re)s?|cm|met(?:er|re)s?|m|inch(?:es)?|degrees?|deg|°)(?![a-z/²³^\d])/gi;
 
 /** Factor to the slot's unit for a unit written in a sentence, or undefined when they measure different things. */
 function factor(written: string, unit: string): number | undefined {
@@ -248,7 +262,8 @@ function factor(written: string, unit: string): number | undefined {
 function states(text: string, value: number, unit: string): boolean {
   for (const m of text.matchAll(QUANTITY)) {
     const k = factor(m[2], unit);
-    if (k !== undefined && Math.abs(Number(m[1].replace(",", ".")) * k - value) <= 0.01 * Math.max(1, value)) return true;
+    const n = Number(m[1].replace(",", "."));
+    if (k !== undefined && Number.isFinite(n) && Math.abs(n * k - value) <= 0.01 * Math.max(1, value)) return true;
   }
   return false;
 }

@@ -62,6 +62,15 @@ describe("sentencesOf on awkward input", () => {
     ]);
   });
 
+  it("cuts a long page at a paragraph end, never between an instruction and its exception", () => {
+    const filler = "Pen racks come in many colours and sizes for every desk. ".repeat(350);
+    const page = `${filler}\n\nAlways push the marker in cap first\nunless the cap is loose.`;
+    // the cut falls inside "unless …": the instruction alone would read as a rule
+    expect(page.indexOf("unless")).toBeLessThan(20_000);
+    expect(page.length).toBeGreaterThan(20_000);
+    expect(sentencesOf(page).some((t) => t.startsWith("Always push"))).toBe(false);
+  });
+
   it("stays linear on 120,000 unmatched brackets", () => {
     const started = performance.now();
     sentencesOf("[".repeat(120_000) + "](" + "(".repeat(120_000));
@@ -164,6 +173,17 @@ describe("chipsFrom", () => {
     expect(run([{ i: 0, slot: "steps[s2].tolerances.yaw_deg", value: 2 }])).toEqual([undefined, undefined]);
     expect(run([{ i: 1, slot: "objects[rack].pocket_clearance_mm", value: 3 }])).toEqual([undefined, "objects[rack].pocket_clearance_mm=3"]);
     expect(run([{ i: 1, slot: "steps[s2].tolerances.tilt_deg", value: 5 }])).toEqual([undefined, "steps[s2].tolerances.tilt_deg=5"]);
+  });
+
+  it("reads a number with its unit whole: no fractions, leading-dot decimals, rates or powers", () => {
+    const one = (text: string, slot: string, value: number) =>
+      chipsFrom([{ text, url: "https://a.org", title: "A" }], parse({ labels: { "0": "tolerance" }, numbers: [{ i: 0, slot, value }] }), slots).chips[0].slot !== undefined;
+    const gap = "objects[rack].pocket_clearance_mm";
+    expect(one("Keep a gap of .5 mm around the barrel of the marker.", gap, 5)).toBe(false);
+    expect(one("Keep a gap of .5 mm around the barrel of the marker.", gap, 0.5)).toBe(true);
+    expect(one("Keep a gap of 1/2 mm around the barrel of the marker.", gap, 2)).toBe(false);
+    expect(one("Push the marker in at 2 mm/s or slower, never faster.", gap, 2)).toBe(false);
+    expect(one("The slot face is 2 mm² larger than the barrel section.", gap, 2)).toBe(false);
   });
 
   it("reads an unknown label as none and keeps the labels when a number is malformed", () => {
