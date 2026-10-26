@@ -12,7 +12,7 @@
 import type { MainModule, MjData, MjModel, MjVFS } from "@mujoco/mujoco";
 import { graspIndex, isAttached, type Grasp } from "./grasp";
 import { solveIk, type Approach } from "./ik";
-import { environment, run, type Environment, type Rollout, type Tick } from "./interpreter";
+import { environment, forgetTilt, run, type Environment, type Rollout, type Tick } from "./interpreter";
 import { Liquid, LIQUID_STEP_S } from "./liquid";
 import { decodeName, sampleWaypoints, toNumbers } from "./names";
 import {
@@ -92,10 +92,12 @@ ctx.onmessage = async (e) => {
       case "setCtrl":
         playing = null;
         cancelRun("the arm was driven by hand");
+        if (runtime) forgetTilt(runtime.data);
         setCtrl(msg.ctrl);
         break;
       case "play":
         cancelRun("the arm was driven by hand");
+        if (runtime) forgetTilt(runtime.data);
         playing = { waypoints: msg.waypoints, loop: msg.loop ?? false, start: simTime };
         break;
       case "stop":

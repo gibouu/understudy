@@ -101,8 +101,9 @@ const TILT_TURN_DEG = 30;
 const TILT_UPRIGHT_DEG = 3;
 /** past this, a tilt found without a record cannot tell which rim the object turned over */
 const TILT_GUESS_MAX_DEG = 150;
-/** a held site further than this from the path of the kept tilt is no longer on it */
+/** a held site further than this from the path of the kept tilt, or turned further from it, is no longer on it (a tilt turns up to ~11° aside) */
 const TILT_PATH_MM = 15;
+const TILT_PATH_DEG = 20;
 /** the cosine ease of a tilt, as the measured pours used (docs/MEASUREMENTS.md section 5) */
 const ease = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : (1 - Math.cos(Math.PI * u)) / 2);
 
@@ -323,8 +324,13 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
                 const rel = tl.site0.map((v, r) => v - tl!.pivot[r]);
                 const on = [0, 1, 2].map((r) => tl!.pivot[r] + R[3 * r] * rel[0] + R[3 * r + 1] * rel[1] + R[3 * r + 2] * rel[2]);
                 const off = Math.hypot(...on.map((v, r) => v - vec(scratch.site_xpos, site, 3)[r])) / MM;
-                if (off > TILT_PATH_MM) {
-                  log.push(`${t.toFixed(2)} tilt: ${h.body} is ${off.toFixed(0)} mm off the path of its last tilt; starting from where it is`);
+                // and turned as the path has it at that angle: the same point leaning the other way is not on it
+                const want = matmul(R, tl.rot0);
+                const got = vec(scratch.site_xmat, site, 9);
+                const trace = [0, 1, 2].reduce((sum, c) => sum + want[c] * got[c] + want[3 + c] * got[3 + c] + want[6 + c] * got[6 + c], 0);
+                const turnedBy = (Math.acos(Math.max(-1, Math.min(1, (trace - 1) / 2))) * 180) / Math.PI;
+                if (off > TILT_PATH_MM || turnedBy > TILT_PATH_DEG) {
+                  log.push(`${t.toFixed(2)} tilt: ${h.body} is ${off.toFixed(0)} mm and ${turnedBy.toFixed(0)}° off the path of its last tilt; starting from where it is`);
                   tl = null;
                 } else {
                   // from where it is: a tilt ends a degree or two off, and one stopped half way much further
@@ -504,6 +510,11 @@ type Vec3 = [number, number, number];
 type Tilt = { body: string; site0: Vec3; rot0: number[]; pivot: Vec3; axis: Vec3; deg: number; toward: string; frame?: string };
 /** the tilt under way per simulation state, kept between runs that continue from here; reset with the grasp */
 const kept = new WeakMap<MjData, Tilt>();
+
+/** The arm was driven by hand (the stage's sliders): no kept tilt describes it any more. */
+export function forgetTilt(data: MjData) {
+  kept.delete(data);
+}
 const vec = (field: unknown, i: number, n: number) => Array.from(toNumbers(field)).slice(n * i, n * i + n);
 const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const unit = (a: Vec3): Vec3 => {

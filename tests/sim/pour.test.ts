@@ -329,6 +329,36 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     expect(c.at).toBeGreaterThan(150);
   }, 240_000);
 
+  it("does not mistake a cup leaning the other way at the same point for the path of its last tilt", () => {
+    const env = environment(POUR_SPEC);
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
+    const data = new mujoco.MjData(model);
+    try {
+      park(mujoco, model, data);
+      const sim = { mujoco, model, data };
+      expect(runToEnd(sim, env, ops(...grip, { op: "tilt", deg: 60, toward: "bowl", seconds: 1 }), "sensed").pass).toBe(true);
+      // driven by hand (Codex's case): the same held-site position, the cup leaning 58° away from the bowl
+      (data.ctrl as Float64Array).set([0.171273, -0.208081, 1.186421, -1.016021, -2.568864]);
+      for (let k = 0; k < 500; k++) mujoco.mj_step(model, data);
+      const b = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, env.names.cup);
+      const tilt = () => (Math.acos(Math.max(-1, Math.min(1, (data.xmat as Float64Array)[9 * b + 8]))) * 180) / Math.PI;
+      const at = tilt();
+      const back = run(sim, env, ops({ op: "tilt", deg: 0, seconds: 1 }, { op: "assert", predicate: { kind: "tilt_under", object: "cup", value: 8 } }), "sensed", { from: "here" });
+      let most = at;
+      let r = back.next();
+      for (; !r.done; r = back.next()) {
+        mujoco.mj_step(model, data);
+        most = Math.max(most, tilt());
+      }
+      expect(r.value.pass, r.value.log.join("\n")).toBe(true);
+      expect(r.value.log.some((l) => l.includes("off the path of its last tilt"))).toBe(true);
+      expect(most).toBeLessThan(at + 6);
+    } finally {
+      data.delete();
+      model.delete();
+    }
+  }, 120_000);
+
   it("refuses to tip a tipped cup toward somewhere else, and carries on toward the same place", () => {
     const other = pour(ops(...grip, { op: "tilt", deg: 60, toward: "bowl" }, { op: "tilt", deg: 90, toward: "block" }), 0).r;
     expect(other.pass).toBe(false);
