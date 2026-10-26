@@ -157,6 +157,15 @@ describe("the bench of a pour, as the scene builds it", () => {
     expect(object(v.spec, "block").pose).toEqual({ xyz_mm: [300, 0, 23], yaw_deg: 0, frame: "world" });
   });
 
+  it("never stands a container on something overhead", () => {
+    const overhead = base((s) => s.objects.push({ ...structuredClone(object(s, "block")), id: "lamp", name: "lamp", role: "obstacle", size_mm: [60, 60, 10], pose: { xyz_mm: [300, 0, 140], yaw_deg: 0, frame: "world" } }));
+    const v = variant(buildVariant(overhead, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1));
+    expect(object(v.spec, "cup").pose!.xyz_mm).toEqual([300, 0, 73]);
+    // a taller block (the bench stands only the containers: the variant gives its pose) still lifts the cup that stands on it
+    const taller = idea("Taller block", ["objects[block].size_mm", [60, 60, 56]], ["objects[block].pose", { xyz_mm: [300, 0, 28], yaw_deg: 0, frame: "world" }]);
+    expect(object(variant(buildVariant(overhead, taller, 1)).spec, "cup").pose!.xyz_mm).toEqual([300, 0, 83]);
+  });
+
   it("stands a container inside an open container on that container's floor", () => {
     // the block holds liquid, so the scene builds it as an open box with 4 mm walls and floor
     const nested = base((s) => {

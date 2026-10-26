@@ -65,13 +65,14 @@ describe.skipIf(process.env.VARIANTS_RECORD !== "1")("record the variants (live,
         usd += costOf(r.status === "done" ? r.ledger : []).usd;
       }
       replies.push({ request: request ?? null, spec_title: spec.title, result: r });
+      // numbered as the page numbers them (app/variants.tsx, reserve): suggestions take MAX_VARIANTS numbers, each line one, failed or not
+      const numbered = first;
+      first += request ? 1 : MAX_VARIANTS;
       if (r.status !== "done") {
         console.log(request ?? "(suggest)", r);
         continue;
       }
-      // numbered as the page numbers them (app/variants.tsx, reserve): suggestions take MAX_VARIANTS numbers, each line one
-      const checked = checkReply(spec, r.value, first);
-      first += request ? 1 : MAX_VARIANTS;
+      const checked = checkReply(spec, r.value, numbered);
       console.log(request ?? "(suggest)", JSON.stringify(r.value), "\n  not yet:", JSON.stringify(checked.not_yet), "\n  warnings:", r.warnings);
       for (const v of checked.variants) {
         const exact = keep ? recordedCompiles.find((x) => JSON.stringify(TaskSpec.parse(x.spec)) === JSON.stringify(v.spec))?.result : undefined;
