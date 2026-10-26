@@ -1,4 +1,4 @@
-// The fine-tune's evaluation table (issue #97), from the patch loop's results for the ft-nano-* arms:
+// The fine-tune's evaluation table (issue #97), from the patch loop's results for the ft-* arms:
 // fix rate of the solvable failures within 5 patches and on the first patch, Wilson 95% intervals,
 // Newcombe's interval for the tuned model against the same weights without the adapter, and cost per
 // fixed case. Token Factory arms cost what the ledger charged; the endpoint arms cost the endpoint's
@@ -47,7 +47,7 @@ const stats = (runs) => {
   return { need, fixed: need.filter((r) => r.passed_at !== null), first: need.filter((r) => r.passed_at === 1), calls: runs.reduce((n, r) => n + r.calls, 0), usd: runs.reduce((n, r) => n + r.cost_usd, 0), stopped: runs.filter((r) => r.stopped).length };
 };
 
-const arms = Object.entries(results.arms).filter(([id]) => id.startsWith("ft-nano-"));
+const arms = Object.entries(results.arms).filter(([id]) => id.startsWith("ft-"));
 const s = Object.fromEntries(arms.map(([id, a]) => [id, stats(a.runs)]));
 const endpointCalls = arms.filter(([, a]) => a.config.endpoint).reduce((n, [id]) => n + s[id].calls, 0);
 console.log("| Patcher | Fixed within 5 patches | Fixed on the first patch | Cost per fixed case |");
@@ -60,11 +60,13 @@ for (const [id, a] of arms) {
 }
 const anyStopped = Object.values(s).some((x) => x.stopped);
 if (anyStopped) console.log("\nSome runs stopped before their patches: rerun them before comparing; the rates above leave them out.");
-if (s["ft-nano-ft"] && s["ft-nano-base"] && !anyStopped) {
-  const [ft, base] = [s["ft-nano-ft"], s["ft-nano-base"]];
-  const [d, lo, hi] = newcombe(ft.fixed.length, ft.need.length, base.fixed.length, base.need.length);
-  const [d1, lo1, hi1] = newcombe(ft.first.length, ft.need.length, base.first.length, base.need.length);
+// each tuned model against its base with the same prompts: Nano on our endpoint, Qwen on Token Factory
+for (const [tuned, base] of [["ft-nano-ft", "ft-nano-base"], ["ft-qwen-ft", "ft-qwen-base"]]) {
+  if (!s[tuned] || !s[base] || anyStopped) continue;
+  const [ft, b] = [s[tuned], s[base]];
+  const [d, lo, hi] = newcombe(ft.fixed.length, ft.need.length, b.fixed.length, b.need.length);
+  const [d1, lo1, hi1] = newcombe(ft.first.length, ft.need.length, b.first.length, b.need.length);
   const pts = (x) => `${x >= 0 ? "+" : ""}${Math.round(100 * x)}`;
-  console.log(`\nTuned against the same weights without the adapter: within 5 patches ${pts(d)} points [${pts(lo)} to ${pts(hi)}], first patch ${pts(d1)} [${pts(lo1)} to ${pts(hi1)}] (Newcombe 95%).`);
+  console.log(`\n${tuned} against ${base}: within 5 patches ${pts(d)} points [${pts(lo)} to ${pts(hi)}], first patch ${pts(d1)} [${pts(lo1)} to ${pts(hi1)}] (Newcombe 95%).`);
 }
 if (!Number.isFinite(hours)) console.log("\nEndpoint arms: pass --endpoint-hours (from the endpoint's creation to its deletion) for their cost.");
