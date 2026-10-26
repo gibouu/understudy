@@ -23,7 +23,7 @@
     "concurrency": 4,
     "cap_usd": 25
   },
-  "notes": {"cmp-qwen3.5-397b-on": "not run: Token Factory withdrew Qwen/Qwen3.5-397B-A17B from its catalogue on 26 October 2026 between the thinking-off arm (finished 10:35 UTC) and this one (started 10:45 UTC); every call of this arm returned HTTP 404 (571 calls, each charged on the ledger at its worst case, US$8.77 in all, flagged estimated and failed with status 404). The run was stopped and nothing of this arm was saved; the harness now stops at the first 404."},
+  "notes": {"cmp-qwen3.5-397b-on": "not run: Token Factory withdrew Qwen/Qwen3.5-397B-A17B from its catalogue on 26 October 2026 between the thinking-off arm (finished 10:35 UTC) and this one (started 10:45 UTC); every call of this arm returned HTTP 404 (571 calls, each charged on the ledger at its worst case, US$8.77 in all, flagged estimated and failed with status 404). The run was stopped and nothing of this arm was saved; the harness now stops at the first 404. Later the same day the model was listed and served again (checked at 11:26 UTC), and the arm was started again with Super's 4,096-token budget: 40 of its first 41 answers were cut off at max_tokens with no patch (mean 4,020 completion tokens), so it was stopped after its first 12 runs (US$0.68 on the ledger, 4 calls in flight charged at their estimate); nothing of it was saved. With 16,000 tokens, as Ultra needed in section 8, the arm would have cost more than the study's cap had left."},
   "arms": {
     "cmp-gpt-oss-120b-off": {
       "config": {
