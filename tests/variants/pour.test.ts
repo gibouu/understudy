@@ -147,6 +147,13 @@ describe("the bench of a pour, as the scene builds it", () => {
     expect(object(variant(buildVariant(tied, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1)).spec, "cup").pose).toEqual(object(tied, "cup").pose);
   });
 
+  it("moves only the two containers: a support posed in one's frame stays where it stands", () => {
+    const tied = base((s) => (object(s, "block").pose = { xyz_mm: [0, 0, -50], yaw_deg: 0, frame: "cup" }));
+    const v = variant(buildVariant(tied, idea("Taller cup", ["objects[cup].size_mm", [48, 48, 74]]), 1));
+    expect(object(v.spec, "cup").pose!.xyz_mm).toEqual([300, 0, 83]);
+    expect(object(v.spec, "block").pose).toEqual({ xyz_mm: [300, 0, 23], yaw_deg: 0, frame: "world" });
+  });
+
   it("stands a container inside an open container on that container's floor", () => {
     // the block holds liquid, so the scene builds it as an open box with 4 mm walls and floor
     const nested = base((s) => {

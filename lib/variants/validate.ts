@@ -455,9 +455,10 @@ function pourBench(base: TaskSpec, spec: TaskSpec, changes: SpecChange[]): { spe
     return world[o.id].yaw_deg !== w.yaw || w.xyz.some((v, i) => Math.abs(v - world[o.id].xyz_mm[i]) >= 0.05);
   };
   const moving = [...want.keys()].filter(off);
-  // one that already stands there keeps its pose, unless it hangs on one that moves
-  for (const [o, w] of want) {
-    if (!moving.includes(o) && !moving.some((m) => posedOn(out, o.id, m.id))) continue;
+  // the bench moves the two containers and nothing else: what hangs on one that moves is posed where it stands now
+  const hangs = out.objects.filter((o) => o.pose && !moving.includes(o) && !touched(o.id, "pose") && moving.some((m) => posedOn(out, o.id, m.id)));
+  for (const o of [...moving, ...hangs]) {
+    const w = want.get(o) ?? { xyz: world[o.id].xyz_mm.map(r1) as [number, number, number], yaw: world[o.id].yaw_deg };
     o.pose = { xyz_mm: w.xyz, yaw_deg: w.yaw, frame: "world" };
     o.sources = { ...o.sources, pose: "fit" };
   }
