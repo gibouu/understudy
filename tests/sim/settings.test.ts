@@ -50,12 +50,14 @@ describe("clearAround", () => {
     expect(c.min[2]).toBe(CLEAR_M.min[2]); // the work surface stays the floor
   });
 
-  it("ignores an object of no finite size instead of building an infinite room", () => {
+  it("never grows past the bench's floor, whatever size an object claims", () => {
     // no steps, so no pocket has to fit it and buildScene accepts it
-    const huge: TaskSpec = { ...DEMO_SPEC, steps: [], objects: DEMO_SPEC.objects.map((o, i) => (i ? o : { ...o, size_mm: [1.7e308, 1.7e308, 1.7e308] })) };
-    const c = clearAround(huge);
-    expect([...c.min, ...c.max].every(Number.isFinite)).toBe(true);
-    expect(() => new Dressing("kitchen", huge).dispose()).not.toThrow();
+    for (const size of [[1.7e308, 1.7e308, 1.7e308], [1e308, 1, 1], [5000, 1, 1]] as [number, number, number][]) {
+      const huge: TaskSpec = { ...DEMO_SPEC, steps: [], objects: DEMO_SPEC.objects.map((o, i) => (i ? o : { ...o, size_mm: size })) };
+      const c = clearAround(huge);
+      expect([...c.min, ...c.max].every((v) => Number.isFinite(v) && Math.abs(v) <= 1.5), `${size}`).toBe(true);
+      for (const name of SETTINGS) expect(() => new Dressing(name, huge).dispose(), `${name} ${size}`).not.toThrow();
+    }
   });
 });
 

@@ -42,7 +42,13 @@ type Box = { min: Vec; max: Vec };
 /** The volume the arm and a fitted task's objects use; no part of a setting enters it. */
 export const CLEAR_M: Box = { min: [-0.25, -0.5, 0.0005], max: [0.6, 0.5, 0.55] };
 
-/** CLEAR_M grown to hold every object of `spec` where buildScene puts it, each as the sphere any rotation stays in. */
+/** the bench floor's half width (render.ts draws MuJoCo's plane 3 m wide): no room grows past it */
+const BENCH_HALF_M = 1.5;
+
+/**
+ * CLEAR_M grown to hold every object of `spec` where buildScene puts it, each as the sphere any rotation stays in,
+ * up to the edge of the bench's own floor.
+ */
 export function clearAround(spec?: TaskSpec): Box {
   const box: Box = { min: [...CLEAR_M.min], max: [...CLEAR_M.max] };
   let frames: ReturnType<typeof buildScene>["frames"];
@@ -58,8 +64,8 @@ export function clearAround(spec?: TaskSpec): Box {
     if (!at || ![...at, r].every(Number.isFinite)) continue; // no room is built around an object of no finite size
     for (let k = 0; k < 3; k++) {
       // the work surface stays at z = 0, where the bench's floor is: what pokes below it is cut the same on both
-      if (k < 2) box.min[k] = Math.min(box.min[k], at[k] - r);
-      box.max[k] = Math.max(box.max[k], at[k] + r);
+      if (k < 2) box.min[k] = Math.max(-BENCH_HALF_M, Math.min(box.min[k], at[k] - r));
+      box.max[k] = Math.min(BENCH_HALF_M, Math.max(box.max[k], at[k] + r));
     }
   }
   return box;
