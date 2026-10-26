@@ -50,6 +50,18 @@ export type Rollout = {
   /** simulated seconds */
   t: number;
   log: string[];
+  /** where each manipulated object was when the rollout ended: what a failure note reports */
+  end?: ObjectState[];
+};
+
+export type ObjectState = {
+  object: string;
+  /** centre, world frame */
+  xyz_mm: [number, number, number];
+  speed_mm_s: number;
+  held: boolean;
+  /** inside_zone against the target of the last step that moves it, when it has one */
+  seated?: { target: string; ok: boolean; why: string };
 };
 
 /** A step's yield: the object welded to the gripper, if any, for the renderer. */
@@ -103,6 +115,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   // what is held is the active weld, so it carries over between runs
   let held: Grasp | null = env.graspable.map((b) => graspIndex(mujoco, model, b)).find((g) => isAttached(data, g)) ?? null;
   const ctrl = data.ctrl as Float64Array;
+  const world = () => ({ ...sim, spec: env.spec, names: env.names, t });
   const qvel = () => Array.from(toNumbers(data.qvel));
   const step = function* () {
     yield { held: held?.body ?? null };
@@ -110,7 +123,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   };
   const fail = (r: Omit<Rollout, "pass" | "t" | "log">): Rollout => {
     log.push(`fail: ${r.why}`);
-    return { pass: false, ...(r.failed_step_id !== undefined && opIndex !== undefined ? { failed_op: opIndex } : {}), ...r, t, log };
+    return { pass: false, ...(r.failed_step_id !== undefined && opIndex !== undefined ? { failed_op: opIndex } : {}), ...r, t, log, end: snapshot(sim, env, world(), held) };
   };
 
   /** ramp the arm joints to q, then wait until it has arrived */
@@ -138,7 +151,6 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   }
 
   const beliefs = env.beliefs[mode];
-  const world = () => ({ ...sim, spec: env.spec, names: env.names, t });
   for (const s of program.steps) {
     for (const [i, op] of s.ops.entries()) {
       opIndex = i;
@@ -238,7 +250,35 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
       }
     }
   }
-  return { pass: true, t, log };
+  return { pass: true, t, log, end: snapshot(sim, env, world(), held) };
+}
+
+/** Measured, never inferred: position, speed and seating of every manipulated object. A check that throws is left out. */
+function snapshot(sim: Sim, env: Environment, w: Parameters<typeof evaluate>[0], held: Grasp | null): ObjectState[] {
+  const { mujoco, model, data } = sim;
+  const xpos = toNumbers(data.xpos);
+  const r1 = (x: number) => Math.round(x * 10) / 10;
+  return env.spec.objects
+    .filter((o) => o.role === "manipulated" && Object.hasOwn(env.names, o.id))
+    .flatMap((o): ObjectState[] => {
+      try {
+        const id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, env.names[o.id]);
+        if (id < 0) return [];
+        const target = env.spec.steps.findLast((s) => s.object === o.id && s.target && s.target.frame !== "world")?.target?.frame;
+        const seated = target === undefined ? undefined : evaluate(w, { kind: "inside_zone", object: o.id, target });
+        return [
+          {
+            object: o.id,
+            xyz_mm: [0, 1, 2].map((k) => r1(xpos[3 * id + k] / MM)) as [number, number, number],
+            speed_mm_s: r1(evaluate(w, { kind: "object_still", object: o.id }).measured ?? 0),
+            held: held?.body === env.names[o.id],
+            ...(target && seated ? { seated: { target, ok: seated.ok, why: seated.why } } : {}),
+          },
+        ];
+      } catch {
+        return [];
+      }
+    });
 }
 
 /** Drain a run at full speed: what a test or a batch of rollouts does. */
