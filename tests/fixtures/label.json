@@ -1,0 +1,250 @@
+[
+ {
+  "clip_sha256": "c8cb52201a93974a4237431bdc262a72c307d15218895bde6dfbabe0f692798f",
+  "hint": "aboard the ISS, planting seed film into the Veggie plant pillows",
+  "result": {
+   "status": "done",
+   "value": {
+    "version": 1,
+    "title": "ISS Veggie seed film placement into plant pillows",
+    "summary": "An astronaut wearing blue gloves opens a bag of seed film, removes a small packet, and places it into one of the black plant pillows arranged on the work surface.",
+    "objects": [
+     {
+      "id": "obj1",
+      "name": "seed film packet",
+      "shape": "box",
+      "size_mm": [
+       60,
+       40,
+       10
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        450,
+        300,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "obj2",
+      "name": "Veggie plant pillow tray",
+      "shape": "box",
+      "size_mm": [
+       400,
+       300,
+       60
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        350,
+        250,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.8,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "obj3",
+      "name": "clear plastic bag",
+      "shape": "box",
+      "size_mm": [
+       150,
+       100,
+       30
+      ],
+      "symmetry": "none",
+      "role": "obstacle",
+      "pose": {
+       "xyz_mm": [
+        480,
+        320,
+        30
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "obj4",
+      "name": "blue work mat",
+      "shape": "box",
+      "size_mm": [
+       600,
+       500,
+       5
+      ],
+      "symmetry": "none",
+      "role": "surface",
+      "pose": {
+       "xyz_mm": [
+        300,
+        250,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "vl#seg2",
+      "sources": {}
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "reach",
+      "object": "obj3",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj2"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 2,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "grasp",
+      "object": "obj1",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj2"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 5,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "s3",
+      "verb": "move",
+      "object": "obj1",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj2"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 5,
+      "t_end_s": 20,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "s4",
+      "verb": "insert",
+      "object": "obj1",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj2"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 20,
+      "t_end_s": 30,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "s5",
+      "verb": "place",
+      "object": "obj1",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj2"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 30,
+      "t_end_s": 34,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "s6",
+      "verb": "retract",
+      "object": "obj1",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj2"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 34,
+      "t_end_s": 36,
+      "source": "vl#seg2",
+      "sources": {}
+     }
+    ],
+    "anchor": {
+     "t_s": 4,
+     "confidence": 0.8
+    },
+    "warnings": [
+     "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+    ],
+    "open_questions": [
+     "What are the exact dimensions of the seed film packet and plant pillow pockets?",
+     "What is the precise 3D position of the work surface origin relative to the robot base?",
+     "objects[obj2].size_mm: is Veggie plant pillow tray really [400, 300, 60] mm?",
+     "objects[obj4].size_mm: is blue work mat really [600, 500, 5] mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "c8cb52201a93974a4237431bdc262a72c307d15218895bde6dfbabe0f692798f",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "warnings": [
+    "step s6: times 34-37 s clamped to the 36 s clip",
+    "object obj2: size_mm [400, 300, 60] is outside 5 to 300 mm",
+    "object obj4: size_mm [600, 500, 5] is outside 5 to 300 mm",
+    "objects[1].pocket_clearance_mm: fixture \"obj2\" is used as a pocket but has no clearance"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/Nemotron-3.5-Super-VL",
+     "prompt_tokens": 6404,
+     "completion_tokens": 800,
+     "cached_tokens": 2176,
+     "seconds": 3.613
+    }
+   ]
+  }
+ }
+]
