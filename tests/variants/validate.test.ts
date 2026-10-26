@@ -111,6 +111,10 @@ describe("a variant of the ISS sample", () => {
     const twice = structuredClone(base);
     twice.steps[1].success = [inside, still, tilt(5), tilt(20)];
     expect(why(buildVariant(twice, idea("One tilt", ["steps[s2].success", [inside, still, tilt(20)]]), 1))).toBe(refused("tilt_under obj1 5"));
+    // a value on a check that takes none is not a threshold
+    const valued = structuredClone(base);
+    valued.steps[1].success = [inside, { ...still, value: 1 }];
+    expect(why(buildVariant(valued, idea("Same", ["steps[s2].success", [inside, still]]), 1))).toBe("");
     // for height_above, higher is stricter
     const lifted = structuredClone(base);
     lifted.steps[1].success = [inside, still, { kind: "height_above", object: "obj1", value: 5 }];

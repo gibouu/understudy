@@ -24,7 +24,7 @@
 import { fitToBench } from "@/lib/sim/fit";
 import { apply, buildScene, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses } from "@/lib/sim/scene";
 import { applyChanges, canonicalSlot, parsePath, valueAt } from "@/lib/spec/apply";
-import { AXES, FIXTURES, SHAPES, type Predicate, type PredicateKind, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
+import { AXES, FIXTURES, PREDICATE_OPERANDS, SHAPES, type Predicate, type PredicateKind, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
 import { validateSpec } from "@/lib/spec/validate";
 import { MAX_VARIANTS, type Idea, type NotYet, type VariantReply } from "./parse";
 
@@ -235,7 +235,8 @@ const STRICTER_IS_HIGHER: Partial<Record<PredicateKind, boolean>> = { height_abo
 /** Whether check `v` asks at least as much as `b` about the same thing. */
 function asStrict(v: Predicate, b: Predicate): boolean {
   if (checkKey(v) !== checkKey(b)) return false;
-  if (b.value === undefined) return true;
+  // a value on a kind that takes none is ignored by the simulator
+  if (b.value === undefined || !PREDICATE_OPERANDS[b.kind].value) return true;
   if (v.value === undefined) return false;
   const higher = STRICTER_IS_HIGHER[b.kind];
   return higher === undefined ? v.value === b.value : higher ? v.value >= b.value : v.value <= b.value;
