@@ -438,6 +438,9 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
               {replayed(run.compile) && " (recorded)"}
             </p>
           )}
+          {run.compile.status === "done" && run.compile.warnings.some((w) => w.startsWith("replay: recorded for an earlier version")) && (
+            <p className="text-xs text-amber-700">Replayed: this program was recorded for an earlier version of this variant, so it may not do what the changes above say.</p>
+          )}
           {patch}
         </div>
       )}

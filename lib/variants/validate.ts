@@ -27,7 +27,7 @@
  * say: it reports a target out of reach as an embodiment limit.
  */
 import { fitToBench } from "@/lib/sim/fit";
-import { apply, buildScene, containerIds, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses, type Pose3 } from "@/lib/sim/scene";
+import { apply, buildScene, CONTAINER_WALL_M, containerIds, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses, type Pose3 } from "@/lib/sim/scene";
 import { applyChanges, canonicalSlot, parsePath, valueAt } from "@/lib/spec/apply";
 import { AXES, FIXTURES, PREDICATE_OPERANDS, SHAPES, type Predicate, type PredicateKind, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
 import { validateSpec } from "@/lib/spec/validate";
@@ -134,6 +134,21 @@ function opening(spec: TaskSpec, f: SpecObject): [number, number] {
   return [Math.max(...users.map((o) => footprintMm(o)[0])) + c, Math.max(...users.map((o) => footprintMm(o)[1])) + c];
 }
 
+/**
+ * The hollow the scene builds in `f` (lib/sim/scene.ts), if any: an open
+ * container's inside, or the pocket cut in a fixture a step puts something
+ * into. Its opening (mm, centred) and how far its floor is above f's bottom.
+ */
+function hollowOf(spec: TaskSpec, f: SpecObject, containers: Set<string>): { inner: [number, number]; floor: number; name: string } | null {
+  if (containers.has(f.id)) {
+    const [a, b] = footprintMm(f);
+    const t = CONTAINER_WALL_M / MM;
+    return { inner: [a - 2 * t, b - 2 * t], floor: t, name: "opening" };
+  }
+  if (usedAsPocket(spec, f.id)) return { inner: opening(spec, f), floor: Math.min(WALL_M / MM, heightMm(f) / 2), name: "pocket" };
+  return null;
+}
+
 /** Half extents of an object's footprint along another frame's axes, turned by `yaw` degrees against it. */
 function halfExtents(o: SpecObject, yaw: number, round: boolean): [number, number] {
   const [a, b] = footprintMm(o);
@@ -179,16 +194,18 @@ function geometryProblem(spec: TaskSpec): string | null {
     const at = world[q.id].xyz_mm;
     return apply(transpose(w.R), [at[0] - w.xyz_mm[0], at[1] - w.xyz_mm[1], at[2] - w.xyz_mm[2]]);
   };
-  const floorTop = (f: SpecObject) => world[f.id].xyz_mm[2] - heightMm(f) / 2 + Math.min(WALL_M / MM, heightMm(f) / 2);
+  const floorTop = (f: SpecObject) => world[f.id].xyz_mm[2] - heightMm(f) / 2 + (hollowOf(spec, f, containers)?.floor ?? 0);
   /**
-   * Where `o` is against pocket fixture `f`'s opening: centred over it, standing
-   * in it (its whole footprint, on or above the floor), or bridging it (past
-   * both opposite rims along one axis, so it lies on the two).
+   * Where `o` is against the opening of `f`'s hollow (a pocket, or an open
+   * container's inside): centred over it, standing in it (its whole
+   * footprint, on or above the floor), or bridging it (past both opposite
+   * rims along one axis, so it lies on the two).
    */
   const opened = (o: SpecObject, f: SpecObject): { over: boolean; inside: boolean; bridge: boolean } => {
-    if (!usedAsPocket(spec, f.id)) return { over: false, inside: false, bridge: false };
+    const hollow = hollowOf(spec, f, containers);
+    if (!hollow) return { over: false, inside: false, bridge: false };
     const [lx, ly] = localIn(f, o);
-    const [ix, iy] = opening(spec, f);
+    const [ix, iy] = hollow.inner;
     const [ex, ey] = halfExtents(o, world[o.id].yaw_deg - world[f.id].yaw_deg, round(o));
     const over = Math.abs(lx) <= ix / 2 && Math.abs(ly) <= iy / 2;
     const fits = Math.abs(lx) + ex <= ix / 2 + 0.5 && Math.abs(ly) + ey <= iy / 2 + 0.5;
@@ -237,7 +254,7 @@ function geometryProblem(spec: TaskSpec): string | null {
       if (!under) continue;
       const hole = opened(o, f);
       // centred over the opening, neither standing in it nor lying across it: it hangs on one rim and tips in
-      if (hole.over && !hole.inside && !hole.bridge && bottom(o) >= floorTop(f) - REST_MM) return `${o.name} would start across the edge of ${f.name}'s pocket and tip in`;
+      if (hole.over && !hole.inside && !hole.bridge && bottom(o) >= floorTop(f) - REST_MM) return `${o.name} would start across the edge of ${f.name}'s ${hollowOf(spec, f, containers)!.name} and tip in`;
       supports.push(hole.inside ? floorTop(f) : world[f.id].xyz_mm[2] + heightMm(f) / 2);
     }
     // it rests on the highest surface at or below its bottom
@@ -339,7 +356,7 @@ function pourBack(spec: TaskSpec, a: string, b: string, source: string): TaskSpe
 
 /**
  * The top of what stands under the point (x, y) of the table, mm: a fixture
- * or surface whose footprint covers it (over a pocket's opening, the pocket's
+ * or surface whose footprint covers it (over a hollow's opening, the hollow's
  * floor), or the table.
  */
 function restingOn(spec: TaskSpec, world: Record<string, Pose3>, [x, y]: [number, number], skip: Set<string>): number {
@@ -350,15 +367,25 @@ function restingOn(spec: TaskSpec, world: Record<string, Pose3>, [x, y]: [number
     const w = world[f.id];
     const [lx, ly] = apply(transpose(w.R), [x - w.xyz_mm[0], y - w.xyz_mm[1], 0]);
     const [fx, fy] = footprintMm(f);
-    // the scene cuts a pocket in a fixture a step puts something into, and builds a container as a box (lib/sim/scene.ts)
-    const pocket = usedAsPocket(spec, f.id) && !containers.has(f.id);
-    const under = f.shape === "box" || pocket || containers.has(f.id) ? Math.abs(lx) <= fx / 2 && Math.abs(ly) <= fy / 2 : Math.hypot(lx, ly) <= fx / 2;
+    const hollow = hollowOf(spec, f, containers);
+    // a pocket is cut as a box and a container built as one (lib/sim/scene.ts)
+    const under = f.shape === "box" || hollow ? Math.abs(lx) <= fx / 2 && Math.abs(ly) <= fy / 2 : Math.hypot(lx, ly) <= fx / 2;
     if (!under) continue;
-    const [ix, iy] = pocket ? opening(spec, f) : [0, 0];
-    const floor = w.xyz_mm[2] - heightMm(f) / 2 + Math.min(WALL_M / MM, heightMm(f) / 2);
-    top = Math.max(top, pocket && Math.abs(lx) <= ix / 2 && Math.abs(ly) <= iy / 2 ? floor : w.xyz_mm[2] + heightMm(f) / 2);
+    const bottom = w.xyz_mm[2] - heightMm(f) / 2;
+    const inside = hollow && Math.abs(lx) <= hollow.inner[0] / 2 && Math.abs(ly) <= hollow.inner[1] / 2;
+    top = Math.max(top, inside ? bottom + hollow.floor : bottom + heightMm(f));
   }
   return top;
+}
+
+/** Whether `id`'s pose hangs, through its frames, on object `on`. */
+function posedOn(spec: TaskSpec, id: string, on: string): boolean {
+  const seen = new Set<string>();
+  for (let frame = spec.objects.find((o) => o.id === id)?.pose?.frame; frame && frame !== "world" && !seen.has(frame); frame = spec.objects.find((o) => o.id === frame)?.pose?.frame) {
+    if (frame === on) return true;
+    seen.add(frame);
+  }
+  return false;
 }
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
@@ -403,38 +430,34 @@ function pourBench(base: TaskSpec, spec: TaskSpec, changes: SpecChange[]): { spe
     held.sources = { ...held.sources, size_mm: "fit" };
   }
 
+  let world: Record<string, Pose3>;
+  try {
+    world = worldPoses(out);
+  } catch (err) {
+    if (err instanceof SceneError) return { why: err.message };
+    throw err;
+  }
+  // where each container should stand, worked out before anything moves: one may be posed in the other's frame
   const skip = new Set([held.id, target.id]);
-  /** Where everything stands now: an object posed in another's frame moves with it. */
-  const standing = () => {
-    try {
-      return worldPoses(out);
-    } catch (err) {
-      if (err instanceof SceneError) return err.message;
-      throw err;
-    }
-  };
-  /** Stand `o` at (x, y), turned `yaw`, on what is under it: unless the variant moved it, or it already stands there. */
-  const stand = (o: SpecObject, [x, y]: [number, number], yaw: number): string | null => {
-    const world = standing();
-    if (typeof world === "string") return world;
-    if (touched(o.id, "pose")) return null;
-    const xyz: [number, number, number] = [r1(x), r1(y), r1(restingOn(out, world, [x, y], skip) + heightMm(o) / 2)];
-    const at = world[o.id];
-    if (at && at.yaw_deg === yaw && xyz.every((v, i) => Math.abs(v - at.xyz_mm[i]) < 0.05)) return null;
-    o.pose = { xyz_mm: xyz, yaw_deg: yaw, frame: "world" };
-    o.sources = { ...o.sources, pose: "fit" };
-    return null;
-  };
-  const stood = stand(held, spot, wb[was.object].yaw_deg);
-  if (stood) return { why: stood };
-  // the target from wherever the held container stands now, the same gap from its rim
-  const world = standing();
-  if (typeof world === "string") return { why: world };
-  const from: [number, number] = [world[held.id].xyz_mm[0], world[held.id].xyz_mm[1]];
+  const on = ([x, y]: [number, number], o: SpecObject): [number, number, number] => [r1(x), r1(y), r1(restingOn(out, world, [x, y], skip) + heightMm(o) / 2)];
+  const want = new Map<SpecObject, { xyz: [number, number, number]; yaw: number }>();
+  if (!touched(held.id, "pose")) want.set(held, { xyz: on(spot, held), yaw: wb[was.object].yaw_deg });
+  // the target from where the held container stands, the same gap from its rim
+  const h = want.get(held) ?? { xyz: world[held.id].xyz_mm, yaw: world[held.id].yaw_deg };
   const yaw = wb[was.pour.into].yaw_deg;
-  const reach = halfAlong(held, world[held.id].yaw_deg, u) + gap + halfAlong(target, yaw, u);
-  const placed = stand(target, [from[0] + u[0] * reach, from[1] + u[1] * reach], yaw);
-  if (placed) return { why: placed };
+  const reach = halfAlong(held, h.yaw, u) + gap + halfAlong(target, yaw, u);
+  if (!touched(target.id, "pose")) want.set(target, { xyz: on([h.xyz[0] + u[0] * reach, h.xyz[1] + u[1] * reach], target), yaw });
+  const off = (o: SpecObject) => {
+    const w = want.get(o)!;
+    return world[o.id].yaw_deg !== w.yaw || w.xyz.some((v, i) => Math.abs(v - world[o.id].xyz_mm[i]) >= 0.05);
+  };
+  const moving = [...want.keys()].filter(off);
+  // one that already stands there keeps its pose, unless it hangs on one that moves
+  for (const [o, w] of want) {
+    if (!moving.includes(o) && !moving.some((m) => posedOn(out, o.id, m.id))) continue;
+    o.pose = { xyz_mm: w.xyz, yaw_deg: w.yaw, frame: "world" };
+    o.sources = { ...o.sources, pose: "fit" };
+  }
   return { spec: out, warnings };
 }
 

@@ -138,6 +138,26 @@ describe("the bench of a pour, as the scene builds it", () => {
     expect(object(v.spec, "bowl").pose).toEqual({ xyz_mm: [300, 80, 20], yaw_deg: 0, frame: "world" });
   });
 
+  it("stands the held container where it belongs when it is posed in the target's frame", () => {
+    const tied = base((s) => (object(s, "cup").pose = { xyz_mm: [0, -80, 53], yaw_deg: 0, frame: "bowl" }));
+    const v = variant(buildVariant(tied, idea("Deeper bowl", ["objects[bowl].size_mm", [68, 68, 60]]), 1));
+    expect(object(v.spec, "bowl").pose).toEqual({ xyz_mm: [300, 80, 30], yaw_deg: 0, frame: "world" });
+    expect(object(v.spec, "cup").pose).toEqual({ xyz_mm: [300, 0, 73], yaw_deg: 0, frame: "world" });
+    // nothing moves, nothing is rewritten
+    expect(object(variant(buildVariant(tied, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1)).spec, "cup").pose).toEqual(object(tied, "cup").pose);
+  });
+
+  it("stands a container inside an open container on that container's floor", () => {
+    // the block holds liquid, so the scene builds it as an open box with 4 mm walls and floor
+    const nested = base((s) => {
+      object(s, "block").liquid_ml = 1;
+      object(s, "cup").pose = { xyz_mm: [300, 0, 31], yaw_deg: 0, frame: "world" };
+      object(s, "bowl").pose = { xyz_mm: [300, 100, 20], yaw_deg: 0, frame: "world" };
+    });
+    const v = variant(buildVariant(nested, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1));
+    expect(object(v.spec, "cup").pose!.xyz_mm).toEqual([300, 0, 31]);
+  });
+
   it("stands a container in a pocket on the pocket's floor, not on the fixture's top", () => {
     // the cup stands in a holder's pocket: 8 mm walls, its floor 8 mm above the table
     const held = base((s) => {
