@@ -10,6 +10,7 @@ import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib
 import { costOf } from "@/lib/variants/cost";
 import { MAX_VARIANTS, type NotYet } from "@/lib/variants/parse";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
+import { liveAuth } from "./capture";
 import { PatchLoop } from "./patch-loop";
 
 /** The same two worlds as the rehearsal above. */
@@ -24,7 +25,7 @@ type Call = { what: string; ledger: LedgerEntry[]; replayed: boolean; failed: bo
 
 async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
   try {
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...liveAuth(), ...(body as object) }) });
     return (await res.json()) as StageResult<T>;
   } catch (err) {
     return failed((err as Error).message);

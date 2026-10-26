@@ -5,6 +5,7 @@ import { outcomeLine, type WorldRun } from "@/lib/notes/note";
 import { MAX_PATCHES, type Attempt, type NotePatch } from "@/lib/notes/patch";
 import { GRAVITIES, type Program, type TaskSpec } from "@/lib/spec/schema";
 import { failed, type StageResult } from "@/lib/spec/stage-result";
+import { liveAuth } from "./capture";
 
 type Iteration = { n: number; state: "asking" | "rehearsing" | "done" | "failed"; patch?: NotePatch; replayed?: boolean; runs?: WorldRun[]; message?: string };
 
@@ -136,7 +137,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
 
 async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
   try {
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...liveAuth(), ...(body as object) }) });
     return (await res.json()) as StageResult<T>;
   } catch (err) {
     return failed((err as Error).message);

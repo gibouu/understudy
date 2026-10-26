@@ -6,9 +6,11 @@
  * spec's objects or verbs and read as advice (lib/spec/ground.ts).
  * The whole thing has 6 s: an error or an overrun answers with no chips and a
  * warning, never a failure, so the flow never waits on it. Tavily's request
- * ids and credits go in the ledger next to Nano's tokens. Replay (?replay=1,
- * or no Tavily or Token Factory key) answers from tests/fixtures/ground.json:
- * the recording for the same spec title, else no chips.
+ * ids and credits go in the ledger next to Nano's tokens. `unlock` or
+ * `sample_token` lets it go live (lib/unlock/check.ts). Replay (?replay=1, no
+ * Tavily or Token Factory key, or no way past the spend guard) answers from
+ * tests/fixtures/ground.json: the recording for the same spec title, else no
+ * chips.
  */
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/ground.json";
@@ -18,6 +20,7 @@ import { tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { candidatesOf, chipsFrom, GROUND_SYSTEM, groundQuery, groundSlots, groundUser, GroundFilter, type Grounding } from "@/lib/spec/ground";
 import { TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
+import { explain, liveGate } from "@/lib/unlock/check";
 
 export const maxDuration = 15;
 
@@ -116,6 +119,8 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Groun
   const spec = TaskSpec.safeParse(body?.spec);
   if (!spec.success) return NextResponse.json(failed(`invalid spec: ${spec.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`, false), { status: 400 });
   if (wantsReplay(req) || !hasTavilyKey()) return NextResponse.json(replay(spec.data));
+  const gate = await liveGate("ground", body);
+  if (!gate.live) return NextResponse.json(explain(replay(spec.data), gate));
 
   const ledger: LedgerEntry[] = [];
   const warnings: string[] = [];
