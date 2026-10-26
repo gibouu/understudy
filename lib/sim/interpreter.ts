@@ -101,6 +101,8 @@ const TILT_TURN_DEG = 30;
 const TILT_UPRIGHT_DEG = 3;
 /** past this, a tilt found without a record cannot tell which rim the object turned over */
 const TILT_GUESS_MAX_DEG = 150;
+/** a kept tilt the object is further than this from no longer describes it (a tilt ends within about 3°) */
+const TILT_RECORD_DEG = 8;
 /** the cosine ease of a tilt, as the measured pours used (docs/MEASUREMENTS.md section 5) */
 const ease = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : (1 - Math.cos(Math.PI * u)) / 2);
 
@@ -313,6 +315,12 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             try {
               (scratch.qpos as Float64Array).set(data.qpos as Float64Array);
               mujoco.mj_kinematics(model, scratch);
+              // a record the object no longer matches (a run stopped halfway through a tilt) is dropped
+              const tippedNow = (Math.acos(Math.max(-1, Math.min(1, vec(scratch.xmat, h.bodyId, 9)[8]))) * 180) / Math.PI;
+              if (tl && Math.abs(tippedNow - tl.deg) > TILT_RECORD_DEG) {
+                log.push(`${t.toFixed(2)} tilt: ${h.body} is at ${tippedNow.toFixed(0)}°, not the ${tl.deg}° its last tilt left it at; starting from where it is`);
+                tl = null;
+              }
               if (!tl) {
                 const o = env.spec.objects.find((x) => env.names[x.id] === h.body);
                 if (!o) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `tilt: ${h.body} is not in the spec` });

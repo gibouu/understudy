@@ -3,7 +3,7 @@ import path from "node:path";
 import type { MainModule, MjVFS } from "@mujoco/mujoco";
 import { beforeAll, describe, expect, it } from "vitest";
 import { DEMO_SPEC, POUR_PROGRAMS, POUR_SPEC } from "@/lib/sim/demo-spec";
-import { environment, runToEnd, type Environment } from "@/lib/sim/interpreter";
+import { environment, run, runToEnd, type Environment } from "@/lib/sim/interpreter";
 import { Liquid, MAX_PARTICLES, planLiquid } from "@/lib/sim/liquid";
 import { buildScene, CONTAINER_WALL_M, SceneError } from "@/lib/sim/scene";
 import { park, SO101_XML, stageXml } from "@/lib/sim/so101";
@@ -279,6 +279,29 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     expect(over.pass).toBe(false);
     expect(over.why).toContain("upside down");
   }, 240_000);
+
+  it("drops a kept tilt the cup no longer matches, after a run stopped halfway through a tilt", () => {
+    const env = environment(POUR_SPEC);
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
+    const data = new mujoco.MjData(model);
+    try {
+      park(mujoco, model, data);
+      const sim = { mujoco, model, data };
+      expect(runToEnd(sim, env, ops(...grip, { op: "tilt", deg: 60, toward: "bowl", seconds: 1 }), "sensed").pass).toBe(true);
+      // the next tilt is stopped half way, as the stage's Stop does: the record still says 60°
+      const it2 = run(sim, env, ops({ op: "tilt", deg: 120, toward: "bowl", seconds: 1 }), "sensed", { from: "here" });
+      for (let k = 0; k < 100; k++) {
+        it2.next();
+        mujoco.mj_step(model, data);
+      }
+      const back = runToEnd(sim, env, ops({ op: "tilt", deg: 0, seconds: 1 }, { op: "assert", predicate: { kind: "tilt_under", object: "cup", value: 8 } }), "sensed", { from: "here" });
+      expect(back.pass, back.log.join("\n")).toBe(true);
+      expect(back.log.some((l) => l.includes("not the 60° its last tilt left it at"))).toBe(true);
+    } finally {
+      data.delete();
+      model.delete();
+    }
+  }, 120_000);
 
   it("refuses to tip a tipped cup toward somewhere else, and carries on toward the same place", () => {
     const other = pour(ops(...grip, { op: "tilt", deg: 60, toward: "bowl" }, { op: "tilt", deg: 90, toward: "block" }), 0).r;
