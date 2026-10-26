@@ -412,6 +412,10 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     const b = pour(ops(...grip), 1, { spec: unsaid }).r;
     expect(b.failure_class).toBe("spec_gap");
     expect(b.why).toContain("neither into what nor how far");
+    // whatever the program covers: a program step the spec does not have does not skip the check (Codex)
+    const elsewhere = pour(Program.parse({ spec_title: "", steps: [{ step_id: "other", ops: [{ op: "release" }] }] }), 1, { spec: moving }).r;
+    expect(elsewhere.failure_class).toBe("spec_gap");
+    expect(elsewhere.failed_step_id).toBe("s1");
   }, 60_000);
 
   it("rehearses with the liquid in the showcase's node rehearsal too, as on the page", () => {
