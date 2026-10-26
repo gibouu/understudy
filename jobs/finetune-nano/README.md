@@ -51,10 +51,11 @@ ENDPOINT=(nebius ai endpoint create --parent-id "$PROJECT_ID" --subnet-id "$SUBN
 watchdog() {
   local cli deadline=$(( $(date +%s) + $2 * 60 ))
   cli=$(command -v nebius) || { echo "watchdog: no nebius CLI on PATH, endpoint $1 has no deadline" >&2; return 1; }
-  nohup caffeinate -i sh -c "
-    while [ \$(date +%s) -lt $deadline ]; do sleep 20; done
-    until out=\$('$cli' ai endpoint delete $1 2>&1) || echo \"\$out\" | grep -q 'NotFound'; do echo \"\$(date -u +%FT%TZ) \$out\"; sleep 30; done
-    echo \"\$(date -u +%FT%TZ) $1 deleted\"" >> "${TMPDIR:-/tmp}/understudy-ft-watchdog.log" 2>&1 &
+  # a fixed script; the CLI path, the endpoint and the deadline arrive as $1 $2 $3, never pasted into it
+  nohup caffeinate -i sh -c '
+    while [ "$(date +%s)" -lt "$3" ]; do sleep 20; done
+    until out=$("$1" ai endpoint delete "$2" 2>&1) || echo "$out" | grep -q NotFound; do echo "$(date -u +%FT%TZ) $out"; sleep 30; done
+    echo "$(date -u +%FT%TZ) $2 deleted"' watchdog "$cli" "$1" "$deadline" >> "${TMPDIR:-/tmp}/understudy-ft-watchdog.log" 2>&1 &
 }
 
 # 1. smoke job: 10 steps; checks memory, the entry point, the --args quoting and the adapter's tensor names
