@@ -6,7 +6,7 @@ const MEASURED = "https://github.com/gibouu/understudy/blob/main/docs/MEASUREMEN
 /** Three numbers from docs/MEASUREMENTS.md, each linked to the section that measures it. */
 const NUMBERS = [
   { figure: "US$0.04", text: "for a whole session of model calls, from watching the clip to the reshoot list (US$0.0375 on average over three runs).", href: `${MEASURED}#1-what-a-session-costs` },
-  { figure: "94%", text: "of the failing rehearsals that can be fixed are fixed within five patches, by Super reading the simulator's notes and reasoning when it gets stuck.", href: `${MEASURED}#8-the-self-improvement-loop` },
+  { figure: "94%", text: "of the failing rehearsals that can be fixed are fixed within five patches, by Super reading the simulator's notes and reasoning when it gets stuck. Measured on small probe programs of two to four knobs.", href: `${MEASURED}#8-the-self-improvement-loop` },
   { figure: "+28 points", text: "of first-try success on the Moon and in orbit, from rules learned on Earth and Mars: 5% becomes 33%.", href: `${MEASURED}#8-the-self-improvement-loop` },
 ];
 
@@ -37,7 +37,7 @@ export default async function Home() {
             <p className="text-[17px] leading-relaxed text-neutral-700">
               Astronauts aboard the ISS, filmed by NASA. Each clip went through Understudy once: see what the model saw, what the robot asked and how its program changed. The arm rehearses every version again in your browser, and nothing here calls a model.
             </p>
-            <span className="mt-auto self-start rounded-full bg-ink px-4 py-2 text-paper group-hover:bg-accent">Open the showcase</span>
+            <span className="mt-auto self-start rounded-full bg-ink px-4 py-2 text-paper group-hover:bg-accent-text">Open the showcase</span>
           </div>
         </Link>
 
@@ -52,7 +52,7 @@ export default async function Home() {
               </li>
             ))}
           </ol>
-          <span className="mt-auto self-start rounded-full border-2 border-ink px-4 py-1.5 group-hover:border-accent group-hover:text-accent-text">Choose a clip</span>
+          <span className="mt-auto self-start rounded-full border-2 border-ink px-4 py-1.5 group-hover:border-accent-text group-hover:text-accent-text">Choose a clip</span>
         </Link>
       </section>
 

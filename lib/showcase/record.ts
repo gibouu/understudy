@@ -34,8 +34,25 @@ export const MAX_ROUNDS = 6;
 export const MAX_PATCHES = 5;
 
 /**
+ * The most one route call can cost, reserved before it is made: every attempt
+ * callModel can make (an unparsable answer is asked again, a check asks for a
+ * fix) at its max_tokens, with a generous prompt. List prices from
+ * tests/fixtures/models.json: Super VL US$0.30 / 0.90 per million tokens in /
+ * out, Nano 0.06 / 0.24, Super 0.30 / 0.90.
+ */
+export const WORST_USD = {
+  /** 2 attempts x (12k prompt tokens, 3,000 out) on Super VL */
+  label: 2 * (12_000 * 0.3e-6 + 3_000 * 0.9e-6),
+  /** 3 attempts x (8k prompt tokens, 3,000 out) on Nano */
+  compile: 3 * (8_000 * 0.06e-6 + 3_000 * 0.24e-6),
+  /** 2 attempts x (8k prompt tokens, 4,096 out) on Super */
+  notes: 2 * (8_000 * 0.3e-6 + 4_096 * 0.9e-6),
+} as const;
+
+/**
  * The Notes stage's hook (#28). Called while the last iteration fails in a
- * world and not on a spec gap; returns the next iteration, or null to stop.
+ * world and not on a spec gap; returns the next iteration with the model
+ * calls it made (they join the ledger and the cap), or null to stop.
  * Once /api/notes is on main, wire it here: post { spec, program, runs,
  * first, history } to app/api/notes/route.ts as app/patch-loop.tsx does,
  * rehearse the patched program with rehearseAll, and return
@@ -43,7 +60,7 @@ export const MAX_PATCHES = 5;
  * patch's why, cost_usd: its cost }. Until then recordings stop after the
  * interview and say so in `pending`.
  */
-export type NotesHook = (last: Iteration, iterations: Iteration[], engine: Engine) => Promise<Iteration | null>;
+export type NotesHook = (last: Iteration, iterations: Iteration[], engine: Engine) => Promise<{ iteration: Iteration; calls: Call[] } | null>;
 
 export type RecordOptions = { root: string; sample: Sample; engine: Engine; capUsd: number; notes?: NotesHook; log?: (line: string) => void };
 
@@ -107,18 +124,22 @@ export function poster(root: string, sample: Sample, session: Session, out: stri
 export async function recordClip({ root, sample, engine, capUsd, notes, log = () => {} }: RecordOptions): Promise<Session> {
   const { POST: labelRoute } = await import("@/app/api/label/route");
   const { POST: compileRoute } = await import("@/app/api/compile/route");
+  // with no key every route answers from its fixtures, some with no replay warning: never record those
+  if (!process.env.NEBIUS_API_KEY) throw new Error("NEBIUS_API_KEY is not set: the routes would answer from their replay fixtures");
+  if (!(capUsd > 0)) throw new Error(`the cap must be a positive number of US dollars, not ${capUsd}`);
   const ledger: Call[] = [];
-  const guard = (next: string) => {
+  /** stop before a call whose worst case would take the clip over its cap */
+  const guard = (next: string, worst: number) => {
     const spent = sum(ledger.map((c) => c.usd));
-    if (spent >= capUsd) throw new Error(`spent US$${spent.toFixed(4)} of the US$${capUsd} cap before ${next}`);
+    if (spent + worst > capUsd) throw new Error(`US$${spent.toFixed(4)} spent; ${next} could cost up to US$${worst.toFixed(4)}, over the US$${capUsd} cap`);
   };
 
+  guard("label", WORST_USD.label);
   const file = path.join(root, "samples", `${sample.name}.mp4`);
   const sha256 = createHash("sha256").update(readFileSync(file)).digest("hex");
   const { video, duration_s } = proxy(file);
   log(`${sample.name}: proxy ${Math.round(video.length / 1024)} kB, ${duration_s.toFixed(1)} s`);
 
-  guard("label");
   const label = live(await post<TaskSpec>(labelRoute as Handler, "/api/label", { video, duration_s, hint: sample.hint, clip_sha256: sha256 }), "label");
   const labelCalls = calls("label", label.ledger);
   ledger.push(...labelCalls);
@@ -135,7 +156,7 @@ export async function recordClip({ root, sample, engine, capUsd, notes, log = ()
   let given: Answer[] = [];
   let asked: Ask[] = [];
   for (let turn = 0; ; turn++) {
-    guard(`compile ${turn}`);
+    guard(`compile ${turn}`, WORST_USD.compile);
     const r = live(await post<Program>(compileRoute as Handler, "/api/compile", { spec, previous }), `compile ${turn}`);
     const cost = calls("compile", r.ledger);
     ledger.push(...cost);
@@ -154,7 +175,8 @@ export async function recordClip({ root, sample, engine, capUsd, notes, log = ()
     });
     log(`compile ${turn}: ${asks.length} asks; earth ${results.earth.pass ? "pass" : "fail"}, orbit ${results.orbit.pass ? "pass" : "fail"}`);
 
-    const next = asks.length && turn + 1 < MAX_ROUNDS ? asks.flatMap((a) => answerFor(spec, a.slot, turn + 1, answers) ?? []) : [];
+    // the flow takes answers for MAX_ROUNDS rounds, then rehearses what it has
+    const next = asks.length && turn < MAX_ROUNDS ? asks.flatMap((a) => answerFor(spec, a.slot, turn + 1, answers) ?? []) : [];
     turns.push({ program, warnings: r.warnings, asks: asks.map(({ slot, question, why }) => ({ slot, question, why })), answers: next });
     if (next.length === 0) break;
     const applied = applyChanges(spec, next.map((a) => a.change));
@@ -167,10 +189,11 @@ export async function recordClip({ root, sample, engine, capUsd, notes, log = ()
 
   const fails = (it: Iteration) => [it.results.earth, it.results.orbit].some((x) => !x.pass) && [it.results.earth, it.results.orbit].every((x) => x.pass || x.failure_class !== "spec_gap");
   for (let n = 0; notes && n < MAX_PATCHES && fails(iterations.at(-1)!); n++) {
-    guard(`notes patch ${n + 1}`);
-    const it = await notes(iterations.at(-1)!, iterations, engine);
-    if (!it) break;
-    iterations.push(it);
+    guard(`notes patch ${n + 1}`, WORST_USD.notes);
+    const patched = await notes(iterations.at(-1)!, iterations, engine);
+    if (!patched) break;
+    ledger.push(...patched.calls);
+    iterations.push(patched.iteration);
   }
 
   return Session.parse({

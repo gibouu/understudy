@@ -35,6 +35,7 @@ function version(it: Iteration, i: number, session: Session): string {
     const n = session.turns[i - 1]?.answers.length ?? 0;
     return `After ${n} answer${n === 1 ? "" : "s"}`;
   }
+  if (it.source === "notes") return `${SOURCE.notes} ${session.iterations.slice(0, i + 1).filter((x) => x.source === "notes").length}`;
   return SOURCE[it.source];
 }
 
@@ -129,7 +130,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         </Link>
         <h1 className="display text-4xl font-semibold text-ink-deep sm:text-5xl">{label.title}</h1>
         <p className="text-lg text-neutral-700">
-          {sample.label}. Recorded on {new Date(session.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })} in one run through Understudy; its {session.ledger.length} model calls cost {usd(session.total_usd)} in all. The last version of its program {verdict(session)}.
+          {sample.label}. Recorded on {new Date(session.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })} in one run through Understudy; its {session.ledger.length} model calls cost {usd(session.total_usd)} in all. The last version of its program {verdict(session)}.
         </p>
       </header>
 
@@ -263,7 +264,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
                 <span className="display text-xl font-semibold">
                   {i}. {version(x, i, session)}
                 </span>
-                <button onClick={() => choose(i, true)} className="self-start text-sm text-accent-text underline underline-offset-2 hover:text-accent">
+                <button onClick={() => choose(i, true)} className="self-start text-sm text-accent-text underline underline-offset-2 hover:decoration-2">
                   Rehearse this version
                 </button>
               </div>
@@ -292,7 +293,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         </ol>
         {session.pending.length > 0 && finalFails && (
           <p className="max-w-3xl rounded-lg border-2 border-dashed border-accent p-4 text-[17px]">
-            This is where the Notes stage takes over: Super reads what the simulator measured in the failed rehearsal, patches the program’s numbers, and each patch is rehearsed again on Earth and in orbit. Its versions will join this story when that stage ships; in our measurements it fixes 94% of the failures it can fix.
+            This is where the Notes stage takes over: Super reads what the simulator measured in the failed rehearsal, patches the program’s numbers, and each patch is rehearsed again on Earth and in orbit. Its versions will join this story when that stage ships. On small probe programs of two to four knobs, the same loop fixed 94% of the failures that could be fixed.
           </p>
         )}
         <p className="text-sm text-muted">

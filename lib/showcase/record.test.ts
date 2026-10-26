@@ -67,6 +67,34 @@ describe("the showcase recordings", () => {
   }, 60_000);
 });
 
+describe("the recorder's guards (no network)", () => {
+  const sample = SAMPLES[0];
+  const withKey = async <T,>(key: string | undefined, fn: () => Promise<T>) => {
+    const saved = process.env.NEBIUS_API_KEY;
+    if (key === undefined) delete process.env.NEBIUS_API_KEY;
+    else process.env.NEBIUS_API_KEY = key;
+    try {
+      return await fn();
+    } finally {
+      if (saved === undefined) delete process.env.NEBIUS_API_KEY;
+      else process.env.NEBIUS_API_KEY = saved;
+    }
+  };
+
+  it("refuses to record without a key: the routes would replay their fixtures", async () => {
+    const { recordClip } = await import("./record");
+    await withKey(undefined, () => expect(recordClip({ root: ROOT, sample, engine, capUsd: 1 })).rejects.toThrow(/NEBIUS_API_KEY is not set/));
+  });
+
+  it("stops before a call whose worst case is over the cap", async () => {
+    const { recordClip, WORST_USD } = await import("./record");
+    await withKey("not-a-real-key", async () => {
+      await expect(recordClip({ root: ROOT, sample, engine, capUsd: WORST_USD.label / 2 })).rejects.toThrow(/over the US\$.* cap/);
+      await expect(recordClip({ root: ROOT, sample, engine, capUsd: 0 })).rejects.toThrow(/positive number/);
+    });
+  });
+});
+
 describe("the recorded answers", () => {
   const spec = TaskSpec.parse({
     version: 1,

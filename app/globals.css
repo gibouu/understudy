@@ -25,6 +25,9 @@
 }
 
 @theme inline {
+  /* the scaffold's names, still used by /watch */
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
   --color-paper: var(--paper);
   --color-card: var(--paper-card);
   --color-paper-deep: var(--paper-deep);
