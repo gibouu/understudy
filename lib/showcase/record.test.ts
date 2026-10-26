@@ -39,12 +39,13 @@ describe.runIf(RECORD.length > 0)("record the showcase (live, spends credits)", 
     if (!sample) throw new Error(`${name} is not in lib/samples.ts`);
     process.loadEnvFile(process.env.UNDERSTUDY_ENV_FILE ?? ".env.local");
     if (!process.env.NEBIUS_API_KEY) throw new Error("NEBIUS_API_KEY missing from the env file");
-    const { poster, recordClip } = await import("./record");
-    const session = await recordClip({ root: ROOT, sample, engine, capUsd: Number(process.env.SHOWCASE_CAP_USD ?? 1), log: (l) => console.log(l) });
+    const { notesHook, poster, recordClip } = await import("./record");
+    const session = await recordClip({ root: ROOT, sample, engine, capUsd: Number(process.env.SHOWCASE_CAP_USD ?? 1), notes: notesHook(), log: (l) => console.log(l) });
     writeFileSync(path.join(DIR, `${name}.json`), JSON.stringify(session, null, 1) + "\n");
     poster(ROOT, sample, session, path.join(DIR, `${name}.jpg`));
     console.log(`${name}: ${session.iterations.length} iterations, ${session.ledger.length} calls, US$${session.total_usd.toFixed(4)}`);
-  }, 300_000);
+    // up to five patches, each of which may think for ~40 s and be asked twice
+  }, 900_000);
 });
 
 describe("the showcase recordings", () => {
@@ -92,6 +93,16 @@ describe("the recorder's guards (no network)", () => {
       await expect(recordClip({ root: ROOT, sample, engine, capUsd: worstUsd("label") / 2 })).rejects.toThrow(/over the US\$.* cap/);
       await expect(recordClip({ root: ROOT, sample, engine, capUsd: 0 })).rejects.toThrow(/positive number/);
     });
+  });
+
+  it("records a patch only from a live call, and one recording per notes hook", async () => {
+    const { notesHook } = await import("./record");
+    const session = Session.parse(JSON.parse(readFileSync(path.join(DIR, files[0]), "utf8")));
+    const interviewed = session.iterations.filter((x) => x.source !== "notes");
+    // with no key /api/notes answers from its fixtures, or not at all: neither may be recorded
+    await withKey(undefined, () => expect(notesHook()(interviewed.at(-1)!, interviewed, engine)).rejects.toThrow(/^notes patch 1\b/));
+    const patched = [...interviewed, { ...interviewed.at(-1)!, source: "notes" as const }];
+    await expect(notesHook()(patched.at(-1)!, patched, engine)).rejects.toThrow(/one clip's patches/);
   });
 
   it("reserves at the price of the model the route will call, so an override cannot slip past the cap", async () => {

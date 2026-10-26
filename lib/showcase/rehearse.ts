@@ -7,7 +7,8 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { MainModule, MjVFS } from "@mujoco/mujoco";
-import { environment, runToEnd } from "@/lib/sim/interpreter";
+import type { WorldRun } from "@/lib/notes/note";
+import { environment, runToEnd, type Rollout } from "@/lib/sim/interpreter";
 import { SO101_XML, stageXml } from "@/lib/sim/so101";
 import { GRAVITIES, type GravityName, type Program, type TaskSpec } from "@/lib/spec/schema";
 import type { Run } from "./session";
@@ -26,19 +27,27 @@ export async function loadEngine(root = process.cwd()): Promise<Engine> {
   return { mujoco, vfs };
 }
 
-export function rehearse({ mujoco, vfs }: Engine, spec: TaskSpec, program: Program, world: GravityName): Run {
+/** One world's rollout in full: its log and where the objects ended are what /api/notes reads. */
+export function rollout({ mujoco, vfs }: Engine, spec: TaskSpec, program: Program, world: GravityName): Rollout {
   const env = environment(spec);
   const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: GRAVITIES[world], graspable: env.graspable }), vfs);
   const data = new mujoco.MjData(model);
   try {
-    const r = runToEnd({ mujoco, model, data }, env, program, "sensed");
-    return { pass: r.pass, failed_step_id: r.failed_step_id, failed_op: r.failed_op, failure_class: r.failure_class, why: r.why, t: Math.round(r.t * 1000) / 1000 };
+    return runToEnd({ mujoco, model, data }, env, program, "sensed");
   } finally {
     data.delete();
     model.delete();
   }
 }
 
+/** What a recording keeps of a rollout. */
+export const summary = (r: Rollout): Run => ({ pass: r.pass, failed_step_id: r.failed_step_id, failed_op: r.failed_op, failure_class: r.failure_class, why: r.why, t: Math.round(r.t * 1000) / 1000 });
+
+export const rehearse = (engine: Engine, spec: TaskSpec, program: Program, world: GravityName): Run => summary(rollout(engine, spec, program, world));
+
 export function rehearseAll(engine: Engine, spec: TaskSpec, program: Program): Record<"earth" | "orbit", Run> {
   return { earth: rehearse(engine, spec, program, "earth"), orbit: rehearse(engine, spec, program, "orbit") };
 }
+
+/** Every world's full rollout, as the page hands them to the patch loop. */
+export const rollouts = (engine: Engine, spec: TaskSpec, program: Program): WorldRun[] => WORLDS.map((world) => ({ world, rollout: rollout(engine, spec, program, world) }));
