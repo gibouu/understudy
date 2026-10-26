@@ -69,7 +69,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
   const state = () => JSON.parse(readFileSync(env.FINETUNE_TF_STATE, "utf8"));
 
   it("refuses without a price or a balance, and under the US$15 floor", async () => {
-    expect(await fails("create", "--balance-usd", "40", "--dry-run")).toMatch(/--usd-per-mtok/);
+    expect(await fails("create", "--balance-usd", "60", "--dry-run")).toMatch(/--usd-per-mtok/);
     expect(await fails("create", "--usd-per-mtok", "5", "--dry-run")).toMatch(/--balance-usd/);
     expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "25", "--dry-run")).toMatch(/under the US\$15 floor/);
     expect(ledger()).toEqual([]);
@@ -78,7 +78,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
   it("starts one job, charges its estimate at once, refuses a second, and adjusts once", async () => {
     await tf("upload");
     expect(state()["train.jsonl"].id).toBe("file-train");
-    await tf("create", "--usd-per-mtok", "5", "--balance-usd", "40");
+    await tf("create", "--usd-per-mtok", "5", "--balance-usd", "60");
     const s = state();
     expect(s.job.id).toBe("ftjob-1");
     expect(s.pending).toBeUndefined();
@@ -86,22 +86,22 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     const estimateCharge = ledger().filter((e) => !e.type && e.settles === s.job.reservation);
     expect(estimateCharge).toHaveLength(1);
     expect(estimateCharge[0].usd).toBeCloseTo(s.job.usd_est, 6);
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/a job exists already/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/a job exists already/);
     expect(await fails("upload")).toMatch(/pending or exists/);
     expect(jobs).toHaveLength(1);
     // a lock held by another shell stops create
     writeFileSync(`${env.FINETUNE_TF_STATE}.lock`, "123\n");
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/another finetune-tf command is running/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/another finetune-tf command is running/);
     unlinkSync(`${env.FINETUNE_TF_STATE}.lock`);
     // the job trained more than estimated: the difference is charged once, however often status runs
     jobs[0].status = "succeeded";
-    jobs[0].trained_tokens = 4_000_000;
+    jobs[0].trained_tokens = 6_000_000;
     await tf("status");
     await tf("status");
     const adjustments = ledger().filter((e) => !e.type && e.settles === "adjust-ftjob-1");
     expect(adjustments).toHaveLength(1);
-    expect(adjustments[0].usd).toBeCloseTo(20 - s.job.usd_est, 6);
-    expect(state().job.usd_actual).toBe(20);
+    expect(adjustments[0].usd).toBeCloseTo(30 - s.job.usd_est, 6);
+    expect(state().job.usd_actual).toBe(30);
     expect(state().checkpoints[0].model).toMatch(/^ft:Qwen\/Qwen3-30B-A3B-Instruct-2507:/);
   });
 
@@ -109,11 +109,11 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     unlinkSync(env.FINETUNE_TF_STATE);
     await tf("upload");
     failCreate = "lost-answer";
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/adopt, or release --confirm-no-job/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/adopt, or release --confirm-no-job/);
     expect(state().pending).toBeDefined();
     failCreate = "no";
     const before = jobs.length;
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/a create is pending/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/a create is pending/);
     expect(jobs).toHaveLength(before);
     await tf("adopt");
     expect(state().job.id).toBe(`ftjob-${before}`);
@@ -122,7 +122,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     unlinkSync(env.FINETUNE_TF_STATE);
     await tf("upload");
     failCreate = "rejected";
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/adopt, or release/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/adopt, or release/);
     expect(jobs).toHaveLength(before);
     expect(await fails("adopt")).toMatch(/0 new jobs/);
     expect(await fails("release")).toMatch(/--confirm-no-job/);
@@ -139,6 +139,6 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     const s = state();
     s["train.jsonl"].sha256 = "0".repeat(64);
     writeFileSync(env.FINETUNE_TF_STATE, JSON.stringify(s));
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/run upload again/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/run upload again/);
   });
 });

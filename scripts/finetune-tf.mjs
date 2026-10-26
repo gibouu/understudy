@@ -34,8 +34,14 @@ const DATA = path.join(ROOT, "bench/finetune");
 const SCRIPT = "finetune-tf";
 export const BASE_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507";
 export const FLOOR_USD = 15;
-/** LoRA settings: rank 16 and alpha 32 as on the AI Cloud route; a LoRA learning rate, not the full-tune default 1e-5 */
-export const HYPER = { lora: true, lora_r: 16, lora_alpha: 32, lora_dropout: 0.05, learning_rate: 1e-4, batch_size: 8, warmup_ratio: 0.05, context_length: 8192, packing: true };
+/**
+ * LoRA settings: rank 16 and alpha 32 as on the AI Cloud route. Token Factory wants at least 131,072 tokens
+ * a batch (batch size x context length; a 422 said so), so at the shortest context, 8,192, the batch is
+ * 16 packed sequences: about 7 steps an epoch for our 0.9M tokens. Hence 5 epochs (about 35 steps) and a
+ * LoRA learning rate of 2e-4, not the full-tune default 1e-5.
+ */
+export const HYPER = { lora: true, lora_r: 16, lora_alpha: 32, lora_dropout: 0.05, learning_rate: 2e-4, batch_size: 16, warmup_ratio: 0.05, context_length: 8192, packing: true };
+export const EPOCHS = 5;
 
 const args = process.argv.slice(2);
 const cmd = args[0];
@@ -121,7 +127,7 @@ async function main() {
       if (s.pending) throw new Error("a create is pending (its answer was lost): run adopt, or release --confirm-no-job once the console shows no job");
       const usdPerMtok = Number(opt("--usd-per-mtok"));
       if (!(usdPerMtok > 0)) throw new Error("--usd-per-mtok: Token Factory's training price per 1M tokens for this model, from the console; it is not published");
-      const epochs = Number(opt("--epochs") ?? 3);
+      const epochs = Number(opt("--epochs") ?? EPOCHS);
       const meta = readFileSync(path.join(DATA, "train.meta.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
       const est = estimate(meta, epochs, usdPerMtok);
       checkBudget(Number(opt("--balance-usd")), est.usd_est);
@@ -139,7 +145,7 @@ async function main() {
       try {
         job = await tf.fineTuning.jobs.create(request);
       } catch (e) {
-        s.pending.error = String(e?.status ?? e?.message ?? e).slice(0, 200);
+        s.pending.error = String(e?.message ?? e).slice(0, 600);
         save(s);
         throw new Error(`create failed (${s.pending.error}); a job may still have started. Check, then run adopt, or release --confirm-no-job`);
       }
