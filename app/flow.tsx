@@ -9,6 +9,7 @@ import { applyChanges } from "@/lib/spec/apply";
 import type { Predicate, Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
+import { FilmYourself, UnlockPrompt, unlockCode } from "./capture";
 import { GroundChips } from "./ground-chips";
 import { ProgramView, type Failure } from "./program-view";
 
@@ -101,7 +102,7 @@ export function Flow() {
     const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: await clipSha256(clip.blob) }));
     if (id !== gen.current) return;
     setLabel(running("Super VL is watching the clip"));
-    const r = await post<TaskSpec>("/api/label", { ...body, hint });
+    const r = await post<TaskSpec>("/api/label", { ...body, hint, unlock: unlockCode() });
     if (id !== gen.current) return;
     setLabel(r);
     if (r.status !== "done") return;
@@ -154,6 +155,7 @@ export function Flow() {
               }}
             />
           </label>
+          <FilmYourself onClip={(take) => choose(take, "")} />
         </div>
         {clip && (
           <div className="mt-3 flex flex-col gap-3">
@@ -174,6 +176,7 @@ export function Flow() {
       {label.status !== "idle" && (
         <Section n={2} title="What the model saw" model="Nemotron 3.5 Super VL">
           <Status result={label} />
+          {label.status === "failed" && <UnlockPrompt message={label.message} onUnlock={watch} />}
           {label.status === "done" && <SpecSummary spec={label.value} />}
         </Section>
       )}

@@ -31,6 +31,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { BudgetError, charge, costOf, guard, loadPrices, spent } from "./bench-ledger.mjs";
+import { logCall } from "./call-log.mjs";
 
 const SCRIPT = "bench-interview";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -344,6 +345,7 @@ async function call(ctx, stage, role, { system, user, maxTokens, thinking = "off
       // the server may have done the work before the error or timeout: charge the reserved estimate
       const status = err?.status ?? null;
       charge(SCRIPT, worst, { ...meta, attempt, estimated: true, failed: true, status }, reservation);
+      logCall(SCRIPT, { stage, params, error: `${status ?? "?"} ${redact(err?.message ?? err)}`.slice(0, 300), cost_usd: worst, meta: { ...meta, attempt, estimated: true }, session: ctx.session, parent: ctx.lastCall });
       rec.estimated_usd += worst;
       ctx.cost += worst;
       ctx.estimated += worst;
@@ -360,6 +362,7 @@ async function call(ctx, stage, role, { system, user, maxTokens, thinking = "off
     const u = usageOf(res);
     const cost = costOf(PRICES, model, u);
     charge(SCRIPT, cost, { ...meta, attempt, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens }, reservation);
+    ctx.lastCall = logCall(SCRIPT, { stage, params, res, usage: u, cost_usd: cost, meta: { ...meta, attempt }, session: ctx.session, parent: ctx.lastCall }) ?? ctx.lastCall;
     Object.assign(rec, { ok: true, attempts: attempt, ms: Math.round(performance.now() - started), prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, reasoning_tokens: u.reasoning_tokens ?? null, finish: res.choices?.[0]?.finish_reason ?? null, cost_usd: cost });
     const parsed = parseJson(text);
     rec.json_ok = parsed !== null;
@@ -382,7 +385,7 @@ async function interview(name, pass, run, index) {
   const compileSystem = /v2/.test(pass) ? COMPILE_SYSTEM_V2 : COMPILE_SYSTEM;
   const changesFirst = /changes-first/.test(pass);
   const split = /split/.test(pass);
-  const ctx = { name, pass, run, calls: [], cost: 0, estimated: 0 };
+  const ctx = { name, pass, run, calls: [], cost: 0, estimated: 0, session: `${SCRIPT}/${new Date().toISOString()}/${pass}/${name}/run${run}`, lastCall: null };
   let spec = structuredClone(degraded);
   const recovered = () => gaps.filter((g) => g.check(spec)).map((g) => g.cat);
   const turns = [{ turn: 0, recovered: recovered(), cost_usd: 0, questions: 0 }];
@@ -499,7 +502,7 @@ async function interview(name, pass, run, index) {
 }
 
 async function gtCompile(name) {
-  const ctx = { name, pass: "gt-compile", run: 1, calls: [], cost: 0, estimated: 0 };
+  const ctx = { name, pass: "gt-compile", run: 1, calls: [], cost: 0, estimated: 0, session: `${SCRIPT}/${new Date().toISOString()}/gt-compile/${name}`, lastCall: null };
   const r = await call(ctx, "compile", "nano", { system: COMPILE_SYSTEM, user: `Task spec:\n${JSON.stringify(GT[name])}`, maxTokens: 3000 });
   return { spec: name, asks: askSlots(r.parsed).map((a) => a.slot), ok: Boolean(r.parsed), cost_usd: ctx.cost };
 }

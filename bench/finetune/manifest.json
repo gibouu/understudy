@@ -1,0 +1,276 @@
+{
+  "dataset": "patch-loop repairs, chat format",
+  "built_from": {
+    "file": "bench/results/patch-loop.json",
+    "sha256": "77375f806c313be5bd1c35d46b0ecba2707fe4229ae0b1f7d96e563d0b2ae662"
+  },
+  "builder": "tests/measure/finetune-data.ts (FINETUNE_BUILD=1 node_modules/.bin/vitest run tests/measure/finetune-data.test.ts)",
+  "split": {
+    "by": "case (probe/gravity/disturbance), every seed on one side",
+    "salt": "understudy-ft-v1",
+    "test_cases": [
+      "insert/earth/offset-6mm+handoff5",
+      "insert/moon/offset-6mm+handoff5",
+      "insert/orbit/offset+4mm",
+      "place/earth/frame0.2g",
+      "place/moon/frame0.05g",
+      "place/orbit/handoff0",
+      "pour/earth/nominal",
+      "pour/moon/target+30mm",
+      "pour/orbit/nominal",
+      "carry/moon/cup+frame0.05g",
+      "carry/orbit/tube+frame0.02g"
+    ],
+    "validation": "about 1 prompt in 20 of the training cases, by a hash of the prompt"
+  },
+  "files": {
+    "train.jsonl": {
+      "lines": 881,
+      "bytes": 3221943,
+      "sha256": "7d74ebe22ceefe76eac48a47aa877a426cd33642a71758f3f5a2699575cdd1ff"
+    },
+    "train.meta.jsonl": {
+      "lines": 881,
+      "bytes": 208202,
+      "sha256": "8e1f161503f0cb17ef6e3dc79aff699ac9f480e683d82b41e3e19a674bc77985"
+    },
+    "val.jsonl": {
+      "lines": 55,
+      "bytes": 192652,
+      "sha256": "86d0f104468399ea0e8f46ec40fd899866e8d127b31111de7890834afab70050"
+    },
+    "val.meta.jsonl": {
+      "lines": 55,
+      "bytes": 12782,
+      "sha256": "721d45f1a879c9155e40e6091204859f1eff0f5c0d7c28623950fc6520c85a24"
+    },
+    "pairs.jsonl": {
+      "lines": 524,
+      "bytes": 2123279,
+      "sha256": "3d5705a943f11b0852d16016443fd09313134192acb4d2427308039e0f26f1be"
+    }
+  },
+  "arms": {
+    "super-off": {
+      "included": true,
+      "reason": null,
+      "runs": 108,
+      "replayed": 57,
+      "mismatched": {}
+    },
+    "ultra": {
+      "included": true,
+      "reason": null,
+      "runs": 108,
+      "replayed": 57,
+      "mismatched": {}
+    },
+    "super-off-rep": {
+      "included": true,
+      "reason": null,
+      "runs": 108,
+      "replayed": 57,
+      "mismatched": {}
+    },
+    "super-off-derived": {
+      "included": true,
+      "reason": null,
+      "runs": 108,
+      "replayed": 57,
+      "mismatched": {}
+    },
+    "preflight": {
+      "included": true,
+      "reason": null,
+      "runs": 63,
+      "replayed": 33,
+      "mismatched": {}
+    },
+    "super-on": {
+      "included": true,
+      "reason": null,
+      "runs": 108,
+      "replayed": 57,
+      "mismatched": {}
+    },
+    "playbook": {
+      "included": false,
+      "reason": "prompt carries distilled rules",
+      "runs": 63,
+      "replayed": 0,
+      "mismatched": {}
+    },
+    "super-off-retry": {
+      "included": true,
+      "reason": null,
+      "runs": 108,
+      "replayed": 57,
+      "mismatched": {}
+    },
+    "playbook2": {
+      "included": false,
+      "reason": "prompt carries distilled rules",
+      "runs": 63,
+      "replayed": 0,
+      "mismatched": {}
+    },
+    "ultra-on": {
+      "included": true,
+      "reason": null,
+      "runs": 108,
+      "replayed": 57,
+      "mismatched": {}
+    },
+    "ultra-on-16k": {
+      "included": true,
+      "reason": null,
+      "runs": 108,
+      "replayed": 57,
+      "mismatched": {}
+    },
+    "r2-liquid-super-off": {
+      "included": false,
+      "reason": "liquid pour (the solver changed after these runs)",
+      "runs": 48,
+      "replayed": 0,
+      "mismatched": {}
+    },
+    "r2-esc-on": {
+      "included": true,
+      "reason": null,
+      "runs": 216,
+      "replayed": 114,
+      "mismatched": {}
+    },
+    "r2-playbook3": {
+      "included": false,
+      "reason": "prompt carries distilled rules",
+      "runs": 126,
+      "replayed": 0,
+      "mismatched": {}
+    },
+    "r2-esc-ultra": {
+      "included": true,
+      "reason": null,
+      "runs": 216,
+      "replayed": 114,
+      "mismatched": {}
+    },
+    "r2-super-off": {
+      "included": true,
+      "reason": null,
+      "runs": 216,
+      "replayed": 114,
+      "mismatched": {}
+    },
+    "r2-playbook3-esc": {
+      "included": false,
+      "reason": "prompt carries distilled rules",
+      "runs": 126,
+      "replayed": 0,
+      "mismatched": {}
+    },
+    "r2-super-on": {
+      "included": true,
+      "reason": null,
+      "runs": 216,
+      "replayed": 114,
+      "mismatched": {}
+    },
+    "r2-liquid-super-on": {
+      "included": false,
+      "reason": "liquid pour (the solver changed after these runs)",
+      "runs": 48,
+      "replayed": 0,
+      "mismatched": {}
+    },
+    "r2-playbook2-on": {
+      "included": false,
+      "reason": "prompt carries distilled rules",
+      "runs": 126,
+      "replayed": 0,
+      "mismatched": {}
+    },
+    "r2-playbook3-on": {
+      "included": false,
+      "reason": "prompt carries distilled rules",
+      "runs": 126,
+      "replayed": 0,
+      "mismatched": {}
+    },
+    "r2-ctrl3-esc": {
+      "included": true,
+      "reason": null,
+      "runs": 126,
+      "replayed": 66,
+      "mismatched": {}
+    },
+    "r2-ctrl3-on": {
+      "included": true,
+      "reason": null,
+      "runs": 126,
+      "replayed": 38,
+      "mismatched": {}
+    },
+    "r2-ctrl2-on": {
+      "included": true,
+      "reason": null,
+      "runs": 126,
+      "replayed": 35,
+      "mismatched": {}
+    },
+    "r2-ctrl3": {
+      "included": true,
+      "reason": null,
+      "runs": 126,
+      "replayed": 66,
+      "mismatched": {}
+    }
+  },
+  "runs_to_replay": 1150,
+  "runs_replayed": 1150,
+  "runs_mismatched": 0,
+  "calls_rebuilt": 2857,
+  "fidelity": {
+    "prompts_seen_more_than_once": 459,
+    "with_differing_token_counts": 0
+  },
+  "fixing_patches": 944,
+  "duplicates_dropped": 8,
+  "train_by_probe": {
+    "insert": 312,
+    "place": 257,
+    "pour": 209,
+    "carry": 103
+  },
+  "train_by_gravity": {
+    "orbit": 394,
+    "mars": 213,
+    "moon": 204,
+    "earth": 70
+  },
+  "train_by_patcher": {
+    "super-off": 404,
+    "ultra-off": 94,
+    "super-on": 299,
+    "ultra-on": 84
+  },
+  "val_by_probe": {
+    "carry": 21,
+    "insert": 11,
+    "place": 13,
+    "pour": 10
+  },
+  "patch_numbers_checked": 621,
+  "train_prompt_tokens": {
+    "median": 884,
+    "max": 1260,
+    "total": 802047
+  },
+  "train_answer_tokens": {
+    "median": 111,
+    "max": 213,
+    "total": 97554
+  },
+  "build_s": 443
+}
