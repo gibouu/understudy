@@ -71,8 +71,9 @@ export function evaluate(w: World, p: Predicate): Check {
       return { ok: w.t <= p.value!, measured: w.t, why: `${w.t.toFixed(2)} s elapsed, limit ${p.value} s` };
     case "liquid_inside": {
       if (!w.liquid) throw new Error("there is no liquid in the scene");
-      const pc = 100 * w.liquid.shareIn(w.data, p.target!);
-      return { ok: pc >= p.value!, measured: pc, why: `${pc.toFixed(0)}% of the liquid is inside ${p.target}, wanted >= ${p.value}%` };
+      const pc = 100 * w.liquid.shareIn(w.data, p.target!, p.object);
+      const whose = p.object ? `the liquid from ${p.object}` : "the liquid";
+      return { ok: pc >= p.value!, measured: pc, why: `${pc.toFixed(0)}% of ${whose} is inside ${p.target}, wanted >= ${p.value}%` };
     }
   }
 }

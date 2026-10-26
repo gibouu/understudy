@@ -28,10 +28,10 @@ export function formFor(spec: TaskSpec, slot: string): AskForm {
   const still: Predicate = { kind: "object_still", object: step.object };
   const options: { label: string; predicates: Predicate[] }[] = [];
   if (step.pour) {
-    // a pour succeeds by where the liquid goes, not by where the container ends up
+    // a pour succeeds by where the container's liquid goes, not by where the container ends up
     const into = step.pour.into;
     for (const [value, label] of [[90, "nearly all of it"], [75, "most of it"], [50, "at least half of it"]] as const) {
-      options.push({ label: `${label} (${value}%) ends up in the ${name(into)}`, predicates: [{ kind: "liquid_inside", target: into, value }] });
+      options.push({ label: `${label} (${value}%) ends up in the ${name(into)}`, predicates: [{ kind: "liquid_inside", object: step.object, target: into, value }] });
     }
     return { kind: "success", options };
   }

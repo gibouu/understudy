@@ -89,7 +89,8 @@ export const PREDICATE_OPERANDS: Record<PredicateKind, { object: boolean; target
   gripper_within: { object: true, target: false, value: true, unit: "mm of aperture error" },
   object_still: { object: true, target: false, value: false },
   time_under: { object: false, target: false, value: true, unit: "seconds" },
-  liquid_inside: { object: false, target: true, value: true, unit: "% of the liquid inside the target" },
+  /** with an object: the share of the liquid that started in that container, so what the target held before does not count */
+  liquid_inside: { object: false, target: true, value: true, unit: "% of the liquid inside the target; with an object, of the liquid that started in it" },
 };
 
 export const Predicate = z

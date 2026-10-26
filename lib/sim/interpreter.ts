@@ -323,16 +323,19 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
                 let d: Vec3 = leaning ? [up[0], up[1], 0] : goal ? [goal[0] - c0[0], goal[1] - c0[1], 0] : [0, 0, 0];
                 if (Math.hypot(d[0], d[1]) < 0.005) d = [c0[0], c0[1], 0];
                 d = unit(d);
+                const axis = unit(cross([0, 0, 1], d));
+                // the tilt it already has, undone: the side it leans to is found on the object as it stood upright
+                // (past 90° the tipped frame's horizontal points to the opposite rim)
+                const back = rotation(axis, leaning ? (-tipped * Math.PI) / 180 : 0);
+                const Rup = matmul(back, R0);
                 // the rim point on that side: where the line from the centre along d (in the object's frame) leaves the top face
                 const [hx, hy] = footprintMm(o).map((v) => (v * MM) / 2);
                 const hz = (heightMm(o) * MM) / 2;
-                const dl = unit([R0[0] * d[0] + R0[3] * d[1], R0[1] * d[0] + R0[4] * d[1], 0]);
+                const dl = unit([Rup[0] * d[0] + Rup[3] * d[1], Rup[1] * d[0] + Rup[4] * d[1], 0]);
                 const k = Math.min(Math.abs(dl[0]) > 1e-9 ? hx / Math.abs(dl[0]) : Infinity, Math.abs(dl[1]) > 1e-9 ? hy / Math.abs(dl[1]) : Infinity);
                 const lip = [dl[0] * k, dl[1] * k, hz];
                 const pivot: Vec3 = [0, 1, 2].map((r) => c0[r] + R0[3 * r] * lip[0] + R0[3 * r + 1] * lip[1] + R0[3 * r + 2] * lip[2]) as Vec3;
-                const axis = unit(cross([0, 0, 1], d));
-                // the held site's pose upright: the tilt it already has, undone about the pivot
-                const back = rotation(axis, leaning ? (-tipped * Math.PI) / 180 : 0);
+                // the held site's pose upright: undone about the pivot
                 const now = vec(scratch.site_xpos, site, 3).map((v, r) => v - pivot[r]) as Vec3;
                 const site0 = [0, 1, 2].map((r) => pivot[r] + back[3 * r] * now[0] + back[3 * r + 1] * now[1] + back[3 * r + 2] * now[2]) as Vec3;
                 tl = { site0, rot0: matmul(back, vec(scratch.site_xmat, site, 9)), pivot, axis, deg: leaning ? tipped : 0, toward: leaning ? "the side it leans to" : (op.toward ?? "away from the robot"), frame: leaning ? undefined : op.toward };

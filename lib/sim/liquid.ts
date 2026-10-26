@@ -45,6 +45,9 @@ const ON_TABLE = 1.5;
  * (tests/measure/patch-probes.ts, the pour probes).
  */
 const ABOVE_RIM_M = 0.01;
+/** what locate() says of a particle in no container */
+const ON_THE_TABLE = -1;
+const ELSEWHERE = -2;
 
 export type LiquidPlan = {
   spacing_m: number;
@@ -110,6 +113,10 @@ export class Liquid {
   readonly fluid: Fluid;
   private coupling: MujocoFluidCoupling;
   private sites = dict<number>();
+  /** the containers, in the order locate() numbers them */
+  private containerIds: string[] = [];
+  /** per particle, the index in plan.fills of the container it started in (the solver never reorders particles) */
+  private origins = new Int32Array(0);
   /** half-sizes of every site, from the model: the containers' insides do not change size */
   private siteSize: number[];
   private pending = 0;
@@ -136,6 +143,7 @@ export class Liquid {
       const s = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, site);
       if (s < 0) throw new Error(`no site ${site} for the liquid in "${id}"`);
       this.sites[id] = s;
+      this.containerIds.push(id);
     }
     this.fill(model, data, seed);
   }
@@ -149,6 +157,7 @@ export class Liquid {
     const f = this.fluid;
     const s = this.plan.spacing_m;
     f.clearParticles();
+    const origins: number[] = [];
     this.coupling.sync(model, data, { teleport: true });
     const rand = mulberry32(seed);
     const xpos = toNumbers(data.site_xpos);
@@ -172,8 +181,10 @@ export class Liquid {
         for (let r = 0; r < 3; r++) out.push(p[r] + R[3 * r] * local[0] + R[3 * r + 1] * local[1] + R[3 * r + 2] * local[2]);
       }
       f.addParticles(out);
+      for (let i = 0; i < particles; i++) origins.push(this.plan.fills.findIndex((x) => x.id === id));
     }
     f.relax(10);
+    this.origins = Int32Array.from(origins);
     this.pending = 0;
   }
 
@@ -193,20 +204,52 @@ export class Liquid {
     this.fluid.setGravity([0, 0, -G_M_S2 * g]);
   }
 
-  /** Share (0 to 1) of the liquid inside container `id` (between its walls, up to ABOVE_RIM_M over its rim). */
-  shareIn(data: MjData, id: string): number {
+  /**
+   * Share (0 to 1) of the liquid inside container `id` (between its walls, up to ABOVE_RIM_M over its rim): of all
+   * of it, or with `from`, of the liquid that started in that container (what a pour moved, whatever the target
+   * held before).
+   */
+  shareIn(data: MjData, id: string, from?: string): number {
     if (!Object.hasOwn(this.sites, id)) throw new Error(`"${id}" is not an open container`);
-    return this.where(data).containers[id];
+    const k = this.containerIds.indexOf(id);
+    const where = this.locate(data);
+    if (from === undefined) return this.fluid.count ? where.filter((c) => c === k).length / this.fluid.count : 0;
+    const origin = this.plan.fills.findIndex((f) => f.id === from);
+    if (origin < 0) throw new Error(`"${from}" held no liquid at the start`);
+    let mine = 0;
+    let there = 0;
+    for (let i = 0; i < where.length; i++) {
+      if (this.origins[i] !== origin) continue;
+      mine++;
+      if (where[i] === k) there++;
+    }
+    return mine ? there / mine : 0;
   }
 
   where(data: MjData): LiquidWhere {
+    const where = this.locate(data);
+    const n = where.length;
+    const counts = new Array(this.containerIds.length).fill(0);
+    let table = 0;
+    for (const k of where) {
+      if (k >= 0) counts[k]++;
+      else if (k === ON_THE_TABLE) table++;
+    }
+    const share = (c: number) => (n ? c / n : 0);
+    const containers = dict<number>();
+    this.containerIds.forEach((id, k) => (containers[id] = share(counts[k])));
+    const inside = counts.reduce((a, b) => a + b, 0);
+    return { containers, table: share(table), elsewhere: share(n - inside - table) };
+  }
+
+  /** Per particle: the index (in containerIds) of the container it is in, else ON_THE_TABLE or ELSEWHERE. */
+  private locate(data: MjData): Int32Array {
     const x = this.fluid.positions;
     const n = this.fluid.count;
     const xpos = toNumbers(data.site_xpos);
     const xmat = toNumbers(data.site_xmat);
     const size = this.siteSize;
-    const ids = Object.keys(this.sites);
-    const boxes = ids.map((id) => {
+    const boxes = this.containerIds.map((id) => {
       const s = this.sites[id];
       return {
         p: [0, 1, 2].map((k) => xpos[3 * s + k]),
@@ -214,8 +257,7 @@ export class Liquid {
         h: [0, 1, 2].map((k) => size[3 * s + k]),
       };
     });
-    const counts = new Array(ids.length).fill(0);
-    let table = 0;
+    const out = new Int32Array(n);
     for (let i = 0; i < n; i++) {
       const px = x[3 * i], py = x[3 * i + 1], pz = x[3 * i + 2];
       const k = boxes.findIndex(({ p, R, h }) => {
@@ -223,14 +265,9 @@ export class Liquid {
         const l = [0, 1, 2].map((c) => R[c] * d[0] + R[3 + c] * d[1] + R[6 + c] * d[2]);
         return Math.abs(l[0]) <= h[0] && Math.abs(l[1]) <= h[1] && l[2] >= -h[2] && l[2] <= h[2] + ABOVE_RIM_M;
       });
-      if (k >= 0) counts[k]++;
-      else if (pz < ON_TABLE * this.plan.spacing_m) table++;
+      out[i] = k >= 0 ? k : pz < ON_TABLE * this.plan.spacing_m ? ON_THE_TABLE : ELSEWHERE;
     }
-    const share = (c: number) => (n ? c / n : 0);
-    const containers = dict<number>();
-    ids.forEach((id, k) => (containers[id] = share(counts[k])));
-    const inside = counts.reduce((a, b) => a + b, 0);
-    return { containers, table: share(table), elsewhere: share(n - inside - table) };
+    return out;
   }
 }
 

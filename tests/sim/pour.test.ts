@@ -94,7 +94,7 @@ describe("the tilt op and the liquid check", () => {
     const open = TaskSpec.parse({ ...POUR_SPEC, steps: [{ ...POUR_SPEC.steps[0], success: [] }] });
     const form = formFor(open, "steps[s1].success");
     expect(form.kind).toBe("success");
-    if (form.kind === "success") expect(form.options.map((o) => o.predicates)).toEqual([90, 75, 50].map((value) => [{ kind: "liquid_inside", target: "bowl", value }]));
+    if (form.kind === "success") expect(form.options.map((o) => o.predicates)).toEqual([90, 75, 50].map((value) => [{ kind: "liquid_inside", object: "cup", target: "bowl", value }]));
     const { program, added } = withRequiredAsks(open, POUR_PROGRAMS.pour);
     expect(added).toEqual(["steps[s1].success"]);
     expect(program.steps[0].ops[0]).toMatchObject({ op: "ask", slot: "steps[s1].success" });
@@ -183,6 +183,23 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     expect(where!.containers["__proto__"]).toBe(1);
   }, 60_000);
 
+  it("counts the liquid a pour moved, not what the target held before", () => {
+    const full = TaskSpec.parse({ ...POUR_SPEC, objects: POUR_SPEC.objects.map((o) => (o.id === "bowl" ? { ...o, liquid_ml: 80 } : o)) });
+    const before = (p: unknown) => pour(ops({ op: "assert", predicate: p }), 1, { spec: full }).r;
+    // the bowl holds most of all the liquid already, but none of the cup's
+    expect(before({ kind: "liquid_inside", target: "bowl", value: 50 }).pass).toBe(true);
+    const moved = before({ kind: "liquid_inside", object: "cup", target: "bowl", value: 1 });
+    expect(moved.pass).toBe(false);
+    expect(moved.why).toContain("0% of the liquid from cup is inside bowl");
+    const dry = before({ kind: "liquid_inside", object: "block", target: "bowl", value: 1 });
+    expect(dry.failure_class).toBe("spec_gap");
+    expect(dry.why).toContain('"block" held no liquid at the start');
+    // the pour moves most of the cup's water, and the check counts only that
+    const { r } = pour(POUR_PROGRAMS.pour, 1, { spec: full });
+    const share = Number(r.log.findLast((l) => l.includes("of the liquid from cup is inside bowl"))!.match(/ (\d+)% of the liquid from cup/)![1]);
+    expect(share, r.log.join("\n")).toBeGreaterThanOrEqual(75);
+  }, 120_000);
+
   it("turns a liquid check without liquid, or on something that is not a container, into a spec gap", () => {
     const check = Program.parse({ spec_title: "", steps: [{ step_id: "s1", ops: [{ op: "assert", predicate: { kind: "liquid_inside", target: "pillow", value: 50 } }] }] });
     const dry = pour(check, 1, { spec: DEMO_SPEC });
@@ -203,24 +220,32 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     expect(back.log.some((l) => l.includes("already upright"))).toBe(true);
   }, 120_000);
 
-  it("turns back a cup a program left tipped, in a later run that continues from there", () => {
+  it("turns back a cup a program left tipped past 90°, in a later run, to where an unbroken return puts it", () => {
     const env = environment(POUR_SPEC);
-    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
-    const data = new mujoco.MjData(model);
-    try {
-      park(mujoco, model, data);
-      const liquid = new Liquid(mujoco, model, data, env.liquid!, { gravity_g: 0 });
-      const sim = { mujoco, model, data, liquid };
-      const first = runToEnd(sim, env, ops(...grip, { op: "tilt", deg: 100, toward: "bowl", seconds: 1 }), "sensed");
-      expect(first.pass, first.log.join("\n")).toBe(true);
-      const back = runToEnd(sim, env, ops({ op: "tilt", deg: 0, seconds: 1 }, { op: "assert", predicate: { kind: "tilt_under", object: "cup", value: 8 } }), "sensed", { from: "here" });
-      expect(back.pass, back.log.join("\n")).toBe(true);
-      expect(back.log.some((l) => l.includes("already tipped"))).toBe(true);
-    } finally {
-      data.delete();
-      model.delete();
-    }
-  }, 60_000);
+    const cupAt = (split: boolean) => {
+      const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
+      const data = new mujoco.MjData(model);
+      try {
+        park(mujoco, model, data);
+        const sim = { mujoco, model, data };
+        const tip = { op: "tilt", deg: 120, toward: "bowl", seconds: 1 };
+        const back = { op: "tilt", deg: 0, seconds: 1 };
+        const upright = { op: "assert", predicate: { kind: "tilt_under", object: "cup", value: 8 } };
+        const runs = split ? [ops(...grip, tip), ops(back, upright)] : [ops(...grip, tip, back, upright)];
+        const logs = runs.map((program, k) => runToEnd(sim, env, program, "sensed", { from: k ? "here" : "home" }));
+        for (const r of logs) expect(r.pass, r.log.join("\n")).toBe(true);
+        if (split) expect(logs[1].log.some((l) => l.includes("already tipped 12"))).toBe(true);
+        const b = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, env.names.cup);
+        return Array.from(data.xpos as Float64Array).slice(3 * b, 3 * b + 3);
+      } finally {
+        data.delete();
+        model.delete();
+      }
+    };
+    const whole = cupAt(false);
+    const split = cupAt(true);
+    expect(Math.hypot(...whole.map((v, k) => v - split[k])) * 1000).toBeLessThan(5);
+  }, 120_000);
 
   it("refuses to tip a tipped cup toward somewhere else, and carries on toward the same place", () => {
     const other = pour(ops(...grip, { op: "tilt", deg: 60, toward: "bowl" }, { op: "tilt", deg: 90, toward: "block" }), 0).r;

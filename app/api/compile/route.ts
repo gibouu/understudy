@@ -51,10 +51,10 @@ Rules:
 - Keep the program short: no comments, no prose.
 Example. A jar (cylinder, size_mm [40,40,80]) is picked in s1 and placed on a tray (box, size_mm [200,150,20], zone fixture) in s2; s2 has a success predicate but no tolerance. The jar is gripped 8 mm below its top (z = 40 - 8 = 32 in its frame) from 50 mm above (32 + 50 = 82); once held, offsets place its centre: lifted 50 mm, carried with its bottom 20 mm above the tray (10 + 40 + 20 = 70), then set down with its bottom 1 mm above the tray's top (10 + 40 + 1 = 51).
 [{"step_id":"s1","ops":[{"op":"move_to","frame":"jar","offset_mm":[0,0,82],"approach":"top"},{"op":"move_to","frame":"jar","offset_mm":[0,0,32],"approach":"top"},{"op":"grasp","object":"jar","aperture_mm":40},{"op":"wait_until","predicate":{"kind":"contact_both_pads","object":"jar"},"timeout_s":1},{"op":"move_to","frame":"jar","offset_mm":[0,0,50],"approach":"top"}]},{"step_id":"s2","ops":[{"op":"move_to","frame":"tray","offset_mm":[0,0,70],"approach":"top"},{"op":"ask","slot":"steps[s2].tolerances.x_mm","question":"How far off-centre can the jar land before it counts as missed?","why":"no tolerance band for x_mm"},{"op":"move_to","frame":"tray","offset_mm":[0,0,51],"approach":"top"},{"op":"release"},{"op":"wait_until","predicate":{"kind":"object_still","object":"jar"},"timeout_s":2},{"op":"assert","predicate":{"kind":"inside_zone","object":"jar","target":"tray"}}]}]
-Pour examples. A mug (box, size_mm [48,48,54], holding 38 mL) is poured into a bowl in s1 with pour {"into":"bowl","tilt_deg":120,"tilt_s":1.5} and success liquid_inside bowl 90:
-[{"step_id":"s1","ops":[{"op":"move_to","frame":"mug","offset_mm":[0,0,50],"approach":"front"},{"op":"move_to","frame":"mug","offset_mm":[0,0,0],"approach":"front"},{"op":"grasp","object":"mug","aperture_mm":48},{"op":"tilt","deg":120,"toward":"bowl","seconds":1.5},{"op":"wait_until","predicate":{"kind":"liquid_inside","target":"bowl","value":90},"timeout_s":3},{"op":"tilt","deg":0,"seconds":1.5},{"op":"release"},{"op":"move_to","frame":"mug","offset_mm":[0,0,50],"approach":"front"},{"op":"assert","predicate":{"kind":"liquid_inside","target":"bowl","value":90}}]}]
+Pour examples. A mug (box, size_mm [48,48,54], holding 38 mL) is poured into a bowl in s1 with pour {"into":"bowl","tilt_deg":120,"tilt_s":1.5} and success liquid_inside of the mug's liquid in the bowl, 90:
+[{"step_id":"s1","ops":[{"op":"move_to","frame":"mug","offset_mm":[0,0,50],"approach":"front"},{"op":"move_to","frame":"mug","offset_mm":[0,0,0],"approach":"front"},{"op":"grasp","object":"mug","aperture_mm":48},{"op":"tilt","deg":120,"toward":"bowl","seconds":1.5},{"op":"wait_until","predicate":{"kind":"liquid_inside","object":"mug","target":"bowl","value":90},"timeout_s":3},{"op":"tilt","deg":0,"seconds":1.5},{"op":"release"},{"op":"move_to","frame":"mug","offset_mm":[0,0,50],"approach":"front"},{"op":"assert","predicate":{"kind":"liquid_inside","object":"mug","target":"bowl","value":90}}]}]
 In a lab, a beaker of buffer (box, size_mm [44,44,60]) is emptied into a reservoir in s2 with pour {"into":"reservoir","tilt_deg":150,"tilt_s":2} and no success predicate:
-[{"step_id":"s2","ops":[{"op":"ask","slot":"steps[s2].success","question":"How much of the buffer has to end up in the reservoir for the pour to count?","why":"no success predicate"},{"op":"move_to","frame":"beaker","offset_mm":[0,0,50],"approach":"front"},{"op":"move_to","frame":"beaker","offset_mm":[0,0,0],"approach":"front"},{"op":"grasp","object":"beaker","aperture_mm":44},{"op":"tilt","deg":150,"toward":"reservoir","seconds":2},{"op":"wait_until","predicate":{"kind":"liquid_inside","target":"reservoir","value":90},"timeout_s":3},{"op":"tilt","deg":0,"seconds":2},{"op":"release"},{"op":"move_to","frame":"beaker","offset_mm":[0,0,50],"approach":"front"}]}]`;
+[{"step_id":"s2","ops":[{"op":"ask","slot":"steps[s2].success","question":"How much of the buffer has to end up in the reservoir for the pour to count?","why":"no success predicate"},{"op":"move_to","frame":"beaker","offset_mm":[0,0,50],"approach":"front"},{"op":"move_to","frame":"beaker","offset_mm":[0,0,0],"approach":"front"},{"op":"grasp","object":"beaker","aperture_mm":44},{"op":"tilt","deg":150,"toward":"reservoir","seconds":2},{"op":"wait_until","predicate":{"kind":"liquid_inside","object":"beaker","target":"reservoir","value":90},"timeout_s":3},{"op":"tilt","deg":0,"seconds":2},{"op":"release"},{"op":"move_to","frame":"beaker","offset_mm":[0,0,50],"approach":"front"}]}]`;
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 
@@ -74,12 +74,13 @@ function geometry(spec: TaskSpec): string {
       const { into, tilt_deg, tilt_s = 1.5 } = s.pour;
       const front = (z: number) => JSON.stringify({ op: "move_to", frame: o.id, offset_mm: [0, 0, z], approach: "front" });
       const success = s.success.find((p) => p.kind === "liquid_inside" && p.target === into);
+      // the share of what the container held: what the target held before does not count
       const ops = [
         front(50),
         front(0),
         JSON.stringify({ op: "grasp", object: o.id, aperture_mm: Math.min(...footprintMm(o)) }),
         JSON.stringify({ op: "tilt", deg: tilt_deg, toward: into, seconds: tilt_s }),
-        JSON.stringify({ op: "wait_until", predicate: { kind: "liquid_inside", target: into, value: success?.value ?? 90 }, timeout_s: 3 }),
+        JSON.stringify({ op: "wait_until", predicate: { kind: "liquid_inside", object: o.id, target: into, value: success?.value ?? 90 }, timeout_s: 3 }),
         JSON.stringify({ op: "tilt", deg: 0, seconds: tilt_s }),
         JSON.stringify({ op: "release" }),
         front(50),
