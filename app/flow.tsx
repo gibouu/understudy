@@ -9,12 +9,14 @@ import { applyChanges } from "@/lib/spec/apply";
 import type { Predicate, Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
+import { GroundChips } from "./ground-chips";
 import { ProgramView, type Failure } from "./program-view";
 
 const Rehearsal = dynamic(() => import("./rehearsal").then((m) => m.Rehearsal), {
   ssr: false,
   loading: () => <div className="aspect-[4/3] w-full animate-pulse rounded-xl border bg-neutral-100" />,
 });
+const Variants = dynamic(() => import("./variants").then((m) => m.Variants), { ssr: false });
 
 /** Nano asks about one gap per compile; past this many rounds the page stops asking. */
 const MAX_ROUNDS = 6;
@@ -176,6 +178,17 @@ export function Flow() {
         </Section>
       )}
 
+      {label.status === "done" && spec && (
+        <GroundChips
+          spec={spec}
+          busy={program.status === "running"}
+          onSpec={(next) => {
+            setSpec(next);
+            compile(next, program.status === "done" ? program.value : undefined);
+          }}
+        />
+      )}
+
       {fit && (
         <Section n={3} title="Fitted to the robot's bench">
           <p className="text-sm text-neutral-600">
@@ -232,6 +245,12 @@ export function Flow() {
         <Section n={5} title="Rehearse" model="MuJoCo WebAssembly · SO-101">
           {asks.length > 0 && <p className="text-sm text-amber-700">Some questions are still open: the rehearsal stops at the first one.</p>}
           <Rehearsal spec={spec} program={program.value} onFail={setFailure} />
+        </Section>
+      )}
+
+      {ready && program.status === "done" && (
+        <Section n={6} title="Try a similar task" model="Nemotron 3 Super · Nemotron 3 Nano">
+          <Variants spec={spec} program={program.value} />
         </Section>
       )}
     </div>

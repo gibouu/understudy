@@ -1,0 +1,173 @@
+[
+ {
+  "request": null,
+  "spec_title": "ISS Veggie seed film placement into plant pillows",
+  "result": {
+   "status": "done",
+   "value": {
+    "variants": [
+     {
+      "title": "Longer packet",
+      "summary": "The seed film packet grows longer along its axis while staying within jaw limits.",
+      "changes": [
+       {
+        "path": "objects[obj1].size_mm",
+        "value": [
+         40,
+         10,
+         45
+        ]
+       }
+      ]
+     },
+     {
+      "title": "Packet starts in pillow",
+      "summary": "The arm takes the packet out of the plant pillow and puts it back in the same spot.",
+      "changes": [
+       {
+        "path": "objects[obj1].pose",
+        "value": {
+         "xyz_mm": [
+          0,
+          0,
+          13
+         ],
+         "yaw_deg": 0,
+         "frame": "obj2"
+        }
+       }
+      ]
+     },
+     {
+      "title": "Pillow tray shifted right",
+      "summary": "The plant pillow tray moves 30 mm to the right, requiring the arm to reach farther.",
+      "changes": [
+       {
+        "path": "objects[obj2].pose",
+        "value": {
+         "xyz_mm": [
+          205,
+          100,
+          15
+         ],
+         "yaw_deg": 0,
+         "frame": "world"
+        }
+       }
+      ]
+     },
+     {
+      "title": "Tighter pillow fit",
+      "summary": "The pocket clearance reduces to 2 mm, demanding precise placement of the seed film packet.",
+      "changes": [
+       {
+        "path": "objects[obj2].pocket_clearance_mm",
+        "value": 2
+       }
+      ]
+     },
+     {
+      "title": "Flatter packet",
+      "summary": "The seed film packet becomes thinner in height while length and width stay the same.",
+      "changes": [
+       {
+        "path": "objects[obj1].size_mm",
+        "value": [
+         40,
+         10,
+         20
+        ]
+       }
+      ]
+     }
+    ],
+    "not_yet": []
+   },
+   "warnings": [
+    "super: variant \"Longer packet\": outside what the robot's jaws and reach hold: objects[obj1].size_mm is [40,10,40] on the bench, not [40,10,45]"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 1842,
+     "completion_tokens": 355,
+     "cached_tokens": 1824,
+     "seconds": 2.47
+    },
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 2278,
+     "completion_tokens": 358,
+     "cached_tokens": 0,
+     "seconds": 2.02
+    }
+   ]
+  }
+ },
+ {
+  "request": "put it on a higher shelf",
+  "spec_title": "ISS Veggie seed film placement into plant pillows",
+  "result": {
+   "status": "done",
+   "value": {
+    "variants": [
+     {
+      "title": "Higher shelf",
+      "summary": "The plant pillow tray is placed on a higher shelf, raising its position so the arm inserts the seed film packet into it at an elevated location.",
+      "changes": [
+       {
+        "path": "objects[obj2].pose",
+        "value": {
+         "xyz_mm": [
+          175,
+          100,
+          28
+         ],
+         "yaw_deg": 0,
+         "frame": "world"
+        }
+       }
+      ]
+     }
+    ],
+    "not_yet": []
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 1859,
+     "completion_tokens": 107,
+     "cached_tokens": 1840,
+     "seconds": 0.833
+    }
+   ]
+  }
+ },
+ {
+  "request": "pour it into the tray instead",
+  "spec_title": "ISS Veggie seed film placement into plant pillows",
+  "result": {
+   "status": "done",
+   "value": {
+    "variants": [],
+    "not_yet": [
+     {
+      "idea": "pour it into the tray instead",
+      "why": "the arm cannot pour yet"
+     }
+    ]
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 1859,
+     "completion_tokens": 34,
+     "cached_tokens": 1840,
+     "seconds": 0.715
+    }
+   ]
+  }
+ }
+]
