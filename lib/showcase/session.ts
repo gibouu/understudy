@@ -85,6 +85,11 @@ export const Session = z.object({
   iterations: z.array(Iteration).min(1),
   /** set when a recording ran without the Notes stage (#28): the story stops after the interview */
   pending: z.array(z.string()).default([]),
+  /**
+   * How this recording was chosen among several runs of its clip, said on its page. Written by
+   * hand after choosing; the recorder never writes it, so a new recording starts without the claim.
+   */
+  selection: z.object({ runs: z.number().int().positive(), kept: z.string(), others: z.string().optional() }).optional(),
   ledger: z.array(Call),
   total_usd: z.number(),
 });

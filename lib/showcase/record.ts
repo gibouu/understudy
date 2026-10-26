@@ -159,8 +159,9 @@ export function notesHook(): NotesHook {
     const { POST: notesRoute } = await import("@/app/api/notes/route");
     const { spec, program } = last;
     const runs = rollouts(engine, spec, program);
-    first ??= outcomeLine(runs);
-    const r = live(await post<NotePatch>(notesRoute as Handler, "/api/notes", { spec, program, runs, first, history }), `notes patch ${history.length + 1}`);
+    const start = first ?? outcomeLine(runs);
+    const r = live(await post<NotePatch>(notesRoute as Handler, "/api/notes", { spec, program, runs, first: start, history }), `notes patch ${history.length + 1}`);
+    first = start;
     const patch = r.value;
     const cost = calls("notes", r.ledger);
     const after = patch.noop ? runs : rollouts(engine, spec, patch.program);

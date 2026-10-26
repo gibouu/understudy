@@ -131,7 +131,8 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         </Link>
         <h1 className="display text-4xl font-semibold text-ink-deep sm:text-5xl">{label.title}</h1>
         <p className="text-lg text-neutral-700">
-          {sample.label}. Recorded on {new Date(session.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })} as one run through Understudy (labels vary run to run); its {session.ledger.length} model calls cost {usd(session.total_usd)} in all. The last version of its program {verdict(session)}.
+          {sample.label}. Recorded on {new Date(session.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}{" "}
+          {session.selection ? `as one of ${session.selection.runs} recording runs of this clip, ${session.selection.kept}; labels and patches vary from run to run` : "as one run through Understudy (labels vary run to run)"}. Its {session.ledger.length} model calls cost {usd(session.total_usd)} in all. The last version of its program {verdict(session)}.
         </p>
       </header>
 
@@ -301,7 +302,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         </ol>
         {firstNote > 0 ? (
           <p className="max-w-3xl rounded-lg border-2 border-dashed border-accent p-4 text-[17px]">
-            From version {firstNote} on, the Notes stage takes over: Super reads what the simulator measured in the previous version’s rehearsal and changes the numbers of the step that failed, and each patch is rehearsed again on Earth and in orbit. It thinks only once the cheap answer gets stuck. On small probe programs of two to four knobs, the same loop fixed 94% of the failures that could be fixed.
+            From version {firstNote} on, the Notes stage takes over: Super reads what the simulator measured in the previous version’s rehearsal and changes the numbers of the step that failed, and each patch is rehearsed again on Earth and in orbit. It thinks only once the cheap answer gets stuck.{session.selection?.others && ` ${session.selection.others}`} On small probe programs of two to four knobs, the same loop fixed 94% of the failures that could be fixed.
           </p>
         ) : (
           session.pending.length > 0 &&

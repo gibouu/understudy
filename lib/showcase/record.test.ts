@@ -63,8 +63,14 @@ describe("the showcase recordings", () => {
       for (const { world, rollout: again } of rollouts(engine, it.spec, it.program)) {
         const { pass, failed_step_id, failed_op } = it.results[world];
         expect({ iteration: i, world, pass: again.pass, failed_step_id: again.failed_step_id, failed_op: again.failed_op }).toEqual({ iteration: i, world, pass, failed_step_id, failed_op });
-        // a pass is only shown when the simulator also finds every object where its step puts it, checked or not by the program
-        const unseated = pass ? (again.end ?? []).flatMap((e) => (e.seated && !e.seated.ok ? [e.seated.why] : [])) : [];
+        // a pass is only shown when the simulator also finds every object seated where its last step puts it, checked by the program or not
+        const targeted = it.spec.objects.filter((o) => o.role === "manipulated" && it.spec.steps.some((s) => s.object === o.id && s.target && s.target.frame !== "world"));
+        const unseated = pass
+          ? targeted.flatMap((o) => {
+              const seated = again.end?.find((e) => e.object === o.id)?.seated;
+              return seated?.ok ? [] : [`${o.id}: ${seated ? seated.why : "no seated reading"}`];
+            })
+          : [];
         expect({ iteration: i, world, unseated }).toEqual({ iteration: i, world, unseated: [] });
       }
     }

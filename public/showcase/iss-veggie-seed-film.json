@@ -1613,6 +1613,11 @@
   }
  ],
  "pending": [],
+ "selection": {
+  "runs": 11,
+  "kept": "kept because Notes fixed it",
+  "others": "In four other runs that failed only in orbit, Notes did not fix it: three used all five patches, and one stopped at a pass that never checked that the film was in the pillow."
+ },
  "ledger": [
   {
    "stage": "label",
