@@ -14,7 +14,7 @@ import { done, type StageResult } from "@/lib/spec/stage-result";
 import { startDetector } from "./detector";
 import { assembleFrame } from "./select";
 import type { TokenFrame } from "./types";
-import { armLength, busierHand, handGaps, handSamples } from "./hand";
+import { armLength, busierHand, handGaps, handSamples, sampleTimes } from "./hand";
 
 /** a clip's own rate: a wave turns back three times a second, which 10 fps would alias */
 export const TRACE_FPS = 30;
@@ -69,27 +69,22 @@ export async function traceGestures(spec: TaskSpec, clip: Blob, onProgress?: (do
 async function sample(input: Input, todo: Step[], frames: TokenFrame[], onProgress?: (done: number, total: number) => void) {
   const track = await input.getPrimaryVideoTrack();
   if (!track) throw new Error("the clip has no video track to trace the hand on");
-  const first = await track.getFirstTimestamp();
+  // clip seconds are the track's own timestamps: the label's proxy keeps them (mediabunny's conversion does not shift
+  // them), and a sample before 0 is preroll that is never shown
   const end = await track.computeDuration();
-  // one sample every 1/TRACE_FPS s over each step's window, in clip seconds, each asked half a period in: a frame
-  // is found by its start time, so asking exactly on a start rounded down would return the frame before it
-  const times = [...new Set(todo.flatMap((s) => {
-    const out: number[] = [];
-    for (let t = s.t_start_s + 0.5 / TRACE_FPS; t <= Math.min(s.t_end_s, end - first) + 1e-9; t += 1 / TRACE_FPS) out.push(Math.round(t * 10000) / 10000);
-    return out;
-  }))].sort((a, b) => a - b);
+  const times = sampleTimes(todo.map((s) => [s.t_start_s, s.t_end_s]), end, TRACE_FPS);
   const detector = await startDetector();
   try {
     detector.newRun();
     const sink = new CanvasSink(track, { width: TRACE_WIDTH });
     let k = 0;
     let last = -Infinity;
-    for await (const c of sink.canvasesAtTimestamps(times.map((t) => first + t))) {
+    for await (const c of sink.canvasesAtTimestamps(times)) {
       onProgress?.(++k, times.length);
       // a clip slower than TRACE_FPS returns a frame twice: once is a measurement, twice is not
-      if (!c || c.timestamp <= last) continue;
+      if (!c || c.timestamp < 0 || c.timestamp <= last) continue;
       last = c.timestamp;
-      const t = Math.round((c.timestamp - first) * 10000) / 10000;
+      const t = Math.round(c.timestamp * 10000) / 10000;
       const bitmap = await createImageBitmap(c.canvas);
       const aspect = bitmap.width / bitmap.height;
       const d = await detector.detect(bitmap, t);

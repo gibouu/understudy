@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { POSE } from "@/lib/vision/select";
 import type { Point3, TokenFrame } from "@/lib/vision/types";
-import { armLength, busierHand, handGaps, handSamples, MIN_VISIBILITY, travel } from "@/lib/vision/hand";
+import { armLength, busierHand, handGaps, handSamples, MIN_VISIBILITY, sampleTimes, travel } from "@/lib/vision/hand";
 
 const P = (x: number, y: number, z = 0): Point3 => ({ x, y, z });
 
@@ -70,5 +70,17 @@ describe("the hand's path in a gesture", () => {
     const s = handSamples(frames.filter((f) => f.t_s < 0.85 || f.t_s > 1.65), "right", 0, 3);
     expect(handGaps(s, 0, 3)).toEqual([{ start_s: expect.closeTo(0.8, 6), end_s: expect.closeTo(1.7, 6) }]);
     expect(handGaps(s.slice(0, 3), 0, 3)).toEqual([{ start_s: expect.closeTo(0.2, 6), end_s: 3 }]);
+  });
+});
+
+describe("sampleTimes", () => {
+  it("asks for the centres of one frame grid inside the windows, from 0 at the earliest and before the clip's end", () => {
+    expect(sampleTimes([[0, 0.1]], 8, 30)).toEqual([0.0167, 0.05, 0.0833]);
+    // a window that starts before 0 (preroll) or runs past the end is cut to the clip
+    expect(sampleTimes([[-1, 0.04]], 8, 30)).toEqual([0.0167]);
+    expect(sampleTimes([[7.95, 9]], 8, 30)).toEqual([7.95, 7.9833]);
+    // overlapping windows ask once
+    expect(sampleTimes([[0, 0.1], [0.05, 0.1]], 8, 30)).toEqual([0.0167, 0.05, 0.0833]);
+    expect(sampleTimes([[3, 2]], 8, 30)).toEqual([]);
   });
 });

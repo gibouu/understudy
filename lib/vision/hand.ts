@@ -70,3 +70,17 @@ export function busierHand(frames: TokenFrame[], t0: number, t1: number): HandSi
   if (l.length < 2 && r.length < 2) return null;
   return travel(r) >= travel(l) ? "right" : "left";
 }
+
+/**
+ * The clip times to decode for some windows (clip seconds, which are the track's own timestamps): the centres of a
+ * 1/fps grid from 0, (k + 0.5) / fps, that fall in a window and before `end`. A frame is found by its start time,
+ * so asking at a start rounded down would return the frame before it; one grid for every window means overlapping
+ * windows ask for the same frames. Sorted, no repeats.
+ */
+export function sampleTimes(windows: [number, number][], end: number, fps: number): number[] {
+  const out = new Set<number>();
+  for (const [t0, t1] of windows) {
+    for (let k = Math.max(0, Math.ceil(t0 * fps - 0.5 - 1e-9)); (k + 0.5) / fps <= t1 + 1e-9 && (k + 0.5) / fps < end; k++) out.add(Math.round(((k + 0.5) / fps) * 10000) / 10000);
+  }
+  return [...out].sort((a, b) => a - b);
+}

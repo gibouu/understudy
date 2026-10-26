@@ -62,6 +62,13 @@ describe("a labelled gesture", () => {
     expect(TaskSpec.parse(bare).steps[0].gesture).toEqual({ path: [], reach_mm: 5 });
   });
 
+  it("never keeps a path or a reach the model wrote: the path is measured from the clip", () => {
+    const invented = { title: "t", summary: "", objects: [], steps: [{ id: "s1", verb: "gesture", gesture: { hand: "left", path: [{ t_s: 0, xyz_mm: [220, 0, 240] }, { t_s: 1, xyz_mm: [220, 60, 240] }], reach_mm: 50 }, t_start_s: 0, t_end_s: 8 }] };
+    const { data, warnings } = tidyLabel(invented, 8);
+    expect(TaskSpec.parse(data).steps[0].gesture).toEqual({ hand: "left", path: [], reach_mm: 5 });
+    expect(warnings.filter((w) => /model's gesture (path|reach_mm) dropped/.test(w))).toHaveLength(2);
+  });
+
   it("validates: a spec of gestures alone needs no manipulated object, and the path is checked", () => {
     expect(validateSpec(spec([gesture()])).filter((i) => i.severity === "error")).toEqual([]);
     const codes = (s: TaskSpec) => validateSpec(s).map((i) => i.code);
@@ -69,6 +76,7 @@ describe("a labelled gesture", () => {
     expect(codes(spec([gesture({ gesture: undefined })]))).toContain("gesture_without_block");
     expect(codes(spec([{ id: "s1", verb: "place", object: "jar", gesture: { path }, t_start_s: 0, t_end_s: 1 }], [jar]))).toContain("gesture_block_on_other_verb");
     expect(codes(spec([gesture({ gesture: { path: [path[1], path[0]] } })]))).toContain("gesture_path_order");
+    expect(codes(spec([gesture({ gesture: { path: [path[0], { ...path[1], t_s: path[0].t_s }] } })]))).toContain("gesture_path_order");
     // a manipulation still needs its object marked
     expect(codes(spec([gesture({ id: "s2", t_start_s: 2, t_end_s: 3 }), { id: "s1", verb: "move", object: "jar", t_start_s: 0, t_end_s: 1 }], [{ ...jar, role: "fixture" }]))).toContain("no_manipulated_object");
   });

@@ -467,7 +467,8 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             if (!g) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `follow: step ${s.step_id} is not a gesture with a path` });
             const path = g.path;
             if (path.length < 2) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `follow: the gesture of step ${s.step_id} has no path yet (it is traced from the clip)` });
-            if (path.some((p, k) => k > 0 && p.t_s < path[k - 1].t_s)) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `follow: the path of step ${s.step_id} goes back in time` });
+            // two points at one time would be a jump no speed cap can slow down
+            if (path.some((p, k) => k > 0 && p.t_s <= path[k - 1].t_s)) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `follow: the path of step ${s.step_id} does not move forward in time` });
             const site = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, SO101_GRASP_SITE);
             // every point solved before the arm moves: the first from a front approach, the rest from the one
             // before, keeping its tilt (yaw left free), so consecutive poses stay on one branch of the arm

@@ -88,7 +88,13 @@ describe("follow: a gesture path traced by the arm", () => {
     expect(none.why).toMatch(/has no path yet/);
     const back = swing();
     [back[3], back[4]] = [back[4], back[3]];
-    expect(rollout(gestureSpec(back), FOLLOW, 1).why).toMatch(/goes back in time/);
+    expect(rollout(gestureSpec(back), FOLLOW, 1).why).toMatch(/does not move forward in time/);
+    // two points at one time: a jump no speed cap could slow down
+    const same = swing();
+    same[5] = { ...same[5], t_s: same[4].t_s };
+    const r = rollout(gestureSpec(same), FOLLOW, 1);
+    expect(r.failure_class).toBe("spec_gap");
+    expect(r.why).toMatch(/does not move forward in time/);
     const elsewhere = Program.parse({ spec_title: "", steps: [{ step_id: "s9", ops: [{ op: "follow" }] }] });
     expect(rollout(gestureSpec(swing()), elsewhere, 1).why).toMatch(/not a gesture with a path/);
   }, 120_000);

@@ -19,9 +19,9 @@
  * 30 fps it keeps 90% of a wave that turns back three times a second.
  *
  * The check. A point is reached when the point between the pads comes within
- * `reach_mm` of it between the time of the point before it and MAX_LAG_S
- * after its own: in order, and a little behind, as a servo follows. How far
- * behind is reported; the arm may also follow slower than the clip (the
+ * `reach_mm` of it after the point before it was reached and at most MAX_LAG_S
+ * after its own time: in order, and a little behind, as a servo follows. How
+ * far behind is reported; the arm may also follow slower than the clip (the
  * interpreter says by how much), and the times are then the slowed ones.
  */
 import type { PathPoint, Program, TaskSpec } from "@/lib/spec/schema";
@@ -63,7 +63,11 @@ const r1 = (x: number) => Math.round(x * 10) / 10 || 0;
 export function scalePath(samples: HandSample[], armM: number | null): Scaled {
   const warnings: string[] = [];
   const empty = (why: string): Scaled => ({ path: [], mm_per_m: 0, fit: 1, warnings: [...warnings, why] });
-  let s = samples.filter((p) => Number.isFinite(p.t_s) && Number.isFinite(p.x_m) && Number.isFinite(p.y_m));
+  // time must move forward: a repeated or earlier sample is not a measurement of where the hand went next
+  let s: HandSample[] = [];
+  for (const p of samples) {
+    if (Number.isFinite(p.t_s) && Number.isFinite(p.x_m) && Number.isFinite(p.y_m) && (s.length === 0 || p.t_s > s.at(-1)!.t_s)) s.push(p);
+  }
   if (s.length < 2 || s.at(-1)!.t_s - s[0].t_s < MIN_SPAN_S) return empty(`the hand was seen for under ${MIN_SPAN_S} s: no path to follow`);
   if (s.length > MAX_POINTS) {
     warnings.push(`the hand's path has ${s.length} samples; the first ${MAX_POINTS} (${r1(s[MAX_POINTS - 1].t_s - s[0].t_s)} s) are kept`);
@@ -127,14 +131,18 @@ export const MAX_LAG_S = 0.25;
 const dist = (a: Vec3, b: Vec3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 /**
- * Point by point, each in its own window (from the time of the point before it to MAX_LAG_S after its own), so one
- * miss does not carry over to the next: the point is reached if the trace (in time order) comes within `reach_mm`
- * of it there, and late by when it first does. The closest it came is what `worst_mm` reports. `start_s` is the
- * trace time the path's t_s = 0 stands for.
+ * Point by point, in order: a point is reached when the trace (in time order) comes within `reach_mm` of it no
+ * earlier than the moment the point before it was reached (and the time of the point before it) and no later than
+ * MAX_LAG_S after its own time; late by when it first does. A missed point does not move the search on, so one miss
+ * does not carry over to the next. `worst_mm` is the closest the trace came in a point's window, the worst over
+ * all points; a window with no observation counts the one nearest in time. `start_s` is the trace time the path's
+ * t_s = 0 stands for.
  */
 export function reachCheck(path: PathPoint[], trace: TraceSample[], reach_mm: number, start_s = 0): Reach {
   let worst = 0;
   let late = 0;
+  /** the sample the last reached point was reached at: a later point is never reached before it */
+  let cursor = 0;
   let k0 = 0;
   const missed: number[] = [];
   path.forEach((p, i) => {
@@ -143,13 +151,20 @@ export function reachCheck(path: PathPoint[], trace: TraceSample[], reach_mm: nu
     while (k0 < trace.length && trace[k0].t_s < from) k0++;
     let best = Infinity;
     let first = -1;
-    for (let k = k0; k < trace.length && trace[k].t_s <= due + MAX_LAG_S + 1e-9; k++) {
+    for (let k = Math.max(k0, cursor); k < trace.length && trace[k].t_s <= due + MAX_LAG_S + 1e-9; k++) {
       const d = dist(trace[k].xyz_mm, p.xyz_mm);
       best = Math.min(best, d);
       if (first < 0 && d <= reach_mm) first = k;
     }
     if (first < 0) missed.push(i);
-    else late = Math.max(late, trace[first].t_s - due);
+    else {
+      cursor = first;
+      late = Math.max(late, trace[first].t_s - due);
+    }
+    if (!Number.isFinite(best) && trace.length > 0) {
+      const near = trace.reduce((a, b) => (Math.abs(b.t_s - due) < Math.abs(a.t_s - due) ? b : a));
+      best = dist(near.xyz_mm, p.xyz_mm);
+    }
     if (Number.isFinite(best)) worst = Math.max(worst, best);
   });
   return { points: path.length, reached: path.length - missed.length, reach_mm, missed, worst_mm: r1(worst), late_s: Math.round(late * 100) / 100 };

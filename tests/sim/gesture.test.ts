@@ -90,6 +90,12 @@ describe("scalePath", () => {
     expect(scalePath(jitter, 0.5).path.slice(1, -1).map((p) => p.xyz_mm[1])).toEqual(r.path.slice(1, -1).map((p) => expect.closeTo(p.xyz_mm[1], 0)));
   });
 
+  it("keeps time moving forward: a repeated or earlier sample is dropped", () => {
+    const samples: HandSample[] = [0, 0.5, 0.5, 0.3, 1, 1.5].map((t_s, k) => ({ t_s, x_m: 0.1 * Math.sin(k), y_m: -0.1 * k }));
+    const times = scalePath(samples, 0.6).path.map((p) => p.t_s);
+    expect(times).toEqual([0, 0.5, 1, 1.5]);
+  });
+
   it("cuts a path longer than MAX_POINTS and says so", () => {
     const r = scalePath(swing(0.1, 1, 70), 0.6);
     expect(r.path).toHaveLength(MAX_POINTS);
@@ -145,6 +151,26 @@ describe("reachCheck", () => {
     const trace = through([[220, -60, 240], [220, -60, 240], [220, 0, 240], [220, 60, 240], [220, 0, 240], [220, 0, 240]]);
     const r = reachCheck(path, trace, 5, 1);
     expect(r.missed).toEqual([3]);
+    expect(r.worst_mm).toBeCloseTo(60, 0);
+  });
+
+  it("never reaches a point with an observation older than the point before it (in order)", () => {
+    // A, then B a frame later, then A again: the trace goes A, A, B and stays at B
+    const A: [number, number, number] = [220, 0, 240];
+    const B: [number, number, number] = [220, 60, 240];
+    const p: PathPoint[] = [{ t_s: 0, xyz_mm: A }, { t_s: 0.0333, xyz_mm: B }, { t_s: 0.0667, xyz_mm: A }];
+    const trace: TraceSample[] = [{ t_s: 0, xyz_mm: A }, { t_s: 0.04, xyz_mm: A }, { t_s: 0.1, xyz_mm: B }, { t_s: 0.3, xyz_mm: B }];
+    const r = reachCheck(p, trace, 5);
+    expect(r.missed).toEqual([2]);
+    expect(r.worst_mm).toBeCloseTo(60, 0);
+  });
+
+  it("counts the observation nearest in time for a window with none, so a miss never reads 0 mm off", () => {
+    const A: [number, number, number] = [220, 0, 240];
+    const p: PathPoint[] = [{ t_s: 0, xyz_mm: A }, { t_s: 1, xyz_mm: A }, { t_s: 2, xyz_mm: [220, 60, 240] }];
+    // the hand held still at A for a second: one observation there reaches both A points
+    const r = reachCheck(p, [{ t_s: 0, xyz_mm: A }], 5);
+    expect(r.missed).toEqual([2]);
     expect(r.worst_mm).toBeCloseTo(60, 0);
   });
 

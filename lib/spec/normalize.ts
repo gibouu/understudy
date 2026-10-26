@@ -140,6 +140,12 @@ export function normalizeSpec(raw: unknown): Normalized {
         }
         if (!isRec(s.gesture)) s.gesture = {};
         const g = s.gesture as Rec;
+        // the path is measured from the clip in the browser, never taken from a model: only the hand is kept
+        for (const field of ["path", "reach_mm"] as const) {
+          if (g[field] === undefined) continue;
+          if (!(Array.isArray(g[field]) && g[field].length === 0)) warnings.push(`${where}: the model's gesture ${field} dropped; it is measured from the clip`);
+          delete g[field];
+        }
         const hand = typeof g.hand === "string" ? g.hand.toLowerCase() : undefined;
         if (hand === "left" || hand === "right") g.hand = hand;
         else if (g.hand !== undefined) {
