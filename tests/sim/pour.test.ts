@@ -163,6 +163,13 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     expect(back.log.some((l) => l.includes("already upright"))).toBe(true);
   }, 120_000);
 
+  it("carries a cup gripped from the front upright, the wrist rolled to keep it so", () => {
+    const carry = ops(...grip, { op: "move_to", frame: "cup", offset_mm: [0, 0, 40], approach: "front" }, { op: "move_to", frame: "bowl", offset_mm: [0, -60, 80], approach: "front" }, { op: "assert", predicate: { kind: "tilt_under", object: "cup", value: 10 } });
+    const { r, where } = pour(carry, 1);
+    expect(r.pass, r.log.join("\n")).toBe(true);
+    expect(where!.containers.cup).toBeGreaterThanOrEqual(0.95);
+  }, 60_000);
+
   it("pours on Earth: grasp, tilt toward the bowl about the rim, wait for the water, turn back, let go", () => {
     const { r, where, particles } = pour(POUR_PROGRAMS.pour, 1);
     expect(particles).toBe(594);

@@ -214,13 +214,19 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
               // object, level, or keep a held object upright
               if (ik.ok && op.approach !== "top") {
                 const sq = { mujoco, model, data: scratch };
-                if (held) ik = rollTo(sq, ik, target, op.approach, site, "upright", held.bodyId, 0);
+                if (held) {
+                  // the held object's up, in the held site's frame: the weld keeps it, scratch kinematics would not
+                  const Rs = vec(data.site_xmat, mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, site), 9);
+                  const Rb = vec(data.xmat, held.bodyId, 9);
+                  const up = [0, 1, 2].map((c) => Rs[c] * Rb[2] + Rs[3 + c] * Rb[5] + Rs[6 + c] * Rb[8]) as Vec3;
+                  ik = rollTo(sq, ik, target, op.approach, site, up, 0);
+                }
                 else if (env.spec.objects.some((x) => x.id === op.frame && x.shape !== "sphere")) {
                   // the side to close from: the one that leaves the wrist room to turn the way the program next tilts
                   const next = program.steps.slice(program.steps.indexOf(s)).flatMap((x) => (x === s ? x.ops.slice(i + 1) : x.ops)).find((x) => x.op === "tilt");
                   const goal = next?.op === "tilt" && next.toward && Object.hasOwn(beliefs, next.toward) ? beliefs[next.toward].xyz_m : undefined;
                   const d: Vec3 = goal ? [goal[0] - f.xyz_m[0], goal[1] - f.xyz_m[1], 0] : [0, 0, 0];
-                  ik = rollTo(sq, ik, target, op.approach, site, "level", -1, Math.hypot(d[0], d[1]) > 0.005 ? cross([0, 0, 1], unit(d)) : 0);
+                  ik = rollTo(sq, ik, target, op.approach, site, "level", Math.hypot(d[0], d[1]) > 0.005 ? cross([0, 0, 1], unit(d)) : 0);
                 }
               }
               if (ik.ok && op.approach === "top") {
@@ -472,11 +478,11 @@ function closingYaw(sim: Sim, site: string): number {
 /**
  * Turn the wrist roll for a side or front approach. "level": the jaws close horizontally (the closing axis, the
  * site's z, has no vertical part); of the two rolls that do it, the one with more room to turn about `tiltAxis`
- * (a world axis a later tilt turns about, or 0 for none) wins, else the one nearer the solver's. "upright": the
- * held body `body` keeps its z axis as close to vertical as the roll allows. Re-solved from the turned seed;
- * the solver's own roll stands when that fails.
+ * (a world axis a later tilt turns about, or 0 for none) wins, else the one nearer the solver's. A vector
+ * instead (a held object's up, in the site's frame): the roll that keeps it as close to vertical as it can.
+ * Re-solved from the turned seed; the solver's own roll stands when that fails.
  */
-function rollTo(sim: Sim, ik: IkResult, target: [number, number, number], approach: "side" | "front", site: string, aim: "level" | "upright", body: number, tiltAxis: Vec3 | 0): IkResult {
+function rollTo(sim: Sim, ik: IkResult, target: [number, number, number], approach: "side" | "front", site: string, aim: "level" | Vec3, tiltAxis: Vec3 | 0): IkResult {
   const { mujoco, model, data } = sim;
   const roll = SO101_JOINT_NAMES.indexOf("wrist_roll");
   const jnt = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT.value, "wrist_roll");
@@ -486,7 +492,8 @@ function rollTo(sim: Sim, ik: IkResult, target: [number, number, number], approa
   const measure = (r: number) => {
     qpos[roll] = r;
     mujoco.mj_kinematics(model, data);
-    return aim === "level" ? vec(data.site_xmat, s, 9)[8] : vec(data.xmat, body, 9)[8];
+    const R = vec(data.site_xmat, s, 9);
+    return aim === "level" ? R[8] : R[6] * aim[0] + R[7] * aim[1] + R[8] * aim[2];
   };
   // the measure is c + a cos(r) + b sin(r) in the roll: fit it from three samples
   const r0 = ik.q[roll];
