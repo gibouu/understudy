@@ -49,7 +49,7 @@ Rules:
 - Without a request: 5 variants, each a different kind of change, some to the target and some to the object. Be inventive with what the spec can express: a bigger or smaller target, a tighter or looser fit, the target turned or moved, the target raised on a low shelf (its pose z up), the object starting somewhere else, the object starting inside the target so the arm takes it out and puts it back, a different size or shape of object, set on top instead of put in.
 - With a request from the person: exactly one variant that does what they asked, or no variant and one not_yet entry that says plainly what the arm cannot do yet.
 - Stay inside the bench limits you are given: the rehearsal runs the variant as written, and a value outside them is out of reach or does not fit.
-- Keep every value you do not mean to change; what the person already answered (clearances, tolerances, success checks) carries over.
+- Keep every value you do not mean to change; what the person already answered (clearances, tolerances, success checks) carries over. A success check can be added or tightened, never removed or loosened: a pass must mean the same task done.
 - One or two changes per variant. Write each value whole: a pose with all three fields, a size with all three numbers.
 Examples from other tasks (their ids and numbers are theirs, not yours):
 A vial (cylinder, size_mm [14,14,45]) goes into a rack hole (box fixture [80,40,30], pocket, clearance 2):

@@ -206,7 +206,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
   }
 
   async function rehearse(list: Variant[]) {
-    if (!clientRef.current || rehearsing.current || patchingRef.current) return;
+    if (!clientRef.current || !ready || rehearsing.current || patchingRef.current) return;
     rehearsing.current = true;
     const id = gen.current;
     setBusy(true);
@@ -289,7 +289,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
               run={runs[v.id]}
               showing={showing === v.id}
               checked={chosen.has(v.id)}
-              disabled={busy || patching !== null}
+              disabled={!ready || busy || patching !== null}
               onCheck={(on) => setChosen((c) => (on ? new Set([...c, v.id]) : new Set([...c].filter((x) => x !== v.id))))}
               onRehearse={() => rehearse([v])}
               patch={(() => {
