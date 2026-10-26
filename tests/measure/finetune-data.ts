@@ -11,6 +11,10 @@
  * the saved precision (such a number may have been rounded on save, and the prompts that quote
  * it would then differ from what the model saw); the others are counted and left out.
  *
+ * Replay is exact on the machine type that ran the loop (Apple silicon, macOS). Elsewhere the bead
+ * pours, chaotic contact-rich rollouts, drift from the last bit of floating point upward (CI on
+ * Linux x86 showed it at iteration 0); such runs fail the check and are left out, never mislabelled.
+ *
  * The split is by case (probe x gravity x disturbance), every seed of a case on one side, so no
  * held-out failure has a twin in training. Per task, about a third of the cases with solvable
  * failures are held out, chosen by a fixed hash of the case id at distinct gravities and
@@ -113,6 +117,8 @@ export function heldOutCases(failing: Set<string>, cases: CaseDef[] = caseGrid()
 /** the saved file's rounding (patch-loop.test.ts roundNumbers), to compare a replay with it */
 const round = (v: unknown) => (typeof v === "number" && !Number.isInteger(v) ? (Math.abs(v) >= 1 ? Math.round(v * 1000) / 1000 : Number(v.toPrecision(4))) : v);
 const asSaved = (o: unknown) => JSON.stringify(o, (_k, v) => round(v));
+/** a value as the results file would hold it */
+export const saved = <T>(o: T): T => JSON.parse(asSaved(o));
 
 /** the playbook a run's prompts carried, as the live loop built it */
 export function bookOf(results: SavedResults, armId: string): Book {

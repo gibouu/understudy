@@ -9,8 +9,8 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadMujoco } from "./gravity-harness";
-import { armIncluded, buildDataset, chat, fnv1a, heldOutCases, mayBeRounded, metaLine, pairLine, replayRun, type SavedResults, SPLIT_SALT } from "./finetune-data";
-import { caseGrid } from "./patch-probes";
+import { armIncluded, buildDataset, chat, fnv1a, heldOutCases, mayBeRounded, metaLine, pairLine, replayRun, saved, type SavedIter, type SavedPatch, type SavedResults, type SavedRun, SPLIT_SALT } from "./finetune-data";
+import { applyPatch, caseGrid, type Knobs, PROBES } from "./patch-probes";
 import { PATCH_SYSTEM } from "./patch-prompts";
 
 const ROOT = process.cwd();
@@ -38,7 +38,44 @@ describe("fine-tune dataset (no network)", () => {
     expect(fnv1a(`${SPLIT_SALT}:a`)).not.toBe(fnv1a(`${SPLIT_SALT}:b`));
   });
 
-  it("rebuilds the prompts of saved runs exactly: the replay reproduces every saved iteration", async () => {
+  // the saved runs were made on Apple silicon; elsewhere the bead pours drift (see finetune-data.ts)
+  const SAME_MACHINE_TYPE = process.platform === "darwin" && process.arch === "arm64";
+
+  it("replays a run recorded on this machine and rebuilds its prompts", async () => {
+    const mj = await loadMujoco();
+    const results = load();
+    const cfg = results.arms["r2-super-off"].config;
+    const c = caseGrid().find((x) => x.id === "insert/earth/offset+4mm")!;
+    const probe = PROBES.insert;
+    const world = { ...c.world, seed: 1 };
+    // a scripted patcher: a no-op, a clamped value with an unknown knob, then the fix
+    const answers = [{ release_height_mm: 30 }, { release_height_mm: 99, bogus: 1 }, { hold_until_seated: true, offset_correction_mm: -4 }];
+    const iterations: SavedIter[] = [];
+    let knobs: Knobs = { ...probe.naive };
+    let pending: SavedPatch | undefined;
+    for (let i = 0; ; i++) {
+      const r = probe.run(mj, knobs, world);
+      iterations.push(saved({ iter: i, knobs: { ...knobs }, pass: r.pass, score: r.score, failure_class: r.failure_class, metrics: r.metrics, ...(pending ? { patch_before: pending } : {}) }));
+      if (r.pass || i === answers.length) break;
+      const chk = applyPatch(probe, knobs, answers[i]);
+      pending = { set: answers[i], why: `reason ${i}`, expect: `outcome ${i}`, changed: chk.changed, rejected: chk.rejected, ...(chk.clamps.length ? { clamps: chk.clamps } : {}), call: { ok: true, json_ok: true, finish: "stop", prompt_tokens: 900, completion_tokens: 100, reasoning_tokens: 0 } };
+      knobs = chk.knobs;
+    }
+    const run: SavedRun = { arm: "r2-super-off", case_id: c.id, probe: "insert", gravity: "earth", seed: 1, expert_pass: true, iterations, passed_at: iterations.at(-1)!.pass ? iterations.length - 1 : null, stopped: null };
+    expect(run.passed_at).toBe(3);
+    const { examples, mismatch } = replayRun(mj, { arms: { "r2-super-off": { config: cfg, runs: [run] } } }, run);
+    expect(mismatch).toBeNull();
+    expect(examples.map((e) => [e.attempt, e.pass_after])).toEqual([[1, false], [2, false], [3, true]]);
+    expect(examples[2].user).toContain("Your last patch: release_height_mm = 99 is outside its bounds and was clamped to 40; bogus was not applied");
+    expect(examples[2].user).toContain('- attempt 2: set {"release_height_mm":99,"bogus":1} -> FAIL.');
+    expect(JSON.parse(examples[2].assistant)).toEqual({ set: answers[2], why: "reason 2", expect: "outcome 2" });
+    // a run whose saved metrics do not match the physics is dropped whole
+    const tampered = structuredClone(run);
+    (tampered.iterations[1].metrics as Record<string, unknown>).dx_mm = 123;
+    expect(replayRun(mj, { arms: { "r2-super-off": { config: cfg, runs: [tampered] } } }, tampered)).toEqual({ examples: [], mismatch: "iteration 1: metrics" });
+  }, 60_000);
+
+  it("rebuilds the prompts of saved runs exactly on the machine type that made them, and drops what does not replay elsewhere", async () => {
     const mj = await loadMujoco();
     const results = load();
     // one run with an escalation, one with a retried no-op, one with a set-up patch, one per probe
@@ -52,6 +89,10 @@ describe("fine-tune dataset (no network)", () => {
     for (const run of picks) {
       expect(run).toBeDefined();
       const { examples, mismatch } = replayRun(mj, results, run!);
+      if (!SAME_MACHINE_TYPE && mismatch) {
+        expect(examples).toEqual([]);
+        continue;
+      }
       expect(mismatch, `${run!.arm} ${run!.case_id} seed ${run!.seed}`).toBeNull();
       const calls = run!.iterations.slice(1).flatMap((it) => [it.patch_before!, ...(it.patch_before!.escalated_after_noop ? [it.patch_before!.escalated_after_noop] : []), ...(it.patch_before!.retried_after_noop ? [it.patch_before!.retried_after_noop] : [])]);
       expect(examples.length).toBe(calls.filter((c) => c.call.ok && c.call.json_ok && c.set !== null).length);
