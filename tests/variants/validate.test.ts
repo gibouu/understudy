@@ -122,6 +122,12 @@ describe("a variant of the ISS sample", () => {
     lifted.steps[1].success = [inside, still, { kind: "height_above", object: "obj1", value: 5 }];
     expect(why(buildVariant(lifted, idea("Higher", ["steps[s2].success", [inside, still, { kind: "height_above", object: "obj1", value: 8 }]]), 1))).toBe("");
     expect(why(buildVariant(lifted, idea("Lower", ["steps[s2].success", [inside, still, { kind: "height_above", object: "obj1", value: 2 }]]), 1))).toBe(refused("height_above obj1 5"));
+    // and for liquid_inside: more of the liquid kept is stricter
+    const kept = (value: number): Predicate => ({ kind: "liquid_inside", object: "obj2", target: "obj2", value });
+    const wet = structuredClone(base);
+    wet.steps[1].success = [inside, still, kept(80)];
+    expect(why(buildVariant(wet, idea("More kept", ["steps[s2].success", [inside, still, kept(90)]]), 1))).toBe("");
+    expect(why(buildVariant(wet, idea("Less kept", ["steps[s2].success", [inside, still, kept(70)]]), 1))).toBe(refused("liquid_inside obj2 in obj2 80"));
   });
 
   it("refuses a variant the bench undoes, naming what it holds instead", () => {
