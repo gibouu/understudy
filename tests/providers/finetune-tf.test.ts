@@ -23,6 +23,8 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
   const served: string[] = [];
   const endpoints: { id: string; name: string; routing_key: string; custom_weights_id: string }[] = [];
   let refuseDeletes = 0;
+  let endpointCount = 0;
+  let failEndpoint: "no" | "lost" | "refused" = "no";
   let server: http.Server;
 
   beforeAll(async () => {
@@ -55,9 +57,10 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
         if (req.method === "GET" && url.endsWith("/v0/dedicated_endpoints")) return send(200, { object: "list", data: endpoints });
         if (req.method === "POST" && url.endsWith("/v0/dedicated_endpoints")) {
           const r = JSON.parse(body);
-          const ep = { id: `ep-${endpoints.length + 1}`, name: r.name, routing_key: `dedicated/qwen-${endpoints.length + 1}`, custom_weights_id: r.custom_weights_id };
+          if (failEndpoint === "refused") return send(422, { detail: "custom weights not enabled" });
+          const ep = { id: `ep-${++endpointCount}`, name: r.name, routing_key: `dedicated/qwen-${endpointCount}`, custom_weights_id: r.custom_weights_id };
           endpoints.push(ep);
-          return send(201, { endpoint: ep });
+          return failEndpoint === "lost" ? send(502, { detail: "gateway" }) : send(201, { endpoint: ep });
         }
         if (req.method === "DELETE" && /\/v0\/dedicated_endpoints\//.test(url)) {
           const id = url.split("/").at(-1);
@@ -158,12 +161,13 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     expect(state().serve.lora_deleted.status).toBe(200);
   }, 60_000);
 
-  it("a dedicated endpoint gets a deadline: the watchdog deletes it, retrying, and charges the hours once", async () => {
+  it("a dedicated endpoint gets a deadline: its own watchdog deletes it, retrying, and charges the hours once", async () => {
     // one "minute" is 100 ms here, so a 10-minute endpoint lives one second
     const fast = { ...env, FINETUNE_TF_MINUTE_MS: "100" };
     const tfFast = (...args: string[]) => run("node", ["scripts/finetune-tf.mjs", ...args], { env: fast, cwd: process.cwd() });
     expect(await fails("endpoint-create", "--minutes", "10")).toMatch(/--custom-weights-id/);
     expect(await fails("endpoint-create", "--custom-weights-id", "w-1", "--minutes", "500")).toMatch(/10 to 180/);
+    expect(await fails("endpoint-create", "--custom-weights-id", "w-1", "--minutes", "10", "--usd-per-gpu-hour", "0")).toMatch(/above 0/);
     refuseDeletes = 2;
     await tfFast("endpoint-create", "--custom-weights-id", "w-1", "--minutes", "10");
     const ep = state().endpoint;
@@ -174,12 +178,35 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     expect(served.filter((x) => x === `DELETE /v0/dedicated_endpoints/${ep.id}`).length).toBe(3);
     expect(state().endpoint.deleted).toBeTruthy();
     expect(ledger().filter((e) => !e.type && e.settles === ep.reservation)).toHaveLength(1);
-    // deleted by hand before the deadline: the watchdog then finds nothing to do and charges nothing more
-    await tfFast("endpoint-create", "--custom-weights-id", "w-2", "--minutes", "10");
-    const ep2 = state().endpoint;
+    // A deleted by hand, then B created before A's deadline: A's watchdog must leave B running and uncharged
+    await tfFast("endpoint-create", "--custom-weights-id", "w-2", "--minutes", "20");
+    const a = state().endpoint;
     await tfFast("endpoint-delete");
-    await new Promise((r) => setTimeout(r, 2500));
-    expect(ledger().filter((e) => !e.type && e.settles === ep2.reservation)).toHaveLength(1);
+    const slow = { ...env, FINETUNE_TF_MINUTE_MS: "400" };
+    await run("node", ["scripts/finetune-tf.mjs", "endpoint-create", "--custom-weights-id", "w-3", "--minutes", "20"], { env: slow, cwd: process.cwd() });
+    const b = state().endpoint;
+    await new Promise((r) => setTimeout(r, 3000)); // past A's deadline (2 s), before B's (8 s)
+    expect(endpoints.map((e) => e.id)).toEqual([b.id]);
+    expect(state().endpoint).toMatchObject({ id: b.id });
+    expect(state().endpoint.deleted).toBeUndefined();
+    expect(ledger().filter((e) => !e.type && e.settles === a.reservation)).toHaveLength(1);
+    expect(ledger().filter((e) => !e.type && e.settles === b.reservation)).toHaveLength(0);
+    await run("node", ["scripts/finetune-tf.mjs", "endpoint-delete"], { env: slow, cwd: process.cwd() });
+    expect(endpoints).toHaveLength(0);
+  }, 60_000);
+
+  it("an endpoint create: a refusal gives the reservation back, a lost answer waits for adopt", async () => {
+    failEndpoint = "refused";
+    expect(await fails("endpoint-create", "--custom-weights-id", "w-4", "--minutes", "10")).toMatch(/refused \(HTTP 422/);
+    expect(state().endpoint_pending).toBeUndefined();
+    expect(ledger().at(-1)).toMatchObject({ type: "release" });
+    failEndpoint = "lost";
+    expect(await fails("endpoint-create", "--custom-weights-id", "w-4", "--minutes", "10")).toMatch(/endpoint-adopt/);
+    failEndpoint = "no";
+    expect(await fails("endpoint-create", "--custom-weights-id", "w-4", "--minutes", "10")).toMatch(/pending/);
+    await tf("endpoint-adopt");
+    expect(state().endpoint.id).toBe(endpoints.at(-1)!.id);
+    await tf("endpoint-delete");
     expect(endpoints).toHaveLength(0);
   }, 60_000);
 

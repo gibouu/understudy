@@ -25,6 +25,7 @@
 //        us-central1 (the only offer for this model), reserves M minutes at the GPU-hour price on the ledger and
 //        starts a watchdog that deletes it at the deadline (retrying until it is gone) and charges the hours run
 //   node scripts/finetune-tf.mjs endpoint-delete              deletes it now and charges the hours run
+//   node scripts/finetune-tf.mjs endpoint-adopt | endpoint-release --confirm-no-endpoint   after a lost answer
 //
 // A create that fails leaves the job "pending": no other create runs until adopt or release says what
 // happened, so a lost answer can never lead to a second paid job, and nothing is released by guesswork.
@@ -273,87 +274,150 @@ async function main() {
     await locked(async () => {
       const s = state();
       if (s.endpoint && !s.endpoint.deleted) throw new Error(`endpoint ${s.endpoint.id} exists: endpoint-delete first`);
+      if (s.endpoint_pending) throw new Error("an endpoint create is pending (its answer was lost): endpoint-adopt, or endpoint-release --confirm-no-endpoint once the console shows none");
       const weights = opt("--custom-weights-id");
       const minutes = Number(opt("--minutes"));
       const perHour = Number(opt("--usd-per-gpu-hour") ?? 5.6);
       if (!weights) throw new Error("--custom-weights-id: the tuned weights, once Support has switched custom weights on");
       if (!(minutes >= 10 && minutes <= 180)) throw new Error("--minutes: the endpoint's lifetime, 10 to 180; the watchdog deletes it then");
+      if (!(perHour > 0)) throw new Error("--usd-per-gpu-hour: the endpoint's price, above 0 (the console says US$5.6 for an H200)");
       client();
-      const root = BASE_URL.replace(/\/v1\/?$/, "");
-      const auth = { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` };
-      const list = async () => ((await (await fetch(`${root}/v0/dedicated_endpoints`, { headers: auth })).json()).data ?? []);
-      const before = new Set((await list()).map((e) => e.id));
-      const usdMax = (minutes / 60) * perHour;
-      const reservation = guard(usdMax, { script: SCRIPT, capUsd: 100, meta: { stage: "endpoint", minutes, usd_per_gpu_hour: perHour } });
+      const reservation = guard((minutes / 60) * perHour, { script: SCRIPT, capUsd: 100, meta: { stage: "endpoint", minutes, usd_per_gpu_hour: perHour } });
       const name = `understudy-patcher-eval-${Date.now()}`;
-      const body = { name, model_name: BASE_MODEL, flavor_name: "base", gpu_type: "gpu-h200-sxm", region: "us-central1", gpu_count: 1, custom_weights_id: weights, scaling: { min_replicas: 1, max_replicas: 1 } };
-      let ep;
-      const res = await fetch(`${root}/v0/dedicated_endpoints`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch((e) => ({ ok: false, status: String(e) }));
-      if (res.ok) ep = (await res.json()).endpoint;
-      else {
-        // a lost answer may still have created it: look for it by its unique name before releasing anything
-        ep = (await list().catch(() => [])).find((e) => !before.has(e.id) && e.name === name);
-        if (!ep) {
-          release(reservation);
-          throw new Error(`endpoint create failed (HTTP ${res.status}${res.text ? `: ${(await res.text()).slice(0, 300)}` : ""})`);
-        }
-      }
-      s.endpoint = { id: ep.id, name, routing_key: ep.routing_key, created: Date.now(), deadline: Date.now() + minutes * MINUTE_MS, usd_per_gpu_hour: perHour, reservation: reservation.id };
+      // the mark is on disk before the paid request, as for the job: a lost answer blocks another endpoint
+      s.endpoint_pending = { name, reservation: reservation.id, minutes, usd_per_gpu_hour: perHour, at: new Date().toISOString() };
       save(s);
-      // the watchdog runs on its own: it outlives this command and this session
-      const log = openSync(path.join(process.env.TMPDIR ?? os.tmpdir(), "understudy-ft-endpoint-watchdog.log"), "a");
-      const argv = [fileURLToPath(import.meta.url), "endpoint-watchdog"];
-      const child = process.platform === "darwin" ? spawn("caffeinate", ["-i", process.execPath, ...argv], { detached: true, stdio: ["ignore", log, log], env: process.env }) : spawn(process.execPath, argv, { detached: true, stdio: ["ignore", log, log], env: process.env });
-      child.unref();
-      console.log(`endpoint ${ep.id}, routing key ${ep.routing_key}; the watchdog deletes it at ${new Date(s.endpoint.deadline).toISOString()}`);
+      const body = { name, model_name: BASE_MODEL, flavor_name: "base", gpu_type: "gpu-h200-sxm", region: "us-central1", gpu_count: 1, custom_weights_id: weights, scaling: { min_replicas: 1, max_replicas: 1 } };
+      const res = await fetch(`${API_ROOT}/v0/dedicated_endpoints`, { method: "POST", headers: { ...auth(), "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch((e) => ({ ok: false, status: String(e), text: async () => "" }));
+      if (!res.ok) {
+        const detail = (await res.text()).slice(0, 300);
+        // only a refusal (4xx) proves nothing was created; anything else stays pending for a person to settle
+        if (typeof res.status === "number" && res.status >= 400 && res.status < 500) {
+          release(reservation);
+          delete s.endpoint_pending;
+          save(s);
+          throw new Error(`endpoint create refused (HTTP ${res.status}: ${detail})`);
+        }
+        s.endpoint_pending.error = `${res.status} ${detail}`.slice(0, 300);
+        save(s);
+        throw new Error(`endpoint create failed (${res.status}); one may still have started: endpoint-adopt, or endpoint-release --confirm-no-endpoint`);
+      }
+      await startEndpoint(s, (await res.json()).endpoint);
     });
-  } else if (cmd === "endpoint-watchdog" || cmd === "endpoint-delete") {
+  } else if (cmd === "endpoint-adopt") {
+    await locked(async () => {
+      const s = state();
+      if (!s.endpoint_pending) throw new Error("no endpoint create pending");
+      client();
+      const listed = (await (await fetch(`${API_ROOT}/v0/dedicated_endpoints`, { headers: auth() })).json()).data ?? [];
+      const ep = listed.find((e) => e.name === s.endpoint_pending.name);
+      if (!ep) throw new Error(`no endpoint named ${s.endpoint_pending.name}: check the console`);
+      await startEndpoint(s, ep);
+    });
+  } else if (cmd === "endpoint-release") {
+    if (!args.includes("--confirm-no-endpoint")) throw new Error("endpoint-release gives the reservation back: only with --confirm-no-endpoint, after checking the console shows no endpoint");
+    await locked(async () => {
+      const s = state();
+      if (!s.endpoint_pending) throw new Error("no endpoint create pending");
+      release({ id: s.endpoint_pending.reservation });
+      delete s.endpoint_pending;
+      save(s);
+      console.log("released");
+    });
+  } else if (cmd === "endpoint-watchdog") {
+    // everything it needs comes in its arguments: it acts on its own endpoint only, whatever the state file says later
+    const [id, reservation, created, deadline, perHour] = args.slice(1);
+    while (Date.now() < Number(deadline)) await new Promise((r) => setTimeout(r, Math.min(20_000, Math.max(50, Number(deadline) - Date.now()))));
+    client();
+    await deleteEndpoint(id);
+    await settleEndpoint({ id, reservation, created: Number(created), usd_per_gpu_hour: Number(perHour) });
+  } else if (cmd === "endpoint-delete") {
     const s = state();
     if (!s.endpoint || s.endpoint.deleted) return console.log("no live endpoint");
-    if (cmd === "endpoint-watchdog") while (Date.now() < s.endpoint.deadline) await new Promise((r) => setTimeout(r, Math.min(20_000, Math.max(50, s.endpoint.deadline - Date.now()))));
     client();
-    const root = BASE_URL.replace(/\/v1\/?$/, "");
-    for (;;) {
-      const res = await fetch(`${root}/v0/dedicated_endpoints/${s.endpoint.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` } }).catch((e) => ({ ok: false, status: String(e) }));
-      if (res.ok || res.status === 404) break;
-      console.log(`${new Date().toISOString()} delete ${s.endpoint.id}: HTTP ${res.status}, retrying in 30 s`);
-      await new Promise((r) => setTimeout(r, 30 * MINUTE_MS / 60));
-    }
-    await lockedWait(async () => {
-      const now = state();
-      // deleted already (endpoint-delete before the deadline): the record and the charge stand
-      if (now.endpoint.deleted) return;
-      const hours = (Date.now() - now.endpoint.created) / 3.6e6 / (MINUTE_MS / 60_000);
-      const usd = hours * now.endpoint.usd_per_gpu_hour;
-      if (!settled(now.endpoint.reservation)) charge(SCRIPT, usd, { stage: "endpoint", endpoint: now.endpoint.id, hours: Number(hours.toFixed(3)), usd_per_gpu_hour: now.endpoint.usd_per_gpu_hour }, { id: now.endpoint.reservation });
-      Object.assign(now.endpoint, { deleted: new Date().toISOString(), hours, usd });
-      save(now);
-      console.log(`${new Date().toISOString()} endpoint ${now.endpoint.id} deleted after ${hours.toFixed(2)} h, US$${usd.toFixed(2)}`);
-    });
+    await deleteEndpoint(s.endpoint.id);
+    await settleEndpoint(s.endpoint);
   } else if (cmd === "status") {
     const s = state();
     if (!s.job) throw new Error(s.pending ? "a create is pending: adopt or release first" : "no job yet");
     const tf = client();
     const job = await tf.fineTuning.jobs.retrieve(s.job.id);
-    Object.assign(s.job, { status: job.status, trained_tokens: job.trained_tokens ?? null, trained_steps: job.trained_steps ?? null, total_steps: job.total_steps ?? null, estimated_finish: job.estimated_finish ?? null, finished_at: job.finished_at ?? null, error: job.error ?? null });
-    const checkpoints = (await tf.fineTuning.jobs.checkpoints.list(job.id)).data ?? [];
-    s.checkpoints = checkpoints.map((c) => ({ id: c.id, step: c.step_number, model: c.fine_tuned_model_checkpoint, metrics: c.metrics }));
-    await locked(async () => {
+    const checkpoints = ((await tf.fineTuning.jobs.checkpoints.list(job.id)).data ?? []).map((c) => ({ id: c.id, step: c.step_number, model: c.fine_tuned_model_checkpoint, metrics: c.metrics }));
+    // re-read under the lock: what other commands wrote meanwhile (an endpoint, try-serve) stays
+    const now = await lockedWait(async () => {
+      const cur = state();
+      Object.assign(cur.job, { status: job.status, trained_tokens: job.trained_tokens ?? null, trained_steps: job.trained_steps ?? null, total_steps: job.total_steps ?? null, estimated_finish: job.estimated_finish ?? null, finished_at: job.finished_at ?? null, error: job.error ?? null });
+      cur.checkpoints = checkpoints;
       if (["succeeded", "failed", "cancelled"].includes(job.status)) {
         // the estimate was charged at the start; what the job trained beyond it is charged once, under its own id
-        const usd = ((job.trained_tokens ?? 0) / 1e6) * s.job.usd_per_mtok;
-        s.job.usd_actual = usd;
-        const over = usd - s.job.usd_est;
+        const usd = ((job.trained_tokens ?? 0) / 1e6) * cur.job.usd_per_mtok;
+        cur.job.usd_actual = usd;
+        const over = usd - cur.job.usd_est;
         const adjustment = `adjust-${job.id}`;
         if (over > 0 && !settled(adjustment)) charge(SCRIPT, over, { model: BASE_MODEL, stage: "fine-tune", job: job.id, adjustment: true, trained_tokens: job.trained_tokens, keep: true }, { id: adjustment });
       }
-      save(s);
+      save(cur);
+      return cur;
     });
-    console.log(JSON.stringify({ job: s.job, checkpoints: s.checkpoints.map((c) => ({ step: c.step, model: c.model, ...c.metrics })) }, null, 2));
+    console.log(JSON.stringify({ job: now.job, checkpoints: now.checkpoints.map((c) => ({ step: c.step, model: c.model, ...c.metrics })) }, null, 2));
   } else {
-    console.log("usage: node scripts/finetune-tf.mjs upload | create --usd-per-mtok P --balance-usd B [--epochs N] [--dry-run] [--allow-another-job] | adopt | release --confirm-no-job | status | try-serve | delete-lora | endpoint-create --custom-weights-id W --minutes M | endpoint-delete");
+    console.log("usage: node scripts/finetune-tf.mjs upload | create --usd-per-mtok P --balance-usd B [--epochs N] [--dry-run] [--allow-another-job] | adopt | release --confirm-no-job | status | try-serve | delete-lora | endpoint-create --custom-weights-id W --minutes M | endpoint-delete | endpoint-adopt | endpoint-release --confirm-no-endpoint");
     process.exitCode = 1;
   }
+}
+
+const API_ROOT = BASE_URL.replace(/\/v1\/?$/, "");
+const auth = () => ({ Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` });
+
+/** an endpoint exists: record it, start its watchdog, or delete it at once if the watchdog cannot start */
+async function startEndpoint(s, ep) {
+  const p = s.endpoint_pending;
+  const created = Date.now();
+  s.endpoint = { id: ep.id, name: p.name, routing_key: ep.routing_key, created, deadline: created + p.minutes * MINUTE_MS, usd_per_gpu_hour: p.usd_per_gpu_hour, reservation: p.reservation };
+  delete s.endpoint_pending;
+  save(s);
+  const log = openSync(path.join(process.env.TMPDIR ?? os.tmpdir(), "understudy-ft-endpoint-watchdog.log"), "a");
+  const argv = [fileURLToPath(import.meta.url), "endpoint-watchdog", ep.id, p.reservation, String(created), String(s.endpoint.deadline), String(p.usd_per_gpu_hour)];
+  // absolute paths: a PATH without /usr/bin must not leave a paid endpoint without its watchdog
+  const awake = process.platform === "darwin" && existsSync("/usr/bin/caffeinate");
+  const child = awake ? spawn("/usr/bin/caffeinate", ["-i", process.execPath, ...argv], { detached: true, stdio: ["ignore", log, log], env: process.env }) : spawn(process.execPath, argv, { detached: true, stdio: ["ignore", log, log], env: process.env });
+  const started = await new Promise((r) => {
+    child.once("spawn", () => r(true));
+    child.once("error", () => r(false));
+  });
+  if (!started) {
+    await deleteEndpoint(ep.id);
+    await settleEndpoint(s.endpoint, true);
+    throw new Error(`the watchdog could not start, so endpoint ${ep.id} was deleted at once`);
+  }
+  child.unref();
+  console.log(`endpoint ${ep.id}, routing key ${ep.routing_key}; the watchdog (pid ${child.pid}) deletes it at ${new Date(s.endpoint.deadline).toISOString()}`);
+}
+
+/** delete an endpoint, retrying every 30 s until Token Factory says it is gone */
+async function deleteEndpoint(id) {
+  for (;;) {
+    const res = await fetch(`${API_ROOT}/v0/dedicated_endpoints/${id}`, { method: "DELETE", headers: auth() }).catch((e) => ({ ok: false, status: String(e) }));
+    if (res.ok || res.status === 404) return;
+    console.log(`${new Date().toISOString()} delete ${id}: HTTP ${res.status}, retrying in 30 s`);
+    await new Promise((r) => setTimeout(r, (30 * MINUTE_MS) / 60));
+  }
+}
+
+/** charge an endpoint's hours once (its own reservation), and mark it deleted if the state still names it */
+async function settleEndpoint(ep, lockHeld = false) {
+  const work = async () => {
+    const hours = (Date.now() - ep.created) / 3.6e6 / (MINUTE_MS / 60_000);
+    const usd = hours * ep.usd_per_gpu_hour;
+    if (!settled(ep.reservation)) charge(SCRIPT, usd, { stage: "endpoint", endpoint: ep.id, hours: Number(hours.toFixed(3)), usd_per_gpu_hour: ep.usd_per_gpu_hour }, { id: ep.reservation });
+    const now = state();
+    if (now.endpoint?.id === ep.id && !now.endpoint.deleted) {
+      Object.assign(now.endpoint, { deleted: new Date().toISOString(), hours, usd });
+      save(now);
+    }
+    console.log(`${new Date().toISOString()} endpoint ${ep.id} deleted after ${hours.toFixed(2)} h, US$${usd.toFixed(2)}`);
+  };
+  return lockHeld ? work() : lockedWait(work);
 }
 
 /** a job has started: record it, charge the estimate (settles the reservation), clear the pending mark */
