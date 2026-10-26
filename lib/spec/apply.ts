@@ -37,6 +37,14 @@ function resolveIndex(list: unknown[], token: string): number {
 }
 
 /** The value at a spec path (ids or indexes in brackets), or undefined when the path does not resolve. */
+/** A slot that starts with a bare object or step id (`rack.size_mm`, as Nano sometimes writes it) in the canonical form. */
+export function canonicalSlot(spec: TaskSpec, slot: string): string {
+  const [head, ...rest] = parsePath(slot);
+  if (rest.length === 0 || head === "objects" || head === "steps") return slot;
+  const list = spec.objects.some((o) => o.id === head) ? "objects" : spec.steps.some((s) => s.id === head) ? "steps" : null;
+  return list ? `${list}[${head}].${rest.join(".")}` : slot;
+}
+
 export function valueAt(spec: TaskSpec, path: string): unknown {
   let node: unknown = spec;
   for (const t of parsePath(path)) {

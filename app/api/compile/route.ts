@@ -14,7 +14,7 @@ import { normalizeProgram } from "@/lib/spec/normalize";
 import { AXES, PREDICATE_OPERANDS, Program, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type StageResult } from "@/lib/spec/stage-result";
 import { validateProgram } from "@/lib/spec/validate";
-import { valueAt } from "@/lib/spec/apply";
+import { canonicalSlot, valueAt } from "@/lib/spec/apply";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
 
 export const maxDuration = 60;
@@ -37,15 +37,17 @@ A predicate P is {"kind":K,"object":<id>,"target":<id>,"value":number} with only
 Geometry: millimetres. The world frame sits at the robot base on the table: x away from the robot, y to its left, z up. An object's frame is its centre, turned by its yaw; size_mm is its extent along x, y, z, so its top face is at z = +size_mm[2]/2 and the table at z = -size_mm[2]/2 in its frame. Until a grasp, move_to puts the point between the gripper pads at the offset, and grasp closes the pads there. While an object is held, move_to puts the held object's centre at the offset instead. The user message lists the heights worked out for this spec: use those numbers rather than computing your own.
 Rules:
 - One entry in steps per spec step, in the spec's order, with step_id the spec step's id.
-- Offsets are relative to the named frame. Use the step's via_points when it has them; otherwise approach 50 mm above the object frame, descend, act, lift 50 mm.
+- Offsets are relative to the named frame. Use the step's via_points when it has them; otherwise move through the heights listed for this spec: its approach point, down to the grip, act, then the carry height over the target, down, act. Never higher than those: the arm's top-down reach ends near 90 mm above the table.
 - You execute only what the spec states. Every value you would have to guess becomes an ask instead: a missing object pose, a missing pocket_clearance_mm on a pocket fixture, a grasp aperture the object size does not imply, a missing tolerance band on the axes the step is sensitive to (${AXES.join(", ")}), a step without a success predicate. One ask per missing field, placed in the step that needs it; slot is the spec path, for example objects[rack].pose, objects[rack].pocket_clearance_mm, steps[s2].tolerances.x_mm, steps[s2].success.
 - A missing value is never a warning: it is an ask op, because the asks become the questions put to the person who did the task. Warnings are only for what no answer can fix.
 - A field already set in the spec is settled, whatever its source (vl#, interview#, notes#, user#edit): never ask about it again.
 - End each insert or place step with an assert of its success predicate when the spec gives one.
 - Only the six ops above exist; anything else (descend, insert, place, lift) is written with move_to, grasp and release.
+- The example's numbers belong to its jar and tray: for this spec use only the heights listed in the user message.
+- Every listed height is in the named object's frame: write that object's id as the frame, never "world", which is the robot base.
 - Keep the program short: no comments, no prose.
-Example. A jar (cylinder, size_mm [40,40,80]) is picked in s1 and placed on a tray (box, size_mm [200,150,20], zone fixture) in s2; s2 has a success predicate but no tolerance. The jar is gripped 8 mm below its top (z = 40 - 8 = 32 in its frame) from 50 mm above; once held, offsets place its centre: lifted 50 mm, carried 50 mm above the tray, then set down with its bottom 1 mm above the tray's top (10 + 40 + 1 = 51).
-[{"step_id":"s1","ops":[{"op":"move_to","frame":"jar","offset_mm":[0,0,82],"approach":"top"},{"op":"move_to","frame":"jar","offset_mm":[0,0,32],"approach":"top"},{"op":"grasp","object":"jar","aperture_mm":40},{"op":"wait_until","predicate":{"kind":"contact_both_pads","object":"jar"},"timeout_s":1},{"op":"move_to","frame":"jar","offset_mm":[0,0,50],"approach":"top"}]},{"step_id":"s2","ops":[{"op":"move_to","frame":"tray","offset_mm":[0,0,100],"approach":"top"},{"op":"ask","slot":"steps[s2].tolerances.x_mm","question":"How far off-centre can the jar land before it counts as missed?","why":"no tolerance band for x_mm"},{"op":"move_to","frame":"tray","offset_mm":[0,0,51],"approach":"top"},{"op":"release"},{"op":"wait_until","predicate":{"kind":"object_still","object":"jar"},"timeout_s":2},{"op":"assert","predicate":{"kind":"inside_zone","object":"jar","target":"tray"}}]}]`;
+Example. A jar (cylinder, size_mm [40,40,80]) is picked in s1 and placed on a tray (box, size_mm [200,150,20], zone fixture) in s2; s2 has a success predicate but no tolerance. The jar is gripped 8 mm below its top (z = 40 - 8 = 32 in its frame) from 50 mm above (32 + 50 = 82); once held, offsets place its centre: lifted 50 mm, carried with its bottom 20 mm above the tray (10 + 40 + 20 = 70), then set down with its bottom 1 mm above the tray's top (10 + 40 + 1 = 51).
+[{"step_id":"s1","ops":[{"op":"move_to","frame":"jar","offset_mm":[0,0,82],"approach":"top"},{"op":"move_to","frame":"jar","offset_mm":[0,0,32],"approach":"top"},{"op":"grasp","object":"jar","aperture_mm":40},{"op":"wait_until","predicate":{"kind":"contact_both_pads","object":"jar"},"timeout_s":1},{"op":"move_to","frame":"jar","offset_mm":[0,0,50],"approach":"top"}]},{"step_id":"s2","ops":[{"op":"move_to","frame":"tray","offset_mm":[0,0,70],"approach":"top"},{"op":"ask","slot":"steps[s2].tolerances.x_mm","question":"How far off-centre can the jar land before it counts as missed?","why":"no tolerance band for x_mm"},{"op":"move_to","frame":"tray","offset_mm":[0,0,51],"approach":"top"},{"op":"release"},{"op":"wait_until","predicate":{"kind":"object_still","object":"jar"},"timeout_s":2},{"op":"assert","predicate":{"kind":"inside_zone","object":"jar","target":"tray"}}]}]`;
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 
@@ -111,11 +113,13 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
     ...result.value,
     steps: result.value.steps.map((s) => ({
       ...s,
-      ops: s.ops.filter((op) => {
-        if (op.op !== "ask" || !settled(spec.data, op.slot)) return true;
-        warnings.push(`dropped an ask for ${op.slot}: the spec already sets it`);
-        return false;
-      }),
+      ops: s.ops
+        .map((op) => (op.op === "ask" ? { ...op, slot: canonicalSlot(spec.data, op.slot) } : op))
+        .filter((op) => {
+          if (op.op !== "ask" || !settled(spec.data, op.slot)) return true;
+          warnings.push(`dropped an ask for ${op.slot}: the spec already sets it`);
+          return false;
+        }),
     })),
   };
   // a dangling reference stays in the program: the interpreter reports it as a spec gap

@@ -549,10 +549,20 @@
        {
         "op": "wait_until",
         "predicate": {
-         "kind": "contact_both_pads",
+         "kind": "object_still",
          "object": "obj1"
         },
-        "timeout_s": 1
+        "timeout_s": 2
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
        }
       ]
      },
@@ -609,9 +619,9 @@
    "ledger": [
     {
      "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
-     "prompt_tokens": 2004,
-     "completion_tokens": 311,
-     "seconds": 1.659
+     "prompt_tokens": 2121,
+     "completion_tokens": 330,
+     "seconds": 2.126
     }
    ]
   }
