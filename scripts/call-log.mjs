@@ -8,8 +8,8 @@
 //   logVerdict("bench-x", id, { pass, score_before, score_after });
 //
 // Files: bench/calls/<script>-<start time>-<pid>.jsonl, one per process (UNDERSTUDY_CALL_LOG_DIR
-// moves them; UNDERSTUDY_CALL_LOG=0 turns the log off). Never in a record: a key (NEBIUS_API_KEY
-// and TAVILY_API_KEY are redacted from every line) or media (every base64 data: URI, anywhere in
+// moves them; UNDERSTUDY_CALL_LOG=0 turns the log off). Never in a record: a key (NEBIUS_API_KEY,
+// TAVILY_API_KEY and UNDERSTUDY_ENDPOINT_TOKEN are redacted from every line) or media (every base64 data: URI, anywhere in
 // the record, becomes its type, size and hash, so a clip or a frame never lands in the log, only
 // the tokens and text derived from it). The log never stops a run: a write that fails is reported
 // once on stderr and the run goes on.
@@ -51,7 +51,7 @@ let warned = false;
 function append(script, rec) {
   try {
     let line = JSON.stringify(scrub(rec));
-    for (const s of [process.env.NEBIUS_API_KEY, process.env.TAVILY_API_KEY]) if (s && s.length >= 8) line = line.split(s).join("<redacted>");
+    for (const s of [process.env.NEBIUS_API_KEY, process.env.TAVILY_API_KEY, process.env.UNDERSTUDY_ENDPOINT_TOKEN]) if (s && s.length >= 8) line = line.split(s).join("<redacted>");
     appendFileSync(fileFor(script), `${line}\n`);
   } catch (e) {
     if (!warned) console.error(`call log: could not write a record (${e?.code ?? e?.message ?? e}); the run goes on without it`);

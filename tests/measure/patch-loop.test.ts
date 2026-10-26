@@ -30,6 +30,11 @@
  *               PATCH_SCRIPT=compare-patch, so its spend counts against the study's own cap; its results go
  *               to their own file (PATCH_OUT=compare-patch.json) and scripts/compare-report.mjs sets
  *               them beside the Nemotron arms of patch-loop.json
+ *   ft-nano-*   issue #97: Nano as the patcher, thinking off, on the fine-tune's held-out cases:
+ *               ft-nano-tf on Token Factory; ft-nano-base and ft-nano-ft (the LoRA) on the evaluation
+ *               endpoint of jobs/finetune-nano (one vLLM engine, billed by the hour, so its calls are
+ *               charged 0 here); the endpoint arms need PATCH_ENDPOINT_URL (its /v1 base) and
+ *               PATCH_ENDPOINT_TOKEN_FILE (a file holding the endpoint's token, read at run time)
  *
  * The live part spends Token Factory credits and runs only with BENCH_LIVE=1:
  *
@@ -159,7 +164,8 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       process.loadEnvFile(process.env.UNDERSTUDY_ENV_FILE ?? ".env.local");
       const KEY = process.env.NEBIUS_API_KEY;
       if (!KEY) throw new Error("NEBIUS_API_KEY missing from the env file");
-      const redact = (s: unknown) => String(s).split(KEY).join("<redacted>");
+      // the endpoint's token (issue #97) joins the key once an endpoint arm has read it
+      const redact = (s: unknown) => [KEY, process.env.UNDERSTUDY_ENDPOINT_TOKEN].reduce<string>((t, k) => (k && k.length >= 8 ? t.split(k).join("<redacted>") : t), String(s));
       const tf = await import("@/lib/providers/tokenfactory");
       // guard() reserves the worst case under a cross-process lock and returns the reservation; charge() settles it
       type Reservation = { id: string; script: string | null; usd: number };
@@ -189,11 +195,26 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       type Trace = { session: string | null; parent: string | null };
       const client = tf.tokenFactory({ timeout: 240_000, maxRetries: 0 });
       if (!client) throw new Error("no Token Factory client");
+      /** issue #97: the models our evaluation endpoint serves; billed by the hour, not by the token */
+      const ENDPOINT_MODELS = new Set(["nano-base", "nano-ft"]);
+      let endpoint: typeof client | null = null;
+      const endpointClient = async () => {
+        if (endpoint) return endpoint;
+        const url = process.env.PATCH_ENDPOINT_URL;
+        const tokenFile = process.env.PATCH_ENDPOINT_TOKEN_FILE;
+        if (!url || !tokenFile) throw new Error("the endpoint arms need PATCH_ENDPOINT_URL and PATCH_ENDPOINT_TOKEN_FILE");
+        // in the environment only so the call log redacts it (scripts/call-log.mjs); never printed
+        process.env.UNDERSTUDY_ENDPOINT_TOKEN = readFileSync(tokenFile, "utf8").trim();
+        const OpenAI = (await import("openai")).default;
+        endpoint = new OpenAI({ baseURL: url, apiKey: process.env.UNDERSTUDY_ENDPOINT_TOKEN, timeout: 240_000, maxRetries: 0 });
+        return endpoint;
+      };
       const catalog = JSON.parse(readFileSync(path.join(ROOT, "tests/fixtures/models.json"), "utf8")) as { fetched: string };
       /** list prices of every model the requested arms can call, from the ledger's loadPrices (it throws on a missing price) */
       let PRICES: ReturnType<typeof ledger.loadPrices> = {};
       /** a model missing from the fixture, or priced 0, stops the run before any call: the budget guard would count its calls as free */
       const price = (model: string) => {
+        if (ENDPOINT_MODELS.has(model)) return { prompt: 0, completion: 0, cache: 0 };
         const p = PRICES[model];
         if (!p || !(p.prompt > 0) || !(p.completion > 0)) throw new Error(`no usable list price for ${model} in tests/fixtures/models.json: refusing to run, the budget guard would count its calls as free`);
         return { prompt: p.prompt, completion: p.completion, cache: p.cache_read };
@@ -204,7 +225,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
 
       type Role = "super" | "ultra";
       /** model and params: a comparator (issue #96) in the role's place, with its own reasoning switch instead of enable_thinking */
-      type CallCfg = { role: Role; thinking: "off" | "on"; maxTokens: number; model?: string; params?: Record<string, unknown> };
+      type CallCfg = { role: Role; thinking: "off" | "on"; maxTokens: number; model?: string; params?: Record<string, unknown>; endpoint?: boolean };
       async function call(cfg: CallCfg, system: string, user: string, meta: Record<string, unknown>, trace: Trace = { session: null, parent: null }): Promise<{ rec: CallRec; parsed: Record<string, unknown> | null }> {
         const stage = String(meta.stage ?? (system === PREFLIGHT_SYSTEM ? "preflight" : "patch"));
         const model = cfg.model ?? tf.MODELS[cfg.role];
@@ -238,7 +259,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
           let res: any;
           try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            res = await client!.chat.completions.create(params as any);
+            res = await (cfg.endpoint ? await endpointClient() : client!).chat.completions.create(params as any);
           } catch (err) {
             const e = err as { status?: number; message?: string };
             // a failed call costs its estimate: the server may have done the work
@@ -317,6 +338,10 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       const ESC_ON = { ...SUPER_ON, label: "super-on" };
       const ESC_ULTRA = { role: "ultra" as const, thinking: "off" as const, maxTokens: 800, label: "ultra-off" };
       const R2 = { preflight: false, rules: false, gravities: GRAVITY_ORDER, clampNote: true };
+      const NANO_OFF = { role: "super" as const, thinking: "off" as const, maxTokens: 800 };
+      // vLLM reads chat_template_kwargs at the top of the body; the openai SDK would send thinkingOff()'s
+      // extra_body as a literal field, which Token Factory honours and vLLM ignores (thinking would stay on)
+      const VLLM_THINKING_OFF = { chat_template_kwargs: { enable_thinking: false } };
       const R2_MO = { preflight: true, rules: true, gravities: ["moon", "orbit"] as GravityId[], clampNote: true };
       /** a comparator as the round-2 patcher: "off" is its least reasoning (800 tokens, or 4,096 when it always reasons), "on" its default with 4,096 */
       const cmpArm = (model: string, thinking: "off" | "on"): ArmCfg => {
@@ -362,6 +387,10 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         "cmp-qwen3.5-397b-on": cmpArm("Qwen/Qwen3.5-397B-A17B", "on"),
         "cmp-muse-spark-off": cmpArm("meta-models/muse-spark-open", "off"),
         "cmp-muse-spark-on": cmpArm("meta-models/muse-spark-open", "on"),
+        // issue #97: the fine-tuned Nano against the same weights without the adapter, and Nano on Token Factory
+        "ft-nano-tf": { ...NANO_OFF, model: tf.MODELS.nano, ...R2, label: "nano-off, Token Factory" },
+        "ft-nano-base": { ...NANO_OFF, model: "nano-base", endpoint: true, params: VLLM_THINKING_OFF, ...R2, label: "nano-base-off, endpoint" },
+        "ft-nano-ft": { ...NANO_OFF, model: "nano-ft", endpoint: true, params: VLLM_THINKING_OFF, ...R2, label: "nano-ft-off, endpoint" },
       };
 
       const file: ResultsFile = existsSync(OUT)
@@ -409,7 +438,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
           file.generated_at = new Date().toISOString();
           file.summary = summarise(file);
           let body = serialise(file);
-          if (body.includes(KEY)) body = redact(body);
+          body = redact(body);
           const tmp = `${OUT}.${process.pid}.tmp`;
           writeFileSync(tmp, body);
           renameSync(tmp, OUT);
@@ -580,7 +609,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         return models;
       });
       const others = needed.filter((m) => cmp.COMPARATORS[m]);
-      PRICES = { ...ledger.loadPrices(needed.filter((m) => !cmp.COMPARATORS[m])), ...(others.length ? ledger.loadPrices(others, cmp.COMPARE_CATALOGUE) : {}) };
+      PRICES = { ...ledger.loadPrices(needed.filter((m) => !cmp.COMPARATORS[m] && !ENDPOINT_MODELS.has(m))), ...(others.length ? ledger.loadPrices(others, cmp.COMPARE_CATALOGUE) : {}) };
       for (const m of needed) price(m);
       for (const armId of arms) {
         const cfg = ARMS[armId];
