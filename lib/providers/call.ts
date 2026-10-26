@@ -11,10 +11,15 @@ import { ModelOutputError, parseModelJson, type Normalizer } from "@/lib/spec/pa
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { MODELS, thinkingOff, usageOf, type ModelRole } from "./tokenfactory";
 
+/** Token Factory takes a video as a `video_url` part, which the OpenAI types do not list. */
+export type UserPart = OpenAI.ChatCompletionContentPart | { type: "video_url"; video_url: { url: string } };
+
 export type CallOptions<T> = {
   role: ModelRole;
-  system: string;
-  user: string;
+  /** left out for the vision model, as it was measured */
+  system?: string;
+  /** text, or text and video parts for the vision model */
+  user: string | UserPart[];
   maxTokens: number;
   schema: z.ZodType<T>;
   normalize?: Normalizer;
@@ -26,8 +31,8 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
   const model = MODELS[o.role];
   const ledger: LedgerEntry[] = [];
   const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { role: "system", content: o.system },
-    { role: "user", content: o.user },
+    ...(o.system === undefined ? [] : [{ role: "system" as const, content: o.system }]),
+    { role: "user", content: o.user as OpenAI.ChatCompletionUserMessageParam["content"] },
   ];
   let optional = true;
 
