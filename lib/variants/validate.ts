@@ -24,7 +24,7 @@
 import { fitToBench } from "@/lib/sim/fit";
 import { apply, buildScene, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses } from "@/lib/sim/scene";
 import { applyChanges, canonicalSlot, parsePath, valueAt } from "@/lib/spec/apply";
-import { AXES, FIXTURES, SHAPES, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
+import { AXES, FIXTURES, SHAPES, type Predicate, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
 import { validateSpec } from "@/lib/spec/validate";
 import { MAX_VARIANTS, type Idea, type NotYet, type VariantReply } from "./parse";
 
@@ -226,6 +226,23 @@ function geometryProblem(spec: TaskSpec): string | null {
   return null;
 }
 
+/** A check as what it checks: its kind and what it is about, not its threshold. */
+const checkKey = (p: Predicate) => JSON.stringify([p.kind, p.object ?? null, p.target ?? null]);
+const checkText = (p: Predicate) => [p.kind, p.object, p.target && `in ${p.target}`].filter(Boolean).join(" ");
+
+/**
+ * The success checks of the task above that a variant no longer has. A pass
+ * must mean the same task done: a variant may add a check or change its
+ * threshold, never drop one (setting success to "comes to rest" would pass
+ * with the object put down anywhere).
+ */
+function droppedChecks(base: TaskSpec, spec: TaskSpec): Predicate[] {
+  return base.steps.flatMap((b) => {
+    const kept = new Set(spec.steps.find((s) => s.id === b.id)?.success.map(checkKey));
+    return b.success.filter((p) => !kept.has(checkKey(p)));
+  });
+}
+
 /** applyChanges' reason for refusing a batch, and which change is at fault when there are several. */
 function refused(warnings: string[], n: number): string {
   const whole = warnings[0].replace(/^no change applied: /, "");
@@ -281,6 +298,8 @@ export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: 
   const placed = moves.length ? applyChanges(fit.spec, moves) : { spec: fit.spec, warnings: [] };
   if (placed.warnings.length) return { why: refused(placed.warnings, moves.length) };
   const spec = placed.spec;
+  const dropped = droppedChecks(base, spec);
+  if (dropped.length) return { why: `it drops the check that the task is done (${dropped.map(checkText).join("; ")}): a variant may add a check or tighten one, never remove one` };
 
   const edits = watched(base)
     .map((path) => ({ path, before: valueAt(base, path), after: valueAt(spec, path) }))

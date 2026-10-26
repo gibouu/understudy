@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { fitToBench } from "@/lib/sim/fit";
 import { parseModelJson } from "@/lib/spec/parse";
-import type { TaskSpec } from "@/lib/spec/schema";
+import type { Predicate, TaskSpec } from "@/lib/spec/schema";
 import { cleanRequest } from "@/lib/variants/ask";
 import { MAX_VARIANTS, normalizeReply, VariantReply, type Idea } from "@/lib/variants/parse";
 import { BENCH, benchFacts, userMessage } from "@/lib/variants/prompt";
@@ -87,6 +87,22 @@ describe("a variant of the ISS sample", () => {
     expect(why(build(["objects[obj2].pocket_clearance_mm", null]))).toBe("objects[obj2].pocket_clearance_mm: no value given");
     expect(why(build(["steps[s2].verb", "pour"]))).toMatch(/^rejected \(steps\.1\.verb/);
     expect(why(build(["steps[s2].verb", "release"]))).toMatch(/^not yet: the rehearsal runs one grasp and then one insert or place/);
+  });
+
+  it("keeps every check that the task is done: a pass means the same task done", () => {
+    expect(base.steps[1].success.map((p) => p.kind)).toEqual(["inside_zone", "object_still"]);
+    const still: Predicate = { kind: "object_still", object: "obj1" };
+    const inside: Predicate = { kind: "inside_zone", object: "obj1", target: "obj2" };
+    const tail = ": a variant may add a check or tighten one, never remove one";
+    expect(why(build(["steps[s2].success", [still]]))).toBe(`it drops the check that the task is done (inside_zone obj1 in obj2)${tail}`);
+    expect(why(build(["steps[s2].success", []]))).toBe(`it drops the check that the task is done (inside_zone obj1 in obj2; object_still obj1)${tail}`);
+    // the same kind about something else is not the same check
+    expect(why(build(["steps[s2].success", [{ ...inside, target: "obj1" }, still]]))).toBe(`it drops the check that the task is done (inside_zone obj1 in obj2)${tail}`);
+    // adding a check is allowed, and so is changing a threshold
+    expect(why(build(["steps[s2].success", [inside, still, { kind: "tilt_under", object: "obj1", value: 20 }]]))).toBe("");
+    const strict = structuredClone(base);
+    strict.steps[1].success = [inside, still, { kind: "tilt_under", object: "obj1", value: 20 }];
+    expect(why(buildVariant(strict, idea("Straighter", ["steps[s2].success", [inside, still, { kind: "tilt_under", object: "obj1", value: 5 }]]), 1))).toBe("");
   });
 
   it("refuses a variant the bench undoes, naming what it holds instead", () => {
