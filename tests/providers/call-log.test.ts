@@ -56,6 +56,12 @@ describe("call log (scripts/call-log.mjs)", () => {
     // media inside text, in answers and in errors is scrubbed too
     const b64 = Buffer.alloc(600, 9).toString("base64");
     expect(scrub(`see data:image/png;base64,${b64} and more`)).toMatch(/^see <data URI image\/png, 600 bytes, sha256 [0-9a-f]{16}> and more$/);
+    // any case, and a payload wrapped over lines
+    for (const uri of [`DATA:image/png;base64,${b64}`, `data:image/png;BASE64,${b64}`, `data:image/png;base64,${b64.match(/.{1,76}/g)!.join("\r\n")}`]) {
+      const out = String(scrub(`x ${uri}`));
+      expect(out).toMatch(/^x <data URI image\/png, 600 bytes, sha256 [0-9a-f]{16}>$/);
+      expect(out).toBe(String(scrub(`x data:image/png;base64,${b64}`)));
+    }
     const echo = logCall("unit", { stage: "patch", params, res: { choices: [{ message: { content: `echo data:video/mp4;base64,${b64}` } }] }, error: `400 bad data:;base64,${b64}` });
     const echoed = readFileSync(path.join(dir, files[0]), "utf8").trim().split("\n").map((l) => JSON.parse(l)).find((r) => r.id === echo);
     expect(JSON.stringify(echoed)).not.toContain(b64.slice(0, 40));

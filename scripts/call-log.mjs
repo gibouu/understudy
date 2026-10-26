@@ -30,11 +30,15 @@ function fileFor(script) {
   return files.get(script);
 }
 
-const DATA_URI = /data:([\w.+-]+\/[\w.+-]+)?((?:;[\w.+-]+=[^;,\s]*)*);base64,([A-Za-z0-9+/]*={0,2})/g;
+// any case ("DATA:", ";BASE64,"); a payload wrapped over lines is taken whole
+const DATA_URI = /data:([\w.+-]+\/[\w.+-]+)?((?:;[\w.+-]+=[^;,\s]*)*);base64,((?:[A-Za-z0-9+/]|\r?\n)*={0,2})/gi;
 /** every base64 data: URI anywhere in the value becomes a short description of it */
 export function scrub(v) {
   if (typeof v === "string") {
-    return v.replace(DATA_URI, (_m, mime, _params, body) => `<data URI ${mime || "?"}, ${Math.floor((body.length * 3) / 4)} bytes, sha256 ${createHash("sha256").update(body).digest("hex").slice(0, 16)}>`);
+    return v.replace(DATA_URI, (_m, mime, _params, raw) => {
+      const body = raw.replace(/\s/g, "");
+      return `<data URI ${mime || "?"}, ${Math.floor((body.length * 3) / 4)} bytes, sha256 ${createHash("sha256").update(body).digest("hex").slice(0, 16)}>`;
+    });
   }
   if (Array.isArray(v)) return v.map(scrub);
   if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, scrub(x)]));

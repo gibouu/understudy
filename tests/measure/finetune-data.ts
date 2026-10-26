@@ -22,7 +22,7 @@ import { applyPatch, type CaseDef, caseGrid, type GravityId, type Knobs, type Me
 import { type Book, historyLine, PATCH_SYSTEM, patchCheckLine, patchPrompt, retryPrompt, type Rule } from "./patch-prompts";
 
 // --- the parts of the results file the builder reads (written by patch-loop.test.ts) ---
-type CallRec = { ok: boolean; json_ok: boolean; finish: string | null; prompt_tokens: number; reasoning_tokens: number | null };
+type CallRec = { ok: boolean; json_ok: boolean; finish: string | null; prompt_tokens: number; completion_tokens: number; reasoning_tokens: number | null };
 export type SavedPatch = {
   set: Record<string, unknown> | null;
   why: string | null;
@@ -68,6 +68,8 @@ export type Example = {
   score_after: number;
   /** the prompt tokens Token Factory counted for this call: equal prompts must show equal counts */
   prompt_tokens: number;
+  /** the answer's tokens, reasoning excluded */
+  answer_tokens: number;
 };
 
 export const MAX_PATCHES = 5;
@@ -137,7 +139,14 @@ export function mayBeRounded(v: unknown): boolean {
 }
 const patchesOf = (run: SavedRun) =>
   [run.preflight, ...run.iterations.map((it) => it.patch_before)].flatMap((p) => (p ? [p, ...(p.escalated_after_noop ? [p.escalated_after_noop] : []), ...(p.retried_after_noop ? [p.retried_after_noop] : [])] : []));
-const roundedOnSave = (run: SavedRun) => patchesOf(run).some((p) => Object.values(p.set ?? {}).some(mayBeRounded) || (p.clamps ?? []).some((c) => mayBeRounded(c.requested)));
+/** every number anywhere in a value (a model may nest an object where a knob value belongs) */
+const numbersIn = (v: unknown): number[] => (typeof v === "number" ? [v] : v && typeof v === "object" ? Object.values(v).flatMap(numbersIn) : []);
+/**
+ * A number longer than the save keeps whose extra digits round away (1.0004 saved as 1) cannot be
+ * seen; it would also show at the precision limit nine times in ten, so none at the limit in the
+ * whole file (the build's count) puts the chance of such a number near zero.
+ */
+const roundedOnSave = (run: SavedRun) => patchesOf(run).some((p) => numbersIn(p.set).some(mayBeRounded) || (p.clamps ?? []).some((c) => mayBeRounded(c.requested)));
 
 /**
  * Rollouts are deterministic in (case, seed, knobs, note options), and the arms share many of them
@@ -197,6 +206,7 @@ export function replayRun(mj: MainModule, results: SavedResults, run: SavedRun, 
       score_before: it.score,
       score_after: scoreAfter,
       prompt_tokens: q.call.prompt_tokens,
+      answer_tokens: q.call.completion_tokens - (q.call.reasoning_tokens ?? 0),
     });
     // a replaced no-op saw the same prompt (escalation) or the prompt before the retry note; its rollout would have repeated this one
     const inner = p.escalated_after_noop ?? p.retried_after_noop;
@@ -240,7 +250,7 @@ export const pairLine = (p: Built["pairs"][number]) => ({
   rejected: [{ role: "assistant", content: p.rejected.assistant }],
 });
 /** the metadata of an example, line-aligned with its chat line in the *.meta.jsonl files */
-export const metaLine = (e: Example) => ({ case_id: e.case_id, seed: e.seed, arm: e.arm, attempt: e.attempt, patcher: e.patcher, model: e.model, pass_after: e.pass_after, score_before: e.score_before, score_after: e.score_after });
+export const metaLine = (e: Example) => ({ case_id: e.case_id, seed: e.seed, arm: e.arm, attempt: e.attempt, patcher: e.patcher, model: e.model, pass_after: e.pass_after, score_before: e.score_before, score_after: e.score_after, prompt_tokens: e.prompt_tokens, answer_tokens: e.answer_tokens });
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 
@@ -308,6 +318,10 @@ export function buildDataset(mj: MainModule, results: SavedResults, opts: { onRu
     tokens.set(k, [...(tokens.get(k) ?? []), e.prompt_tokens]);
   }
   const repeated = [...tokens.values()].filter((t) => t.length > 1);
+  const quantiles = (xs: number[]) => {
+    const s = [...xs].sort((a, b) => a - b);
+    return { median: s[Math.floor((s.length - 1) / 2)], max: s.at(-1), total: s.reduce((a, b) => a + b, 0) };
+  };
   const count = (xs: Example[], key: (e: Example) => string) => xs.reduce<Record<string, number>>((m, e) => ((m[key(e)] = (m[key(e)] ?? 0) + 1), m), {});
   return {
     test_cases: test,
@@ -327,6 +341,9 @@ export function buildDataset(mj: MainModule, results: SavedResults, opts: { onRu
       train_by_gravity: count(train, (e) => e.gravity),
       train_by_patcher: count(train, (e) => e.patcher),
       val_by_probe: count(val, (e) => e.probe),
+      patch_numbers_checked: todo.reduce((n, r) => n + patchesOf(r).flatMap((p) => numbersIn(p.set)).filter((v) => !Number.isInteger(v)).length, 0),
+      train_prompt_tokens: quantiles(train.map((e) => e.prompt_tokens)),
+      train_answer_tokens: quantiles(train.map((e) => e.answer_tokens)),
     },
   };
 }
