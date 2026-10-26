@@ -14,6 +14,9 @@ const WORLDS: GravityName[] = ["earth", "orbit"];
 
 type Row = { world: GravityName; result: Rollout | { error: string } | "running" };
 
+/** Where the liquid ended, as the rollout logged it, when the scene has one. */
+const liquidOf = (r: Rollout) => r.log.findLast((l) => l.includes(" liquid: "))?.split(" liquid: ")[1];
+
 /** `notes={false}` leaves out the Notes stage, which calls Token Factory (/space must never). */
 export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskSpec; program: Program; onFail: (f: Failure | null) => void; notes?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -139,7 +142,10 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
                 <td className="py-1.5 pr-4 font-medium">
                   {result === "running" ? "running…" : "error" in result ? <span className="text-red-700">error</span> : result.pass ? <span className="text-emerald-700">pass</span> : <span className="text-red-700">fail{result.failed_step_id ? ` at ${result.failed_step_id}` : ""}</span>}
                 </td>
-                <td className="py-1.5 text-neutral-600">{result === "running" ? "" : "error" in result ? result.error : result.pass ? `done in ${result.t.toFixed(1)} s` : result.why}</td>
+                <td className="py-1.5 text-neutral-600">
+                  {result === "running" ? "" : "error" in result ? result.error : result.pass ? `done in ${result.t.toFixed(1)} s` : result.why}
+                  {result !== "running" && !("error" in result) && liquidOf(result) ? `. Liquid: ${liquidOf(result)}.` : ""}
+                </td>
               </tr>
             ))}
           </tbody>

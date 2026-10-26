@@ -229,8 +229,8 @@ function geometryProblem(spec: TaskSpec): string | null {
 /** A check as what it checks: its kind and what it is about. */
 const checkKey = (p: Predicate) => JSON.stringify([p.kind, p.object ?? null, p.target ?? null]);
 const checkText = (p: Predicate) => [p.kind, p.object, p.target && `in ${p.target}`, p.value !== undefined && `${p.value}`].filter(Boolean).join(" ");
-/** Which way a threshold is stricter: lib/sim/predicates.ts passes height_above at value or more, the others at value or less. */
-const STRICTER_IS_HIGHER: Partial<Record<PredicateKind, boolean>> = { height_above: true, tilt_under: false, gripper_within: false, time_under: false };
+/** Which way a threshold is stricter: lib/sim/predicates.ts passes height_above and liquid_inside at value or more, the others at value or less. */
+const STRICTER_IS_HIGHER: Partial<Record<PredicateKind, boolean>> = { height_above: true, liquid_inside: true, tilt_under: false, gripper_within: false, time_under: false };
 
 /** Whether check `v` asks at least as much as `b` about the same thing. */
 function asStrict(v: Predicate, b: Predicate): boolean {

@@ -122,6 +122,96 @@ export function reachability(
   return ok ? { ok, results } : { ok, failure_class: "embodiment_limit", results };
 }
 
+/** `tilt_err_deg`: the rotation still missing about horizontal axes; `turned_deg`: about the vertical. */
+export type PoseResult = { q: number[]; pos_err_mm: number; tilt_err_deg: number; turned_deg: number };
+
+/** Orientation counts like this many metres per radian in solvePose: 1 rad like 10 cm. */
+const ROT_WEIGHT = 0.1;
+
+/**
+ * `site` at `target` with rotation `rot` (row-major, world): six constraints over five joints, met in the
+ * least-squares sense. `yaw` (0 to 1) weights the part of the rotation error about the vertical: a 5-DoF arm
+ * can keep a point and a tilt only by giving up a little of the compass heading. Seeded with `seed`; `data`
+ * is scratch, as in solveIk.
+ */
+export function solvePose(
+  mujoco: MainModule,
+  model: MjModel,
+  data: MjData,
+  site: string,
+  target: Vec3,
+  rot: number[],
+  seed: number[],
+  { yaw = 1 }: { yaw?: number } = {},
+): PoseResult {
+  const arm = armIndex(model, site);
+  const nv = model.nv as number;
+  const q = seed.map((v, i) => clamp(v, arm.range[i]));
+  const jacp = new mujoco.DoubleBuffer(3 * nv);
+  const jacr = new mujoco.DoubleBuffer(3 * nv);
+  const weigh = (v: Vec3): Vec3 => [ROT_WEIGHT * v[0], ROT_WEIGHT * v[1], ROT_WEIGHT * yaw * v[2]];
+  let posErr = Infinity;
+  let er: Vec3 = [Infinity, Infinity, Infinity];
+  let last = Infinity;
+  try {
+    for (let it = 0; it <= MAX_ITERS; it++) {
+      setArm(data, arm.qposadr, q);
+      mujoco.mj_kinematics(model, data);
+      mujoco.mj_comPos(model, data);
+      const pos = toNumbers(data.site_xpos);
+      const mat = toNumbers(data.site_xmat);
+      const ep = sub(target, [pos[3 * arm.site], pos[3 * arm.site + 1], pos[3 * arm.site + 2]]);
+      er = rotationError(rot, Array.from({ length: 9 }, (_, k) => mat[9 * arm.site + k]));
+      posErr = norm(ep);
+      const ew = weigh(er);
+      const err = posErr + norm(ew);
+      if ((posErr < POS_TOL_M && norm(er) < AXIS_TOL_RAD) || it === MAX_ITERS || Math.abs(last - err) < STALL) break;
+      last = err;
+      mujoco.mj_jacSite(model, data, jacp, jacr, arm.site);
+      const Jp = toNumbers(jacp.GetView());
+      const Jr = toNumbers(jacr.GetView());
+      const J: number[][] = Array.from({ length: 6 }, () => new Array(5).fill(0));
+      for (let c = 0; c < 5; c++) {
+        const d = arm.dofadr[c];
+        const w = weigh([Jr[d], Jr[nv + d], Jr[2 * nv + d]]);
+        for (let r = 0; r < 3; r++) {
+          J[r][c] = Jp[r * nv + d];
+          J[3 + r][c] = w[r];
+        }
+      }
+      const dq = dls(J, [...ep, ...ew], DAMPING);
+      const step = Math.hypot(...dq);
+      const k = step > MAX_STEP_RAD ? MAX_STEP_RAD / step : 1;
+      for (let c = 0; c < 5; c++) q[c] = clamp(q[c] + k * dq[c], arm.range[c]);
+    }
+  } finally {
+    jacp.delete();
+    jacr.delete();
+  }
+  const deg = (rad: number) => (rad * 180) / Math.PI;
+  return { q, pos_err_mm: posErr * 1000, tilt_err_deg: deg(Math.hypot(er[0], er[1])), turned_deg: deg(Math.abs(er[2])) };
+}
+
+/** The rotation vector (axis times angle, world frame) that turns `current` into `target`; both row-major. */
+function rotationError(target: number[], current: number[]): Vec3 {
+  // E = target * current^T
+  const E = Array.from({ length: 9 }, (_, k) => {
+    const i = Math.floor(k / 3);
+    const j = k % 3;
+    return target[3 * i] * current[3 * j] + target[3 * i + 1] * current[3 * j + 1] + target[3 * i + 2] * current[3 * j + 2];
+  });
+  const v: Vec3 = [E[7] - E[5], E[2] - E[6], E[3] - E[1]];
+  const s = norm(v) / 2;
+  const c = clamp((E[0] + E[4] + E[8] - 1) / 2, [-1, 1]);
+  const angle = Math.atan2(s, c);
+  if (s > 1e-9) return scale(v, angle / (2 * s));
+  if (c > 0) return [0, 0, 0];
+  // a half turn: the axis is the column of E + I with the largest norm
+  const cols = [0, 1, 2].map((j): Vec3 => [E[j] + (j === 0 ? 1 : 0), E[3 + j] + (j === 1 ? 1 : 0), E[6 + j] + (j === 2 ? 1 : 0)]);
+  const best = cols.reduce((a, b) => (norm(b) > norm(a) ? b : a));
+  return scale(best, Math.PI / norm(best));
+}
+
 type ArmIndex = { qposadr: number[]; dofadr: number[]; range: [number, number][]; panJoint: number; site: number };
 
 function armIndex(model: MjModel, siteName: string): ArmIndex {

@@ -28,6 +28,8 @@ export function opText(op: ProgramOp): string {
       return `grasp ${op.object} at ${op.aperture_mm} mm`;
     case "release":
       return "release";
+    case "tilt":
+      return `tilt ${op.deg}°${op.toward ? ` toward ${op.toward}` : ""} over ${op.seconds} s`;
     case "wait_until":
       return `wait_until ${pred(op.predicate)} (up to ${op.timeout_s} s)`;
     case "assert":

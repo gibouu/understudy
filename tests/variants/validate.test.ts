@@ -85,7 +85,9 @@ describe("a variant of the ISS sample", () => {
     expect(why(build(["objects[obj2].size_mm", [-5, 100, 30]]))).toMatch(/^rejected \(objects\.1\.size_mm\.0: /);
     expect(why(build(["objects[obj2].size_mm", [100, 100, 30]], ["objects[obj1].size_mm", [0, 10, 40]]))).toMatch(/^rejected .*\(objects\[obj1\]\.size_mm: the batch is valid without it\)$/);
     expect(why(build(["objects[obj2].pocket_clearance_mm", null]))).toBe("objects[obj2].pocket_clearance_mm: no value given");
-    expect(why(build(["steps[s2].verb", "pour"]))).toMatch(/^rejected \(steps\.1\.verb/);
+    expect(why(build(["steps[s2].verb", "fling"]))).toMatch(/^rejected \(steps\.1\.verb/);
+    // pour is a verb of the spec now (#93), but variants do not offer it yet: refused, and the reason says so
+    expect(why(build(["steps[s2].verb", "pour"]))).toBe('not yet: the rehearsal runs one grasp and then one insert or place, not "pour"');
     expect(why(build(["steps[s2].verb", "release"]))).toMatch(/^not yet: the rehearsal runs one grasp and then one insert or place/);
   });
 
@@ -120,6 +122,12 @@ describe("a variant of the ISS sample", () => {
     lifted.steps[1].success = [inside, still, { kind: "height_above", object: "obj1", value: 5 }];
     expect(why(buildVariant(lifted, idea("Higher", ["steps[s2].success", [inside, still, { kind: "height_above", object: "obj1", value: 8 }]]), 1))).toBe("");
     expect(why(buildVariant(lifted, idea("Lower", ["steps[s2].success", [inside, still, { kind: "height_above", object: "obj1", value: 2 }]]), 1))).toBe(refused("height_above obj1 5"));
+    // and for liquid_inside: more of the liquid kept is stricter
+    const kept = (value: number): Predicate => ({ kind: "liquid_inside", object: "obj2", target: "obj2", value });
+    const wet = structuredClone(base);
+    wet.steps[1].success = [inside, still, kept(80)];
+    expect(why(buildVariant(wet, idea("More kept", ["steps[s2].success", [inside, still, kept(90)]]), 1))).toBe("");
+    expect(why(buildVariant(wet, idea("Less kept", ["steps[s2].success", [inside, still, kept(70)]]), 1))).toBe(refused("liquid_inside obj2 in obj2 80"));
   });
 
   it("refuses a variant the bench undoes, naming what it holds instead", () => {

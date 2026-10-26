@@ -2,14 +2,16 @@
  * The page's rehearsal, in node: what app/rehearsal.tsx asks the worker for
  * (reset, set gravity, run the program sensed from home, once per world), as
  * tests/sim/interpreter.test.ts drives the interpreter. A fresh model per
- * world is the worker's reset; gravity is the same model option either way.
+ * world is the worker's reset (the arm parked at home, the liquid filled when
+ * the spec holds any); gravity is the same model option either way.
  */
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { MainModule, MjVFS } from "@mujoco/mujoco";
 import type { WorldRun } from "@/lib/notes/note";
 import { environment, runToEnd, type Rollout } from "@/lib/sim/interpreter";
-import { SO101_XML, stageXml } from "@/lib/sim/so101";
+import { Liquid } from "@/lib/sim/liquid";
+import { park, SO101_XML, stageXml } from "@/lib/sim/so101";
 import { GRAVITIES, type GravityName, type Program, type TaskSpec } from "@/lib/spec/schema";
 import type { Run } from "./session";
 
@@ -34,7 +36,9 @@ export function rollout({ mujoco, vfs }: Engine, spec: TaskSpec, program: Progra
   const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: GRAVITIES[world], graspable: env.graspable }), vfs);
   const data = new mujoco.MjData(model);
   try {
-    return runToEnd({ mujoco, model, data }, env, program, "sensed");
+    park(mujoco, model, data);
+    const liquid = env.liquid ? new Liquid(mujoco, model, data, env.liquid, { gravity_g: GRAVITIES[world] }) : null;
+    return runToEnd({ mujoco, model, data, liquid }, env, program, "sensed");
   } finally {
     data.delete();
     model.delete();

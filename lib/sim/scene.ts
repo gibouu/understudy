@@ -7,6 +7,9 @@
  *                        the footprint of the object that goes in plus the clearance
  *   zone fixtures        the object as given plus a flat zone site on its top face
  *   stack targets        ordinary objects; the target frame is their body
+ *   containers           any object that holds liquid (liquid_ml) or that a pour step pours
+ *                        from or into: an open box, four walls and a floor, free if it is
+ *                        manipulated; an `<name>_inside` site spans the space the liquid fills
  *   obstacles, surfaces  static bodies
  *
  * Units: the spec is millimetres and degrees, MJCF is metres and radians (the
@@ -37,6 +40,11 @@ export const WALL_M = 0.008;
 /** thinnest wall we will build, m */
 export const MIN_WALL_M = 0.003;
 export const DEFAULT_CLEARANCE_MM = 3;
+/**
+ * container wall and floor thickness, m: at 4 mm a wall is thicker than the liquid's kernel
+ * minus its particles (lib/sim/fluid.ts), so the solver never has to filter neighbours through it
+ */
+export const CONTAINER_WALL_M = 0.004;
 export const NAME_PREFIX = "obj_";
 const LAYOUT_X_MM = 250;
 const LAYOUT_Y_START_MM = -250;
@@ -68,6 +76,8 @@ export type SceneBuild = {
   manipulated: string[];
   /** pocket openings by fixture id: inner size and usable depth, m */
   pockets: Record<string, { inner_m: [number, number]; depth_m: number }>;
+  /** open containers by object id: inner size and depth, m (the liquid's `<name>_inside` site) */
+  containers: Record<string, { inner_m: [number, number]; depth_m: number }>;
   warnings: string[];
   /** objects that had no pose and were laid out */
   laidOut: string[];
@@ -253,6 +263,18 @@ export function layoutMissingPoses(spec: TaskSpec): { spec: TaskSpec; laidOut: s
 
 const usedAsPocket = (spec: TaskSpec, id: string) => spec.steps.some((s) => s.target?.fixture === "pocket" && s.target.frame === id);
 
+/** Objects built as open containers: they hold liquid at the start, or a pour step pours from or into them. */
+export function containerIds(spec: TaskSpec): Set<string> {
+  const ids = new Set(spec.objects.filter((o) => o.liquid_ml !== undefined).map((o) => o.id));
+  for (const s of spec.steps) {
+    // only a whole pour (its verb and its block) opens containers; validateSpec reports the halves
+    if (s.verb !== "pour" || !s.pour) continue;
+    ids.add(s.object);
+    ids.add(s.pour.into);
+  }
+  return ids;
+}
+
 /**
  * The spec after a scenario's world perturbation. Offsets are in world axes
  * and converted into the object's own pose frame. `applied` is false when
@@ -370,6 +392,8 @@ export function buildScene(spec: TaskSpec, tilts: Record<string, Tilt> = {}): Sc
   const frames = dict<WorldPose>();
   const names = dict<string>();
   const pockets = dict<{ inner_m: [number, number]; depth_m: number }>();
+  const containers = dict<{ inner_m: [number, number]; depth_m: number }>();
+  const open = containerIds(s);
   const parts: string[] = [];
   const manipulated: string[] = [];
 
@@ -382,12 +406,33 @@ export function buildScene(spec: TaskSpec, tilts: Record<string, Tilt> = {}): Sc
     frames[o.id] = { xyz_m: xyz, quat, yaw_rad: w.yaw_deg * DEG };
     const lines = [`<body name="${name}" pos="${v(xyz)}" quat="${v(quat)}">`];
     const rgba = COLORS[o.role];
-    const pocket = o.role === "fixture" ? pocketFor(s, o) : null;
+    const container = open.has(o.id);
+    const pocket = o.role === "fixture" && !container ? pocketFor(s, o) : null;
+    if (container && o.role === "fixture" && usedAsPocket(s, o.id)) warnings.push(`object "${o.id}" holds liquid; it is built as an open container, not a pocket`);
     if (o.role === "manipulated") {
       lines.push(`  <freejoint name="${name}_free"/>`);
       manipulated.push(name);
     }
-    if (pocket) {
+    if (container) {
+      if (o.shape !== "box") warnings.push(`container "${o.id}" is a ${o.shape}; it is built as an open box`);
+      const [X, Y] = footprintMm(o).map((x) => x * MM);
+      const Z = heightMm(o) * MM;
+      const t = CONTAINER_WALL_M;
+      const [ix, iy, depth] = [X - 2 * t, Y - 2 * t, Z - t];
+      // the liquid needs room for a few particles across: 4 mm ones, two kernels wide
+      if (Math.min(ix, iy, depth) < 0.016) {
+        throw new SceneError(`container "${o.id}" (${Math.round(X / MM)} x ${Math.round(Y / MM)} x ${Math.round(Z / MM)} mm) is too small to hold liquid with ${t / MM} mm walls; it needs at least ${Math.ceil((0.016 + 2 * t) / MM)} mm across and ${Math.ceil((0.016 + t) / MM)} mm high`);
+      }
+      containers[o.id] = { inner_m: [ix, iy], depth_m: depth };
+      const wall = (part: string, pos: number[], half: number[]) =>
+        lines.push(`  <geom name="${name}_${part}" type="box" pos="${v(pos)}" size="${v(half)}" rgba="${rgba}" friction="1 0.005 0.0001"/>`);
+      wall("wall_xneg", [-(X - t) / 2, 0, 0], [t / 2, Y / 2, Z / 2]);
+      wall("wall_xpos", [(X - t) / 2, 0, 0], [t / 2, Y / 2, Z / 2]);
+      wall("wall_yneg", [0, -(Y - t) / 2, 0], [ix / 2, t / 2, Z / 2]);
+      wall("wall_ypos", [0, (Y - t) / 2, 0], [ix / 2, t / 2, Z / 2]);
+      wall("floor", [0, 0, -(Z - t) / 2], [ix / 2, iy / 2, t / 2]);
+      lines.push(`  <site name="${name}_inside" pos="0 0 ${f(t / 2)}" size="${v([ix / 2, iy / 2, depth / 2])}" type="box" rgba="0 0 0 0"/>`);
+    } else if (pocket) {
       if (o.shape !== "box") warnings.push(`fixture "${o.id}" is a ${o.shape}; its pocket is built as a box`);
       const [X, Y] = footprintMm(o).map((x) => x * MM);
       const Z = heightMm(o) * MM;
@@ -416,7 +461,7 @@ export function buildScene(spec: TaskSpec, tilts: Record<string, Tilt> = {}): Sc
     lines.push(`</body>`);
     parts.push(lines.join("\n"));
   }
-  return { worldbody: parts.join("\n"), frames, names, manipulated, pockets, warnings, laidOut: laid.laidOut };
+  return { worldbody: parts.join("\n"), frames, names, manipulated, pockets, containers, warnings, laidOut: laid.laidOut };
 }
 
 /** A self-contained model for tests: the objects on a floor, no arm, under a given gravity. */

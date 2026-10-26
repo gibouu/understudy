@@ -4,11 +4,13 @@
  * rollout says by how much. Targets are found by the sites the scene builder
  * emits: `<name>_pocket` (opening, box half-sizes) and `<name>_pocket_floor`
  * for pockets, `<name>_zone` (top face) for zones; a stack target is the
- * object's top face, from the spec's size.
+ * object's top face, from the spec's size. The liquid is measured inside a
+ * container's `<name>_inside` site (lib/sim/liquid.ts).
  */
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import type { Predicate, TaskSpec } from "@/lib/spec/schema";
 import { graspIndex, jawsTouch } from "./grasp";
+import type { Liquid } from "./liquid";
 import { decodeName, toNumbers } from "./names";
 import { footprintMm, heightMm, MM, NAME_PREFIX } from "./scene";
 
@@ -21,6 +23,8 @@ export type World = {
   names: Record<string, string>;
   /** seconds since the rollout started */
   t: number;
+  /** the scene's liquid, if it has any */
+  liquid?: Liquid | null;
 };
 export type Check = { ok: boolean; measured?: number; why: string };
 
@@ -65,6 +69,12 @@ export function evaluate(w: World, p: Predicate): Check {
     }
     case "time_under":
       return { ok: w.t <= p.value!, measured: w.t, why: `${w.t.toFixed(2)} s elapsed, limit ${p.value} s` };
+    case "liquid_inside": {
+      if (!w.liquid) throw new Error("there is no liquid in the scene");
+      const pc = 100 * w.liquid.shareIn(w.data, p.target!, p.object);
+      const whose = p.object ? `the liquid from ${p.object}` : "the liquid";
+      return { ok: pc >= p.value!, measured: pc, why: `${pc.toFixed(0)}% of ${whose} is inside ${p.target}, wanted >= ${p.value}%` };
+    }
   }
 }
 
