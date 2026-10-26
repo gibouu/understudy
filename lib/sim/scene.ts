@@ -268,7 +268,7 @@ export function containerIds(spec: TaskSpec): Set<string> {
   const ids = new Set(spec.objects.filter((o) => o.liquid_ml !== undefined).map((o) => o.id));
   for (const s of spec.steps) {
     // only a whole pour (its verb and its block) opens containers; validateSpec reports the halves
-    if (s.verb !== "pour" || !s.pour) continue;
+    if (s.verb !== "pour" || !s.pour || s.object === undefined) continue;
     ids.add(s.object);
     ids.add(s.pour.into);
   }

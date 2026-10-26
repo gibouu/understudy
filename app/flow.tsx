@@ -9,6 +9,7 @@ import { applyChanges } from "@/lib/spec/apply";
 import type { Predicate, Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
+import { withGesturePaths } from "@/lib/vision/trace";
 import { FilmYourself, UnlockPrompt, unlockCode } from "./capture";
 import { GroundChips } from "./ground-chips";
 import { ProgramView, type Failure } from "./program-view";
@@ -102,11 +103,15 @@ export function Flow() {
     const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: await clipSha256(clip.blob) }));
     if (id !== gen.current) return;
     setLabel(running("Super VL is watching the clip"));
-    const r = await post<TaskSpec>("/api/label", { ...body, hint, unlock: unlockCode() });
+    const labelled = await post<TaskSpec>("/api/label", { ...body, hint, unlock: unlockCode() });
+    if (id !== gen.current) return;
+    // a gesture's hand path is measured here, in the browser, before the fit
+    const { result: r, notes: traced } = await withGesturePaths(labelled, clip.blob, (note) => id === gen.current && setLabel(running(note)));
     if (id !== gen.current) return;
     setLabel(r);
     if (r.status !== "done") return;
     const f = fitToBench(r.value);
+    f.warnings.unshift(...traced);
     setFit(f);
     setSpec(f.spec);
     await compile(f.spec);
@@ -195,7 +200,7 @@ export function Flow() {
       {fit && (
         <Section n={3} title="Fitted to the robot's bench">
           <p className="text-sm text-neutral-600">
-            The SO-101 rehearses one manipulation, with the objects laid out in its reach and sized for its gripper.
+            The SO-101 rehearses one manipulation, with the objects laid out in its reach and sized for its gripper, or a gesture, with the hand&apos;s path scaled into its reach.
           </p>
           <ul className="mt-2 list-disc pl-5 text-sm text-neutral-700">
             {fit.warnings.map((w) => (
@@ -251,7 +256,7 @@ export function Flow() {
         </Section>
       )}
 
-      {ready && program.status === "done" && (
+      {ready && program.status === "done" && !spec.steps.some((s) => s.verb === "gesture") && (
         <Section n={6} title="Try a similar task" model="Nemotron 3 Super · Nemotron 3 Nano">
           <Variants spec={spec} program={program.value} />
         </Section>
@@ -303,7 +308,7 @@ function SpecSummary({ spec }: { spec: TaskSpec }) {
       <ol className="flex flex-col gap-1">
         {spec.steps.map((s) => (
           <li key={s.id} className="font-mono text-xs text-neutral-700">
-            {s.t_start_s.toFixed(0)}–{s.t_end_s.toFixed(0)} s · {s.verb} {name(s.object)}
+            {s.t_start_s.toFixed(0)}–{s.t_end_s.toFixed(0)} s · {s.verb}{s.object ? ` ${name(s.object)}` : ""}
             {s.target ? ` → ${s.target.fixture} of ${name(s.target.frame)}` : ""}
           </li>
         ))}

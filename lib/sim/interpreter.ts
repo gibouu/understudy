@@ -17,9 +17,13 @@
  * tilt turns the held object about its rim toward a frame (a pour); when the
  * spec holds liquid, `sim.liquid` carries it and the caller that steps MuJoCo
  * also advances the liquid (runToEnd does), so the checks can measure it.
+ * follow traces a gesture step's path with the point between the pads and
+ * checks each point was reached (lib/sim/gesture.ts); that is all a gesture
+ * is checked for.
  */
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import type { Mode, Predicate, Program, Scenario, TaskSpec } from "@/lib/spec/schema";
+import { describeReach, pathMarkersXml, reachCheck, type Reach, type TraceSample } from "./gesture";
 import { attach, detach, GRASP_TIMEOUT_S, graspIndex, holding, isAttached, type Grasp } from "./grasp";
 import { solveIk, solvePose, type IkResult } from "./ik";
 import { describeLiquid, planLiquid, type Liquid, type LiquidPlan, type LiquidWhere } from "./liquid";
@@ -61,7 +65,12 @@ export type Rollout = {
   end?: ObjectState[];
   /** where the liquid was when the rollout ended, if the scene has any */
   liquid?: LiquidWhere;
+  /** each gesture path the program followed: the only check a gesture has */
+  followed?: Followed[];
 };
+
+/** `speed`: 1 at the clip's own pace, less when the arm followed slower (FOLLOW_JOINT_RAD_S) */
+export type Followed = Reach & { step_id: string; speed: number };
 
 export type ObjectState = {
   object: string;
@@ -87,6 +96,13 @@ const SETTLE_S = 1;
 const RELEASE_S = 0.3;
 const CLOSE_RAD_S = 0.6;
 const SQUARE_RAD = (3 * Math.PI) / 180;
+/** a pose IK places within this is reached (lib/sim/ik.ts REACH_POS_M) */
+const IK_PRECISION_MM = 2;
+/**
+ * A gesture is played slower than the clip, never faster, when a joint would have to turn faster than this. At it
+ * the arm keeps a measured wave within about a millimetre (docs/MEASUREMENTS.md section 11); at 2.9 rad/s, within 5.
+ */
+const FOLLOW_JOINT_RAD_S = 2;
 /** a tilt is solved as a pose every TILT_KEY_S along its path, and played back joint-interpolated */
 const TILT_KEY_S = 0.05;
 /**
@@ -109,11 +125,13 @@ const ease = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : (1 - Math.cos(Math.PI * u
 
 export function environment(spec: TaskSpec, scenario?: Scenario): Environment {
   const nominal = buildScene(spec);
+  // the gesture paths, drawn on the stage; nothing touches them
+  const markers = pathMarkersXml(spec.steps.flatMap((s) => (s.verb === "gesture" && s.gesture ? [s.gesture.path] : [])));
   if (!scenario) {
     const laid = layoutMissingPoses(spec).spec;
     const liquid = planLiquid(laid, nominal);
     return {
-      worldbody: nominal.worldbody,
+      worldbody: `${nominal.worldbody}\n${markers}`,
       graspable: nominal.manipulated,
       gravity_g: 1,
       spec: laid,
@@ -127,7 +145,7 @@ export function environment(spec: TaskSpec, scenario?: Scenario): Environment {
   const world = buildScene(p.spec, p.tilts);
   const liquid = planLiquid(p.spec, world);
   return {
-    worldbody: world.worldbody,
+    worldbody: `${world.worldbody}\n${markers}`,
     graspable: world.manipulated,
     gravity_g: p.gravity_g,
     spec: p.spec,
@@ -162,9 +180,10 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
     log.push(`${t.toFixed(2)} ${describeLiquid(where, (id) => env.spec.objects.find((o) => o.id === id)?.name ?? id, g)}`);
     return { liquid: where };
   };
+  const followed: Followed[] = [];
   const fail = (r: Omit<Rollout, "pass" | "t" | "log">): Rollout => {
     log.push(`fail: ${r.why}`);
-    return { pass: false, ...(r.failed_step_id !== undefined && opIndex !== undefined ? { failed_op: opIndex } : {}), ...r, t, log, end: snapshot(sim, env, world(), held), ...liquidNow() };
+    return { pass: false, ...(r.failed_step_id !== undefined && opIndex !== undefined ? { failed_op: opIndex } : {}), ...r, t, log, end: snapshot(sim, env, world(), held), ...liquidNow(), ...(followed.length ? { followed } : {}) };
   };
 
   /** ramp the arm joints to q, then wait until it has arrived */
@@ -442,6 +461,68 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             setTilted(op.deg === 0 ? null : { ...tl!, deg: op.deg });
             break;
           }
+          case "follow": {
+            const gestureStep = env.spec.steps.find((x) => x.id === s.step_id);
+            const g = gestureStep?.verb === "gesture" ? gestureStep.gesture : undefined;
+            if (!g) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `follow: step ${s.step_id} is not a gesture with a path` });
+            const path = g.path;
+            if (path.length < 2) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `follow: the gesture of step ${s.step_id} has no path yet (it is traced from the clip)` });
+            if (path.some((p, k) => k > 0 && p.t_s < path[k - 1].t_s)) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `follow: the path of step ${s.step_id} goes back in time` });
+            const site = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, SO101_GRASP_SITE);
+            // every point solved before the arm moves: the first from a front approach, the rest from the one
+            // before, keeping its tilt (yaw left free), so consecutive poses stay on one branch of the arm
+            const keys: number[][] = [];
+            let off = { i: 0, mm: 0 };
+            const scratch = new mujoco.MjData(model);
+            try {
+              (scratch.qpos as Float64Array).set(data.qpos as Float64Array);
+              const at = (k: number) => path[k].xyz_mm.map((v) => v * MM) as [number, number, number];
+              const first = solveIk(mujoco, model, scratch, at(0), "front", undefined, SO101_GRASP_SITE);
+              const rot0 = vec(scratch.site_xmat, site, 9);
+              keys.push(first.q);
+              off = { i: 0, mm: first.pos_err_mm };
+              for (let k = 1; k < path.length; k++) {
+                const r = solvePose(mujoco, model, scratch, SO101_GRASP_SITE, at(k), rot0, keys[k - 1], { yaw: 0 });
+                keys.push(r.q);
+                if (r.pos_err_mm > off.mm) off = { i: k, mm: r.pos_err_mm };
+              }
+            } finally {
+              scratch.delete();
+            }
+            // within the solver's own precision a pose is reached; a tighter tolerance is left to the trace to judge
+            if (off.mm > Math.max(g.reach_mm, IK_PRECISION_MM)) {
+              return fail({ failed_step_id: s.step_id, failure_class: "embodiment_limit", why: `follow: point ${off.i + 1} of ${path.length} is out of the arm's reach by ${off.mm.toFixed(1)} mm (the limit is ${g.reach_mm} mm)` });
+            }
+            const peak = Math.max(0, ...keys.slice(1).map((q, k) => Math.max(...q.map((v, j) => Math.abs(v - keys[k][j]))) / Math.max(path[k + 1].t_s - path[k].t_s, dt)));
+            const stretch = Math.max(1, peak / FOLLOW_JOINT_RAD_S);
+            const timed = path.map((p) => ({ ...p, t_s: p.t_s * stretch }));
+            log.push(`${t.toFixed(2)} follow ${path.length} points over ${timed.at(-1)!.t_s.toFixed(1)} s, ${stretch > 1 ? `at ${(1 / stretch).toFixed(2)}x the clip's speed: at its own a joint would turn at ${peak.toFixed(1)} rad/s, and the arm is held to ${FOLLOW_JOINT_RAD_S}` : `joints up to ${peak.toFixed(1)} rad/s`}`);
+            yield* moveArm(keys[0]);
+            const trace: TraceSample[] = [];
+            const record = () => trace.push({ t_s: t, xyz_mm: vec(data.site_xpos, site, 3).map((v) => v / MM) as [number, number, number] });
+            const start = t;
+            // the joints interpolated between the points' poses, on the clip's timing (slowed down if it had to be)
+            let j = 0;
+            for (let w = 0; w < timed.at(-1)!.t_s; w += dt) {
+              while (j < timed.length - 2 && timed[j + 1].t_s <= w) j++;
+              const span = timed[j + 1].t_s - timed[j].t_s;
+              const u = span > 0 ? Math.min(1, Math.max(0, (w - timed[j].t_s) / span)) : 1;
+              for (let i = 0; i < ARM; i++) ctrl[i] = keys[j][i] + (keys[j + 1][i] - keys[j][i]) * u;
+              yield* step();
+              record();
+            }
+            for (let i = 0; i < ARM; i++) ctrl[i] = keys.at(-1)![i];
+            for (let w = 0; w < SETTLE_S; w += dt) {
+              yield* step();
+              record();
+              if (Math.max(...qvel().slice(0, ARM).map(Math.abs)) < ARRIVED_RAD_S) break;
+            }
+            const f: Followed = { step_id: s.step_id, speed: Math.round((1 / stretch) * 100) / 100, ...reachCheck(timed, trace, g.reach_mm, start) };
+            followed.push(f);
+            log.push(`${t.toFixed(2)} follow: ${describeReach(f)}`);
+            if (f.missed.length) return fail({ failed_step_id: s.step_id, failure_class: "embodiment_limit", why: `follow: ${describeReach(f)}` });
+            break;
+          }
           case "wait_until": {
             let c = evaluate(world(), op.predicate);
             for (let w = 0; !c.ok && w < op.timeout_s; w += dt) {
@@ -466,7 +547,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
       }
     }
   }
-  return { pass: true, t, log, end: snapshot(sim, env, world(), held), ...liquidNow() };
+  return { pass: true, t, log, end: snapshot(sim, env, world(), held), ...liquidNow(), ...(followed.length ? { followed } : {}) };
 }
 
 /** Measured, never inferred: position, speed and seating of every manipulated object. A check that throws is left out. */

@@ -28,6 +28,8 @@ export function opText(op: ProgramOp): string {
       return `grasp ${op.object} at ${op.aperture_mm} mm`;
     case "release":
       return "release";
+    case "follow":
+      return "follow the gesture path";
     case "tilt":
       return `tilt ${op.deg}°${op.toward ? ` toward ${op.toward}` : ""} over ${op.seconds} s`;
     case "wait_until":

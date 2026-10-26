@@ -126,6 +126,27 @@ export function normalizeSpec(raw: unknown): Normalized {
           s.target.fixture = f;
         }
       }
+      if (typeof s.verb === "string" && s.verb.toLowerCase() === "gesture") {
+        // a gesture handles nothing and goes nowhere: whatever the model named as its object (the hand, the
+        // camera) or its target is not one
+        s.verb = "gesture";
+        if (s.object !== undefined) {
+          if (s.object !== null && s.object !== "") warnings.push(`${where}: a gesture handles no object; ${show(s.object)} dropped`);
+          delete s.object;
+        }
+        if (s.target !== undefined) {
+          if (s.target !== null) warnings.push(`${where}: a gesture has no target; ${show(s.target)} dropped`);
+          delete s.target;
+        }
+        if (!isRec(s.gesture)) s.gesture = {};
+        const g = s.gesture as Rec;
+        const hand = typeof g.hand === "string" ? g.hand.toLowerCase() : undefined;
+        if (hand === "left" || hand === "right") g.hand = hand;
+        else if (g.hand !== undefined) {
+          warnings.push(`${where}: hand ${show(g.hand)} is not left or right; dropped`);
+          delete g.hand;
+        }
+      }
       s.preconditions = normalizePredicates(s.preconditions, `${where} preconditions`, warnings, questions);
       s.success = normalizePredicates(s.success, `${where} success`, warnings, questions);
     });
@@ -133,7 +154,23 @@ export function normalizeSpec(raw: unknown): Normalized {
   return { data: spec, warnings };
 }
 
-/** Normalize a raw Program: unknown or malformed predicate kinds become `ask` slots instead of guesses. */
+/** Ops that take no operands, which a model sometimes writes as a bare name. */
+const BARE_OPS = new Set(["follow", "release"]);
+
+/** An op a model wrote as a string: its JSON, or the name of an op with no operands; anything else as it was. */
+function opFromString(op: unknown): unknown {
+  if (typeof op !== "string") return op;
+  const text = op.trim();
+  if (BARE_OPS.has(text)) return { op: text };
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return isRec(parsed) ? parsed : op;
+  } catch {
+    return op;
+  }
+}
+
+/** Normalize a raw Program: ops written as strings are read, unknown or malformed predicate kinds become `ask` slots instead of guesses. */
 export function normalizeProgram(raw: unknown): Normalized {
   const warnings: string[] = [];
   if (!isRec(raw)) return { data: raw, warnings };
@@ -142,7 +179,9 @@ export function normalizeProgram(raw: unknown): Normalized {
   for (const step of program.steps) {
     if (!isRec(step) || !Array.isArray(step.ops)) continue;
     const stepId = show(step.step_id);
-    step.ops = step.ops.map((op: unknown) => {
+    step.ops = step.ops.map((raw: unknown) => {
+      const op = opFromString(raw);
+      if (op !== raw) warnings.push(`step ${stepId}: op ${show(raw)} written as a string; read as ${show(op)}`);
       if (!isRec(op) || (op.op !== "assert" && op.op !== "wait_until")) return op;
       const pred = isRec(op.predicate) ? op.predicate : null;
       const canonical = pred ? lookup(PREDICATE_ALIASES, key(pred.kind)) : undefined;

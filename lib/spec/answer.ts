@@ -23,7 +23,8 @@ export function formFor(spec: TaskSpec, slot: string): AskForm {
   if (unit) return { kind: "number", unit };
   const path = parsePath(slot);
   const step = path[0] === "steps" && path[2] === "success" && path.length === 3 ? spec.steps.find((s) => s.id === path[1]) : undefined;
-  if (!step) return { kind: "unsupported" };
+  // a gesture has no success to choose: its check is the path itself
+  if (!step || step.object === undefined) return { kind: "unsupported" };
   const name = (id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
   const still: Predicate = { kind: "object_still", object: step.object };
   const options: { label: string; predicates: Predicate[] }[] = [];
@@ -55,7 +56,8 @@ export function askable(spec: TaskSpec, slot: string): boolean {
   const [list, id, field, sub, ...rest] = parsePath(slot);
   if (rest.length) return false;
   if (list === "objects") return spec.objects.some((o) => o.id === id && o.role === "fixture") && field === "pocket_clearance_mm" && sub === undefined;
-  if (list !== "steps" || !spec.steps.some((s) => s.id === id)) return false;
+  // a gesture is checked by its path alone: nothing about it is asked
+  if (list !== "steps" || !spec.steps.some((s) => s.id === id && s.verb !== "gesture")) return false;
   return (field === "success" && sub === undefined) || (field === "tolerances" && (AXES as readonly string[]).includes(sub));
 }
 
@@ -71,14 +73,15 @@ export function withRequiredAsks(spec: TaskSpec, program: Program): { program: P
   const added: string[] = [];
   const steps = program.steps.map((ps) => {
     const step = spec.steps.find((s) => s.id === ps.step_id);
-    if (step?.verb === "pour" && step.pour) {
+    if (!step || step.object === undefined) return ps;
+    if (step.verb === "pour" && step.pour) {
       const success = `steps[${step.id}].success`;
       if (step.success.length > 0 || asked.has(success)) return ps;
       added.push(success);
       const ask = { op: "ask" as const, slot: success, question: `How much of what is in the ${name(step.object)} has to end up in the ${name(step.pour.into)} for the pour to count?`, why: "the step has no success check" };
       return { ...ps, ops: [ask, ...ps.ops] };
     }
-    if (!step?.target || (step.verb !== "insert" && step.verb !== "place")) return ps;
+    if (!step.target || (step.verb !== "insert" && step.verb !== "place")) return ps;
     const asks: Extract<ProgramOp, { op: "ask" }>[] = [];
     const fixture = spec.objects.find((o) => o.id === step.target!.frame);
     const clearance = `objects[${step.target.frame}].pocket_clearance_mm`;

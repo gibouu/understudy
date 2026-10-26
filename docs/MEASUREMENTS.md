@@ -237,6 +237,22 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 
 **Limits and spend.** Two days (the Nemotron rows for patching and labelling were measured on 25 October, everything else on 26 October), one host, list prices; the "off" switch differs by model family, and each row says which one it used. Section 10's ledger scripts (`compare-*`) charged US$15.97 under their own cap of US$25. Of that, US$8.82 are worst-case estimates for calls made while Token Factory had withdrawn Qwen3.5 397B: 571 refused with HTTP 404 and 3 in flight when we stopped that run. A refused call does no work, so the bill for this section should be nearer US$7.15, including the US$0.68 of the stopped second Qwen3.5 attempt.
 
+## 11. Following a gesture
+
+`samples/iss-wave.mp4` (8 s at 30 fps, an astronaut waving to the camera) traced in the browser by `lib/vision/trace.ts` on 26 October: Super VL labels one gesture step of the right hand over 0 to 8 s; MediaPipe pose sees the hand in 240 of 240 frames, on an arm of 492 mm, so the path is drawn at 508 mm per metre the hand moved. The landmarks are kept in `tests/fixtures/vision/wave.json`, and `tests/sim/wave-fixture.test.ts` replays them through the scaling and the arm.
+
+- The wave turns back about three times a second. Sampled at 10 fps it aliases into jitter (the first trace drew a path 24 mm across); the trace samples at the clip's 30 fps. A three-sample average weighted 1, 2, 1 takes off frame-to-frame jitter and keeps 90% of a 3 Hz swing.
+- In a palm wave the hand turns about the wrist, so the hand's centre (the mean of the pose model's wrist, index and pinky landmarks) moves a little more than the wrist: 44 mm across and 56 mm high on the robot's scale, against 36 and 60 for the wrist alone. The path follows the hand's centre, which is what the gripper stands for, and averages three landmarks instead of one.
+- MuJoCo (5 ms step, the SO-101's position actuators), point between the pads against the 240 points, reach 5 mm, each point within 0.5 s after its own time:
+
+| Played | Fastest joint | Reached within 5 mm | Farthest | First within reach, latest |
+|---|---|---|---|---|
+| At the clip's speed, Earth | 2.9 rad/s | 238 of 240 | 5.2 mm | |
+| At 0.70x (joints held to 2 rad/s), Earth | 2.0 rad/s | 240 of 240 | 1.1 mm | 0.01 s |
+| At 0.70x, orbit (0 g) | 2.0 rad/s | 240 of 240 | 1.0 mm | 0.01 s |
+
+So the interpreter plays a gesture slower than the clip whenever a joint would turn faster than 2 rad/s, and the page says by how much. The unaveraged landmarks would ask a joint for 6.2 rad/s. Live spend for this section: six Super VL labels of the clip while the label prompt and clean-up were tuned, under US$0.03; a program made only of gestures needs no model.
+
 ## Reproduce
 
 Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend.

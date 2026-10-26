@@ -32,8 +32,10 @@ export const SHAPES = ["cylinder", "box", "sphere"] as const;
 /** none: a box; axial: a cylinder (yaw does not matter); full: a sphere. */
 export const SYMMETRIES = ["none", "axial", "full"] as const;
 export const ROLES = ["manipulated", "fixture", "obstacle", "surface"] as const;
-export const VERBS = ["reach", "grasp", "move", "insert", "place", "release", "retract", "pour"] as const;
+export const VERBS = ["reach", "grasp", "move", "insert", "place", "release", "retract", "pour", "gesture"] as const;
 export const APPROACHES = ["top", "side", "front"] as const;
+/** The person's own hands, as MediaPipe names them. */
+export const HANDS = ["left", "right"] as const;
 /** Closed enum: the simulator evaluates exactly these and nothing else. */
 export const PREDICATES = [
   "contact_both_pads",
@@ -142,6 +144,12 @@ export const SpecObject = z.object({
 });
 export type SpecObject = z.infer<typeof SpecObject>;
 
+/** How close (mm) the point between the pads must pass to a gesture path's point, unless the spec says otherwise. */
+export const GESTURE_REACH_MM = 5;
+/** One point of a gesture path: the hand, in the world frame, `t_s` seconds after the gesture starts. */
+export const PathPoint = z.object({ t_s: z.number().nonnegative(), xyz_mm: Vec3mm });
+export type PathPoint = z.infer<typeof PathPoint>;
+
 export const ViaPoint = z.object({
   /** frame the point is expressed in: an object id or "world" */
   frame: z.string().min(1),
@@ -155,8 +163,8 @@ export const Step = z
   .object({
     id: z.string().min(1),
     verb: z.enum(VERBS),
-    /** manipulated object id */
-    object: z.string().min(1),
+    /** manipulated object id; required, except on a gesture step, which handles nothing */
+    object: z.string().min(1).optional(),
     target: z.object({ fixture: z.enum(FIXTURES), frame: z.string().min(1) }).optional(),
     via_points: z.array(ViaPoint).default([]),
     preconditions: z.array(Predicate).default([]),
@@ -171,12 +179,25 @@ export const Step = z
         tilt_s: z.number().positive().optional(),
       })
       .optional(),
+    /**
+     * verb "gesture": no object; the point between the pads follows `path`, the person's hand (MediaPipe on the
+     * clip, in the browser) scaled into the arm's reach. Empty until it is traced. A point counts as reached
+     * when that point passes within `reach_mm` of it, in order; a gesture has no other success.
+     */
+    gesture: z
+      .object({
+        hand: z.enum(HANDS).optional(),
+        path: z.array(PathPoint).default([]),
+        reach_mm: z.number().positive().default(GESTURE_REACH_MM),
+      })
+      .optional(),
     t_start_s: z.number().nonnegative(),
     t_end_s: z.number().nonnegative(),
     source: Source,
     sources: Sources,
   })
-  .refine((s) => s.t_end_s >= s.t_start_s, { message: "t_end_s must be >= t_start_s", path: ["t_end_s"] });
+  .refine((s) => s.t_end_s >= s.t_start_s, { message: "t_end_s must be >= t_start_s", path: ["t_end_s"] })
+  .refine((s) => s.object !== undefined || s.verb === "gesture", { message: "only a gesture step has no object", path: ["object"] });
 export type Step = z.infer<typeof Step>;
 
 export const TaskSpec = z.object({
@@ -221,6 +242,8 @@ export const ProgramOp = z.discriminatedUnion("op", [
     toward: z.string().min(1).optional(),
     seconds: z.number().positive().default(1),
   }),
+  /** Trace the gesture path of the step it is in with the point between the pads, then check each point was reached. */
+  z.object({ op: z.literal("follow") }),
   z.object({
     op: z.literal("wait_until"),
     predicate: Predicate,

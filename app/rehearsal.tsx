@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorldRun } from "@/lib/notes/note";
 import { SimClient } from "@/lib/sim/client";
+import { describeReach } from "@/lib/sim/gesture";
 import type { Rollout } from "@/lib/sim/interpreter";
 import { StageRenderer } from "@/lib/sim/render";
 import { PatchLoop } from "./patch-loop";
@@ -13,6 +14,9 @@ import { GRAVITIES, type GravityName, type Program, type TaskSpec } from "@/lib/
 const WORLDS: GravityName[] = ["earth", "orbit"];
 
 type Row = { world: GravityName; result: Rollout | { error: string } | "running" };
+
+/** What a rollout that followed a gesture path found, in words: a gesture's only check. */
+const reachOf = (r: Rollout) => r.followed?.map((f) => describeReach(f)).join("; ");
 
 /** Where the liquid ended, as the rollout logged it, when the scene has one. */
 const liquidOf = (r: Rollout) => r.log.findLast((l) => l.includes(" liquid: "))?.split(" liquid: ")[1];
@@ -28,6 +32,8 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
   /** the last rehearsal in every world, when it failed somewhere a patch can reach; `n` keys a fresh patch loop */
   const [failing, setFailing] = useState<{ program: Program; runs: WorldRun[]; n: number } | null>(null);
   const [patching, setPatching] = useState(false);
+  /** a gesture handles nothing: there is no task to succeed at, only a path to follow */
+  const gesture = spec.steps.find((s) => s.verb === "gesture" && s.gesture);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -89,8 +95,9 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
     onFail(null);
     const out = await play(program, worlds, true);
     const runs = out.flatMap(({ world, result }) => (typeof result === "object" && !("error" in result) ? [{ world, rollout: result }] : []));
-    // a spec gap (an unanswered question, an unknown object) is the interview's to fix, not a patch's
-    if (worlds.length === WORLDS.length && runs.length === WORLDS.length && runs.some((r) => !r.rollout.pass) && runs.every((r) => r.rollout.pass || r.rollout.failure_class !== "spec_gap")) {
+    // a spec gap (an unanswered question, an unknown object) is the interview's to fix, not a patch's; a gesture's
+    // program is its path, so there is nothing for a patch to change
+    if (!gesture && worlds.length === WORLDS.length && runs.length === WORLDS.length && runs.some((r) => !r.rollout.pass) && runs.every((r) => r.rollout.pass || r.rollout.failure_class !== "spec_gap")) {
       setFailing((f) => ({ program, runs, n: (f?.n ?? 0) + 1 }));
     }
     setBusy(false);
@@ -111,6 +118,11 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
         <canvas ref={canvasRef} className="h-full w-full" />
         <div className="pointer-events-none absolute left-3 top-3 rounded bg-white/80 px-2 py-1 text-xs text-neutral-700">{status}</div>
       </div>
+      {gesture && (
+        <p className="text-sm text-neutral-600">
+          This clip is a gesture: the arm handles nothing, so there is no task to succeed at. The only check is that the point between the gripper&apos;s pads comes within {gesture.gesture!.reach_mm} mm of each point of the hand&apos;s path, in order, at most half a second behind it. When the clip is faster than the arm&apos;s joints turn, the arm follows it slower and says by how much.
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 text-sm">
         <button className="rounded bg-neutral-900 px-3 py-1.5 text-white disabled:opacity-40" disabled={!ready || busy || patching} onClick={() => rehearse(WORLDS)}>
           Rehearse on Earth, then in orbit
@@ -140,10 +152,10 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
                   {world} · {GRAVITIES[world]} g
                 </td>
                 <td className="py-1.5 pr-4 font-medium">
-                  {result === "running" ? "running…" : "error" in result ? <span className="text-red-700">error</span> : result.pass ? <span className="text-emerald-700">pass</span> : <span className="text-red-700">fail{result.failed_step_id ? ` at ${result.failed_step_id}` : ""}</span>}
+                  {result === "running" ? "running…" : "error" in result ? <span className="text-red-700">error</span> : result.pass ? <span className="text-emerald-700">{gesture ? "path followed" : "pass"}</span> : <span className="text-red-700">fail{result.failed_step_id ? ` at ${result.failed_step_id}` : ""}</span>}
                 </td>
                 <td className="py-1.5 text-neutral-600">
-                  {result === "running" ? "" : "error" in result ? result.error : result.pass ? `done in ${result.t.toFixed(1)} s` : result.why}
+                  {result === "running" ? "" : "error" in result ? result.error : result.pass ? (reachOf(result) ? `${reachOf(result)}; done in ${result.t.toFixed(1)} s` : `done in ${result.t.toFixed(1)} s`) : result.why}
                   {result !== "running" && !("error" in result) && liquidOf(result) ? `. Liquid: ${liquidOf(result)}.` : ""}
                 </td>
               </tr>

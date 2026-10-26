@@ -473,5 +473,88 @@
     }
    ]
   }
+ },
+ {
+  "clip_sha256": "4b1646700b5a7aef4d78fa3c3c817d70a173f844da111bd83010efdc18ddcb44",
+  "hint": "aboard the ISS, waving hello to the camera with one hand, a microphone in the other",
+  "result": {
+   "status": "done",
+   "value": {
+    "version": 1,
+    "title": "ISS astronaut waves hello while holding a microphone",
+    "summary": "Aboard the ISS, a person in a red shirt waves with one hand and holds a microphone in the other, greeting the camera. No objects are manipulated and there are no robot-relevant steps.",
+    "objects": [
+     {
+      "id": "mic1",
+      "name": "microphone",
+      "shape": "cylinder",
+      "size_mm": [
+       25,
+       25,
+       160
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        0,
+        0,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.3,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "gesture",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "gesture": {
+       "hand": "right",
+       "path": [],
+       "reach_mm": 5
+      },
+      "t_start_s": 0,
+      "t_end_s": 8,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "anchor": {
+     "t_s": 0,
+     "confidence": 0.2
+    },
+    "warnings": [],
+    "open_questions": [
+     "microphone pose and scale cannot be determined without a reference object"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "4b1646700b5a7aef4d78fa3c3c817d70a173f844da111bd83010efdc18ddcb44",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "warnings": [
+    "steps[0].gesture.path: step \"s1\" is a gesture with no path yet: the hand's path is traced from the clip"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/Nemotron-3.5-Super-VL",
+     "prompt_tokens": 2050,
+     "completion_tokens": 238,
+     "cached_tokens": 0,
+     "seconds": 2.235
+    }
+   ]
+  }
  }
 ]

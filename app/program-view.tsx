@@ -28,6 +28,8 @@ function line(op: ProgramOp, name: (id?: string) => string): string {
       return `close the gripper to ${op.aperture_mm} mm on the ${name(op.object)}`;
     case "release":
       return "open the gripper";
+    case "follow":
+      return "follow the hand's path traced from the clip with the point between the pads, point by point";
     case "tilt":
       return op.deg === 0 ? `turn it back upright over ${op.seconds} s` : `tilt it ${op.deg}° toward ${op.toward ? `the ${name(op.toward)}` : "away from the robot"} over ${op.seconds} s`;
     case "wait_until":
@@ -60,7 +62,7 @@ export function ProgramView({ spec, program, failure }: { spec: TaskSpec; progra
             return (
               <li key={s.step_id}>
                 <p className="text-neutral-500">
-                  {s.step_id} · {step ? `${step.verb} ${name(step.object)}${step.target ? ` into the ${name(step.target.frame)}` : ""}` : "unknown step"}
+                  {s.step_id} · {step ? `${step.verb}${step.object === undefined ? "" : ` ${name(step.object)}`}${step.target ? ` into the ${name(step.target.frame)}` : ""}` : "unknown step"}
                 </p>
                 <ol className="ml-4 flex flex-col">
                   {s.ops.map((op, i) => {

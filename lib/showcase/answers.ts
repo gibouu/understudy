@@ -33,7 +33,7 @@ export function slotWords(spec: TaskSpec, slot: string): string {
   const name = (x: string) => spec.objects.find((o) => o.id === x)?.name ?? x;
   if (list === "objects" && field === "pocket_clearance_mm") return `the pocket clearance of the ${name(id)}`;
   const step = list === "steps" ? spec.steps.find((s) => s.id === id) : undefined;
-  const what = step ? `${step.verb} the ${name(step.object)}` : `step ${id}`;
+  const what = step ? (step.object === undefined ? step.verb : `${step.verb} the ${name(step.object)}`) : `step ${id}`;
   if (field === "success") return `when "${what}" counts as done`;
   if (field === "tolerances" && sub) return `how far off "${what}" may land (${sub.replace(/_(mm|deg)$/, "")})`;
   return slot;
