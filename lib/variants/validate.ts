@@ -241,7 +241,8 @@ function geometryProblem(spec: TaskSpec): string | null {
       const [a, b] = [spec.objects[i], spec.objects[j]];
       const z = Math.min(bottom(a) + heightMm(a), bottom(b) + heightMm(b)) - Math.max(bottom(a), bottom(b));
       if (z <= REST_MM || !footprintsOverlap(a, b)) continue;
-      if ((a.role === "manipulated" && opened(a, b).inside) || (b.role === "manipulated" && opened(b, a).inside)) continue;
+      // whatever stands whole in another's hollow (a held object in a pocket, a container in a tray) is not a clash
+      if (opened(a, b).inside || opened(b, a).inside) continue;
       return `${a.name} and ${b.name} would be in the same place`;
     }
   }

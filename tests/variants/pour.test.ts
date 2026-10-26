@@ -176,6 +176,17 @@ describe("the bench of a pour, as the scene builds it", () => {
     expect(object(variant(buildVariant(perched, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1)).spec, "cup").pose).toEqual(object(perched, "cup").pose);
   });
 
+  it("lets the receiving container stand inside an open tray", () => {
+    const tray = base((s) => {
+      Object.assign(object(s, "block"), { size_mm: [100, 100, 46], liquid_ml: 1, pose: { xyz_mm: [250, 80, 23], yaw_deg: 0, frame: "world" } });
+      object(s, "bowl").pose = { xyz_mm: [250, 80, 24], yaw_deg: 0, frame: "world" };
+      object(s, "cup").pose = { xyz_mm: [250, 0, 27], yaw_deg: 0, frame: "world" };
+    });
+    expect(why(buildVariant(tray, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1))).toBe("");
+    // one that does not fit its opening is still in the tray's walls
+    expect(why(buildVariant(tray, idea("Wider bowl", ["objects[bowl].size_mm", [96, 96, 40]]), 1))).toBe("block and bowl would be in the same place");
+  });
+
   it("stands a container inside an open container on that container's floor", () => {
     // the block holds liquid, so the scene builds it as an open box with 4 mm walls and floor
     const nested = base((s) => {
