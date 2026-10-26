@@ -81,3 +81,38 @@ describe("the recorded label of the hero clip, fitted to the bench", () => {
     }
   }, 60_000);
 });
+
+describe("fitToBench", () => {
+  const spec = TaskSpec.parse({
+    version: 1,
+    title: "t",
+    summary: "",
+    objects: [
+      { id: "a", name: "peg", shape: "cylinder", size_mm: [10, 10, 30], symmetry: "axial", role: "obstacle" },
+      { id: "b", name: "block", shape: "box", size_mm: [60, 60, 30], symmetry: "none", role: "surface" },
+      { id: "c", name: "tray", shape: "box", size_mm: [300, 200, 10], symmetry: "none", role: "surface" },
+    ],
+    steps: [
+      { id: "s1", verb: "insert", object: "a", target: { fixture: "pocket", frame: "b" }, preconditions: [{ kind: "contact_both_pads", object: "a" }], success: [{ kind: "inside_zone", object: "a", target: "c" }], t_start_s: 0, t_end_s: 1 },
+    ],
+    open_questions: ["Is a snug fit needed?", "Where is c?"],
+  });
+  const fit = fitToBench(spec).spec;
+
+  it("makes the moved object manipulated and its target a fixture", () => {
+    expect(fit.objects.map((o) => [o.id, o.role])).toEqual([
+      ["a", "manipulated"],
+      ["b", "fixture"],
+    ]);
+  });
+
+  it("gives a made-up grasp no checks, and drops checks on objects left out", () => {
+    expect(fit.steps[0]).toMatchObject({ verb: "grasp", preconditions: [], success: [] });
+    expect(fit.steps[1].success).toEqual([]);
+    expect(fit.steps[1].preconditions).toHaveLength(1);
+  });
+
+  it("drops only the questions about objects left out", () => {
+    expect(fit.open_questions).toEqual(["Is a snug fit needed?"]);
+  });
+});

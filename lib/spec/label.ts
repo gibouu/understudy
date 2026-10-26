@@ -59,7 +59,7 @@ export function tidyLabel(raw: unknown, durationS: number): Normalized {
     }
     data.steps = steps;
   }
-  if (isRec(data.anchor)) data.anchor.t_s = clamp(data.anchor.t_s);
+  if (isRec(data.anchor) && typeof data.anchor.t_s === "number") data.anchor.t_s = clamp(data.anchor.t_s);
 
   if (Array.isArray(data.objects)) {
     for (const o of data.objects.filter(isRec)) {

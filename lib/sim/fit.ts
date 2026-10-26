@@ -8,7 +8,7 @@
  * jaws hold. Everything else is reported, never silently dropped. A missing
  * pocket clearance stays missing: the compiler asks for it.
  */
-import type { SpecObject, Step, TaskSpec } from "@/lib/spec/schema";
+import type { Predicate, SpecObject, Step, TaskSpec } from "@/lib/spec/schema";
 
 /** Resting spots checked by tests/sim/demo-spec.test.ts: in reach, clear of each other. */
 const HELD_XY_MM = [200, -100] as const;
@@ -43,6 +43,7 @@ export function fitToBench(spec: TaskSpec): Fit {
   const [x, y, z] = pocket ? [sides[1], sides[2], sides[0]] : sides;
   const h: SpecObject = {
     ...held,
+    role: "manipulated",
     size_mm: [clamp(x, HELD_SIDE_MM), held.shape === "box" ? clamp(y, HELD_SIDE_MM) : clamp(x, HELD_SIDE_MM), Math.min(z, HELD_MAX_H_MM)],
     pose: { xyz_mm: [HELD_XY_MM[0], HELD_XY_MM[1], 0], yaw_deg: 0, frame: "world" },
     sources: { ...held.sources, pose: "fit", size_mm: "fit" },
@@ -54,6 +55,7 @@ export function fitToBench(spec: TaskSpec): Fit {
   const fp = Math.max(h.size_mm[0], h.size_mm[1]) + 2 * MAX_CLEARANCE_MM;
   const f: SpecObject = {
     ...fixture,
+    role: "fixture",
     size_mm: [clamp(fixture.size_mm[0], [fp, FIXTURE_SIDE_MAX_MM]), clamp(fixture.size_mm[1], [fp, FIXTURE_SIDE_MAX_MM]), clamp(fixture.size_mm[2], FIXTURE_H_MM)],
     pose: { xyz_mm: [FIXTURE_XY_MM[0], FIXTURE_XY_MM[1], 0], yaw_deg: 0, frame: "world" },
     sources: { ...fixture.sources, pose: "fit", size_mm: "fit" },
@@ -74,16 +76,22 @@ export function fitToBench(spec: TaskSpec): Fit {
     verb: "grasp",
     target: undefined,
     via_points: [],
+    preconditions: [],
     success: [],
     tolerances: {},
     t_end_s: act.t_start_s,
     source: "fit",
+    sources: {},
   };
-  const steps: Step[] = [
-    { ...grasp, id: "s1", target: undefined, via_points: [] },
-    { ...act, id: "s2", via_points: [] },
-  ];
   const dropped = spec.objects.filter((o) => o !== held && o !== fixture);
+  const gone = new Set(dropped.map((o) => o.id));
+  // a check on an object that is no longer in the scene cannot be evaluated
+  const kept = (ps: Predicate[]) => ps.filter((p) => !(p.object && gone.has(p.object)) && !(p.target && gone.has(p.target)));
+  const steps: Step[] = [
+    { ...grasp, id: "s1", target: undefined, via_points: [], preconditions: kept(grasp.preconditions), success: kept(grasp.success) },
+    { ...act, id: "s2", via_points: [], preconditions: kept(act.preconditions), success: kept(act.success) },
+  ];
+  const mentions = (q: string, id: string) => new RegExp(`(^|[^\\w])${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^\\w]|$)`).test(q);
   if (dropped.length) warnings.push(`left out of the rehearsal: ${dropped.map((o) => o.name).join(", ")}`);
   if (spec.steps.length > 2) warnings.push(`rehearsing ${grasp.id === "grasp" ? "a grasp" : `step ${grasp.id}`} and step ${act.id} of ${spec.steps.length}`);
 
@@ -94,7 +102,7 @@ export function fitToBench(spec: TaskSpec): Fit {
       steps,
       anchor: undefined,
       // questions about dropped objects or poses no longer apply; size questions are answered by the fit
-      open_questions: spec.open_questions.filter((q) => !dropped.some((o) => q.includes(o.id)) && !/size_mm|pose|position|dimension/i.test(q)),
+      open_questions: spec.open_questions.filter((q) => !dropped.some((o) => mentions(q, o.id)) && !/size_mm|pose|position|dimension/i.test(q)),
     },
     warnings,
   };

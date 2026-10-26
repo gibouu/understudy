@@ -32,8 +32,9 @@ function replay(sha?: string): StageResult<TaskSpec> {
 
 export async function POST(req: Request): Promise<NextResponse<StageResult<TaskSpec>>> {
   const body = await req.json().catch(() => null);
-  const sha = typeof body?.clip_sha256 === "string" ? body.clip_sha256 : undefined;
-  const client = wantsReplay(req) ? null : tokenFactory({ timeout: 50_000, maxRetries: 1 });
+  const sha = typeof body?.clip_sha256 === "string" && /^[0-9a-f]{64}$/.test(body.clip_sha256) ? body.clip_sha256 : undefined;
+  // a re-ask resends the video: two 25 s attempts and no SDK retry stay inside maxDuration
+  const client = wantsReplay(req) ? null : tokenFactory({ timeout: 25_000, maxRetries: 0 });
   if (!client) return NextResponse.json(replay(sha));
 
   const video = body?.video;
