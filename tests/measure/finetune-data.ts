@@ -74,6 +74,8 @@ export type Example = {
   prompt_tokens: number;
   /** the answer's tokens, reasoning excluded */
   answer_tokens: number;
+  /** the program the patch was written for: with case_id and seed it rebuilds the state, so another model's patch can be rolled out */
+  knobs: Knobs;
 };
 
 export const MAX_PATCHES = 5;
@@ -213,6 +215,7 @@ export function replayRun(mj: MainModule, results: SavedResults, run: SavedRun, 
       score_after: scoreAfter,
       prompt_tokens: q.call.prompt_tokens,
       answer_tokens: q.call.completion_tokens - (q.call.reasoning_tokens ?? 0),
+      knobs: { ...knobs },
     });
     // a replaced no-op saw the same prompt (escalation) or the prompt before the retry note; its rollout would have repeated this one
     const inner = p.escalated_after_noop ?? p.retried_after_noop;
@@ -256,7 +259,7 @@ export const pairLine = (p: Built["pairs"][number]) => ({
   rejected: [{ role: "assistant", content: p.rejected.assistant }],
 });
 /** the metadata of an example, line-aligned with its chat line in the *.meta.jsonl files */
-export const metaLine = (e: Example) => ({ case_id: e.case_id, seed: e.seed, arm: e.arm, attempt: e.attempt, patcher: e.patcher, model: e.model, pass_after: e.pass_after, score_before: e.score_before, score_after: e.score_after, prompt_tokens: e.prompt_tokens, answer_tokens: e.answer_tokens });
+export const metaLine = (e: Example) => ({ case_id: e.case_id, seed: e.seed, arm: e.arm, attempt: e.attempt, patcher: e.patcher, model: e.model, pass_after: e.pass_after, score_before: e.score_before, score_after: e.score_after, prompt_tokens: e.prompt_tokens, answer_tokens: e.answer_tokens, knobs: e.knobs });
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 

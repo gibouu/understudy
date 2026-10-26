@@ -195,8 +195,12 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       type Trace = { session: string | null; parent: string | null };
       const client = tf.tokenFactory({ timeout: 240_000, maxRetries: 0 });
       if (!client) throw new Error("no Token Factory client");
-      /** issue #97: the models our evaluation endpoint serves; billed by the hour, not by the token */
-      const ENDPOINT_MODELS = new Set(["nano-base", "nano-ft"]);
+      /**
+       * issue #97: models billed by the hour, not by the token: the two our AI Cloud endpoint serves, and a model
+       * tuned on Token Factory, served on a dedicated endpoint under its routing key (PATCH_TUNED_MODEL)
+       */
+      const TUNED = process.env.PATCH_TUNED_MODEL;
+      const ENDPOINT_MODELS = new Set(["nano-base", "nano-ft", ...(TUNED ? [TUNED] : [])]);
       let endpoint: typeof client | null = null;
       const endpointClient = async () => {
         if (endpoint) return endpoint;
@@ -259,7 +263,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
           let res: any;
           try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            res = await (cfg.endpoint ? await endpointClient() : client!).chat.completions.create(params as any);
+            res = await (cfg.endpoint ? endpoint! : client!).chat.completions.create(params as any);
           } catch (err) {
             const e = err as { status?: number; message?: string };
             // a failed call costs its estimate: the server may have done the work
@@ -391,6 +395,9 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         "ft-nano-tf": { ...NANO_OFF, model: tf.MODELS.nano, ...R2, label: "nano-off, Token Factory" },
         "ft-nano-base": { ...NANO_OFF, model: "nano-base", endpoint: true, params: VLLM_THINKING_OFF, ...R2, label: "nano-base-off, endpoint" },
         "ft-nano-ft": { ...NANO_OFF, model: "nano-ft", endpoint: true, params: VLLM_THINKING_OFF, ...R2, label: "nano-ft-off, endpoint" },
+        // issue #97 on Token Factory: Qwen3 30B-A3B (#96's stand-in for Nano) with our prompts, and its LoRA on our repairs
+        "ft-qwen-base": { ...cmpArm("Qwen/Qwen3-30B-A3B-Instruct-2507", "off"), label: "qwen3-30b, Token Factory" },
+        "ft-qwen-ft": { ...cmpArm("Qwen/Qwen3-30B-A3B-Instruct-2507", "off"), model: TUNED ?? "PATCH_TUNED_MODEL unset", label: "qwen3-30b tuned, dedicated endpoint" },
       };
 
       const file: ResultsFile = existsSync(OUT)
@@ -605,12 +612,17 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         const models = [cfg.model ?? tf.MODELS[cfg.role], ...(cfg.escalate ? [tf.MODELS[cfg.escalate.role]] : []), ...(cfg.rules ? [tf.MODELS.super] : [])];
         // checked on the resolved ids, so a role pointed at a comparator through UNDERSTUDY_MODEL_* is caught too
         const outside = models.find((m) => cmp.COMPARATORS[m]);
-        if (outside && SCRIPT !== "compare-patch") throw new Error(`${armId} calls ${outside}: run it with PATCH_SCRIPT=compare-patch, so its spend counts against the study's cap`);
+        // the fine-tune study (issue #97) runs its base comparator under its own script and cap
+        if (outside && SCRIPT !== "compare-patch" && SCRIPT !== "finetune-eval") throw new Error(`${armId} calls ${outside}: run it with PATCH_SCRIPT=compare-patch, so its spend counts against the study's cap`);
+        if (armId === "ft-qwen-ft" && !TUNED) throw new Error("ft-qwen-ft needs PATCH_TUNED_MODEL: the dedicated endpoint's routing key");
         return models;
       });
       const others = needed.filter((m) => cmp.COMPARATORS[m]);
       PRICES = { ...ledger.loadPrices(needed.filter((m) => !cmp.COMPARATORS[m] && !ENDPOINT_MODELS.has(m))), ...(others.length ? ledger.loadPrices(others, cmp.COMPARE_CATALOGUE) : {}) };
       for (const m of needed) price(m);
+      // an endpoint arm's settings are checked before any call: a missing URL or token file stops the run here,
+      // where inside a call it would read as five failed patches
+      if (arms.some((a) => ARMS[a]?.endpoint)) await endpointClient();
       for (const armId of arms) {
         const cfg = ARMS[armId];
         if (!cfg) throw new Error(`unknown arm ${armId}`);
