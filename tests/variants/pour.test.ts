@@ -161,9 +161,19 @@ describe("the bench of a pour, as the scene builds it", () => {
     const overhead = base((s) => s.objects.push({ ...structuredClone(object(s, "block")), id: "lamp", name: "lamp", role: "obstacle", size_mm: [60, 60, 10], pose: { xyz_mm: [300, 0, 140], yaw_deg: 0, frame: "world" } }));
     const v = variant(buildVariant(overhead, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1));
     expect(object(v.spec, "cup").pose!.xyz_mm).toEqual([300, 0, 73]);
-    // a taller block (the bench stands only the containers: the variant gives its pose) still lifts the cup that stands on it
-    const taller = idea("Taller block", ["objects[block].size_mm", [60, 60, 56]], ["objects[block].pose", { xyz_mm: [300, 0, 28], yaw_deg: 0, frame: "world" }]);
-    expect(object(variant(buildVariant(overhead, taller, 1)).spec, "cup").pose!.xyz_mm).toEqual([300, 0, 83]);
+    // the bench keeps a container's height: a taller block needs the cup's pose too, which is kept as given
+    const block = (...more: [string, unknown][]) => buildVariant(overhead, idea("Taller block", ["objects[block].size_mm", [60, 60, 56]], ["objects[block].pose", { xyz_mm: [300, 0, 28], yaw_deg: 0, frame: "world" }], ...more), 1);
+    expect(why(block())).toBe("block and cup would be in the same place");
+    expect(object(variant(block(["objects[cup].pose", { xyz_mm: [300, 0, 83], yaw_deg: 0, frame: "world" }])).spec, "cup").pose!.xyz_mm).toEqual([300, 0, 83]);
+  });
+
+  it("keeps a container standing across the target's rims where it stands", () => {
+    const perched = base((s) => {
+      object(s, "block").pose = { xyz_mm: [100, 0, 23], yaw_deg: 0, frame: "world" };
+      Object.assign(object(s, "bowl"), { size_mm: [52, 52, 60], pose: { xyz_mm: [250, 10, 30], yaw_deg: 0, frame: "world" } });
+      object(s, "cup").pose = { xyz_mm: [250, 0, 87], yaw_deg: 0, frame: "world" };
+    });
+    expect(object(variant(buildVariant(perched, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1)).spec, "cup").pose).toEqual(object(perched, "cup").pose);
   });
 
   it("stands a container inside an open container on that container's floor", () => {

@@ -355,35 +355,6 @@ function pourBack(spec: TaskSpec, a: string, b: string, source: string): TaskSpe
   return out;
 }
 
-/**
- * The top of what container `o`, its centre at (x, y) on the table and
- * turned `yaw`, stands on, mm: a fixture or surface under its centre that
- * starts no higher than `from` (where a container stood there in the task
- * above, so nothing overhead counts), at the floor of a hollow its whole
- * footprint fits in, else at its top or the rims it bridges; or the table.
- */
-function restingOn(spec: TaskSpec, world: Record<string, Pose3>, o: SpecObject, [x, y]: [number, number], yaw: number, from: number, skip: Set<string>): number {
-  const containers = containerIds(spec);
-  let top = 0;
-  for (const f of spec.objects) {
-    if (skip.has(f.id) || f.role === "manipulated" || !world[f.id]) continue;
-    const w = world[f.id];
-    const [lx, ly] = apply(transpose(w.R), [x - w.xyz_mm[0], y - w.xyz_mm[1], 0]);
-    const [fx, fy] = footprintMm(f);
-    const hollow = hollowOf(spec, f, containers);
-    // a pocket is cut as a box and a container built as one (lib/sim/scene.ts)
-    const under = f.shape === "box" || hollow ? Math.abs(lx) <= fx / 2 && Math.abs(ly) <= fy / 2 : Math.hypot(lx, ly) <= fx / 2;
-    if (!under) continue;
-    const bottom = w.xyz_mm[2] - heightMm(f) / 2;
-    if (bottom > from + REST_MM) continue;
-    // a container is built as a box (pour.ts, halfAlong): its footprint turned against f's
-    const [ex, ey] = halfExtents(o, yaw - w.yaw_deg, false);
-    const inside = hollow && Math.abs(lx) + ex <= hollow.inner[0] / 2 + 0.5 && Math.abs(ly) + ey <= hollow.inner[1] / 2 + 0.5;
-    top = Math.max(top, inside ? bottom + hollow.floor : bottom + heightMm(f));
-  }
-  return top;
-}
-
 /** Whether `id`'s pose hangs, through its frames, on object `on`. */
 function posedOn(spec: TaskSpec, id: string, on: string): boolean {
   const seen = new Set<string>();
@@ -400,8 +371,10 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
  * A pour laid out on the task's own bench (lib/sim/fit.ts lays out only an
  * insert or place): the arm pours from where the held container stood, and
  * the target stands where the stream landed, as far from the held
- * container's rim as in the task above, along the same line. Each stands on
- * what is under it there. A container the variant moved keeps its move; a
+ * container's rim as in the task above, along the same line. Each keeps the
+ * height of its spot: its bottom where the bottom of the container that
+ * stood there was, on whatever held that one (a block, a pocket's floor, a
+ * rim). A container the variant moved keeps its move; a
  * held one wider than the jaws is narrowed, and the warnings say so unless
  * the variant's own size is the one narrowed (buildVariant reports that).
  */
@@ -444,17 +417,16 @@ function pourBench(base: TaskSpec, spec: TaskSpec, changes: SpecChange[]): { spe
     throw err;
   }
   // where each container should stand, worked out before anything moves: one may be posed in the other's frame
-  const skip = new Set([held.id, target.id]);
-  /** where a container's bottom was in the task above: a support starts no higher */
+  /** where the bottom of the container that stood at a spot was, in the task above */
   const bottomOf = (id: string) => wb[id].xyz_mm[2] - heightMm(base.objects.find((o) => o.id === id)!) / 2;
-  const on = ([x, y]: [number, number], o: SpecObject, yaw: number, from: number): [number, number, number] => [r1(x), r1(y), r1(restingOn(out, world, o, [x, y], yaw, from, skip) + heightMm(o) / 2)];
+  const on = ([x, y]: [number, number], o: SpecObject, bottom: number): [number, number, number] => [r1(x), r1(y), r1(bottom + heightMm(o) / 2)];
   const want = new Map<SpecObject, { xyz: [number, number, number]; yaw: number }>();
-  if (!touched(held.id, "pose")) want.set(held, { xyz: on(spot, held, wb[was.object].yaw_deg, bottomOf(was.object)), yaw: wb[was.object].yaw_deg });
+  if (!touched(held.id, "pose")) want.set(held, { xyz: on(spot, held, bottomOf(was.object)), yaw: wb[was.object].yaw_deg });
   // the target from where the held container stands, the same gap from its rim
   const h = want.get(held) ?? { xyz: world[held.id].xyz_mm, yaw: world[held.id].yaw_deg };
   const yaw = wb[was.pour.into].yaw_deg;
   const reach = halfAlong(held, h.yaw, u) + gap + halfAlong(target, yaw, u);
-  if (!touched(target.id, "pose")) want.set(target, { xyz: on([h.xyz[0] + u[0] * reach, h.xyz[1] + u[1] * reach], target, yaw, bottomOf(was.pour.into)), yaw });
+  if (!touched(target.id, "pose")) want.set(target, { xyz: on([h.xyz[0] + u[0] * reach, h.xyz[1] + u[1] * reach], target, bottomOf(was.pour.into)), yaw });
   const off = (o: SpecObject) => {
     const w = want.get(o)!;
     return world[o.id].yaw_deg !== w.yaw || w.xyz.some((v, i) => Math.abs(v - world[o.id].xyz_mm[i]) >= 0.05);
