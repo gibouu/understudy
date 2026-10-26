@@ -92,9 +92,12 @@ describe.skipIf(process.env.VARIANTS_RECORD !== "1")("record the variants (live,
     const merged = at < 0 ? [...others, ...replies] : [...others.slice(0, at), ...replies, ...others.slice(at)];
     writeFileSync(fixture("variants.json"), `${JSON.stringify(merged, null, 1)}\n`);
     const recorded = JSON.parse(readFileSync(fixture("compile.json"), "utf8")) as { spec: unknown }[];
-    // a re-record replaces every variant of this sample and keeps every other recording
-    const kept = recorded.filter((r) => !TaskSpec.parse(r.spec).title.startsWith(`${spec.title}: `));
-    writeFileSync(fixture("compile.json"), `${JSON.stringify([...kept, ...compiles], null, 1)}\n`);
+    // a re-record replaces every variant of this task where they were and keeps every other recording
+    const mine = (r: { spec: unknown }) => TaskSpec.parse(r.spec).title.startsWith(`${spec.title}: `);
+    const from = recorded.findIndex(mine);
+    const kept = recorded.filter((r) => !mine(r));
+    const place = from < 0 ? kept.length : from;
+    writeFileSync(fixture("compile.json"), `${JSON.stringify([...kept.slice(0, place), ...compiles, ...kept.slice(place)], null, 1)}\n`);
     expect(replies[0].result.status).toBe("done");
   }, 600_000);
 });

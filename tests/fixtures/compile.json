@@ -1638,7 +1638,7 @@
      "confidence": 0.8,
      "source": "vl#seg2",
      "sources": {
-      "pose": "variant#5",
+      "pose": "variant#6",
       "size_mm": "fit",
       "pocket_clearance_mm": "interview#1"
      }
@@ -1693,8 +1693,8 @@
    ],
    "open_questions": [],
    "sources": {
-    "title": "variant#5",
-    "summary": "variant#5"
+    "title": "variant#6",
+    "summary": "variant#6"
    },
    "provenance": {
     "label_input": "video",
@@ -1759,12 +1759,6 @@
       "step_id": "s2",
       "ops": [
        {
-        "op": "ask",
-        "slot": "steps[s2].tolerances.yaw_deg",
-        "question": "What yaw_deg tolerance does the sensor report for steady placement?",
-        "why": "tolerance on yaw_deg missing"
-       },
-       {
         "op": "move_to",
         "frame": "obj2",
         "offset_mm": [
@@ -1817,16 +1811,24 @@
      }
     ],
     "warnings": [
-     "Assumes tray pocket clearance mm is sufficient; cannot confirm fit without exact value for contact."
+     "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
     ]
    },
-   "warnings": [],
+   "warnings": [
+    "dropped an ask for steps[s2].success: the spec already sets it"
+   ],
    "ledger": [
     {
      "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
-     "prompt_tokens": 2209,
-     "completion_tokens": 378,
-     "seconds": 1.868
+     "prompt_tokens": 2971,
+     "completion_tokens": 3000,
+     "seconds": 13.267
+    },
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 3266,
+     "completion_tokens": 613,
+     "seconds": 4.982
     }
    ]
   }
