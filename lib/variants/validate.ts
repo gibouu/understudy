@@ -6,29 +6,36 @@
  *
  *   1. Only the fields a similar task changes may change: sizes, shapes,
  *      names, poses, a pocket's clearance, the verb and fixture kind of the
- *      step that puts the object somewhere, its tolerances and success check.
- *      No new objects or steps, no ids or roles.
+ *      step that puts the object somewhere, its tolerances and success check;
+ *      on a pour, how far and how fast it tilts, and its direction (pouring
+ *      back). No new objects or steps, no ids or roles. A variant keeps the
+ *      task's kind: one that puts an object somewhere never turns into a
+ *      pour, and a pour stays a pour.
  *   2. `applyChanges` applies the batch as one transaction and the reference
  *      checks of `validateSpec` must pass.
  *   3. `fitToBench` fits it to the robot's bench, which lays the objects out
  *      at their usual spots: a variant that moves something gets its pose
  *      back afterwards. What the fit had to change (a size the jaws cannot
  *      hold) is reported, and a variant the fit undoes entirely is refused.
- *   4. The world must exist: the scene builder accepts it, every pose is
- *      within the arm's 300 mm, footprints on the table do not overlap, and
- *      the held object rests on the table, a fixture's top or a pocket floor.
+ *      A pour is laid out by `pourBench` on the task's own layout instead.
+ *   4. The world must exist: the scene builder accepts it, every pose the arm
+ *      reaches is within its 300 mm, footprints on the table do not overlap,
+ *      and the held object rests on the table, a fixture's top or a pocket
+ *      floor.
  *
  * Reach itself (and whether the program then works) is the rehearsal's to
  * say: it reports a target out of reach as an embodiment limit.
  */
 import { fitToBench } from "@/lib/sim/fit";
-import { apply, buildScene, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses } from "@/lib/sim/scene";
+import { apply, buildScene, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses, type Pose3 } from "@/lib/sim/scene";
 import { applyChanges, canonicalSlot, parsePath, valueAt } from "@/lib/spec/apply";
 import { AXES, FIXTURES, PREDICATE_OPERANDS, SHAPES, type Predicate, type PredicateKind, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
 import { validateSpec } from "@/lib/spec/validate";
 import { MAX_VARIANTS, type Idea, type NotYet, type VariantReply } from "./parse";
+import { halfAlong, pourLine, pourOf, type Pour } from "./pour";
+import { BENCH } from "./prompt";
 
-/** What the rehearsal runs after the grasp: one insert or place (lib/sim/fit.ts). Any other verb is not supported yet. */
+/** What the rehearsal runs after the grasp: one insert or place (lib/sim/fit.ts). Any other verb is not supported yet, and a pour is only ever a pour. */
 export const REHEARSED_VERBS: readonly string[] = ["insert", "place"];
 export const SYMMETRY_OF = { box: "none", cylinder: "axial", sphere: "full" } as const;
 /** The SO-101's reach from its base, mm, and a spot too close to it to reach down to. */
@@ -40,12 +47,14 @@ const REST_MM = 2;
 export const MIN_SIZE_MM = 6;
 const DEG = Math.PI / 180;
 /**
- * Pouring (#93) and waving (#94) are not supported yet: a variant whose name
- * or summary claims either is not offered, even when its changes alone
- * would run. Other actions the rehearsal does not run are left to the prompt,
- * since their words are also object names (a stirring rod, a wet wipe).
+ * Pouring (#93) and waving (#94) are not part of a task that puts an object
+ * somewhere: a variant of one whose name or summary claims either is not
+ * offered, even when its changes alone would run. A pour's variants may say
+ * they pour. Other actions the rehearsal does not run are left to the
+ * prompt, since their words are also object names (a stirring rod, a wet wipe).
  */
 const NOT_YET_ACTIONS = /\b(pour(s|ing|ed)?|wav(e|es|ing|ed))\b/i;
+const POUR_WORD = /^pour/i;
 
 export type Edit = { path: string; before: unknown; after: unknown };
 export type Variant = {
@@ -64,11 +73,15 @@ export type Checked = { variants: Variant[]; not_yet: NotYet[] };
 
 const OBJECT_FIELDS = new Set(["size_mm", "name", "shape", "symmetry", "pocket_clearance_mm"]);
 const POSE_FIELDS = new Set(["xyz_mm", "yaw_deg", "frame"]);
+const POUR_FIELDS = new Set(["into", "tilt_deg", "tilt_s"]);
+
+/** What the rehearsal of this spec runs, in words. */
+const runs = (spec: TaskSpec) => (pourOf(spec) ? "one pour from a container the arm holds" : "one grasp and then one insert or place");
 
 /** Why a variant may not change this path, or null when it may. */
 function refusal(spec: TaskSpec, tokens: string[]): string | null {
   const [list, id, field, sub, ...rest] = tokens;
-  const no = "not something a variant can change (only sizes, shapes, names, poses, a pocket's clearance, the step's verb, fixture, tolerances and success)";
+  const no = `not something a variant can change (only sizes, shapes, names, poses, a pocket's clearance, the step's verb, fixture, tolerances and success${pourOf(spec) ? "; on a pour, its tilt and pouring back" : ""})`;
   if (id === undefined || field === undefined) return no;
   if (list === "objects") {
     if (!spec.objects.some((o) => o.id === id)) return `no object "${id}"`;
@@ -77,9 +90,15 @@ function refusal(spec: TaskSpec, tokens: string[]): string | null {
     return no;
   }
   if (list === "steps") {
-    if (!spec.steps.some((s) => s.id === id)) return `no step "${id}"`;
+    const step = spec.steps.find((s) => s.id === id);
+    if (!step) return `no step "${id}"`;
     if (rest.length) return no;
-    if (field === "verb" && sub === undefined) return spec.steps.find((s) => s.id === id)?.target ? null : "the grasp stays a grasp: only the step that puts the object somewhere can change its verb";
+    if (step === pourOf(spec)) {
+      // the pour's container and target are its own: it can only turn round (checked with the value)
+      if ((field === "object" && sub === undefined) || (field === "pour" && (sub === undefined || POUR_FIELDS.has(sub)))) return null;
+      if (field === "verb" || field === "target") return "a pour stays a pour: its verb and target do not change";
+    }
+    if (field === "verb" && sub === undefined) return step.target ? null : "the grasp stays a grasp: only the step that puts the object somewhere can change its verb";
     if (field === "success" && sub === undefined) return null;
     if (field === "target" && (sub === undefined || sub === "fixture")) return null;
     if (field === "tolerances" && (sub === undefined || (AXES as readonly string[]).includes(sub))) return null;
@@ -91,8 +110,8 @@ function refusal(spec: TaskSpec, tokens: string[]): string | null {
 /** The fields a variant can differ in, for showing what changed. */
 function watched(spec: TaskSpec): string[] {
   return [
-    ...spec.objects.flatMap((o) => ["name", "shape", "size_mm", "pose", "pocket_clearance_mm"].map((f) => `objects[${o.id}].${f}`)),
-    ...spec.steps.flatMap((s) => ["verb", "target", "tolerances", "success"].map((f) => `steps[${s.id}].${f}`)),
+    ...spec.objects.flatMap((o) => ["name", "shape", "size_mm", "pose", "pocket_clearance_mm", "liquid_ml"].map((f) => `objects[${o.id}].${f}`)),
+    ...spec.steps.flatMap((s) => ["verb", "object", "target", "pour", "tolerances", "success"].map((f) => `steps[${s.id}].${f}`)),
   ];
 }
 
@@ -101,8 +120,8 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 /** What the rehearsal sees of a spec: everything but names, wording and provenance. */
 export function physicalKey(spec: TaskSpec): string {
   return JSON.stringify({
-    objects: spec.objects.map((o) => [o.id, o.shape, o.size_mm, o.role, o.pose, o.pocket_clearance_mm]),
-    steps: spec.steps.map((s) => [s.id, s.verb, s.object, s.target, s.success, s.tolerances, s.preconditions, s.via_points]),
+    objects: spec.objects.map((o) => [o.id, o.shape, o.size_mm, o.role, o.pose, o.pocket_clearance_mm, o.liquid_ml]),
+    steps: spec.steps.map((s) => [s.id, s.verb, s.object, s.target, s.pour, s.success, s.tolerances, s.preconditions, s.via_points]),
   });
 }
 
@@ -145,9 +164,11 @@ function geometryProblem(spec: TaskSpec): string | null {
   const bottom = (o: SpecObject) => world[o.id].xyz_mm[2] - heightMm(o) / 2;
   // a pocket is cut as a box whatever the fixture's shape (lib/sim/scene.ts)
   const round = (o: SpecObject) => o.shape !== "box" && !usedAsPocket(spec, o.id);
+  // a pour's target only catches the liquid: the arm never reaches for it
+  const caught = pourOf(spec)?.pour.into;
   for (const o of spec.objects) {
     const r = Math.hypot(world[o.id].xyz_mm[0], world[o.id].xyz_mm[1]);
-    if (r > REACH_MM) return `${o.name} would be ${Math.round(r)} mm from the robot's base, beyond its ${REACH_MM} mm reach`;
+    if (r > REACH_MM && o.id !== caught) return `${o.name} would be ${Math.round(r)} mm from the robot's base, beyond its ${REACH_MM} mm reach`;
     if (r < MIN_REACH_MM) return `${o.name} would be ${Math.round(r)} mm from the robot's base, too close to reach down to`;
     if (bottom(o) < -REST_MM) return `${o.name} would be partly below the table`;
   }
@@ -249,11 +270,149 @@ function asStrict(v: Predicate, b: Predicate): boolean {
  * to rest" would pass with the object put down anywhere). Each check needs its
  * own match, so a looser duplicate does not stand in for a stricter one.
  */
-function droppedChecks(base: TaskSpec, spec: TaskSpec): Predicate[] {
+function droppedChecks(base: TaskSpec, spec: TaskSpec, swap: (id?: string) => string | undefined = (id) => id): Predicate[] {
   return base.steps.flatMap((b) => {
     const now = spec.steps.find((s) => s.id === b.id)?.success ?? [];
-    return b.success.filter((p) => !now.some((q) => asStrict(q, p)));
+    // a pour turned round asks the same of the other container: the checks turn round with it
+    return b.success.map((p) => turned(p, swap)).filter((p) => !now.some((q) => asStrict(q, p)));
   });
+}
+
+/** A check with its object and target renamed by `swap`. */
+function turned(p: Predicate, swap: (id?: string) => string | undefined): Predicate {
+  const q = { ...p };
+  if (p.object !== undefined) q.object = swap(p.object);
+  if (p.target !== undefined) q.target = swap(p.target);
+  return q;
+}
+
+/** `a` and `b` trade names: `swap(a)` is `b`, `swap(b)` is `a`, any other id stays. */
+const trade = (a: string, b: string) => (id?: string) => (id === a ? b : id === b ? a : id);
+
+/**
+ * Whether a change to the pour step turns it round: its object becomes what
+ * it pours into, or what it pours into becomes its object. False for a change
+ * that leaves its two containers as they are, null for one that names another.
+ */
+function turnsRound(pour: Pour, tokens: string[], value: unknown): boolean | null {
+  const [, , field, sub] = tokens;
+  if (field === "object") return value === pour.pour.into ? true : value === pour.object ? false : null;
+  if (field !== "pour" || (sub !== undefined && sub !== "into")) return false;
+  // a whole pour block without `into` is the schema's to refuse
+  const into = sub === "into" ? value : typeof value === "object" && value !== null ? (value as { into?: unknown }).into : undefined;
+  return into === pour.object ? true : into === pour.pour.into || into === undefined ? false : null;
+}
+
+/**
+ * The pour turned round, before the variant's own changes: the container it
+ * poured into is held and poured from, the liquid starts where the pour put
+ * it (the two trade what they hold, and which one is held), and every step
+ * and check about one is about the other. Where the two stand is
+ * `pourBench`'s to say.
+ */
+function pourBack(spec: TaskSpec, a: string, b: string, source: string): TaskSpec {
+  const swap = trade(a, b);
+  const out = structuredClone(spec);
+  const [oa, ob] = [a, b].map((id) => out.objects.find((o) => o.id === id)!);
+  const [roles, held] = [[oa.role, ob.role], [oa.liquid_ml, ob.liquid_ml]];
+  for (const [o, k] of [[oa, 1], [ob, 0]] as const) {
+    o.role = roles[k];
+    if (held[k] === undefined) delete o.liquid_ml;
+    else o.liquid_ml = held[k];
+    o.sources = { ...o.sources, role: source, liquid_ml: source };
+  }
+  for (const st of out.steps) {
+    const before = structuredClone(st);
+    st.object = swap(st.object)!;
+    if (st.target) st.target = { ...st.target, frame: swap(st.target.frame)! };
+    if (st.pour) st.pour = { ...st.pour, into: swap(st.pour.into)! };
+    st.success = st.success.map((p) => turned(p, swap));
+    st.preconditions = st.preconditions.map((p) => turned(p, swap));
+    st.via_points = st.via_points.map((v) => ({ ...v, frame: swap(v.frame)! }));
+    for (const f of ["object", "target", "pour", "success", "preconditions", "via_points"] as const) {
+      if (!same(before[f], st[f])) st.sources = { ...st.sources, [f]: source };
+    }
+  }
+  return out;
+}
+
+/** The top of what stands under the point (x, y) of the table, mm: a fixture or surface whose footprint covers it, or the table. */
+function restingOn(spec: TaskSpec, world: Record<string, Pose3>, [x, y]: [number, number], skip: Set<string>): number {
+  let top = 0;
+  for (const f of spec.objects) {
+    if (skip.has(f.id) || f.role === "manipulated" || !world[f.id]) continue;
+    const w = world[f.id];
+    const [lx, ly] = apply(transpose(w.R), [x - w.xyz_mm[0], y - w.xyz_mm[1], 0]);
+    const [fx, fy] = footprintMm(f);
+    const under = f.shape === "box" ? Math.abs(lx) <= fx / 2 && Math.abs(ly) <= fy / 2 : Math.hypot(lx, ly) <= fx / 2;
+    if (under) top = Math.max(top, w.xyz_mm[2] + heightMm(f) / 2);
+  }
+  return top;
+}
+
+const r1 = (x: number) => Math.round(x * 10) / 10;
+
+/**
+ * A pour laid out on the task's own bench (lib/sim/fit.ts lays out only an
+ * insert or place): the arm pours from where the held container stood, and
+ * the target stands where the stream landed, as far from the held
+ * container's rim as in the task above, along the same line. Each stands on
+ * what is under it there. A container the variant moved keeps its move; a
+ * held one wider than the jaws is narrowed, and the warnings say so unless
+ * the variant's own size is the one narrowed (buildVariant reports that).
+ */
+function pourBench(base: TaskSpec, spec: TaskSpec, changes: SpecChange[]): { spec: TaskSpec; warnings: string[] } | { why: string } {
+  const was = pourOf(base)!;
+  const now = pourOf(spec);
+  if (!now) return { why: "a pour stays a pour" };
+  const touched = (id: string, field: string) => changes.some((c) => { const [, i, f] = parsePath(c.path); return i === id && f === field; });
+  let wb: Record<string, Pose3>;
+  try {
+    wb = worldPoses(base);
+  } catch (err) {
+    if (err instanceof SceneError) return { why: err.message };
+    throw err;
+  }
+  const { from: spot, u, gap } = pourLine(base, was, wb);
+
+  const out = structuredClone(spec);
+  const warnings: string[] = [];
+  const held = out.objects.find((o) => o.id === now.object)!;
+  const target = out.objects.find((o) => o.id === now.pour.into)!;
+  const [lo, hi] = BENCH.heldSideMm;
+  const narrow = held.size_mm.map((v, i) => (i < 2 ? Math.min(Math.max(v, lo), hi) : v)) as SpecObject["size_mm"];
+  if (narrow.some((v, i) => v !== held.size_mm[i])) {
+    if (!touched(held.id, "size_mm")) warnings.push(`${held.name} is ${footprintMm(held).join(" x ")} mm across and the jaws hold ${lo} to ${hi} mm: it is ${narrow.slice(0, 2).join(" x ")} mm here`);
+    held.size_mm = narrow;
+    held.sources = { ...held.sources, size_mm: "fit" };
+  }
+
+  let world: Record<string, Pose3>;
+  try {
+    world = worldPoses(out);
+  } catch (err) {
+    if (err instanceof SceneError) return { why: err.message };
+    throw err;
+  }
+  const skip = new Set([held.id, target.id]);
+  /** Stand `o` at (x, y), turned `yaw`, on what is under it: unless the variant moved it, or it already stands there. */
+  const stand = (o: SpecObject, [x, y]: [number, number], yaw: number) => {
+    if (touched(o.id, "pose")) return;
+    const xyz: [number, number, number] = [r1(x), r1(y), r1(restingOn(out, world, [x, y], skip) + heightMm(o) / 2)];
+    const now = world[o.id];
+    if (now && now.yaw_deg === yaw && xyz.every((v, i) => Math.abs(v - now.xyz_mm[i]) < 0.05)) return;
+    o.pose = { xyz_mm: xyz, yaw_deg: yaw, frame: "world" };
+    o.sources = { ...o.sources, pose: "fit" };
+    const [c, s] = [Math.cos(yaw * DEG), Math.sin(yaw * DEG)];
+    world[o.id] = { xyz_mm: xyz, R: [c, -s, 0, s, c, 0, 0, 0, 1], yaw_deg: yaw };
+  };
+  stand(held, spot, wb[was.object].yaw_deg);
+  // the target from wherever the held container stands now, the same gap from its rim
+  const from: [number, number] = [world[held.id].xyz_mm[0], world[held.id].xyz_mm[1]];
+  const yaw = wb[was.pour.into].yaw_deg;
+  const reach = halfAlong(held, world[held.id].yaw_deg, u) + gap + halfAlong(target, yaw, u);
+  stand(target, [from[0] + u[0] * reach, from[1] + u[1] * reach], yaw);
+  return { spec: out, warnings };
 }
 
 /** applyChanges' reason for refusing a batch, and which change is at fault when there are several. */
@@ -265,7 +424,10 @@ function refused(warnings: string[], n: number): string {
 /** One idea as a runnable variant (`n` numbers it), or the reason it cannot be one. */
 export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: Variant } | { why: string } {
   const source = `variant#${n}`;
+  const pour = pourOf(base);
+  const neverPours = `this task does not pour: its variants keep ${runs(base)} and never turn into a pour`;
   const changes: SpecChange[] = [];
+  let back = false;
   for (const c of idea.changes) {
     const path = canonicalSlot(base, c.path);
     const tokens = parsePath(path);
@@ -273,11 +435,17 @@ export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: 
     const no = refusal(base, tokens);
     if (no) return { why: `${c.path}: ${no}` };
     if (c.value === undefined || c.value === null) return { why: `${c.path}: no value given` };
+    if (pour && tokens[0] === "steps" && tokens[1] === pour.id) {
+      const turn = turnsRound(pour, tokens, c.value);
+      if (turn === null) return { why: `${c.path}: a pour keeps its two containers; it can only turn round, from "${pour.pour.into}" back into "${pour.object}"` };
+      back ||= turn;
+    }
     changes.push({ path, value: c.value, source });
   }
   if (changes.length === 0) return { why: "it changes nothing in the task" };
-  const claim = `${idea.title} ${idea.summary}`.match(NOT_YET_ACTIONS);
-  if (claim) return { why: `not yet: "${claim[0].toLowerCase()}" is not something the rehearsal runs; it runs one grasp and then one insert or place` };
+  // a pour's variants may say they pour; nothing says it waves yet
+  const claim = [...`${idea.title} ${idea.summary}`.matchAll(new RegExp(NOT_YET_ACTIONS, "gi"))].find((m) => !(pour && POUR_WORD.test(m[0])));
+  if (claim) return { why: !pour && POUR_WORD.test(claim[0]) ? neverPours : `not yet: "${claim[0].toLowerCase()}" is not something the rehearsal runs; it runs ${runs(base)}` };
 
   // a new shape brings its symmetry: a cylinder turns freely about its axis, a sphere about any
   for (const c of changes.filter((c) => parsePath(c.path)[2] === "shape" && (SHAPES as readonly unknown[]).includes(c.value))) {
@@ -288,7 +456,9 @@ export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: 
     else if (given.value !== want) return { why: `a ${c.value} has symmetry "${want}", not "${String(given.value)}"` };
   }
 
-  const changed = applyChanges(base, changes);
+  // pouring back starts from the pour turned round; the changes that turn it are then already true
+  const start = back ? pourBack(base, pour!.object, pour!.pour.into, source) : base;
+  const changed = applyChanges(start, changes);
   if (changed.warnings.length) return { why: refused(changed.warnings, changes.length) };
   const applied = applyChanges(changed.spec, [
     { path: "title", value: `${base.title}: ${idea.title}`, source },
@@ -296,28 +466,37 @@ export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: 
   ]);
   for (const s of applied.spec.steps) {
     const before = base.steps.find((b) => b.id === s.id);
-    if (before && s.verb !== before.verb && !REHEARSED_VERBS.includes(s.verb)) {
-      return { why: `not yet: the rehearsal runs one grasp and then one insert or place, not "${s.verb}"` };
+    if (before && s.verb !== before.verb) {
+      if (s.verb === "pour") return { why: neverPours };
+      if (!REHEARSED_VERBS.includes(s.verb)) return { why: `not yet: the rehearsal runs ${runs(base)}, not "${s.verb}"` };
     }
     if (s.target && !(FIXTURES as readonly string[]).includes(s.target.fixture)) return { why: `"${s.target.fixture}" is not a fixture the bench has` };
   }
   const issue = validateSpec(applied.spec).find((i) => i.severity === "error");
   if (issue) return { why: issue.message };
 
-  const fit = fitToBench(applied.spec);
-  if (fit.spec === applied.spec) return { why: fit.warnings.join("; ") };
-  // the fit puts every object at its usual spot; a variant that moves one keeps its move
-  const moves = changes.filter((c) => parsePath(c.path)[2] === "pose");
-  const placed = moves.length ? applyChanges(fit.spec, moves) : { spec: fit.spec, warnings: [] };
-  if (placed.warnings.length) return { why: refused(placed.warnings, moves.length) };
-  const spec = placed.spec;
-  const dropped = droppedChecks(base, spec);
+  let spec: TaskSpec;
+  const warnings: string[] = [];
+  if (pour) {
+    const bench = pourBench(base, applied.spec, changes);
+    if ("why" in bench) return bench;
+    spec = bench.spec;
+    warnings.push(...bench.warnings);
+  } else {
+    const fit = fitToBench(applied.spec);
+    if (fit.spec === applied.spec) return { why: fit.warnings.join("; ") };
+    // the fit puts every object at its usual spot; a variant that moves one keeps its move
+    const moves = changes.filter((c) => parsePath(c.path)[2] === "pose");
+    const placed = moves.length ? applyChanges(fit.spec, moves) : { spec: fit.spec, warnings: [] };
+    if (placed.warnings.length) return { why: refused(placed.warnings, moves.length) };
+    spec = placed.spec;
+  }
+  const dropped = droppedChecks(base, spec, back ? trade(pour!.object, pour!.pour.into) : undefined);
   if (dropped.length) return { why: `it drops or loosens a check that the task is done (${dropped.map(checkText).join("; ")}): a variant may add a check or tighten one, never remove or loosen one` };
 
   const edits = watched(base)
     .map((path) => ({ path, before: valueAt(base, path), after: valueAt(spec, path) }))
     .filter((e) => !same(e.before, e.after));
-  const warnings: string[] = [];
   for (const c of changes) {
     const got = valueAt(spec, c.path);
     if (!same(got, c.value)) warnings.push(`${c.path} is ${got === undefined ? "not kept" : JSON.stringify(got)} on the bench, not ${JSON.stringify(c.value)}`);
@@ -367,8 +546,13 @@ export function replyProblems(base: TaskSpec, reply: VariantReply, request?: str
   if (request) {
     if (reply.variants.length > 1) problems.push(`give one variant for the request, not ${reply.variants.length}`);
     if (reply.variants.length === 0 && reply.not_yet.length === 0) problems.push("give one variant, or one not_yet entry saying what the arm cannot do yet");
-  } else if (checked.variants.length < 3) {
-    problems.push(`only ${checked.variants.length} of your variants fit the bench; give 3 to 5 that do`);
+  } else {
+    if (checked.variants.length < 3) problems.push(`only ${checked.variants.length} of your variants fit the bench; give 3 to 5 that do`);
+    // pouring back is the pour's own variant: Super tends to write it as the container starting in the target, which cannot run
+    const pour = pourOf(base);
+    if (pour && !checked.variants.some((v) => pourOf(v.spec)?.object === pour.pour.into)) {
+      problems.push(`none of your variants pours it back; make one of them do it with {"path":"steps[${pour.id}].object","value":"${pour.pour.into}"}`);
+    }
   }
   return problems;
 }

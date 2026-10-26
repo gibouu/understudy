@@ -86,8 +86,8 @@ describe("a variant of the ISS sample", () => {
     expect(why(build(["objects[obj2].size_mm", [100, 100, 30]], ["objects[obj1].size_mm", [0, 10, 40]]))).toMatch(/^rejected .*\(objects\[obj1\]\.size_mm: the batch is valid without it\)$/);
     expect(why(build(["objects[obj2].pocket_clearance_mm", null]))).toBe("objects[obj2].pocket_clearance_mm: no value given");
     expect(why(build(["steps[s2].verb", "fling"]))).toMatch(/^rejected \(steps\.1\.verb/);
-    // pour is a verb of the spec now (#93), but variants do not offer it yet: refused, and the reason says so
-    expect(why(build(["steps[s2].verb", "pour"]))).toBe('not yet: the rehearsal runs one grasp and then one insert or place, not "pour"');
+    // pour is a verb of the spec (#93), but a task that puts an object somewhere never turns into a pour (#127)
+    expect(why(build(["steps[s2].verb", "pour"]))).toBe("this task does not pour: its variants keep one grasp and then one insert or place and never turn into a pour");
     expect(why(build(["steps[s2].verb", "release"]))).toMatch(/^not yet: the rehearsal runs one grasp and then one insert or place/);
   });
 
@@ -171,7 +171,7 @@ describe("a variant of the ISS sample", () => {
 
   it("does not offer a variant that claims an action the rehearsal does not run", () => {
     const pour = buildVariant(base, { title: "Pour into tray", summary: "The arm pours into the tray.", changes: [{ path: "objects[obj2].pocket_clearance_mm", value: 2 }] }, 1);
-    expect(why(pour)).toBe('not yet: "pour" is not something the rehearsal runs; it runs one grasp and then one insert or place');
+    expect(why(pour)).toBe("this task does not pour: its variants keep one grasp and then one insert or place and never turn into a pour");
     const noun = buildVariant(base, { title: "Tighter holder", summary: "The arm inserts the stirring rod into a tighter holder, wiping nothing.", changes: [{ path: "objects[obj2].pocket_clearance_mm", value: 2 }] }, 1);
     expect(why(noun)).toBe("");
   });

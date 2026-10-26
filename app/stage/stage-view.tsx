@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SimClient } from "@/lib/sim/client";
 import { DEMO_PROGRAMS, DEMO_SPEC, POUR_PROGRAMS, POUR_SPEC } from "@/lib/sim/demo-spec";
@@ -9,6 +10,8 @@ import { StageRenderer } from "@/lib/sim/render";
 import { buildScene } from "@/lib/sim/scene";
 import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
 import { APPROACHES, GRAVITIES, type GravityName, type Program, type TaskSpec } from "@/lib/spec/schema";
+
+const Variants = dynamic(() => import("../variants").then((m) => m.Variants), { ssr: false });
 
 const SCENE = buildScene(DEMO_SPEC);
 /** the spec's moved object and the fixture it goes into: the page names neither */
@@ -72,6 +75,8 @@ export function StageView() {
   const [liquid, setLiquid] = useState<LiquidReadout | null>(null);
   const [seed, setSeed] = useState(1);
   const [busy, setBusy] = useState(false);
+  /** the pour program last run from the start: similar tasks start from it */
+  const [poured, setPoured] = useState<keyof typeof POUR_PROGRAMS | null>(null);
   const frames = useRef<{ n: number; since: number; rate: number }>({ n: 0, since: 0, rate: 0 });
   const lastCtrl = useRef<number[]>(SO101_HOME);
   const lastUi = useRef(0);
@@ -242,6 +247,7 @@ export function StageView() {
       const r = await client.run(POUR_PROGRAMS[name], "sensed", "home");
       const where = r.log.findLast((l) => l.includes(" liquid: "))?.split(" liquid: ")[1];
       setRunNote(`${label}: ${r.pass ? "pass" : `fail${r.failed_step_id ? ` at ${r.failed_step_id}` : ""}, ${r.why}`} (${r.t.toFixed(1)} s)${where ? `. Liquid: ${where}.` : ""}`);
+      setPoured(name);
     } catch (err) {
       setRunNote(`${label}: ${(err as Error).message}`);
     }
@@ -491,6 +497,13 @@ export function StageView() {
             : "The cup and the bowl are open boxes; the water is a position-based liquid (lib/sim/fluid.ts) stepped next to MuJoCo, its walls the cup's and the bowl's geoms, one way: the water does not load the arm."}
         </p>
       </div>
+
+      {scene === "pour" && poured && (
+        <section className="flex flex-col gap-2 lg:col-span-2" aria-label="similar tasks">
+          <h2 className="text-lg font-semibold tracking-tight">Try a similar task</h2>
+          <Variants spec={spec} program={POUR_PROGRAMS[poured]} />
+        </section>
+      )}
     </div>
   );
 }

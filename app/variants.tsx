@@ -9,6 +9,7 @@ import { GRAVITIES, type GravityName, type Predicate, type Program, type TaskSpe
 import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { costOf } from "@/lib/variants/cost";
 import { MAX_VARIANTS, type NotYet } from "@/lib/variants/parse";
+import { pourOf } from "@/lib/variants/pour";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
 import { PatchLoop } from "./patch-loop";
 
@@ -383,6 +384,7 @@ function StatusLine({ result }: { result: StageResult<Checked> }) {
 
 function VariantCard({ base, variant: v, from, run, showing, checked, disabled, onCheck, onRehearse, patch }: { base: TaskSpec; variant: Variant; from: string; run?: Run; showing: boolean; checked: boolean; disabled: boolean; onCheck: (on: boolean) => void; onRehearse: () => void; patch: React.ReactNode }) {
   const cost = run && run.ledger.length ? costOf(run.ledger) : null;
+  const pours = pourOf(v.spec) !== undefined;
   return (
     <li className={`rounded-lg border p-3 text-sm ${showing ? "border-[color:var(--accent,#b45309)]" : ""}`}>
       <div className="flex items-start justify-between gap-3">
@@ -423,7 +425,8 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
                     <td className="py-0.5 pr-3 font-medium">
                       <Outcome result={run.worlds[w]} />
                     </td>
-                    <td className="py-0.5 text-[color:var(--muted,#737373)]">{why(run.worlds[w])}</td>
+                    {pours && <td className="py-0.5 pr-3">{liquidIn(v.spec, run.worlds[w])}</td>}
+                    <td className="py-0.5 text-[color:var(--muted,#737373)]">{[why(run.worlds[w]), pours && liquidElsewhere(v.spec, w, run.worlds[w])].filter(Boolean).join("; ")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -449,6 +452,31 @@ function Outcome({ result }: { result?: WorldResult }) {
   return result.pass ? <span className="text-emerald-700">pass</span> : <span className="text-red-700">fail{result.failed_step_id ? ` at ${result.failed_step_id}` : ""}</span>;
 }
 
+const percent = (v: number) => (v > 0 && v < 0.005 ? "under 1%" : `${Math.round(v * 100)}%`);
+const nameIn = (spec: TaskSpec, id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
+const ended = (result?: WorldResult) => (result && result !== "running" && !("error" in result) ? result.liquid : undefined);
+
+/** The share of the liquid in the pour's target when the rollout ended, as the simulator measured it. */
+function liquidIn(spec: TaskSpec, result?: WorldResult): string {
+  const where = ended(result);
+  const into = pourOf(spec)?.pour.into;
+  if (!where || into === undefined) return "";
+  return `${percent(where.containers[into] ?? 0)} of the liquid in the ${nameIn(spec, into)}`;
+}
+
+/** Where the rest of the liquid ended: still in a container, on the table, or in the air (floating free at 0 g). */
+function liquidElsewhere(spec: TaskSpec, world: GravityName, result?: WorldResult): string {
+  const where = ended(result);
+  const into = pourOf(spec)?.pour.into;
+  if (!where) return "";
+  const parts = Object.entries(where.containers)
+    .filter(([id, v]) => id !== into && v > 0)
+    .map(([id, v]) => `${percent(v)} in the ${nameIn(spec, id)}`);
+  if (where.table > 0) parts.push(`${percent(where.table)} on the table`);
+  if (where.elsewhere > 0) parts.push(`${percent(where.elsewhere)} ${GRAVITIES[world] > 0 ? "elsewhere" : "floating free"}`);
+  return parts.join(", ");
+}
+
 function why(result?: WorldResult): string {
   if (!result || result === "running") return "";
   if ("error" in result) return result.error;
@@ -460,17 +488,26 @@ function describeEdit(spec: TaskSpec, e: Edit): string {
   const [, id, field] = e.path.match(/^\w+\[([^\]]+)\]\.(\w+)/) ?? [];
   const name = spec.objects.find((o) => o.id === id)?.name ?? spec.steps.find((s) => s.id === id)?.id ?? id;
   const show = (v: unknown): string => {
-    if (v === undefined) return "not set";
+    if (v === undefined) return field === "liquid_ml" ? "none" : "not set";
     if (field === "size_mm" && Array.isArray(v)) return `${v.join(" × ")} mm`;
     if (field === "pose" && v && typeof v === "object") {
       const p = v as { xyz_mm: number[]; yaw_deg: number; frame: string };
       return `(${p.xyz_mm.map((x) => Math.round(x)).join(", ")}) mm${p.frame === "world" ? "" : ` in ${spec.objects.find((o) => o.id === p.frame)?.name ?? p.frame}`}${p.yaw_deg ? `, turned ${p.yaw_deg}°` : ""}`;
     }
     if (field === "pocket_clearance_mm") return `${v} mm`;
-    if (field === "success" && Array.isArray(v)) return (v as Predicate[]).map((p) => p.kind).join(" + ") || "none";
+    if (field === "liquid_ml") return `${v} mL`;
+    if (field === "object" && typeof v === "string") return nameIn(spec, v);
+    if (field === "pour" && v && typeof v === "object") {
+      const p = v as { into: string; tilt_deg: number; tilt_s?: number };
+      return `into the ${nameIn(spec, p.into)}, ${p.tilt_deg}°${p.tilt_s !== undefined ? ` over ${p.tilt_s} s` : ""}`;
+    }
+    if (field === "success" && Array.isArray(v)) {
+      const said = (p: Predicate) => (p.kind === "liquid_inside" && p.target ? `${p.value ?? "?"}% of the ${p.object ? `${nameIn(spec, p.object)}'s ` : ""}liquid in the ${nameIn(spec, p.target)}` : p.kind);
+      return (v as Predicate[]).map(said).join(" + ") || "none";
+    }
     if (field === "target" && v && typeof v === "object") return (v as { fixture: string }).fixture;
     if (field === "tolerances" && v && typeof v === "object") return Object.entries(v).map(([k, x]) => `${k} ±${x}`).join(", ") || "none";
     return typeof v === "string" ? v : JSON.stringify(v);
   };
-  return `${name} ${field.replace(/_mm$/, "").replace(/_/g, " ")}: ${show(e.before)} → ${show(e.after)}`;
+  return `${name} ${field === "liquid_ml" ? "liquid" : field.replace(/_mm$/, "").replace(/_/g, " ")}: ${show(e.before)} → ${show(e.after)}`;
 }
