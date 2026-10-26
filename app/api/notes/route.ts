@@ -7,8 +7,10 @@
  * returns knob values (lib/notes/knobs.ts), and the route validates, clamps
  * and applies them. Thinking stays off until the loop is stuck (a patch that
  * changes nothing, re-asked at once, or two failed patches), as measured in
- * docs/MEASUREMENTS.md section 8. Replay (no key, or ?replay=1) answers from
- * tests/fixtures/notes.json: the recording for the same program and attempt.
+ * docs/MEASUREMENTS.md section 8. `unlock` or `sample_token` lets it go live
+ * (lib/unlock/check.ts). Replay (no key, ?replay=1, or no way past the spend
+ * guard) answers from tests/fixtures/notes.json: the recording for the same
+ * program and attempt.
  */
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -22,6 +24,7 @@ import { Attempt, escalation, MAX_PATCHES, MAX_TOKENS_OFF, MAX_TOKENS_ON, PATCH_
 import { GRAVITIES, Predicate, Program, TaskSpec, Vec3mm } from "@/lib/spec/schema";
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { lintProgram } from "@/lib/spec/validate";
+import { explain, liveGate } from "@/lib/unlock/check";
 
 // a thinking call takes up to ~40 s, and a no-op re-asks once
 export const maxDuration = 180;
@@ -59,13 +62,16 @@ function replay(program: Program, attempt: number): StageResult<NotePatch> {
 }
 
 export async function POST(req: Request): Promise<NextResponse<StageResult<NotePatch>>> {
-  const parsed = Body.safeParse(await req.json().catch(() => null));
+  const body = await req.json().catch(() => null);
+  const parsed = Body.safeParse(body);
   if (!parsed.success) return NextResponse.json(failed(`invalid request: ${parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`, false), { status: 400 });
   const { spec, program, first, history } = parsed.data;
   const runs = parsed.data.runs as WorldRun[];
   if (runs.every((r) => r.rollout.pass)) return NextResponse.json(failed("every world passed: nothing to patch", false), { status: 400 });
   if (history.length >= MAX_PATCHES) return NextResponse.json(failed(`${MAX_PATCHES} patches already tried`, false), { status: 400 });
   if (wantsReplay(req)) return NextResponse.json(replay(program, history.length));
+  const gate = await liveGate("notes", body);
+  if (!gate.live) return NextResponse.json(explain(replay(program, history.length), gate));
   const client = tokenFactory({ timeout: 60_000, maxRetries: 1 });
   if (!client) return NextResponse.json(replay(program, history.length));
 

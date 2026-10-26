@@ -5,6 +5,8 @@ import { applyChanges } from "@/lib/spec/apply";
 import { chipChange, chipEffect, type Chip, type Grounding } from "@/lib/spec/ground";
 import type { TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
+import { gateNote } from "@/lib/unlock/messages";
+import { liveAuth } from "./capture";
 
 /**
  * app/globals.css defines these with the landing page (#90). Until then the
@@ -37,7 +39,7 @@ export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: bool
   async function look() {
     setResult(running("Tavily is searching and reading the top pages; Nano keeps the sentences that name this task"));
     try {
-      const res = await fetch("/api/ground", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ spec }) });
+      const res = await fetch("/api/ground", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ spec, ...liveAuth() }) });
       setResult((await res.json()) as StageResult<Grounding>);
     } catch (err) {
       setResult(failed((err as Error).message));
@@ -97,7 +99,7 @@ export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: bool
         <div className="flex flex-col gap-3">
           {result.warnings.some((w) => w.startsWith("replay")) && (
             <p className="text-xs" style={{ color: ACCENT }}>
-              replayed from a recording
+              {gateNote(result.warnings) ?? "replayed from a recording"}
             </p>
           )}
           {result.value.chips.length === 0 ? (

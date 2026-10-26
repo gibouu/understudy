@@ -4,7 +4,8 @@
  * "Film yourself": the camera, a 3, 2, 1 countdown, an 8 s take, then Retake
  * or Use this clip, which hands the take to the flow like an upload. The take
  * stays in the browser; the flow sends only its 480-wide proxy to the model. Also
- * the unlock prompt for clips of your own (#35), asked once per tab.
+ * the unlock prompt for clips of your own (#35), asked once per tab, and what
+ * every model call sends to get past the spend guard (#111).
  */
 import { useEffect, useReducer, useRef, useState } from "react";
 import { cameraError, COUNTDOWN_S, recordingType, step, TAKE_S, unsupported, type CaptureState } from "@/lib/capture/recorder";
@@ -179,6 +180,16 @@ export function unlockCode(): string | undefined {
     return undefined;
   }
 }
+
+/** the token /api/label gave the clip being worked on, when it is a sample; replaced by every label */
+let sampleToken: string | undefined;
+
+export function keepSampleToken(token: string | undefined) {
+  sampleToken = token;
+}
+
+/** Sent with every model call so the route may answer live (lib/unlock/check.ts): the code typed in this tab, the sample's token. */
+export const liveAuth = () => ({ unlock: unlockCode(), sample_token: sampleToken });
 
 /** Under a refused label: asks for the code once, keeps it for the tab, and runs the label again. */
 export function UnlockPrompt({ message, onUnlock }: { message: string; onUnlock: () => void }) {

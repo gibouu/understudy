@@ -3,8 +3,11 @@
  * watches the clip's proxy (480 wide, 4 fps H.264 as a data URI, made in the
  * browser) and returns a TaskSpec. `hint` is the one line the person types
  * about what they filmed; `unlock` is the code a clip of their own needs to be
- * labelled live (lib/unlock/check.ts). Replay (no key, or ?replay=1) answers
- * from tests/fixtures/label.json: the recording of the same clip, else the first.
+ * labelled live (lib/unlock/check.ts). A sample clip labelled live comes back
+ * with a `sample_token` that opens the session's later model calls
+ * (lib/unlock/token.ts). Replay (no key, ?replay=1, or a call the spend guard
+ * keeps from going live) answers from tests/fixtures/label.json: the
+ * recording of the same clip, else the first.
  */
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/label.json";
@@ -14,7 +17,8 @@ import { hintText, LABEL_PROMPT, tidyLabel } from "@/lib/spec/label";
 import { TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type StageResult } from "@/lib/spec/stage-result";
 import { validateSpec } from "@/lib/spec/validate";
-import { checkUnlock } from "@/lib/unlock/check";
+import { explain, liveGate } from "@/lib/unlock/check";
+import { sampleToken } from "@/lib/unlock/token";
 
 export const maxDuration = 60;
 
@@ -22,6 +26,7 @@ export const maxDuration = 60;
 const MAX_VIDEO_CHARS = 4_000_000;
 
 type Recording = { clip_sha256: string; hint: string; result: StageResult<TaskSpec> };
+type Labelled = StageResult<TaskSpec> & { sample_token?: string };
 
 function replay(sha?: string): StageResult<TaskSpec> {
   const all = recordings as Recording[];
@@ -32,15 +37,12 @@ function replay(sha?: string): StageResult<TaskSpec> {
   return failed("no recorded label", false);
 }
 
-export async function POST(req: Request): Promise<NextResponse<StageResult<TaskSpec>>> {
+export async function POST(req: Request): Promise<NextResponse<Labelled>> {
   const body = await req.json().catch(() => null);
   const sha = typeof body?.clip_sha256 === "string" && /^[0-9a-f]{64}$/.test(body.clip_sha256) ? body.clip_sha256 : undefined;
   // a re-ask resends the video: two 25 s attempts and no SDK retry stay inside maxDuration
   const client = wantsReplay(req) ? null : tokenFactory({ timeout: 25_000, maxRetries: 0 });
   if (!client) return NextResponse.json(replay(sha));
-
-  const refusal = await checkUnlock(sha, body?.unlock);
-  if (refusal) return NextResponse.json(failed(refusal.message, false), { status: refusal.status });
 
   const video = body?.video;
   const duration = Number(body?.duration_s);
@@ -49,6 +51,10 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<TaskS
   }
   if (!(duration > 0 && duration <= 120)) return NextResponse.json(failed("duration_s must be between 0 and 120", false), { status: 400 });
   const hint = typeof body?.hint === "string" ? body.hint.trim().slice(0, 200) : "";
+
+  const gate = await liveGate("label", { clip_sha256: sha, unlock: body?.unlock });
+  if (!gate.live && gate.refusal) return NextResponse.json(failed(gate.refusal.message, false), { status: gate.refusal.status });
+  if (!gate.live) return NextResponse.json(explain(replay(sha), gate));
 
   const user: UserPart[] = [{ type: "text", text: LABEL_PROMPT }];
   if (hint) user.push({ type: "text", text: hintText(hint) });
@@ -63,5 +69,5 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<TaskS
   if (result.status !== "done") return NextResponse.json(result);
   const spec: TaskSpec = { ...result.value, provenance: { label_input: "video", clip_sha256: sha, model: MODELS.vl } };
   const warnings = [...result.warnings, ...validateSpec(spec).map((i) => `${i.path}: ${i.message}`)];
-  return NextResponse.json(done(spec, warnings, result.ledger));
+  return NextResponse.json({ ...done(spec, warnings, result.ledger), sample_token: gate.sample ? sampleToken() : undefined });
 }

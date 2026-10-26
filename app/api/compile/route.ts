@@ -2,9 +2,10 @@
  * POST /api/compile {spec, previous?}: Nano turns a task spec into a Program,
  * with an `ask` op for every value it would otherwise have to guess. It runs
  * again after every interview answer; `previous` is the program kept when a
- * recompile comes back unusable. Replay (no key, or ?replay=1) answers from
- * tests/fixtures/compile.json: the recording of the same spec, else the latest
- * one with the same title.
+ * recompile comes back unusable; `unlock` or `sample_token` lets it go live
+ * (lib/unlock/check.ts). Replay (no key, ?replay=1, or no way past the spend
+ * guard) answers from tests/fixtures/compile.json: the recording of the same
+ * spec, else the latest one with the same title.
  */
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/compile.json";
@@ -17,6 +18,7 @@ import { lintProgram, validateProgram } from "@/lib/spec/validate";
 import { canonicalSlot, valueAt } from "@/lib/spec/apply";
 import { askable, withRequiredAsks } from "@/lib/spec/answer";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
+import { explain, liveGate } from "@/lib/unlock/check";
 
 export const maxDuration = 60;
 
@@ -124,7 +126,8 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   if (!spec.success) return NextResponse.json(failed(`invalid spec: ${spec.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`, false), { status: 400 });
   const previous = body?.previous === undefined ? undefined : Program.safeParse(body.previous).data;
 
-  const client = wantsReplay(req) ? null : tokenFactory({ timeout: 25_000, maxRetries: 1 });
+  const gate = wantsReplay(req) ? null : await liveGate("compile", body);
+  const client = gate?.live ? tokenFactory({ timeout: 25_000, maxRetries: 1 }) : null;
   const result = client
     ? await callModel(client, {
         role: "nano",
@@ -136,7 +139,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
         check: (p) => lintProgram(resolveFixtureNames(p, spec.data).program, spec.data),
         previous,
       })
-    : replay(spec.data);
+    : explain(replay(spec.data), gate);
   if (result.status !== "done") return NextResponse.json(result);
   const resolved = resolveFixtureNames(result.value, spec.data);
   const warnings = [...result.warnings, ...resolved.warnings];
