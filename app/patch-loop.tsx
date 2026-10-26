@@ -16,7 +16,7 @@ const WHY_THINKING = { noop: "thinking on: the cheap patch changed nothing", two
  * times, until the program passes everywhere. `rehearse` runs one program in the page's stage.
  * Keyed by the rehearsal it patches, so a new one starts from scratch.
  */
-export function PatchLoop({ spec, program, first, rehearse, onBusy }: { spec: TaskSpec; program: Program; first: WorldRun[]; rehearse: (p: Program) => Promise<WorldRun[]>; onBusy: (busy: boolean) => void }) {
+export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch }: { spec: TaskSpec; program: Program; first: WorldRun[]; rehearse: (p: Program) => Promise<WorldRun[]>; onBusy: (busy: boolean) => void; onPatch?: (r: StageResult<NotePatch>) => void }) {
   const [its, setIts] = useState<Iteration[]>([]);
   const [busy, setBusy] = useState(false);
   /** bumped on unmount (a new rehearsal or program mounts a fresh loop): a reply for an old one is dropped */
@@ -43,6 +43,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy }: { spec: Ta
       setIts((xs) => [...xs, { n, state: "asking" }]);
       const r = await post<NotePatch>("/api/notes", { spec, program: current, runs: last, first: outcomeLine(first), history });
       if (id !== gen.current) return;
+      onPatch?.(r);
       if (r.status !== "done") {
         update(n, { state: "failed", message: r.status === "failed" ? r.message : "no answer" });
         break;

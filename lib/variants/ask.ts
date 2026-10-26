@@ -6,7 +6,7 @@
 import type OpenAI from "openai";
 import { callModel, type CallOptions } from "@/lib/providers/call";
 import type { TaskSpec } from "@/lib/spec/schema";
-import type { StageResult } from "@/lib/spec/stage-result";
+import type { LedgerEntry, StageResult } from "@/lib/spec/stage-result";
 import { normalizeReply, VariantReply } from "./parse";
 import { userMessage, VARIANTS_SYSTEM } from "./prompt";
 import { replyProblems } from "./validate";
@@ -23,8 +23,9 @@ export function variantsCall(spec: TaskSpec, request?: string): CallOptions<Vari
   };
 }
 
-export function askSuper(client: OpenAI, spec: TaskSpec, request?: string): Promise<StageResult<VariantReply>> {
-  return callModel(client, variantsCall(spec, request));
+/** `ledger` receives every billed call, the ones of a failed answer included. */
+export function askSuper(client: OpenAI, spec: TaskSpec, request?: string, ledger?: LedgerEntry[]): Promise<StageResult<VariantReply>> {
+  return callModel(client, { ...variantsCall(spec, request), ledger });
 }
 
 /** One line from the person, trimmed to one short line; empty means none. */

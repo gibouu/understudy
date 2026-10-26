@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { WorldRun } from "@/lib/notes/note";
 import { SimClient } from "@/lib/sim/client";
 import type { Rollout } from "@/lib/sim/interpreter";
 import { StageRenderer } from "@/lib/sim/render";
@@ -9,13 +10,15 @@ import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib
 import { costOf } from "@/lib/variants/cost";
 import { MAX_VARIANTS, type NotYet } from "@/lib/variants/parse";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
+import { PatchLoop } from "./patch-loop";
 
 /** The same two worlds as the rehearsal above. */
 const WORLDS: GravityName[] = ["earth", "orbit"];
 const MAX_REQUEST_CHARS = 200;
 
 type WorldResult = Rollout | { error: string } | "running";
-type Run = { compile: StageResult<Program>; worlds: Partial<Record<GravityName, WorldResult>>; ledger: LedgerEntry[] };
+/** `n` counts the variant's rehearsals, so each one gets a fresh patch loop. */
+type Run = { n: number; compile: StageResult<Program>; worlds: Partial<Record<GravityName, WorldResult>>; ledger: LedgerEntry[] };
 /** Every request this section made, for the running total; a failed one may have spent tokens it does not report. */
 type Call = { what: string; ledger: LedgerEntry[]; replayed: boolean; failed: boolean };
 
@@ -38,13 +41,11 @@ const callOf = (what: string, r: StageResult<unknown>): Call => ({
 const usd = (x: number) => `US$${x < 0.01 ? x.toFixed(4) : x.toFixed(3)}`;
 
 /**
- * Hook for the patch loop (#28, `/api/notes`): a variant that failed in some
- * world for a reason a patch can reach (not an unanswered question, not a
- * crash), as the `{world, rollout}` runs `PatchLoop` takes. Not wired yet:
- * once `app/patch-loop.tsx` is on main, mount it under such a variant with
- * these runs and a `rehearse` that loads the variant's spec into this stage.
+ * A variant that failed in some world for a reason a patch can reach (not an
+ * unanswered question, not a crash), as the runs the patch loop starts from;
+ * null when there is nothing to patch.
  */
-export function patchable(run: Run | undefined): { world: GravityName; rollout: Rollout }[] | null {
+export function patchable(run: Run | undefined): WorldRun[] | null {
   if (!run) return null;
   const runs = WORLDS.flatMap((world) => {
     const r = run.worlds[world];
@@ -83,13 +84,20 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
   const [runs, setRuns] = useState<Record<string, Run>>({});
   const [calls, setCalls] = useState<Call[]>([]);
   const [busy, setBusy] = useState(false);
+  const [patching, setPatching] = useState(false);
   const [showing, setShowing] = useState<string | null>(null);
   /** bumped when the section goes: replies and rollouts for it are dropped */
   const gen = useRef(0);
   /** the next variant number: each request reserves its range when it is sent, so two in flight never share one */
   const next = useRef(1);
-  /** one rehearsal at a time on the one stage, even on a double click */
+  /** one rehearsal or patch loop at a time on the one stage, even on a double click */
   const rehearsing = useRef(false);
+  const patchingRef = useRef(false);
+  // stable: the patch loop stops itself when this changes
+  const onPatchBusy = useCallback((b: boolean) => {
+    patchingRef.current = b;
+    setPatching(b);
+  }, []);
   const offeredKeys = useRef(new Set<string>());
 
   useEffect(() => {
@@ -164,9 +172,40 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
     receive(r, `“${line}”`, line);
   }
 
-  async function rehearse(list: Variant[]) {
+  /**
+   * One rollout of `p` per world on this stage, each from the variant's start.
+   * `show` puts each result on the card; otherwise a world that errors throws.
+   * Null when the section went meanwhile.
+   */
+  async function runWorlds(v: Variant, p: Program, show: boolean, id: number): Promise<WorldRun[] | null> {
     const client = clientRef.current;
-    if (!client || rehearsing.current) return;
+    if (!client) throw new Error("the simulator is not loaded");
+    setShowing(v.id);
+    await client.load({ spec: v.spec });
+    const out: WorldRun[] = [];
+    const put = (world: GravityName, result: WorldResult) => show && setRuns((rs) => ({ ...rs, [v.id]: { ...rs[v.id], worlds: { ...rs[v.id].worlds, [world]: result } } }));
+    for (const world of WORLDS) {
+      if (id !== gen.current) return null;
+      // a rollout homes only the arm: put the objects back where the variant has them, too
+      client.reset();
+      client.setGravity(GRAVITIES[world]);
+      put(world, "running");
+      let result: WorldResult;
+      try {
+        result = await client.run(p, "sensed", "home");
+      } catch (err) {
+        result = { error: (err as Error).message };
+      }
+      if (id !== gen.current) return null;
+      put(world, result);
+      if (!("error" in result)) out.push({ world, rollout: result });
+      else if (!show) throw new Error(result.error);
+    }
+    return out;
+  }
+
+  async function rehearse(list: Variant[]) {
+    if (!clientRef.current || rehearsing.current || patchingRef.current) return;
     rehearsing.current = true;
     const id = gen.current;
     setBusy(true);
@@ -174,40 +213,30 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
       const update = (run: Partial<Run>) =>
         setRuns((rs) => {
           const prev: Run | undefined = rs[v.id];
-          return { ...rs, [v.id]: { ...(prev ?? { compile: idle(), worlds: {}, ledger: [] }), ...run } };
+          return { ...rs, [v.id]: { ...(prev ?? { n: 0, compile: idle(), worlds: {}, ledger: [] }), ...run } };
         });
-      update({ compile: running("Nano is writing its program"), worlds: {}, ledger: [] });
+      setRuns((rs) => ({ ...rs, [v.id]: { n: (rs[v.id]?.n ?? 0) + 1, compile: running("Nano is writing its program"), worlds: {}, ledger: [] } }));
       const c = await post<Program>("/api/compile", { spec: v.spec, previous: program });
       if (id !== gen.current) return;
       update({ compile: c, ledger: callOf("", c).ledger });
       setCalls((cs) => [...cs, callOf(`${v.title}: program`, c)]);
       if (c.status !== "done") continue;
-      setShowing(v.id);
       try {
-        await client.load({ spec: v.spec });
+        if (!(await runWorlds(v, c.value, true, id))) return;
       } catch (err) {
         update({ worlds: { earth: { error: (err as Error).message } } });
-        continue;
-      }
-      for (const world of WORLDS) {
-        if (id !== gen.current) return;
-        // a rollout homes only the arm: put the objects back where the variant has them, too
-        client.reset();
-        client.setGravity(GRAVITIES[world]);
-        setRuns((rs) => ({ ...rs, [v.id]: { ...rs[v.id], worlds: { ...rs[v.id].worlds, [world]: "running" } } }));
-        let result: WorldResult;
-        try {
-          result = await client.run(c.value, "sensed", "home");
-        } catch (err) {
-          result = { error: (err as Error).message };
-        }
-        if (id !== gen.current) return;
-        setRuns((rs) => ({ ...rs, [v.id]: { ...rs[v.id], worlds: { ...rs[v.id].worlds, [world]: result } } }));
       }
     }
     rehearsing.current = false;
     setBusy(false);
   }
+
+  /** The patch loop's rehearsal of a patched program, on this stage. */
+  const patchRehearsal = (v: Variant) => async (p: Program): Promise<WorldRun[]> => {
+    const runs = await runWorlds(v, p, false, gen.current);
+    if (!runs) throw new Error("the section was closed");
+    return runs;
+  };
 
   const total = costOf(calls.flatMap((c) => c.ledger));
   const failedCalls = calls.filter((c) => c.failed && c.ledger.length === 0).length;
@@ -258,9 +287,15 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
               run={runs[v.id]}
               showing={showing === v.id}
               checked={chosen.has(v.id)}
-              disabled={busy}
+              disabled={busy || patching}
               onCheck={(on) => setChosen((c) => (on ? new Set([...c, v.id]) : new Set([...c].filter((x) => x !== v.id))))}
               onRehearse={() => rehearse([v])}
+              patch={(() => {
+                const run = runs[v.id];
+                const first = patchable(run);
+                if (!first || run.compile.status !== "done") return null;
+                return <PatchLoop key={`${v.id}:${run.n}`} spec={v.spec} program={run.compile.value} first={first} rehearse={patchRehearsal(v)} onBusy={onPatchBusy} onPatch={(r) => setCalls((cs) => [...cs, callOf(`${v.title}: patch`, r)])} />;
+              })()}
             />
           ))}
         </ul>
@@ -282,7 +317,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
 
       {offered.length > 0 && (
         <div>
-          <button className="rounded bg-[var(--ink,#171717)] px-3 py-1.5 text-sm text-[color:var(--paper,#fff)] disabled:opacity-40" disabled={!ready || busy || picked.length === 0} onClick={() => rehearse(picked)}>
+          <button className="rounded bg-[var(--ink,#171717)] px-3 py-1.5 text-sm text-[color:var(--paper,#fff)] disabled:opacity-40" disabled={!ready || busy || patching || picked.length === 0} onClick={() => rehearse(picked)}>
             Rehearse the {picked.length} chosen on Earth, then in orbit
           </button>
         </div>
@@ -326,7 +361,7 @@ function StatusLine({ result }: { result: StageResult<Checked> }) {
   return null;
 }
 
-function VariantCard({ base, variant: v, from, run, showing, checked, disabled, onCheck, onRehearse }: { base: TaskSpec; variant: Variant; from: string; run?: Run; showing: boolean; checked: boolean; disabled: boolean; onCheck: (on: boolean) => void; onRehearse: () => void }) {
+function VariantCard({ base, variant: v, from, run, showing, checked, disabled, onCheck, onRehearse, patch }: { base: TaskSpec; variant: Variant; from: string; run?: Run; showing: boolean; checked: boolean; disabled: boolean; onCheck: (on: boolean) => void; onRehearse: () => void; patch: React.ReactNode }) {
   const cost = run && run.ledger.length ? costOf(run.ledger) : null;
   return (
     <li className={`rounded-lg border p-3 text-sm ${showing ? "border-[color:var(--accent,#b45309)]" : ""}`}>
@@ -380,6 +415,7 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
               {replayed(run.compile) && " (recorded)"}
             </p>
           )}
+          {patch}
         </div>
       )}
     </li>

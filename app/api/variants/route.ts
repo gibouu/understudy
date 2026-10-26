@@ -14,7 +14,7 @@ import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/variants.json";
 import { tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { TaskSpec } from "@/lib/spec/schema";
-import { done, failed, type StageResult } from "@/lib/spec/stage-result";
+import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { askSuper, cleanRequest } from "@/lib/variants/ask";
 import { VariantReply } from "@/lib/variants/parse";
 import { MAX_REQUEST_CHARS } from "@/lib/variants/prompt";
@@ -46,8 +46,10 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Check
   const first = Number.isInteger(body?.first) && body.first >= 1 && body.first < 10_000 ? (body.first as number) : 1;
 
   const client = wantsReplay(req) ? null : tokenFactory({ timeout: 25_000, maxRetries: 1 });
-  const result = client ? await askSuper(client, spec.data, request) : replay(spec.data, request);
-  if (result.status !== "done") return NextResponse.json(result);
+  // a failed answer still cost its calls: the page counts them from this
+  const billed: LedgerEntry[] = [];
+  const result = client ? await askSuper(client, spec.data, request, billed) : replay(spec.data, request);
+  if (result.status !== "done") return NextResponse.json({ ...result, ledger: billed });
   let checked: Checked;
   try {
     checked = checkReply(spec.data, result.value, first);
