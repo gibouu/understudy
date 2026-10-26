@@ -59,7 +59,7 @@ export function StageView() {
   const [dropped, setDropped] = useState(0);
   const [jac, setJac] = useState<Jac>(null);
   const [gravity, setGravity] = useState<GravityName>("earth");
-  /** the gravity a fresh load starts in: the one picked */
+  /** the gravity picked, for a fresh load and a pour started right after the pick */
   const gravityRef = useRef<GravityName>("earth");
   const [target, setTarget] = useState<[number, number, number]>([250, 0, 50]);
   const [approach, setApproach] = useState<Approach>("top");
@@ -233,10 +233,11 @@ export function StageView() {
     const client = clientRef.current;
     if (!client || busy) return;
     setBusy(true);
-    const label = `${name.replaceAll("_", " ")}, ${gravity} ${GRAVITIES[gravity]} g, seed ${seed}`;
+    const g = gravityRef.current; // the latest pick, even one made in the same tick
+    const label = `${name.replaceAll("_", " ")}, ${g} ${GRAVITIES[g]} g, seed ${seed}`;
     setRunNote(`${label}: running`);
     client.reset(seed);
-    client.setGravity(GRAVITIES[gravity]);
+    client.setGravity(GRAVITIES[g]);
     try {
       const r = await client.run(POUR_PROGRAMS[name], "sensed", "home");
       const where = r.log.findLast((l) => l.includes(" liquid: "))?.split(" liquid: ")[1];
