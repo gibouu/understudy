@@ -12,7 +12,7 @@ export default async function Space() {
       <header className="flex max-w-3xl flex-col gap-4">
         <h1 className="display text-5xl font-semibold text-ink-deep sm:text-6xl">Space showcase</h1>
         <p className="text-lg leading-relaxed text-neutral-700">
-          Astronauts at work aboard the ISS, filmed by NASA. Each clip went through Understudy once, end to end; what the models answered is recorded, so this page calls none of them. The simulated SO-101 runs again in your browser for every version of the program, on Earth and in orbit.
+          Astronauts at work aboard the ISS, filmed by NASA. Each clip is one recorded run through Understudy (labels vary run to run); what the models answered is recorded, so this page calls none of them. The simulated SO-101 runs again in your browser for every version of the program, on Earth and in orbit.
         </p>
       </header>
 

@@ -138,7 +138,13 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         <div className="grid gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
           <Clip sample={sample} />
           <div className="flex flex-col gap-3 text-[17px] leading-relaxed">
-            <p>The only other input is the line its uploader would type, which helps the model name the objects:</p>
+            <p>
+              The only other input is the line its uploader would type. It names the task, and that matters: in our{" "}
+              <a className="underline underline-offset-2 hover:text-accent-text" href="https://github.com/gibouu/understudy/blob/main/docs/MEASUREMENTS.md#6-labelling-the-hero-clip">
+                label measurements
+              </a>{" "}
+              only a hint that names the task got the model to name the object being moved.
+            </p>
             <blockquote className="display border-l-4 border-sun pl-4 text-2xl leading-snug text-ink-deep">“{session.hint}”</blockquote>
             <p className="text-muted">The clip goes to the model as a small copy: 480 pixels wide, 4 frames a second, no sound.</p>
           </div>
@@ -251,8 +257,8 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
             <p className="text-neutral-700">
               When it was recorded, version {pick} of the program: on Earth it <Outcome run={it.results.earth} spec={it.spec} />; in orbit it <Outcome run={it.results.orbit} spec={it.spec} />. Rehearse it to run the same program again here.
             </p>
-            {/* Rehearsal's Notes loop (#28) calls a model, and /space never does; spread so this compiles before that prop lands */}
-            <Rehearsal key={pick} spec={it.spec} program={it.program} onFail={setFailure} {...{ notes: false }} />
+            {/* the Notes stage calls a model, and /space never does */}
+            <Rehearsal key={pick} spec={it.spec} program={it.program} onFail={setFailure} notes={false} />
           </Step>
         </div>
       </div>
@@ -294,7 +300,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         </ol>
         {session.pending.length > 0 && finalFails && (
           <p className="max-w-3xl rounded-lg border-2 border-dashed border-accent p-4 text-[17px]">
-            This is where the Notes stage takes over: Super reads what the simulator measured in the failed rehearsal, patches the program’s numbers, and each patch is rehearsed again on Earth and in orbit. Its versions will join this story when that stage ships. On small probe programs of two to four knobs, the same loop fixed 94% of the failures that could be fixed.
+            This is where the Notes stage takes over: Super reads what the simulator measured in the failed rehearsal, patches the program’s numbers, and each patch is rehearsed again on Earth and in orbit. Its versions will join this story when this clip is recorded again with Notes. On small probe programs of two to four knobs, the same loop fixed 94% of the failures that could be fixed.
           </p>
         )}
         <p className="text-sm text-muted">
