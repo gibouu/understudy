@@ -365,7 +365,12 @@ function pourBench(base: TaskSpec, spec: TaskSpec, changes: SpecChange[]): { spe
   const was = pourOf(base)!;
   const now = pourOf(spec);
   if (!now) return { why: "a pour stays a pour" };
-  const touched = (id: string, field: string) => changes.some((c) => { const [, i, f] = parsePath(c.path); return i === id && f === field; });
+  /** whether the variant itself sets this field of object `id` */
+  const touched = (id: string, field: string) =>
+    changes.some((c) => {
+      const [list, i, f] = parsePath(c.path);
+      return list === "objects" && i === id && f === field;
+    });
   let wb: Record<string, Pose3>;
   try {
     wb = worldPoses(base);
