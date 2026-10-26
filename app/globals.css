@@ -12,8 +12,10 @@
   --paper-deep: #efe3cf;
   --ink: #16283f;
   --ink-deep: #0c1a2e;
-  /* the accent fills and draws; small accent text uses --accent-text (AA on paper) */
-  --accent: #cf5220;
+  /* --accent is safe as text on every paper tone (AA, 4.7:1 or more); the brighter print orange
+     (3.8:1) is for large type, fills and shadows; links and small labels use --accent-text */
+  --accent: #ad4117;
+  --accent-bright: #cf5220;
   --accent-text: #9b3a12;
   --sun: #efb340;
   --muted: #56657a;
@@ -34,6 +36,7 @@
   --color-ink: var(--ink);
   --color-ink-deep: var(--ink-deep);
   --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
   --color-accent-text: var(--accent-text);
   --color-sun: var(--sun);
   --color-muted: var(--muted);
@@ -109,7 +112,7 @@
 
   /* Two-colour riso print: the ink plate and the orange plate never quite line up. */
   .misprint {
-    text-shadow: 0.035em 0.03em 0 var(--accent);
+    text-shadow: 0.035em 0.03em 0 var(--accent-bright);
   }
 
   /* A clip still printed in ink and sun, like the rest of the page. */

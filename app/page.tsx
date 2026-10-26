@@ -47,7 +47,7 @@ export default async function Home() {
           <ol className="flex flex-col gap-3 border-t pt-4 text-[17px]">
             {["Super VL watches the clip and names the objects and steps.", "Nano writes the robot’s program and asks what it could not see; you answer.", "The arm rehearses the program on Earth and in orbit."].map((line, i) => (
               <li key={line} className="grid grid-cols-[2rem_1fr] items-baseline">
-                <span className="display text-2xl font-bold text-accent">{i + 1}</span>
+                <span className="display text-2xl font-bold text-accent-bright">{i + 1}</span>
                 {line}
               </li>
             ))}
@@ -62,7 +62,7 @@ export default async function Home() {
           {NUMBERS.map((n) => (
             <li key={n.figure} className="bg-paper">
               <a href={n.href} className="group flex h-full flex-col gap-2 p-5 hover:bg-card sm:p-6">
-                <span className="display tnum text-5xl font-semibold text-accent sm:text-6xl">{n.figure}</span>
+                <span className="display tnum text-5xl font-semibold text-accent-bright sm:text-6xl">{n.figure}</span>
                 <span className="text-[17px] leading-snug">{n.text}</span>
                 <span className="mt-auto pt-2 text-sm text-muted underline underline-offset-2 group-hover:text-accent-text">How we measured it</span>
               </a>

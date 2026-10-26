@@ -211,7 +211,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
               const answer = turn.answers.find((x) => x.slot === a.slot);
               return (
                 <li key={a.slot} className="flex flex-col gap-2">
-                  <p className="max-w-xl self-start rounded-2xl border-2 border-ink bg-card px-4 py-3 text-[17px] text-ink-deep shadow-[5px_5px_0_var(--accent)]">
+                  <p className="max-w-xl self-start rounded-2xl border-2 border-ink bg-card px-4 py-3 text-[17px] text-ink-deep shadow-[5px_5px_0_var(--accent-bright)]">
                     {a.question}
                     {a.why && <span className="mt-1 block text-sm text-muted">{a.why}</span>}
                   </p>
