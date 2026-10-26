@@ -9,12 +9,15 @@ import { applyChanges } from "@/lib/spec/apply";
 import type { Predicate, Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
+import { FilmYourself, UnlockPrompt, unlockCode } from "./capture";
+import { GroundChips } from "./ground-chips";
 import { ProgramView, type Failure } from "./program-view";
 
 const Rehearsal = dynamic(() => import("./rehearsal").then((m) => m.Rehearsal), {
   ssr: false,
   loading: () => <div className="aspect-[4/3] w-full animate-pulse rounded-xl border bg-neutral-100" />,
 });
+const Variants = dynamic(() => import("./variants").then((m) => m.Variants), { ssr: false });
 
 /** Nano asks about one gap per compile; past this many rounds the page stops asking. */
 const MAX_ROUNDS = 6;
@@ -99,7 +102,7 @@ export function Flow() {
     const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: await clipSha256(clip.blob) }));
     if (id !== gen.current) return;
     setLabel(running("Super VL is watching the clip"));
-    const r = await post<TaskSpec>("/api/label", { ...body, hint });
+    const r = await post<TaskSpec>("/api/label", { ...body, hint, unlock: unlockCode() });
     if (id !== gen.current) return;
     setLabel(r);
     if (r.status !== "done") return;
@@ -152,6 +155,7 @@ export function Flow() {
               }}
             />
           </label>
+          <FilmYourself onClip={(take) => choose(take, "")} />
         </div>
         {clip && (
           <div className="mt-3 flex flex-col gap-3">
@@ -172,8 +176,20 @@ export function Flow() {
       {label.status !== "idle" && (
         <Section n={2} title="What the model saw" model="Nemotron 3.5 Super VL">
           <Status result={label} />
+          {label.status === "failed" && <UnlockPrompt message={label.message} onUnlock={watch} />}
           {label.status === "done" && <SpecSummary spec={label.value} />}
         </Section>
+      )}
+
+      {label.status === "done" && spec && (
+        <GroundChips
+          spec={spec}
+          busy={program.status === "running"}
+          onSpec={(next) => {
+            setSpec(next);
+            compile(next, program.status === "done" ? program.value : undefined);
+          }}
+        />
       )}
 
       {fit && (
@@ -232,6 +248,12 @@ export function Flow() {
         <Section n={5} title="Rehearse" model="MuJoCo WebAssembly · SO-101">
           {asks.length > 0 && <p className="text-sm text-amber-700">Some questions are still open: the rehearsal stops at the first one.</p>}
           <Rehearsal spec={spec} program={program.value} onFail={setFailure} />
+        </Section>
+      )}
+
+      {ready && program.status === "done" && (
+        <Section n={6} title="Try a similar task" model="Nemotron 3 Super · Nemotron 3 Nano">
+          <Variants spec={spec} program={program.value} />
         </Section>
       )}
     </div>
