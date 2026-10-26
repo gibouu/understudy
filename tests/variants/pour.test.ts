@@ -61,6 +61,9 @@ describe("a variant of a pour", () => {
       expect(v.warnings).toEqual(["bowl is 68 x 68 mm across and the jaws hold 6 to 50 mm: it is 50 x 50 mm here"]);
       expect(v.edits.map((e) => e.path)).toEqual(expect.arrayContaining(["objects[cup].liquid_ml", "objects[bowl].liquid_ml", "steps[s1].object", "steps[s1].pour", "steps[s1].success"]));
     }
+    // a held container too shallow for the liquid it is given: the card says how much the rehearsal holds
+    const shallow = variant(build(["steps[s1].object", "bowl"], ["objects[bowl].size_mm", [68, 68, 24]]));
+    expect(shallow.warnings).toContain('"bowl" holds 26 mL at most; 38 mL was asked');
     // a size the variant gives for the new held container is narrowed too, and reported as its change
     const sized = variant(build(["steps[s1].object", "bowl"], ["objects[bowl].size_mm", [48, 48, 54]]));
     expect(object(sized.spec, "bowl").pose!.xyz_mm).toEqual([300, 0, 73]);

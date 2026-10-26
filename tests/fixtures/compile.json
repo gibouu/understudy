@@ -3507,7 +3507,7 @@
      "confidence": 0.5,
      "source": "demo",
      "sources": {
-      "size_mm": "variant#5",
+      "size_mm": "variant#6",
       "pose": "fit"
      }
     }
@@ -3542,14 +3542,14 @@
    "warnings": [],
    "open_questions": [],
    "sources": {
-    "title": "variant#5",
-    "summary": "variant#5"
+    "title": "variant#6",
+    "summary": "variant#6"
    }
   },
   "result": {
    "status": "done",
    "value": {
-    "spec_title": "Bigger bowl",
+    "spec_title": "cup into bowl: Bigger bowl",
     "steps": [
      {
       "step_id": "s1",
@@ -3632,8 +3632,8 @@
     {
      "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
      "prompt_tokens": 2796,
-     "completion_tokens": 235,
-     "seconds": 1.466
+     "completion_tokens": 239,
+     "seconds": 0.955
     }
    ]
   }
@@ -3691,8 +3691,8 @@
      "confidence": 0.5,
      "source": "demo",
      "sources": {
-      "role": "variant#6",
-      "liquid_ml": "variant#6",
+      "role": "variant#7",
+      "liquid_ml": "variant#7",
       "pose": "fit"
      }
     },
@@ -3720,8 +3720,8 @@
      "confidence": 0.5,
      "source": "demo",
      "sources": {
-      "role": "variant#6",
-      "liquid_ml": "variant#6",
+      "role": "variant#7",
+      "liquid_ml": "variant#7",
       "size_mm": "fit",
       "pose": "fit"
      }
@@ -3752,17 +3752,17 @@
      "t_end_s": 4,
      "source": "demo",
      "sources": {
-      "object": "variant#6",
-      "pour": "variant#6",
-      "success": "variant#6"
+      "object": "variant#7",
+      "pour": "variant#7",
+      "success": "variant#7"
      }
     }
    ],
    "warnings": [],
    "open_questions": [],
    "sources": {
-    "title": "variant#6",
-    "summary": "variant#6"
+    "title": "variant#7",
+    "summary": "variant#7"
    }
   },
   "result": {
@@ -3851,8 +3851,8 @@
     {
      "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
      "prompt_tokens": 2848,
-     "completion_tokens": 242,
-     "seconds": 1.132
+     "completion_tokens": 236,
+     "seconds": 0.88
     }
    ]
   }

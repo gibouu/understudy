@@ -27,7 +27,8 @@
  * say: it reports a target out of reach as an embodiment limit.
  */
 import { fitToBench } from "@/lib/sim/fit";
-import { apply, buildScene, CONTAINER_WALL_M, containerIds, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses, type Pose3 } from "@/lib/sim/scene";
+import { planLiquid } from "@/lib/sim/liquid";
+import { apply, buildScene, CONTAINER_WALL_M, containerIds, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, layoutMissingPoses, MM, SceneError, transpose, WALL_M, worldPoses, type Pose3 } from "@/lib/sim/scene";
 import { applyChanges, canonicalSlot, parsePath, valueAt } from "@/lib/spec/apply";
 import { AXES, FIXTURES, PREDICATE_OPERANDS, SHAPES, type Predicate, type PredicateKind, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
 import { validateSpec } from "@/lib/spec/validate";
@@ -465,6 +466,25 @@ function pourBench(base: TaskSpec, spec: TaskSpec, changes: SpecChange[]): { spe
   return { spec: out, warnings };
 }
 
+/**
+ * What the rehearsal will say of the liquid in `spec` (lib/sim/liquid.ts, as
+ * lib/sim/interpreter.ts plans it) that it does not say of the task above:
+ * a container that holds less than it is given, a fill cut to the particle
+ * budget. The card shows them next to the edits that cause them.
+ */
+function liquidWarnings(base: TaskSpec, spec: TaskSpec): string[] {
+  const plan = (s: TaskSpec) => {
+    try {
+      return planLiquid(layoutMissingPoses(s).spec, buildScene(s))?.warnings ?? [];
+    } catch (err) {
+      if (err instanceof SceneError) return [];
+      throw err;
+    }
+  };
+  const before = new Set(plan(base));
+  return plan(spec).filter((w) => !before.has(w));
+}
+
 /** applyChanges' reason for refusing a batch, and which change is at fault when there are several. */
 function refused(warnings: string[], n: number): string {
   const whole = warnings[0].replace(/^no change applied: /, "");
@@ -562,6 +582,7 @@ export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: 
   }
   const problem = geometryProblem(spec);
   if (problem) return { why: problem };
+  warnings.push(...liquidWarnings(base, spec));
   return { variant: { id: source, title: idea.title, summary: idea.summary, changes, edits, spec, warnings } };
 }
 

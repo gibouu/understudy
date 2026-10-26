@@ -455,7 +455,16 @@ function Outcome({ result }: { result?: WorldResult }) {
   return result.pass ? <span className="text-emerald-700">pass</span> : <span className="text-red-700">fail{result.failed_step_id ? ` at ${result.failed_step_id}` : ""}</span>;
 }
 
-const percent = (v: number) => (v > 0 && v < 0.005 ? "under 1%" : `${Math.round(v * 100)}%`);
+/**
+ * A share as a percent. Just short of a check's threshold it is cut, not
+ * rounded, to a decimal (lib/sim/predicates.ts does the same), so a fail
+ * never reads as the threshold reached.
+ */
+const percent = (v: number, threshold?: number) => {
+  if (v > 0 && v < 0.005) return "under 1%";
+  const pc = v * 100;
+  return threshold !== undefined && pc < threshold && Math.round(pc) >= threshold ? `${(Math.floor(pc * 10) / 10).toFixed(1)}%` : `${Math.round(pc)}%`;
+};
 const nameIn = (spec: TaskSpec, id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
 const ended = (result?: WorldResult) => (result && result !== "running" && !("error" in result) ? result.liquid : undefined);
 
@@ -469,7 +478,8 @@ function liquidIn(spec: TaskSpec, result?: WorldResult): string {
   const pour = pourOf(spec);
   if (!where || !pour) return "";
   const all = spec.objects.some((o) => o.id !== pour.object && o.liquid_ml !== undefined);
-  return `${percent(where.containers[pour.pour.into] ?? 0)} of ${all ? "all " : ""}the liquid in the ${nameIn(spec, pour.pour.into)}`;
+  const threshold = pour.success.find((p) => p.kind === "liquid_inside" && p.target === pour.pour.into)?.value;
+  return `${percent(where.containers[pour.pour.into] ?? 0, threshold)} of ${all ? "all " : ""}the liquid in the ${nameIn(spec, pour.pour.into)}`;
 }
 
 /** Where the rest of the liquid ended: in a container, on the table, or above it in no container. */
