@@ -24,7 +24,7 @@
 import { fitToBench } from "@/lib/sim/fit";
 import { apply, buildScene, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses } from "@/lib/sim/scene";
 import { applyChanges, canonicalSlot, parsePath, valueAt } from "@/lib/spec/apply";
-import { AXES, FIXTURES, SHAPES, type Predicate, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
+import { AXES, FIXTURES, SHAPES, type Predicate, type PredicateKind, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
 import { validateSpec } from "@/lib/spec/validate";
 import { MAX_VARIANTS, type Idea, type NotYet, type VariantReply } from "./parse";
 
@@ -226,20 +226,32 @@ function geometryProblem(spec: TaskSpec): string | null {
   return null;
 }
 
-/** A check as what it checks: its kind and what it is about, not its threshold. */
+/** A check as what it checks: its kind and what it is about. */
 const checkKey = (p: Predicate) => JSON.stringify([p.kind, p.object ?? null, p.target ?? null]);
-const checkText = (p: Predicate) => [p.kind, p.object, p.target && `in ${p.target}`].filter(Boolean).join(" ");
+const checkText = (p: Predicate) => [p.kind, p.object, p.target && `in ${p.target}`, p.value !== undefined && `${p.value}`].filter(Boolean).join(" ");
+/** Which way a threshold is stricter: lib/sim/predicates.ts passes height_above at value or more, the others at value or less. */
+const STRICTER_IS_HIGHER: Partial<Record<PredicateKind, boolean>> = { height_above: true, tilt_under: false, gripper_within: false, time_under: false };
+
+/** Whether check `v` asks at least as much as `b` about the same thing. */
+function asStrict(v: Predicate, b: Predicate): boolean {
+  if (checkKey(v) !== checkKey(b)) return false;
+  if (b.value === undefined) return true;
+  if (v.value === undefined) return false;
+  const higher = STRICTER_IS_HIGHER[b.kind];
+  return higher === undefined ? v.value === b.value : higher ? v.value >= b.value : v.value <= b.value;
+}
 
 /**
- * The success checks of the task above that a variant no longer has. A pass
- * must mean the same task done: a variant may add a check or change its
- * threshold, never drop one (setting success to "comes to rest" would pass
- * with the object put down anywhere).
+ * The success checks of the task above that a variant no longer makes, or
+ * makes more loosely. A pass must mean the same task done: a variant may add
+ * a check or tighten one, never drop or loosen one (setting success to "comes
+ * to rest" would pass with the object put down anywhere). Each check needs its
+ * own match, so a looser duplicate does not stand in for a stricter one.
  */
 function droppedChecks(base: TaskSpec, spec: TaskSpec): Predicate[] {
   return base.steps.flatMap((b) => {
-    const kept = new Set(spec.steps.find((s) => s.id === b.id)?.success.map(checkKey));
-    return b.success.filter((p) => !kept.has(checkKey(p)));
+    const now = spec.steps.find((s) => s.id === b.id)?.success ?? [];
+    return b.success.filter((p) => !now.some((q) => asStrict(q, p)));
   });
 }
 
@@ -299,7 +311,7 @@ export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: 
   if (placed.warnings.length) return { why: refused(placed.warnings, moves.length) };
   const spec = placed.spec;
   const dropped = droppedChecks(base, spec);
-  if (dropped.length) return { why: `it drops the check that the task is done (${dropped.map(checkText).join("; ")}): a variant may add a check or tighten one, never remove one` };
+  if (dropped.length) return { why: `it drops or loosens a check that the task is done (${dropped.map(checkText).join("; ")}): a variant may add a check or tighten one, never remove or loosen one` };
 
   const edits = watched(base)
     .map((path) => ({ path, before: valueAt(base, path), after: valueAt(spec, path) }))

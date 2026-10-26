@@ -89,20 +89,33 @@ describe("a variant of the ISS sample", () => {
     expect(why(build(["steps[s2].verb", "release"]))).toMatch(/^not yet: the rehearsal runs one grasp and then one insert or place/);
   });
 
-  it("keeps every check that the task is done: a pass means the same task done", () => {
+  it("keeps every check that the task is done, as strict: a pass means the same task done", () => {
     expect(base.steps[1].success.map((p) => p.kind)).toEqual(["inside_zone", "object_still"]);
     const still: Predicate = { kind: "object_still", object: "obj1" };
     const inside: Predicate = { kind: "inside_zone", object: "obj1", target: "obj2" };
-    const tail = ": a variant may add a check or tighten one, never remove one";
-    expect(why(build(["steps[s2].success", [still]]))).toBe(`it drops the check that the task is done (inside_zone obj1 in obj2)${tail}`);
-    expect(why(build(["steps[s2].success", []]))).toBe(`it drops the check that the task is done (inside_zone obj1 in obj2; object_still obj1)${tail}`);
+    const tilt = (value: number): Predicate => ({ kind: "tilt_under", object: "obj1", value });
+    const refused = (checks: string) => `it drops or loosens a check that the task is done (${checks}): a variant may add a check or tighten one, never remove or loosen one`;
+    expect(why(build(["steps[s2].success", [still]]))).toBe(refused("inside_zone obj1 in obj2"));
+    expect(why(build(["steps[s2].success", []]))).toBe(refused("inside_zone obj1 in obj2; object_still obj1"));
     // the same kind about something else is not the same check
-    expect(why(build(["steps[s2].success", [{ ...inside, target: "obj1" }, still]]))).toBe(`it drops the check that the task is done (inside_zone obj1 in obj2)${tail}`);
-    // adding a check is allowed, and so is changing a threshold
-    expect(why(build(["steps[s2].success", [inside, still, { kind: "tilt_under", object: "obj1", value: 20 }]]))).toBe("");
+    expect(why(build(["steps[s2].success", [{ ...inside, target: "obj1" }, still]]))).toBe(refused("inside_zone obj1 in obj2"));
+    // adding a check is allowed
+    expect(why(build(["steps[s2].success", [inside, still, tilt(20)]]))).toBe("");
+    // a threshold may tighten, never loosen, and a looser duplicate does not stand in for a stricter check
     const strict = structuredClone(base);
-    strict.steps[1].success = [inside, still, { kind: "tilt_under", object: "obj1", value: 20 }];
-    expect(why(buildVariant(strict, idea("Straighter", ["steps[s2].success", [inside, still, { kind: "tilt_under", object: "obj1", value: 5 }]]), 1))).toBe("");
+    strict.steps[1].success = [inside, still, tilt(20)];
+    const vary = (success: Predicate[]) => why(buildVariant(strict, idea("Straighter", ["steps[s2].success", success]), 1));
+    expect(vary([inside, still, tilt(5)])).toBe("");
+    expect(vary([inside, still, tilt(30)])).toBe(refused("tilt_under obj1 20"));
+    expect(vary([inside, still, tilt(30), tilt(20)])).toBe("");
+    const twice = structuredClone(base);
+    twice.steps[1].success = [inside, still, tilt(5), tilt(20)];
+    expect(why(buildVariant(twice, idea("One tilt", ["steps[s2].success", [inside, still, tilt(20)]]), 1))).toBe(refused("tilt_under obj1 5"));
+    // for height_above, higher is stricter
+    const lifted = structuredClone(base);
+    lifted.steps[1].success = [inside, still, { kind: "height_above", object: "obj1", value: 5 }];
+    expect(why(buildVariant(lifted, idea("Higher", ["steps[s2].success", [inside, still, { kind: "height_above", object: "obj1", value: 8 }]]), 1))).toBe("");
+    expect(why(buildVariant(lifted, idea("Lower", ["steps[s2].success", [inside, still, { kind: "height_above", object: "obj1", value: 2 }]]), 1))).toBe(refused("height_above obj1 5"));
   });
 
   it("refuses a variant the bench undoes, naming what it holds instead", () => {
