@@ -23,7 +23,7 @@
  */
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import type { Mode, Predicate, Program, Scenario, TaskSpec } from "@/lib/spec/schema";
-import { describeReach, pathMarkersXml, reachCheck, type Reach, type TraceSample } from "./gesture";
+import { describeReach, pathMarkersXml, reachCheck, speedText, type Reach, type TraceSample } from "./gesture";
 import { attach, detach, GRASP_TIMEOUT_S, graspIndex, holding, isAttached, type Grasp } from "./grasp";
 import { solveIk, solvePose, type IkResult } from "./ik";
 import { describeLiquid, planLiquid, type Liquid, type LiquidPlan, type LiquidWhere } from "./liquid";
@@ -498,7 +498,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             const peak = Math.max(0, ...keys.slice(1).map((q, k) => Math.max(...q.map((v, j) => Math.abs(v - keys[k][j]))) / (path[k + 1].t_s - path[k].t_s)));
             const stretch = Math.max(1, peak / FOLLOW_JOINT_RAD_S);
             const timed = path.map((p) => ({ ...p, t_s: p.t_s * stretch }));
-            log.push(`${t.toFixed(2)} follow ${path.length} points over ${timed.at(-1)!.t_s.toFixed(1)} s, ${stretch > 1 ? `at ${(1 / stretch).toFixed(2)}x the clip's speed: at its own a joint would turn at ${peak.toFixed(1)} rad/s, and the arm is held to ${FOLLOW_JOINT_RAD_S}` : `joints up to ${peak.toFixed(1)} rad/s`}`);
+            log.push(`${t.toFixed(2)} follow ${path.length} points over ${timed.at(-1)!.t_s.toFixed(1)} s, ${stretch > 1 ? `at ${speedText(1 / stretch)}x the clip's speed: at its own a joint would turn at ${peak.toFixed(1)} rad/s, and the arm is held to ${FOLLOW_JOINT_RAD_S}` : `joints up to ${peak.toFixed(1)} rad/s`}`);
             yield* moveArm(keys[0]);
             const trace: TraceSample[] = [];
             const record = () => trace.push({ t_s: t, xyz_mm: vec(data.site_xpos, site, 3).map((v) => v / MM) as [number, number, number] });
@@ -519,7 +519,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
               record();
               if (Math.max(...qvel().slice(0, ARM).map(Math.abs)) < ARRIVED_RAD_S) break;
             }
-            const f: Followed = { step_id: s.step_id, speed: Math.round((1 / stretch) * 100) / 100, ...reachCheck(timed, trace, g.reach_mm, start) };
+            const f: Followed = { step_id: s.step_id, speed: Number((1 / stretch).toPrecision(2)), ...reachCheck(timed, trace, g.reach_mm, start) };
             followed.push(f);
             log.push(`${t.toFixed(2)} follow: ${describeReach(f)}`);
             if (f.missed.length) return fail({ failed_step_id: s.step_id, failure_class: "embodiment_limit", why: `follow: ${describeReach(f)}` });

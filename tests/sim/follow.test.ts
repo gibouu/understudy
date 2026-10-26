@@ -105,7 +105,9 @@ describe("follow: a gesture path traced by the arm", () => {
     const r = rollout(gestureSpec(path), FOLLOW, 1);
     expect(r.pass, r.log.join("\n")).toBe(true);
     expect(r.followed![0].speed).toBeLessThan(0.1);
+    expect(r.followed![0].speed).toBeGreaterThan(0);
     expect(r.log.join("\n")).toMatch(/the arm is held to 2/);
+    expect(r.log.join("\n")).not.toMatch(/0\.00x/);
   }, 120_000);
 
   it("draws the path on the stage as markers that touch nothing", () => {

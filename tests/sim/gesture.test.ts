@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ARM_MM, BOX_Y_MM, BOX_Z_MM, gestureProgram, MAX_LAG_S, MAX_POINTS, PLANE_X_MM, pathMarkersXml, reachCheck, scalePath, type HandSample, type TraceSample } from "@/lib/sim/gesture";
+import { ARM_MM, BOX_Y_MM, BOX_Z_MM, describeReach, gestureProgram, MAX_LAG_S, MAX_POINTS, speedText, PLANE_X_MM, pathMarkersXml, reachCheck, scalePath, type HandSample, type TraceSample } from "@/lib/sim/gesture";
 import { TaskSpec, type PathPoint } from "@/lib/spec/schema";
 
 /** A wrist swinging side to side at `hz`, `amp_m` either way, 10 samples a second, around (x0, y0) metres. */
@@ -204,5 +204,14 @@ describe("gestureProgram", () => {
     ]);
     expect(gestureProgram(spec(["gesture", "grasp"]))).toBeNull();
     expect(gestureProgram(spec([]))).toBeNull();
+  });
+});
+
+describe("speedText", () => {
+  it("never reads a slowdown as 0", () => {
+    expect(speedText(0.7)).toBe("0.70");
+    expect(speedText(0.072)).toBe("0.072");
+    expect(speedText(0.000072)).toBe("0.000072");
+    expect(describeReach({ points: 2, reached: 2, reach_mm: 5, missed: [], worst_mm: 1, late_s: 0, speed: 0.000072 })).toMatch(/at 0\.000072x the clip's speed/);
   });
 });

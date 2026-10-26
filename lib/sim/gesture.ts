@@ -173,9 +173,12 @@ export function reachCheck(path: PathPoint[], trace: TraceSample[], reach_mm: nu
   return { points: path.length, reached: path.length - missed.length, reach_mm, missed, worst_mm: r1(worst), late_s: Math.round(late * 100) / 100 };
 }
 
+/** A speed factor (1 = the clip's own pace) in a few digits that never read as 0: 0.70, 0.072, 0.000072. */
+export const speedText = (x: number) => (x >= 0.1 ? x.toFixed(2) : x.toPrecision(2));
+
 /** The check in words, for the log and the page: what was reached, how close, how late, and how much slower than the clip. */
 export function describeReach(r: Reach & { speed?: number }): string {
-  const slower = r.speed !== undefined && r.speed < 0.995 ? ` at ${r.speed.toFixed(2)}x the clip's speed` : "";
+  const slower = r.speed !== undefined && r.speed < 0.995 ? ` at ${speedText(r.speed)}x the clip's speed` : "";
   const late = r.late_s >= 0.05 ? `, up to ${r.late_s.toFixed(2)} s behind` : "";
   if (r.missed.length === 0) return `reached all ${r.points} points of the path within ${r.reach_mm} mm${slower} (the farthest ${r.worst_mm} mm off${late})`;
   const which = r.missed.length <= 5 ? ` (${r.missed.map((i) => i + 1).join(", ")})` : "";
