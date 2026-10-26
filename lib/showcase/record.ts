@@ -10,8 +10,9 @@
  *   rehearse   every program on Earth and in orbit in node (lib/showcase/rehearse.ts)
  *   notes      the `notes` hook, while the last program fails somewhere (#28)
  *
- * Every call is priced at list prices and the run stops before a call once
- * the clip has spent `capUsd`. lib/showcase/record.test.ts runs it.
+ * Every call is priced at list prices, and the run stops before any call
+ * whose worst case (worstUsd) would take the clip over `capUsd`.
+ * lib/showcase/record.test.ts runs it.
  */
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
@@ -21,6 +22,7 @@ import path from "node:path";
 import catalog from "@/tests/fixtures/models.json";
 import type { Sample } from "@/lib/samples";
 import { fitToBench } from "@/lib/sim/fit";
+import { MODELS, type ModelRole } from "@/lib/providers/tokenfactory";
 import { applyChanges } from "@/lib/spec/apply";
 import type { Program, ProgramOp, TaskSpec } from "@/lib/spec/schema";
 import type { LedgerEntry, StageResult } from "@/lib/spec/stage-result";
@@ -34,20 +36,22 @@ export const MAX_ROUNDS = 6;
 export const MAX_PATCHES = 5;
 
 /**
- * The most one route call can cost, reserved before it is made: every attempt
- * callModel can make (an unparsable answer is asked again, a check asks for a
- * fix) at its max_tokens, with a generous prompt. List prices from
- * tests/fixtures/models.json: Super VL US$0.30 / 0.90 per million tokens in /
- * out, Nano 0.06 / 0.24, Super 0.30 / 0.90.
+ * The calls one route can bill, as (prompt tokens, max_tokens) per call: a
+ * generous prompt, and every attempt callModel can make (a second answer when
+ * the first does not parse or fails its check; compile also allows one SDK
+ * retry). Notes is #28's route: a cheap patch (800 tokens) and, once stuck, a
+ * thinking one (4,096), each of which may be asked again.
  */
-export const WORST_USD = {
-  /** 2 attempts x (12k prompt tokens, 3,000 out) on Super VL */
-  label: 2 * (12_000 * 0.3e-6 + 3_000 * 0.9e-6),
-  /** 3 attempts x (8k prompt tokens, 3,000 out) on Nano */
-  compile: 3 * (8_000 * 0.06e-6 + 3_000 * 0.24e-6),
-  /** 2 attempts x (8k prompt tokens, 4,096 out) on Super */
-  notes: 2 * (8_000 * 0.3e-6 + 4_096 * 0.9e-6),
-} as const;
+export const WORST_CALLS = {
+  label: { role: "vl", calls: [[12_000, 3_000], [12_000, 3_000]] },
+  compile: { role: "nano", calls: [[8_000, 3_000], [8_000, 3_000], [8_000, 3_000]] },
+  notes: { role: "super", calls: [[8_000, 800], [8_000, 800], [8_000, 4_096], [8_000, 4_096]] },
+} as const satisfies Record<string, { role: ModelRole; calls: readonly (readonly [number, number])[] }>;
+
+/** The most a route call can cost, reserved before it is made, at the list price of the model it will use (env overrides included). */
+export function worstUsd(stage: keyof typeof WORST_CALLS, model: string = MODELS[WORST_CALLS[stage].role]): number {
+  return sum(WORST_CALLS[stage].calls.map(([prompt_tokens, completion_tokens]) => priceOf({ model, prompt_tokens, completion_tokens, seconds: 0 })));
+}
 
 /**
  * The Notes stage's hook (#28). Called while the last iteration fails in a
@@ -134,7 +138,7 @@ export async function recordClip({ root, sample, engine, capUsd, notes, log = ()
     if (spent + worst > capUsd) throw new Error(`US$${spent.toFixed(4)} spent; ${next} could cost up to US$${worst.toFixed(4)}, over the US$${capUsd} cap`);
   };
 
-  guard("label", WORST_USD.label);
+  guard("label", worstUsd("label"));
   const file = path.join(root, "samples", `${sample.name}.mp4`);
   const sha256 = createHash("sha256").update(readFileSync(file)).digest("hex");
   const { video, duration_s } = proxy(file);
@@ -156,7 +160,7 @@ export async function recordClip({ root, sample, engine, capUsd, notes, log = ()
   let given: Answer[] = [];
   let asked: Ask[] = [];
   for (let turn = 0; ; turn++) {
-    guard(`compile ${turn}`, WORST_USD.compile);
+    guard(`compile ${turn}`, worstUsd("compile"));
     const r = live(await post<Program>(compileRoute as Handler, "/api/compile", { spec, previous }), `compile ${turn}`);
     const cost = calls("compile", r.ledger);
     ledger.push(...cost);
@@ -189,7 +193,7 @@ export async function recordClip({ root, sample, engine, capUsd, notes, log = ()
 
   const fails = (it: Iteration) => [it.results.earth, it.results.orbit].some((x) => !x.pass) && [it.results.earth, it.results.orbit].every((x) => x.pass || x.failure_class !== "spec_gap");
   for (let n = 0; notes && n < MAX_PATCHES && fails(iterations.at(-1)!); n++) {
-    guard(`notes patch ${n + 1}`, WORST_USD.notes);
+    guard(`notes patch ${n + 1}`, worstUsd("notes"));
     const patched = await notes(iterations.at(-1)!, iterations, engine);
     if (!patched) break;
     ledger.push(...patched.calls);

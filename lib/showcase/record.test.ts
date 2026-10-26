@@ -87,11 +87,21 @@ describe("the recorder's guards (no network)", () => {
   });
 
   it("stops before a call whose worst case is over the cap", async () => {
-    const { recordClip, WORST_USD } = await import("./record");
+    const { recordClip, worstUsd } = await import("./record");
     await withKey("not-a-real-key", async () => {
-      await expect(recordClip({ root: ROOT, sample, engine, capUsd: WORST_USD.label / 2 })).rejects.toThrow(/over the US\$.* cap/);
+      await expect(recordClip({ root: ROOT, sample, engine, capUsd: worstUsd("label") / 2 })).rejects.toThrow(/over the US\$.* cap/);
       await expect(recordClip({ root: ROOT, sample, engine, capUsd: 0 })).rejects.toThrow(/positive number/);
     });
+  });
+
+  it("reserves at the price of the model the route will call, so an override cannot slip past the cap", async () => {
+    const { worstUsd } = await import("./record");
+    const nano = worstUsd("compile", "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B");
+    const ultra = worstUsd("compile", "nvidia/Nemotron-3-Ultra-550b-a55b");
+    expect(ultra).toBeGreaterThan(10 * nano);
+    expect(() => worstUsd("compile", "no/such-model")).toThrow(/no list price/);
+    // the route's own worst case on Ultra (2,119 prompt and 3,000 completion tokens) fits inside the reservation
+    expect(ultra).toBeGreaterThan(2_119 * 1e-6 + 3_000 * 3e-6);
   });
 });
 

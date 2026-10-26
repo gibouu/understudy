@@ -251,7 +251,8 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
             <p className="text-neutral-700">
               When it was recorded, version {pick} of the program: on Earth it <Outcome run={it.results.earth} spec={it.spec} />; in orbit it <Outcome run={it.results.orbit} spec={it.spec} />. Rehearse it to run the same program again here.
             </p>
-            <Rehearsal key={pick} spec={it.spec} program={it.program} onFail={setFailure} />
+            {/* Rehearsal's Notes loop (#28) calls a model, and /space never does; spread so this compiles before that prop lands */}
+            <Rehearsal key={pick} spec={it.spec} program={it.program} onFail={setFailure} {...{ notes: false }} />
           </Step>
         </div>
       </div>
