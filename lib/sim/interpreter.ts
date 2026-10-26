@@ -42,6 +42,8 @@ export type Sim = { mujoco: MainModule; model: MjModel; data: MjData };
 export type Rollout = {
   pass: boolean;
   failed_step_id?: string;
+  /** index of the failing op within that step */
+  failed_op?: number;
   failed_predicate?: Predicate;
   failure_class?: "embodiment_limit" | "spec_gap";
   why?: string;
@@ -97,6 +99,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   const dt = (model.opt as { timestep: number }).timestep;
   const log: string[] = [];
   let t = 0;
+  let opIndex: number | undefined;
   // what is held is the active weld, so it carries over between runs
   let held: Grasp | null = env.graspable.map((b) => graspIndex(mujoco, model, b)).find((g) => isAttached(data, g)) ?? null;
   const ctrl = data.ctrl as Float64Array;
@@ -107,7 +110,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   };
   const fail = (r: Omit<Rollout, "pass" | "t" | "log">): Rollout => {
     log.push(`fail: ${r.why}`);
-    return { pass: false, ...r, t, log };
+    return { pass: false, ...(r.failed_step_id !== undefined && opIndex !== undefined ? { failed_op: opIndex } : {}), ...r, t, log };
   };
 
   /** ramp the arm joints to q, then wait until it has arrived */
@@ -137,7 +140,8 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   const beliefs = env.beliefs[mode];
   const world = () => ({ ...sim, spec: env.spec, names: env.names, t });
   for (const s of program.steps) {
-    for (const op of s.ops) {
+    for (const [i, op] of s.ops.entries()) {
+      opIndex = i;
       // a compiled program may name an object the scene lacks: predicates throw, and that is a spec gap, not a crash
       try {
         switch (op.op) {

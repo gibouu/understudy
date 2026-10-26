@@ -42,6 +42,19 @@ describe("callModel", () => {
     expect(sent[1]).not.toHaveProperty("extra_body");
   });
 
+  it("asks once to fix what check finds, and keeps what is left as warnings", async () => {
+    const check = (a: { n: number }) => (a.n < 0 ? ["n is negative"] : []);
+    const fixed = fake(['{"n":-1}', '{"n":4}']);
+    expect(await callModel(fixed.client, { ...opts, check })).toMatchObject({ status: "done", value: { n: 4 }, warnings: [] });
+    expect(JSON.stringify(fixed.sent[1].messages)).toContain("n is negative");
+    const stuck = fake(['{"n":-1}', '{"n":-2}']);
+    expect(await callModel(stuck.client, { ...opts, check })).toMatchObject({ status: "done", value: { n: -2 }, warnings: ["nano: n is negative"] });
+    const garbled = fake(['{"n":-1}', "no json"]);
+    expect(await callModel(garbled.client, { ...opts, check })).toMatchObject({ status: "done", value: { n: -1 } });
+    const offline = fake(['{"n":-1}', new Error("socket hang up")]);
+    expect(await callModel(offline.client, { ...opts, check })).toMatchObject({ status: "done", value: { n: -1 } });
+  });
+
   it("asks again once when the answer does not parse", async () => {
     const { client, sent } = fake(["no json", '{"n":3}']);
     expect(await callModel(client, opts)).toMatchObject({ status: "done", value: { n: 3 } });

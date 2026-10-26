@@ -6,7 +6,7 @@
  * safety check). Lookups use own properties only, so a value such as
  * "constructor" cannot reach a prototype.
  */
-import { FIXTURES, PREDICATES, SHAPES, SYMMETRIES, type Fixture, type PredicateKind, type Shape } from "./schema";
+import { FIXTURES, PREDICATES, SHAPES, SYMMETRIES, type Fixture, type PredicateKind, type Program, type Shape, type TaskSpec } from "./schema";
 
 type Rec = Record<string, unknown>;
 const isRec = (v: unknown): v is Rec => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -161,6 +161,38 @@ export function normalizeProgram(raw: unknown): Normalized {
     });
   }
   return { data: program, warnings };
+}
+
+/**
+ * Nano sometimes names a fixture by its kind ("pocket") where an object id
+ * belongs. Inside a step whose target is that kind, the kind can only mean
+ * the target, so it is replaced by the target's id; anywhere else it stays
+ * and the interpreter reports the unknown frame.
+ */
+export function resolveFixtureNames(program: Program, spec: TaskSpec): { program: Program; warnings: string[] } {
+  const ids = new Set(spec.objects.map((o) => o.id));
+  const warnings: string[] = [];
+  const steps = program.steps.map((s) => {
+    const target = spec.steps.find((x) => x.id === s.step_id)?.target;
+    if (!target || ids.has(target.fixture)) return s;
+    const fix = (name: string | undefined, where: string) => {
+      if (name !== target.fixture) return name;
+      warnings.push(`step ${s.step_id}: ${where} "${name}" read as ${target.frame}`);
+      return target.frame;
+    };
+    return {
+      ...s,
+      ops: s.ops.map((op) => {
+        if (op.op === "move_to") return { ...op, frame: fix(op.frame, "frame")! };
+        if (op.op === "assert" || op.op === "wait_until") {
+          const p = op.predicate;
+          return { ...op, predicate: { ...p, object: fix(p.object, "check object"), target: fix(p.target, "check target") } };
+        }
+        return op;
+      }),
+    };
+  });
+  return { program: { ...program, steps }, warnings };
 }
 
 export const KNOWN_FIXTURES = FIXTURES;
