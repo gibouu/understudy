@@ -1,0 +1,444 @@
+{
+  "generated_at": "2026-10-26T11:18:03.893Z",
+  "models": {
+    "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B": {
+      "name": "Nemotron 3 Nano",
+      "size": "30B, 3B active",
+      "price": "$0.06 / $0.24"
+    },
+    "nvidia/nemotron-3-super-120b-a12b": {
+      "name": "Nemotron 3 Super",
+      "size": "120B, 12B active",
+      "price": "$0.30 / $0.90"
+    },
+    "nvidia/Nemotron-3-Ultra-550b-a55b": {
+      "name": "Nemotron 3 Ultra",
+      "size": "550B, 55B active",
+      "price": "$1.00 / $3.00"
+    },
+    "nvidia/Nemotron-3.5-Super-VL": {
+      "name": "Nemotron 3.5 Super VL",
+      "size": "-",
+      "price": "$0.30 / $0.90"
+    },
+    "Qwen/Qwen3-30B-A3B-Instruct-2507": {
+      "name": "Qwen3 30B-A3B Instruct 2507",
+      "size": "30B total, 3B active",
+      "price": "$0.10 / $0.30",
+      "short": "qwen3-30b",
+      "stands_in_for": "nano",
+      "off": {
+        "extra_body": {
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        }
+      },
+      "on": null,
+      "off_note": "an instruct model: it has no hidden reasoning to switch"
+    },
+    "openai/gpt-oss-120b": {
+      "name": "gpt-oss-120b",
+      "size": "117B total, 5.1B active",
+      "price": "$0.15 / $0.60",
+      "short": "gpt-oss-120b",
+      "stands_in_for": "super",
+      "off": {
+        "reasoning_effort": "low"
+      },
+      "on": {},
+      "off_note": "reasoning cannot be switched off (enable_thinking is ignored); off here means reasoning_effort low",
+      "always_reasons": true
+    },
+    "Qwen/Qwen3.5-397B-A17B": {
+      "name": "Qwen3.5 397B-A17B",
+      "size": "397B total, 17B active",
+      "price": "$0.60 / $3.60",
+      "short": "qwen3.5-397b",
+      "stands_in_for": "super",
+      "off": {
+        "extra_body": {
+          "chat_template_kwargs": {
+            "enable_thinking": false
+          }
+        }
+      },
+      "on": {},
+      "off_note": null
+    },
+    "meta-models/muse-spark-open": {
+      "name": "Muse Spark (open)",
+      "size": "816B total, about 42B active",
+      "price": "$1.25 / $4.25",
+      "short": "muse-spark",
+      "stands_in_for": "ultra",
+      "off": {
+        "reasoning_effort": "low"
+      },
+      "on": {},
+      "off_note": "reasoning cannot be switched off (enable_thinking false made it longer; effort none is refused); off here means reasoning_effort low",
+      "always_reasons": true,
+      "video": true
+    }
+  },
+  "patch": [
+    {
+      "arm": "r2-super-off",
+      "patcher": "Nemotron 3 Super, thinking off (800 tokens)",
+      "seeds": 6,
+      "need_fix": 180,
+      "fixed": 125,
+      "first": 46,
+      "cost_usd": 0.18558469999999994,
+      "cost_per_fix": 0.0014846775999999996,
+      "model_s_per_fix": 12.074391999999994,
+      "calls": 601,
+      "truncated": 1,
+      "unparsed": 1,
+      "failed": 3,
+      "by_probe": {
+        "insert": "24/60",
+        "place": "39/48",
+        "pour": "38/48",
+        "carry": "24/24"
+      }
+    },
+    {
+      "arm": "r2-super-on",
+      "patcher": "Nemotron 3 Super, thinking on (4096 tokens)",
+      "seeds": 6,
+      "need_fix": 180,
+      "fixed": 169,
+      "first": 90,
+      "cost_usd": 0.5330771000000002,
+      "cost_per_fix": 0.0031543023668639063,
+      "model_s_per_fix": 23.222692307692306,
+      "calls": 401,
+      "truncated": 4,
+      "unparsed": 4,
+      "failed": 0,
+      "by_probe": {
+        "insert": "55/60",
+        "place": "48/48",
+        "pour": "42/48",
+        "carry": "24/24"
+      }
+    },
+    {
+      "arm": "r2-esc-on",
+      "patcher": "Nemotron 3 Super off (800), then Nemotron 3 Super on (4096) when stuck",
+      "seeds": 6,
+      "need_fix": 180,
+      "fixed": 169,
+      "first": 50,
+      "cost_usd": 0.39892219999999995,
+      "cost_per_fix": 0.002360486390532544,
+      "model_s_per_fix": 16.265940828402364,
+      "calls": 504,
+      "truncated": 3,
+      "unparsed": 3,
+      "failed": 1,
+      "by_probe": {
+        "insert": "58/60",
+        "place": "47/48",
+        "pour": "40/48",
+        "carry": "24/24"
+      }
+    },
+    {
+      "arm": "r2-esc-ultra",
+      "patcher": "Nemotron 3 Super off (800), then Nemotron 3 Ultra off (800) when stuck",
+      "seeds": 6,
+      "need_fix": 180,
+      "fixed": 164,
+      "first": 49,
+      "cost_usd": 0.37116919999999987,
+      "cost_per_fix": 0.0022632268292682917,
+      "model_s_per_fix": 8.95136585365854,
+      "calls": 514,
+      "truncated": 0,
+      "unparsed": 0,
+      "failed": 0,
+      "by_probe": {
+        "insert": "58/60",
+        "place": "41/48",
+        "pour": "41/48",
+        "carry": "24/24"
+      }
+    },
+    {
+      "arm": "cmp-gpt-oss-120b-off",
+      "patcher": "gpt-oss-120b, reasoning low (4096 tokens)",
+      "seeds": 6,
+      "need_fix": 180,
+      "fixed": 153,
+      "first": 69,
+      "cost_usd": 0.12969060000000007,
+      "cost_per_fix": 0.0008476509803921574,
+      "model_s_per_fix": 4.008856209150327,
+      "calls": 449,
+      "truncated": 0,
+      "unparsed": 3,
+      "failed": 0,
+      "by_probe": {
+        "insert": "57/60",
+        "place": "47/48",
+        "pour": "25/48",
+        "carry": "24/24"
+      }
+    },
+    {
+      "arm": "cmp-gpt-oss-120b-on",
+      "patcher": "gpt-oss-120b, thinking on (4096 tokens)",
+      "seeds": 6,
+      "need_fix": 180,
+      "fixed": 165,
+      "first": 117,
+      "cost_usd": 0.23270999999999994,
+      "cost_per_fix": 0.001410363636363636,
+      "model_s_per_fix": 5.687466666666669,
+      "calls": 353,
+      "truncated": 0,
+      "unparsed": 3,
+      "failed": 0,
+      "by_probe": {
+        "insert": "60/60",
+        "place": "48/48",
+        "pour": "33/48",
+        "carry": "24/24"
+      }
+    },
+    {
+      "arm": "cmp-qwen3.5-397b-off",
+      "patcher": "Qwen3.5 397B-A17B, thinking off (800 tokens)",
+      "seeds": 6,
+      "need_fix": 180,
+      "fixed": 156,
+      "first": 64,
+      "cost_usd": 0.44387720000000014,
+      "cost_per_fix": 0.0028453666666666674,
+      "model_s_per_fix": 5.148378205128204,
+      "calls": 457,
+      "truncated": 0,
+      "unparsed": 0,
+      "failed": 0,
+      "by_probe": {
+        "insert": "54/60",
+        "place": "43/48",
+        "pour": "35/48",
+        "carry": "24/24"
+      }
+    },
+    {
+      "arm": "cmp-muse-spark-off",
+      "patcher": "Muse Spark (open), reasoning low (4096 tokens)",
+      "seeds": 6,
+      "need_fix": 180,
+      "fixed": 180,
+      "first": 162,
+      "cost_usd": 1.0166119999999996,
+      "cost_per_fix": 0.005647844444444442,
+      "model_s_per_fix": 9.219033333333332,
+      "calls": 232,
+      "truncated": 0,
+      "unparsed": 0,
+      "failed": 0,
+      "by_probe": {
+        "insert": "60/60",
+        "place": "48/48",
+        "pour": "48/48",
+        "carry": "24/24"
+      }
+    },
+    {
+      "arm": "cmp-muse-spark-on",
+      "patcher": "Muse Spark (open), thinking on (4096 tokens)",
+      "seeds": 6,
+      "need_fix": 180,
+      "fixed": 176,
+      "first": 160,
+      "cost_usd": 3.393077000000001,
+      "cost_per_fix": 0.019278846590909095,
+      "model_s_per_fix": 27.054664772727268,
+      "calls": 253,
+      "truncated": 0,
+      "unparsed": 0,
+      "failed": 0,
+      "by_probe": {
+        "insert": "60/60",
+        "place": "48/48",
+        "pour": "44/48",
+        "carry": "24/24"
+      }
+    }
+  ],
+  "compile": [
+    {
+      "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+      "compiles": 60,
+      "done": 56,
+      "first_clean": 42,
+      "problems_left": 4,
+      "validate_errors": 2,
+      "asked_fit": 7,
+      "asked_success": 0,
+      "degraded": 30,
+      "route_added": 55,
+      "truth_asks_written": 1.1538461538461537,
+      "truth_asks_kept": 0,
+      "truth_n": 30,
+      "dropped_per_compile": 0.9285714285714286,
+      "rehearsal_pass": 3,
+      "cost_per_compile": 0.00028181399999999997,
+      "seconds_per_compile": 2.771,
+      "calls_over_route_timeout": 0,
+      "calls": 78,
+      "failed_calls": 0,
+      "reasoning_tokens": 0
+    },
+    {
+      "model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+      "compiles": 60,
+      "done": 60,
+      "first_clean": 59,
+      "problems_left": 0,
+      "validate_errors": 0,
+      "asked_fit": 0,
+      "asked_success": 9,
+      "degraded": 30,
+      "route_added": 42,
+      "truth_asks_written": 0.36666666666666664,
+      "truth_asks_kept": 0,
+      "truth_n": 30,
+      "dropped_per_compile": 0.18333333333333332,
+      "rehearsal_pass": 6,
+      "cost_per_compile": 0.0002899916666666665,
+      "seconds_per_compile": 2.1325,
+      "calls_over_route_timeout": 0,
+      "calls": 61,
+      "failed_calls": 0,
+      "reasoning_tokens": 0
+    },
+    {
+      "model": "openai/gpt-oss-120b",
+      "compiles": 60,
+      "done": 60,
+      "first_clean": 57,
+      "problems_left": 0,
+      "validate_errors": 0,
+      "asked_fit": 0,
+      "asked_success": 19,
+      "degraded": 30,
+      "route_added": 32,
+      "truth_asks_written": 0,
+      "truth_asks_kept": 0,
+      "truth_n": 30,
+      "dropped_per_compile": 0,
+      "rehearsal_pass": 5,
+      "cost_per_compile": 0.0006486599999999998,
+      "seconds_per_compile": 1.6775,
+      "calls_over_route_timeout": 0,
+      "calls": 63,
+      "failed_calls": 0,
+      "reasoning_tokens": 0
+    },
+    {
+      "model": "Qwen/Qwen3.5-397B-A17B",
+      "compiles": 60,
+      "done": 60,
+      "first_clean": 58,
+      "problems_left": 0,
+      "validate_errors": 0,
+      "asked_fit": 4,
+      "asked_success": 18,
+      "degraded": 30,
+      "route_added": 29,
+      "truth_asks_written": 0.16666666666666666,
+      "truth_asks_kept": 0.13333333333333333,
+      "truth_n": 30,
+      "dropped_per_compile": 0.016666666666666666,
+      "rehearsal_pass": 6,
+      "cost_per_compile": 0.0022752519999999997,
+      "seconds_per_compile": 2.8315,
+      "calls_over_route_timeout": 0,
+      "calls": 62,
+      "failed_calls": 0,
+      "reasoning_tokens": 0
+    },
+    {
+      "model": "meta-models/muse-spark-open",
+      "compiles": 60,
+      "done": 60,
+      "first_clean": 60,
+      "problems_left": 0,
+      "validate_errors": 0,
+      "asked_fit": 30,
+      "asked_success": 30,
+      "degraded": 30,
+      "route_added": 0,
+      "truth_asks_written": 0,
+      "truth_asks_kept": 0,
+      "truth_n": 30,
+      "dropped_per_compile": 0,
+      "rehearsal_pass": 6,
+      "cost_per_compile": 0.006737441666666667,
+      "seconds_per_compile": 15.190999999999999,
+      "calls_over_route_timeout": 1,
+      "calls": 60,
+      "failed_calls": 0,
+      "reasoning_tokens": 1125.75
+    }
+  ],
+  "label": [
+    {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "labels": 35,
+      "parsed": 33,
+      "accuracy": 0.4171428571428572,
+      "seed_film": 0,
+      "wrong_scene": 23,
+      "verb": 16,
+      "fixture": 12,
+      "steps": 13,
+      "size": 32,
+      "cut_off": 2,
+      "cost_per_label": 0.0028202074285714283,
+      "failed_attempts": 0,
+      "seconds_per_label": 4.136,
+      "by_condition": {
+        "a": 0.4,
+        "b": 0.4,
+        "c": 0.4,
+        "d": 0.52,
+        "e": 0.36000000000000004,
+        "f": 0.27999999999999997,
+        "g": 0.5599999999999999
+      }
+    },
+    {
+      "model": "meta-models/muse-spark-open",
+      "labels": 35,
+      "parsed": 34,
+      "accuracy": 0.45714285714285713,
+      "seed_film": 2,
+      "wrong_scene": 0,
+      "verb": 28,
+      "fixture": 22,
+      "steps": 3,
+      "size": 25,
+      "cut_off": 1,
+      "cost_per_label": 0.009230758571428568,
+      "failed_attempts": 0,
+      "seconds_per_label": 12.535,
+      "by_condition": {
+        "a": 0.4,
+        "b": 0.4800000000000001,
+        "c": 0.5599999999999999,
+        "d": 0.4,
+        "e": 0.48,
+        "f": 0.4,
+        "g": 0.48
+      }
+    }
+  ]
+}

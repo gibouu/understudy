@@ -1,6 +1,6 @@
 # Measurements
 
-What Understudy does today, measured on 25 October 2026 rather than estimated. Every number below comes from a script or a test in this repository, and its raw output sits in `bench/results/`. The commands to reproduce each one are at the end.
+What Understudy does today, measured on 25 October 2026 (section 10 on 26 October) rather than estimated. Every number below comes from a script or a test in this repository, and its raw output sits in `bench/results/`. The commands to reproduce each one are at the end.
 
 Machine for the local runs: Apple M4, Node 24, one thread, MuJoCo WebAssembly 3.17. Model calls: Nebius Token Factory at the list prices saved in `tests/fixtures/models.json` on 23 October 2026. Spend for every paid call is logged in `bench/results/ledger.jsonl`, with a hard cap of US$90.
 
@@ -19,6 +19,7 @@ Machine for the local runs: Apple M4, Node 24, one thread, MuJoCo WebAssembly 3.
 | Failing rehearsals fixed from simulator notes alone | 69% (Super), 94% (Super with reasoning, or escalating to it when stuck) within 5 patches | 8 |
 | Learning across tasks, Moon and orbit | rules learned on Earth and Mars add 28 points of first-try success with the cheap model (5% to 33%) and 18 with reasoning (48% to 67%), against matched controls; no measurable change within five patches | 8 |
 | Pouring with a real liquid model | far harder to fix than beads (48% against 88%), and pouring in orbit turns out feasible | 8 |
+| Nemotron against other models on Token Factory | patching: Super with reasoning 94%, gpt-oss-120b 92% at under half the cost per fix, Muse Spark 100%; Super with reasoning off 69% against Qwen3.5 397B's 87%. Compiling: Nano's first program clean in 55 to 70% of compiles, the same-size Qwen3 30B's in 98%. Video: only Super VL and Muse Spark read it, Super VL at a third of the cost | 10 |
 
 ## 1. What a session costs
 
@@ -146,6 +147,96 @@ The market brief (`docs/research/market.md`, section 5) prices the saving on a 5
 
 So the saving per failure the rehearsal catches is the cost of finding it on hardware, minus about a quarter of a cent. Whether that adds up to the 3, 10 or 25% of a campaign budget in the brief's scenarios depends on how many of a campaign's re-collections come from failures of this kind, and that needs a real campaign to measure.
 
+## 10. Nemotron against other models
+
+Devpost asks how Nemotron compares with other models on our tasks. Here other models go through the same harness, cases and seeds as sections 6 to 8, measured on 26 October 2026. Only the bench calls them, and always through Token Factory itself (the same API and billing); the product keeps calling only Nemotron.
+
+**The models.** We listed the catalogue live (`GET /v1/models?verbose=true`, 30 models, saved as `tests/fixtures/models-compare.json`) and took the non-NVIDIA models whose size the catalogue states and that match a Nemotron size class, plus the one non-NVIDIA model that reads video:
+
+| Model | Size (total, active) | Price per million tokens, in / out | Compared with | Why this one |
+|---|---|---|---|---|
+| Qwen3 30B-A3B Instruct 2507 | 30B, 3B | $0.10 / $0.30 | Nano (30B, 3B; $0.06 / $0.24) | the same shape as Nano; compiling |
+| gpt-oss-120b | 117B, 5.1B | $0.15 / $0.60 | Super (120B, 12B; $0.30 / $0.90) | the same total size as Super; patching and compiling |
+| Qwen3.5 397B-A17B | 397B, 17B | $0.60 / $3.60 | Super and Ultra | the largest open model with a clean thinking switch; patching and compiling |
+| Muse Spark (open) | 816B, about 42B | $1.25 / $4.25 | Ultra (550B, 55B; $1.00 / $3.00) and Super VL ($0.30 / $0.90) | the only non-NVIDIA model on Token Factory that reads video; patching, compiling, labelling |
+
+`scripts/bench-compare-probe.mjs` checked each one's reasoning switch and video input (`bench/results/compare-probe.json`). Of the nine non-NVIDIA models we sent a video, eight answered "This model does not support video input"; only Muse Spark read it. gpt-oss-120b and Muse Spark cannot turn reasoning off (gpt-oss ignores `enable_thinking`; Muse Spark refuses `reasoning_effort: none` and reasons longer with `enable_thinking: false`), so their "off" is `reasoning_effort: low`, with the 4,096-token budget of an "on" arm so that the reasoning fits; every table names the budget. Left out: GLM-5.3 (750B), which reasoned through 3,000 tokens on a one-line question whatever switch we sent, so it cannot work within the loop's budgets; DeepSeek V4 Pro and Kimi K3, because the catalogue gives no size to match them by.
+
+**Patching** (Super's job). The self-improvement loop of section 8, round 2: the same 36 cases, 6 seeds, the same 180 solvable failures, at most 5 patches, the same prompts and failure notes. The Nemotron rows are section 8's.
+
+| Patcher | Fixed within 5 patches | Fixed on the first patch | Cost per fixed case | Model time per fixed case | Answers cut off / unparseable / failed calls |
+|---|---|---|---|---|---|
+| Nemotron 3 Super, thinking off (800 tokens) | 69% [62 to 76] (125 of 180) | 26% | US$0.0015 | 12 s | 1 / 1 / 3 of 601 |
+| Nemotron 3 Super, thinking on (4096 tokens) | 94% [89 to 97] (169 of 180) | 50% | US$0.0032 | 23 s | 4 / 4 / 0 of 401 |
+| Nemotron 3 Super off (800), then Nemotron 3 Super on (4096) when stuck | 94% [89 to 97] (169 of 180) | 28% | US$0.0024 | 16 s | 3 / 3 / 1 of 504 |
+| Nemotron 3 Super off (800), then Nemotron 3 Ultra off (800) when stuck | 91% [86 to 94] (164 of 180) | 27% | US$0.0023 | 9 s | 0 / 0 / 0 of 514 |
+| gpt-oss-120b, reasoning low (4096 tokens) | 85% [79 to 89] (153 of 180) | 38% | US$0.0008 | 4 s | 0 / 3 / 0 of 449 |
+| gpt-oss-120b, thinking on (4096 tokens) | 92% [87 to 95] (165 of 180) | 65% | US$0.0014 | 6 s | 0 / 3 / 0 of 353 |
+| Qwen3.5 397B-A17B, thinking off (800 tokens) | 87% [81 to 91] (156 of 180) | 36% | US$0.0028 | 5 s | 0 / 0 / 0 of 457 |
+| Muse Spark (open), reasoning low (4096 tokens) | 100% [98 to 100] (180 of 180) | 90% | US$0.0056 | 9 s | 0 / 0 / 0 of 232 |
+| Muse Spark (open), thinking on (4096 tokens) | 98% [94 to 99] (176 of 180) | 89% | US$0.0193 | 27 s | 0 / 0 / 0 of 253 |
+
+By task, fixed of the solvable failures:
+
+| Patcher | insert | place | pour | carry |
+|---|---|---|---|---|
+| Nemotron 3 Super, thinking off (800 tokens) | 24/60 | 39/48 | 38/48 | 24/24 |
+| Nemotron 3 Super, thinking on (4096 tokens) | 55/60 | 48/48 | 42/48 | 24/24 |
+| Nemotron 3 Super off (800), then Nemotron 3 Super on (4096) when stuck | 58/60 | 47/48 | 40/48 | 24/24 |
+| Nemotron 3 Super off (800), then Nemotron 3 Ultra off (800) when stuck | 58/60 | 41/48 | 41/48 | 24/24 |
+| gpt-oss-120b, reasoning low (4096 tokens) | 57/60 | 47/48 | 25/48 | 24/24 |
+| gpt-oss-120b, thinking on (4096 tokens) | 60/60 | 48/48 | 33/48 | 24/24 |
+| Qwen3.5 397B-A17B, thinking off (800 tokens) | 54/60 | 43/48 | 35/48 | 24/24 |
+| Muse Spark (open), reasoning low (4096 tokens) | 60/60 | 48/48 | 48/48 | 24/24 |
+| Muse Spark (open), thinking on (4096 tokens) | 60/60 | 48/48 | 44/48 | 24/24 |
+
+- **With reasoning on, Super ties the open model of its size.** gpt-oss-120b fixes 92% [87 to 95] against Super's 94% [89 to 97]. It gets more right on the first patch (65% against 50%) for less than half the cost per fix (US$0.0014 against US$0.0032).
+- **With reasoning off, Super loses.** Qwen3.5 397B, on the same 800-token budget with thinking off, fixes 87% [81 to 91] against Super's 69% [62 to 76], at about twice Super's cost per fix. gpt-oss-120b at its lowest effort fixes 85%, but it never stops reasoning, so that is not a like-for-like "off".
+- **The Ultra-sized model wins outright.** Muse Spark at low effort fixes all 180 [98 to 100], 90% on the first patch, for US$0.0056 per fix: 2.3 times the cost of Super escalating to reasoning, and an eighth of Nemotron Ultra with 16k reasoning (94%, 80% on the first patch, US$0.045, section 8, 3 seeds). With its default reasoning it fixes 98% for US$0.019 per fix, so more reasoning bought nothing here.
+- **Where Super is better than gpt-oss: the orbit pour.** In the one case where the right patch is to report the bead pour infeasible (section 8), Super with reasoning gets there in 8 of 12 runs, gpt-oss-120b in 1 or 2 of 12, Muse Spark in 12 of 12. Half or more of gpt-oss's lost pours are these.
+- Model time is the time per fixed case on Token Factory on the day (the Nemotron arms ran on 25 October, the others on 26 October), so it mixes model speed with how loaded each model's endpoint was.
+- Qwen3.5 397B left the catalogue during the study: between its thinking-off arm (finished 10:35 UTC) and its thinking-on arm (10:45 UTC), Token Factory stopped serving it, and every call returned HTTP 404. Its thinking-on arm could not run. The harness now stops at the first 404 (`bench/results/compare-patch.json`, `notes`).
+
+**Compiling** (Nano's job). The product's own compile route (`app/api/compile/route.ts`, unchanged: its prompt, its ready-made moves, its one repair round, its post-processing), with another model in Nano's place, on the ten interview specs of section 7, each fitted to the robot's bench as the app does. Each spec runs complete (nothing to ask) and degraded (section 7's five fields removed; the route can ask about two of them: the fit and the success check), 3 runs each, 60 compiles per model (`tests/measure/compile-compare.test.ts`). The bench gives the route's client a 240 s timeout instead of 25 s, so a slow model is measured on what it writes; the last column counts the calls the route itself would have timed out.
+
+| Compiler | Program back | First answer clean | Problems left after the repair round | Asked for the missing fit itself | Asked for the missing success check itself | Asks written for a complete spec (mean) | Rehearsal passes at 1 g (complete spec) | Cost per compile | Model time per compile (median) | Calls over the route's 25 s |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Nemotron 3 Nano | 93% | 70% [57 to 80] (42 of 60) | 4 of 56 | 23% [12 to 41] (7 of 30) | 0% [0 to 11] (0 of 30) | 1.2 | 3 of 30 | US$0.00028 | 2.8 s | 0 of 78 |
+| Qwen3 30B-A3B Instruct 2507 | 100% | 98% [91 to 100] (59 of 60) | 0 of 60 | 0% [0 to 11] (0 of 30) | 30% [17 to 48] (9 of 30) | 0.4 | 6 of 30 | US$0.00029 | 2.1 s | 0 of 61 |
+| gpt-oss-120b | 100% | 95% [86 to 98] (57 of 60) | 0 of 60 | 0% [0 to 11] (0 of 30) | 63% [46 to 78] (19 of 30) | 0.0 | 5 of 30 | US$0.00065 | 1.7 s | 0 of 63 |
+| Qwen3.5 397B-A17B | 100% | 97% [89 to 99] (58 of 60) | 0 of 60 | 13% [5 to 30] (4 of 30) | 60% [42 to 75] (18 of 30) | 0.2 | 6 of 30 | US$0.00228 | 2.8 s | 0 of 62 |
+| Muse Spark (open) | 100% | 100% [94 to 100] (60 of 60) | 0 of 60 | 100% [89 to 100] (30 of 30) | 100% [89 to 100] (30 of 30) | 0.0 | 6 of 30 | US$0.00674 | 15.2 s | 1 of 60 |
+
+- **Nano loses to the model of its own shape.** Qwen3 30B-A3B, the same 30B with 3B active, writes a first program that parses, matches the schema and passes the lint in 98% of compiles; Nano does in 70% [57 to 80] (55% in a first run of the same 60, set aside because of a scoring fix, `superseded` in `bench/results/compare-compile.json`). Nano returned no program at all in 4 of 60 compiles (a `warnings` string where the schema wants a list, a step given as a string) and left problems the repair round did not fix in 4 more. Qwen3 30B costs about the same per compile.
+- **Asking for what is missing.** Muse Spark asks for every missing fit and success check itself (30 of 30 each). The three mid-size open models ask for the success check in 30 to 63% of compiles and for the fit in at most 13%. Nano never asks for the success check itself (0 of 30) and never for a pocket's clearance (0 of 21), but on the three specs whose missing fit is a zone or stack tolerance band it asks in 7 of 9 compiles (3 of 9 in its first run), where the three mid-size models ask in none; it also writes about one ask per complete spec, for fields that are already set, which the route drops. The route adds a pocket's clearance and a step's success check whenever the program does not ask for them, so the person is asked either way; a missing zone tolerance band has no such safety net.
+- **The rehearsal does not separate the compilers.** Programs for the complete specs pass at 1 g in 5 or 6 of 30 for every model, Nano included in its first run; in its rerun, 3, after four of its complete-spec compiles returned no program. The route hands every model the same ready-made moves, and most failures are the bench fit's: an approach out of the arm's reach, or a pocket check that the moves miss by a few millimetres.
+- Time and cost per compile: Nano and Qwen3 30B are the cheapest (US$0.0003); Muse Spark costs 24 times more and takes 15 s, and one of its 60 calls went past the route's 25 s. During the first Nano run its endpoint was slow (16 of 87 calls over 25 s); during the rerun none was.
+
+**Labelling** (Super VL's job). Section 6's ISS seed-film clip, the same seven input conditions, 5 runs each (35 labels), the same rubric (`node scripts/bench-label.mjs --model meta-models/muse-spark-open`, results in `bench/results/compare-label.json`).
+
+| Labeller | Rubric score | Names the seed film | Calls the pillows batteries or drives | Insert or pocket verb | Pocket fixture | Step count | Size | Cut off | Cost per label | Time per label (median) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Nemotron 3.5 Super VL | 42% | 0 of 35 | 23 of 35 | 16 | 12 | 13 | 32 | 2 | US$0.0028 | 4.1 s |
+| Muse Spark (open) | 46% | 2 of 35 | 0 of 35 | 28 | 22 | 3 | 25 | 1 | US$0.0092 | 12.5 s |
+
+Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hint, f thinking on, g 960 px):
+
+| Labeller | a | b | c | d | e | f | g |
+|---|---|---|---|---|---|---|---|
+| Nemotron 3.5 Super VL | 40% | 40% | 40% | 52% | 36% | 28% | 56% |
+| Muse Spark (open) | 40% | 48% | 56% | 40% | 48% | 40% | 48% |
+
+- Muse Spark never reads the plant pillows as batteries or drives (0 of 35, against Super VL's 23), and finds the insert verb and the pocket more often. But it calls the seed film a sample vial, pouch or pipette: the rubric's pattern credits it twice, for a "sample cassette strip" and a "seed-fluid container", and neither is the film. Its rubric score is level with Super VL's (46% against 42%), and it gets the step count and the size wrong more often.
+- Super VL costs a third as much per label and answers three times faster.
+
+**Where Nemotron wins and where it loses.** On accuracy, Nemotron wins none of the three jobs. gpt-oss-120b, the open model of Super's size, repairs failing rehearsals as well as Super with reasoning, for less than half the cost per fix. With reasoning off, Super falls well behind a larger open model (69% against 87%). Muse Spark, the size of Ultra, fixes every failure, nine in ten on the first patch, for a little over twice the cost of Super's escalation and an eighth of Ultra's. Nano writes a clean first program far less often than the open model of its own shape. Nemotron wins on video and on a few behaviours that matter here. Super VL is one of only two models on Token Factory that read video, and the cheaper and faster of the two; neither names the seed film on our hardest clip. Super reports the infeasible orbit pour far more often than gpt-oss. Nano asks for a missing tolerance band, which has no safety net, where the mid-size models do not. And one family covers watching, compiling, interviewing and patching on one host, with one thinking switch. Within Nemotron, the next thing to measure is Super as the compiler.
+
+**For the Devpost question** ("How did Nemotron's performance compare to other models you've used for similar tasks?"):
+
+> We ran other models through the same harness, cases and seeds on Token Factory. Repairing failed robot programs from simulator notes, Nemotron 3 Super with reasoning fixed 94% of 180 failures, level with gpt-oss-120b (92%), which cost less than half as much per fix, and below Meta's larger Muse Spark (100%, at about twice Super's cost); with reasoning off, Super (69%) trailed Qwen3.5 397B (87%), and the same-size Qwen3 30B wrote a clean first program more often than Nemotron 3 Nano (98% against 55 to 70%). Where Nemotron stood out was video: Nemotron 3.5 Super VL was one of only two models on Token Factory that read a clip, and the cheaper and faster of the two, though neither named the object in our hardest clip. So Nemotron did not win on accuracy; it won on video input and on covering all four jobs with one model family and one thinking switch, and every number is in docs/MEASUREMENTS.md.
+
+**Limits and spend.** One day, one host, list prices; the "off" switch differs by model family, and each row says which one it used. Section 10's ledger scripts (`compare-*`) charged US$15.29 under their own cap of US$25. Of that, US$8.82 are worst-case estimates for calls made after Token Factory withdrew Qwen3.5 397B: 571 refused with HTTP 404 and 3 in flight when we stopped that run. A refused call does no work, so the bill for this section should be nearer US$6.50.
+
 ## Reproduce
 
 Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend.
@@ -179,3 +270,27 @@ BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local PATCH_SCRIPT=patch-loop-r2 PATCH_SEE
 ```
 
 `PATCH_ARMS=` with no arms reprints every patch-loop table from the saved results without spending anything.
+
+Section 10 (other models; every call is charged to the ledger under the comparison's own US$25 cap):
+
+```bash
+UNDERSTUDY_ENV_FILE=.env.local node scripts/bench-compare-probe.mjs
+```
+
+```bash
+BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local PATCH_OUT=compare-patch.json PATCH_SCRIPT=compare-patch PATCH_SEEDS=1,2,3,4,5,6 PATCH_CONCURRENCY=4 PATCH_ARMS=cmp-gpt-oss-120b-off,cmp-gpt-oss-120b-on,cmp-qwen3.5-397b-off,cmp-muse-spark-off,cmp-muse-spark-on node_modules/.bin/vitest run tests/measure/patch-loop.test.ts --reporter=verbose
+```
+
+```bash
+BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local COMPILE_RUNS=3 COMPILE_CONCURRENCY=3 COMPILE_MODELS=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B,Qwen/Qwen3-30B-A3B-Instruct-2507,openai/gpt-oss-120b,Qwen/Qwen3.5-397B-A17B,meta-models/muse-spark-open node_modules/.bin/vitest run tests/measure/compile-compare.test.ts --reporter=verbose
+```
+
+```bash
+UNDERSTUDY_ENV_FILE=.env.local node scripts/bench-label.mjs --runs 5 --clips iss --conditions a,b,c,d,e,f,g --model meta-models/muse-spark-open
+```
+
+```bash
+node scripts/compare-report.mjs --json bench/results/compare-summary.json
+```
+
+The last one prints section 10's tables from the saved results without spending anything. Qwen3.5 397B is no longer served, so the two commands that name it now stop at its first call.
