@@ -51,6 +51,8 @@ describe("callModel", () => {
     expect(await callModel(stuck.client, { ...opts, check })).toMatchObject({ status: "done", value: { n: -2 }, warnings: ["nano: n is negative"] });
     const garbled = fake(['{"n":-1}', "no json"]);
     expect(await callModel(garbled.client, { ...opts, check })).toMatchObject({ status: "done", value: { n: -1 } });
+    const offline = fake(['{"n":-1}', new Error("socket hang up")]);
+    expect(await callModel(offline.client, { ...opts, check })).toMatchObject({ status: "done", value: { n: -1 } });
   });
 
   it("asks again once when the answer does not parse", async () => {

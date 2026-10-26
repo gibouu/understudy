@@ -47,8 +47,11 @@ export function Flow() {
   const [notes, setNotes] = useState<string[]>([]);
   const [failure, setFailure] = useState<Failure | null>(null);
   const pick = useRef(0);
+  /** bumped by every reset: a reply that lands after a newer clip or run is dropped */
+  const gen = useRef(0);
 
   function reset() {
+    gen.current++;
     setLabel(idle());
     setFit(null);
     setSpec(null);
@@ -60,8 +63,11 @@ export function Flow() {
   }
 
   function choose(blob: Blob, nextHint: string) {
-    if (clip) URL.revokeObjectURL(clip.url);
-    setClip({ blob, url: URL.createObjectURL(blob) });
+    pick.current++; // a sample still loading must not replace this clip
+    setClip((prev) => {
+      if (prev) URL.revokeObjectURL(prev.url);
+      return { blob, url: URL.createObjectURL(blob) };
+    });
     setHint(nextHint);
     reset();
   }
@@ -79,9 +85,11 @@ export function Flow() {
   }
 
   async function compile(next: TaskSpec, previous?: Program) {
+    const id = gen.current;
     setProgram(running("Nano is writing the robot's program"));
     setFailure(null);
     const r = await post<Program>("/api/compile", { spec: next, previous });
+    if (id !== gen.current) return;
     setProgram(r);
     setAnswers({});
   }
@@ -89,11 +97,14 @@ export function Flow() {
   async function watch() {
     if (!clip) return;
     reset();
+    const id = gen.current;
     setLabel(running("making a small copy of the clip in your browser"));
     // without a proxy the route can still answer from its recording of this clip
     const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: await clipSha256(clip.blob) }));
+    if (id !== gen.current) return;
     setLabel(running("Super VL is watching the clip"));
     const r = await post<TaskSpec>("/api/label", { ...body, hint });
+    if (id !== gen.current) return;
     setLabel(r);
     if (r.status !== "done") return;
     const f = fitToBench(r.value);

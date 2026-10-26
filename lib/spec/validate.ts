@@ -145,8 +145,8 @@ export function validateProgram(program: Program, spec: TaskSpec): SpecIssue[] {
   return issues;
 }
 
-/** The ring of world positions the arm can reach from its base, in mm (lib/sim/ik.ts measures the real limit). */
-const REACH_MM = [100, 300] as const;
+/** A world point closer than this is the robot's own base, farther than this is past its reach, in mm (lib/sim/ik.ts measures the real limit). */
+const REACH_MM = [50, 300] as const;
 
 /**
  * What a compiler should refuse, as sentences the model can act on: every
@@ -174,7 +174,7 @@ export function lintProgram(program: Program, spec: TaskSpec): string[] {
     if (step && (step.verb === "insert" || step.verb === "place") && !ps.ops.some((op) => op.op === "release")) {
       out.push(`steps[${i}] (${step.verb}): never releases the ${step.object}`);
     }
-    if (step?.target && step.target.frame !== "world" && !ps.ops.some((op) => op.op === "move_to" && op.frame === step.target!.frame)) {
+    if (step?.target && ["insert", "place", "move"].includes(step.verb) && step.target.frame !== "world" && !ps.ops.some((op) => op.op === "move_to" && op.frame === step.target!.frame)) {
       out.push(`steps[${i}] (${step.verb}): never moves in the frame of its target "${step.target.frame}"`);
     }
   });

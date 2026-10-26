@@ -139,6 +139,12 @@ describe("lintProgram", () => {
     expect(lintProgram(self, spec)).toEqual(['steps[1] (insert): never moves in the frame of its target "pillow"']);
   });
 
+  it("does not ask a release step to move to its target", () => {
+    const released = TaskSpec.parse({ ...spec, steps: [...spec.steps, { id: "s3", verb: "release", object: "film", target: { fixture: "pocket", frame: "pillow" }, t_start_s: 2, t_end_s: 3 }] });
+    const p = Program.parse({ spec_title: "t", steps: [...bad.steps, { step_id: "s3", ops: [{ op: "release" }] }] });
+    expect(lintProgram(p, released).filter((i) => i.startsWith("steps[2]"))).toEqual([]);
+  });
+
   it("passes a program that can do it", () => {
     const good = Program.parse({
       spec_title: "t",

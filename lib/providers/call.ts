@@ -77,6 +77,7 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
     }
   } catch (err) {
     // network, auth, rate limit: the SDK already retried what it could
+    if (checked) return done(checked.value, [...checked.warnings, `${o.role}: the fix was not returned (${err instanceof Error ? err.message : String(err)})`.slice(0, 300)], ledger);
     const status = err instanceof OpenAI.APIError ? err.status : undefined;
     return failed(`${o.role}: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300), status === undefined || status === 429 || status >= 500);
   }

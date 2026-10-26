@@ -18,6 +18,7 @@ export function Rehearsal({ spec, program, onFail }: { spec: TaskSpec; program: 
   const [status, setStatus] = useState("starting");
   const [ready, setReady] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -45,7 +46,8 @@ export function Rehearsal({ spec, program, onFail }: { spec: TaskSpec; program: 
 
   async function rehearse(worlds: GravityName[]) {
     const client = clientRef.current;
-    if (!client) return;
+    if (!client || busy) return;
+    setBusy(true);
     setRows(worlds.map((world) => ({ world, result: "running" })));
     onFail(null);
     let first: Failure | null = null;
@@ -65,6 +67,7 @@ export function Rehearsal({ spec, program, onFail }: { spec: TaskSpec; program: 
         onFail(first);
       }
     }
+    setBusy(false);
   }
 
   return (
@@ -74,14 +77,14 @@ export function Rehearsal({ spec, program, onFail }: { spec: TaskSpec; program: 
         <div className="pointer-events-none absolute left-3 top-3 rounded bg-white/80 px-2 py-1 text-xs text-neutral-700">{status}</div>
       </div>
       <div className="flex flex-wrap gap-2 text-sm">
-        <button className="rounded bg-neutral-900 px-3 py-1.5 text-white disabled:opacity-40" disabled={!ready} onClick={() => rehearse(WORLDS)}>
+        <button className="rounded bg-neutral-900 px-3 py-1.5 text-white disabled:opacity-40" disabled={!ready || busy} onClick={() => rehearse(WORLDS)}>
           Rehearse on Earth, then in orbit
         </button>
-        <button className="rounded border px-3 py-1.5 disabled:opacity-40" disabled={!ready} onClick={() => (clientRef.current?.reset(), setRows([]), onFail(null))}>
+        <button className="rounded border px-3 py-1.5 disabled:opacity-40" disabled={!ready || busy} onClick={() => (clientRef.current?.reset(), setRows([]), onFail(null))}>
           Reset
         </button>
         {WORLDS.map((w) => (
-          <button key={w} className="rounded border px-3 py-1.5 disabled:opacity-40" disabled={!ready} onClick={() => rehearse([w])}>
+          <button key={w} className="rounded border px-3 py-1.5 disabled:opacity-40" disabled={!ready || busy} onClick={() => rehearse([w])}>
             {w} ({GRAVITIES[w]} g)
           </button>
         ))}
