@@ -195,10 +195,9 @@ function labelRow(file, model) {
 const labelRows = [];
 const nv = read("bench/results/label.json");
 const cl = read("bench/results/compare-label.json");
-if (nv) labelRows.push(labelRow(nv, nv.conditions.model));
 // a labelling run stopped by the cap or a withdrawn model is incomplete: listed, never compared
-if (cl?.stopped) lines.push(`\nLeft out of the label table, stopped before the end: ${cl.conditions.model} (${cl.stopped}).`);
-else if (cl) labelRows.push(labelRow(cl, cl.conditions.model));
+const labelStopped = [nv, cl].filter((f) => f?.stopped);
+for (const f of [nv, cl]) if (f && !f.stopped) labelRows.push(labelRow(f, f.conditions.model));
 if (labelRows.length) {
   lines.push("\n### Labelling: the ISS seed-film clip, seven input conditions, 5 runs each (35 labels), scored with the rubric of section 6\n");
   lines.push(table(
@@ -208,6 +207,7 @@ if (labelRows.length) {
   lines.push("\nRubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e hint, f thinking on, g 960 px):\n");
   lines.push(table(["Labeller", ..."abcdefg"], labelRows.map((r) => [nameOf(r.model), ...[..."abcdefg"].map((c) => `${Math.round(100 * r.by_condition[c])}%`)])));
 }
+for (const f of labelStopped) lines.push(`\nLeft out of the label tables, stopped before the end: ${f.conditions.model} (${f.stopped}).`);
 
 console.log(lines.join("\n"));
 if (JSON_OUT) writeFileSync(JSON_OUT, JSON.stringify(out, null, 2) + "\n");
