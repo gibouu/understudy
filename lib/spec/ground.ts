@@ -74,15 +74,19 @@ const METADATA = /^(?:Title|URL Source|Published Time|Markdown Content):/;
 /** Past this a page is cut: a few sentences are all a chip needs, and parsing stays fast on hostile input. */
 const MAX_PAGE_CHARS = 20_000;
 
-/** The text up to MAX_PAGE_CHARS, ending at a paragraph or sentence end, so a cut never keeps an instruction without its "unless". */
+/**
+ * The text up to MAX_PAGE_CHARS, ending at the last paragraph end before the
+ * cut, or nothing: a cut inside a paragraph could keep an instruction and
+ * drop its "unless".
+ */
 function whole(text: string): string {
   if (text.length <= MAX_PAGE_CHARS) return text;
-  const cut = text.slice(0, MAX_PAGE_CHARS);
-  const paragraph = cut.lastIndexOf("\n\n");
-  if (paragraph > 0) return cut.slice(0, paragraph);
-  const sentence = Math.max(...[...cut.matchAll(/[.!?]\s/g)].map((m) => m.index + 1), 0);
-  return cut.slice(0, sentence);
+  const paragraph = text.slice(0, MAX_PAGE_CHARS).lastIndexOf("\n\n");
+  return paragraph > 0 ? text.slice(0, paragraph) : "";
 }
+
+/** A sentence ends at . ! or ? before a capital or a digit, but not after a common abbreviation ("approx. 2 inches"). */
+const SENTENCE_END = /(?<=[.!?])(?<!\b(?:[Aa]pprox|ca|e\.g|i\.e|etc|vs|[Ff]igs?|[Nn]os?|[Mm]in|[Mm]ax|[Dd]iam?|resp|cf|al|Dr|Mr|Mrs|Ms|St|Jr|Inc|Ltd|Co)\.)\s+(?=["“‘(]?[A-Z0-9])/;
 
 /**
  * Markdown from an extract (or a search snippet) as plain statements of a
@@ -119,7 +123,7 @@ export function sentencesOf(markdown: string): string[] {
       .replace(/[*_`|]+/g, " ")
       .replace(/\s+/g, " ")
       .trim();
-    for (const s of flat.split(/(?<=[.!?])\s+(?=["“‘(]?[A-Z0-9])/)) {
+    for (const s of flat.split(SENTENCE_END)) {
       const t = s.trim();
       if (t.length < 40 || t.length > 300 || t.split(" ").length < 6 || !/[a-z]/.test(t)) continue;
       // a page's metadata, or a question, states nothing
@@ -240,11 +244,13 @@ export const GroundFilter = z.object({
 export type GroundFilter = z.infer<typeof GroundFilter>;
 
 /**
- * A number with its unit, whole: nothing numeric or a fraction bar before it
- * ("1/2 mm" is not 2 mm), a leading-dot decimal read as one (".5 mm" is
- * 0.5), and no rate or power after the unit ("2 mm/s", "2 mm²").
+ * A number with its unit, whole. Before it: no digit or decimal mark, no
+ * fraction bar, power or minus even with spaces ("1/2 mm", "1 / 2 mm" are
+ * not 2 mm), and no exponent ("1e2 mm"); a leading-dot decimal is read as one
+ * (".5 mm" is 0.5). After the unit: no rate or power, even with spaces
+ * ("2 mm/s", "2 mm / s", "2 mm²").
  */
-const QUANTITY = /(?<![\d.,/-])(\d+(?:[.,]\d+)?|[.,]\d+)\s?(millimet(?:er|re)s?|mm|centimet(?:er|re)s?|cm|met(?:er|re)s?|m|inch(?:es)?|degrees?|deg|°)(?![a-z/²³^\d])/gi;
+const QUANTITY = /(?<![\d.,])(?<![/^\-–]\s*)(?<!\d[eE][+-]?)(\d+(?:[.,]\d+)?|[.,]\d+)\s?(millimet(?:er|re)s?|mm|centimet(?:er|re)s?|cm|met(?:er|re)s?|m|inch(?:es)?|degrees?|deg|°)(?!\s*[/²³^]|[a-z\d])/gi;
 
 /** Factor to the slot's unit for a unit written in a sentence, or undefined when they measure different things. */
 function factor(written: string, unit: string): number | undefined {
@@ -263,7 +269,8 @@ function states(text: string, value: number, unit: string): boolean {
   for (const m of text.matchAll(QUANTITY)) {
     const k = factor(m[2], unit);
     const n = Number(m[1].replace(",", "."));
-    if (k !== undefined && Number.isFinite(n) && Math.abs(n * k - value) <= 0.01 * Math.max(1, value)) return true;
+    // equal up to floating point only ("0.3 cm" is 3 mm; "0.01 mm" is not 0)
+    if (k !== undefined && Number.isFinite(n) && Math.abs(n * k - value) <= 1e-9 * Math.max(1, Math.abs(value))) return true;
   }
   return false;
 }

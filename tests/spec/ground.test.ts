@@ -71,6 +71,14 @@ describe("sentencesOf on awkward input", () => {
     expect(sentencesOf(page).some((t) => t.startsWith("Always push"))).toBe(false);
   });
 
+  it("drops a long page with no paragraph end before the cut", () => {
+    expect(sentencesOf("Always push the marker into the rack cap first, unless the cap is loose. ".repeat(300))).toEqual([]);
+  });
+
+  it("does not end a sentence after a common abbreviation", () => {
+    expect(sentencesOf("Push the marker in approx. 2 inches, unless the cap is loose.")).toEqual(["Push the marker in approx. 2 inches, unless the cap is loose."]);
+  });
+
   it("stays linear on 120,000 unmatched brackets", () => {
     const started = performance.now();
     sentencesOf("[".repeat(120_000) + "](" + "(".repeat(120_000));
@@ -184,6 +192,12 @@ describe("chipsFrom", () => {
     expect(one("Keep a gap of 1/2 mm around the barrel of the marker.", gap, 2)).toBe(false);
     expect(one("Push the marker in at 2 mm/s or slower, never faster.", gap, 2)).toBe(false);
     expect(one("The slot face is 2 mm² larger than the barrel section.", gap, 2)).toBe(false);
+    expect(one("Keep a gap of 1 / 2 mm around the barrel of the marker.", gap, 2)).toBe(false);
+    expect(one("Push the marker in at 2 mm / s or slower, never faster.", gap, 2)).toBe(false);
+    expect(one("Keep a gap of 1e2 mm around the barrel of the marker.", gap, 2)).toBe(false);
+    expect(one("Keep a gap of 0.01 mm around the barrel of the marker.", gap, 0)).toBe(false);
+    expect(one("Keep a gap of approx. 2 mm around the barrel of the marker.", gap, 2)).toBe(true);
+    expect(one("Keep a gap of 0.3 cm around the barrel of the marker.", gap, 3)).toBe(true);
   });
 
   it("reads an unknown label as none and keeps the labels when a number is malformed", () => {
