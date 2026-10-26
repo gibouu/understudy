@@ -1,9 +1,10 @@
 /**
- * POST /api/label {video, duration_s, hint?, clip_sha256?}: Super VL watches
- * the clip's proxy (480 wide, 4 fps H.264 as a data URI, made in the browser)
- * and returns a TaskSpec. `hint` is the one line the person types about what
- * they filmed. Replay (no key, or ?replay=1) answers from
- * tests/fixtures/label.json: the recording of the same clip, else the first.
+ * POST /api/label {video, duration_s, hint?, clip_sha256?, unlock?}: Super VL
+ * watches the clip's proxy (480 wide, 4 fps H.264 as a data URI, made in the
+ * browser) and returns a TaskSpec. `hint` is the one line the person types
+ * about what they filmed; `unlock` is the code a clip of their own needs to be
+ * labelled live (lib/unlock/check.ts). Replay (no key, or ?replay=1) answers
+ * from tests/fixtures/label.json: the recording of the same clip, else the first.
  */
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/label.json";
@@ -13,6 +14,7 @@ import { hintText, LABEL_PROMPT, tidyLabel } from "@/lib/spec/label";
 import { TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type StageResult } from "@/lib/spec/stage-result";
 import { validateSpec } from "@/lib/spec/validate";
+import { checkUnlock } from "@/lib/unlock/check";
 
 export const maxDuration = 60;
 
@@ -36,6 +38,9 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<TaskS
   // a re-ask resends the video: two 25 s attempts and no SDK retry stay inside maxDuration
   const client = wantsReplay(req) ? null : tokenFactory({ timeout: 25_000, maxRetries: 0 });
   if (!client) return NextResponse.json(replay(sha));
+
+  const refusal = await checkUnlock(sha, body?.unlock);
+  if (refusal) return NextResponse.json(failed(refusal.message, false), { status: refusal.status });
 
   const video = body?.video;
   const duration = Number(body?.duration_s);

@@ -1830,5 +1830,759 @@
     }
    ]
   }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "Astronaut inserts seed film into plant pillow aboard ISS",
+   "summary": "A crew member wearing blue gloves handles a clear plant pillow with a yellow strip, then pushes it down into a rectangular pocket among several other pillows on a work tray.",
+   "objects": [
+    {
+     "id": "plant_pillow",
+     "name": "plant pillow with seed film",
+     "shape": "box",
+     "size_mm": [
+      50,
+      20,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.6,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "plant_pillow_rack",
+     "name": "plant pillow tray with multiple pockets",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       15
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "pocket_clearance_mm": 10,
+     "confidence": 0.6,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "plant_pillow",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 1,
+     "t_end_s": 2,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "plant_pillow",
+     "target": {
+      "fixture": "pocket",
+      "frame": "plant_pillow_rack"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 5,
+     "t_end_s": 7,
+     "source": "vl#seg1",
+     "sources": {}
+    }
+   ],
+   "warnings": [
+    "No measurable scale reference visible in the video; object sizes and poses are estimated from visual proportions.",
+    "The plant pillow rack is assumed to have pockets based on the insertion action; pocket clearance is estimated.",
+    "The robot base and world origin are not visible; pose coordinates are inferred relative to the work surface.",
+    "The astronaut’s hands and gloves are not labeled as separate objects."
+   ],
+   "open_questions": [
+    "What is the precise world-frame origin and scale for this work area?",
+    "Is the plant pillow a cylinder, box, or another primitive shape?",
+    "Does the tray have multiple pockets or a single recessed area?"
+   ],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "78a6b288413159fd4d915fbc1817aa6fe4eff40bae2b12a3b2c7ffccc8a28ac7",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "Astronaut inserts seed film into plant pillow aboard ISS",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "plant_pillow",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "plant_pillow",
+        "aperture_mm": 20
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "plant_pillow"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "steps[s2].success",
+        "question": "When does putting the plant pillow with seed film in the plant pillow tray with multiple pockets count as done?",
+        "why": "the step has no success check"
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow_rack",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow_rack",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "plant_pillow"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "plant_pillow",
+         "target": "plant_pillow_rack"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No scale reference in video makes robot calibration uncertain",
+     "Missing tolerance bands for insertion target cannot be compensated",
+     "Assumed multiple pockets exist based on insertion but layout not specified",
+     "Pose coordinates inferred from video without visible origin causing placement uncertainty"
+    ]
+   },
+   "warnings": [
+    "dropped an ask for world/pad_scale_mm (\"What is the precise scale in millimetres of the work surface origin?\"): not something the person who did the task can answer",
+    "dropped an ask for steps[s2].preconditions (\"What checks ensure the pillow can be safely inserted?\"): not something the person who did the task can answer",
+    "added an ask for steps[s2].success: the rehearsal needs it"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 2292,
+     "completion_tokens": 425,
+     "seconds": 3.285
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "Astronaut inserts seed film into plant pillow aboard ISS",
+   "summary": "A crew member wearing blue gloves handles a clear plant pillow with a yellow strip, then pushes it down into a rectangular pocket among several other pillows on a work tray.",
+   "objects": [
+    {
+     "id": "plant_pillow",
+     "name": "plant pillow with seed film",
+     "shape": "box",
+     "size_mm": [
+      50,
+      20,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.6,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "plant_pillow_rack",
+     "name": "plant pillow tray with multiple pockets",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       15
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "pocket_clearance_mm": 10,
+     "confidence": 0.6,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "plant_pillow",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 1,
+     "t_end_s": 2,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "plant_pillow",
+     "target": {
+      "fixture": "pocket",
+      "frame": "plant_pillow_rack"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "inside_zone",
+       "object": "plant_pillow",
+       "target": "plant_pillow_rack"
+      },
+      {
+       "kind": "object_still",
+       "object": "plant_pillow"
+      }
+     ],
+     "tolerances": {},
+     "t_start_s": 5,
+     "t_end_s": 7,
+     "source": "vl#seg1",
+     "sources": {
+      "success": "interview#1"
+     }
+    }
+   ],
+   "warnings": [
+    "No measurable scale reference visible in the video; object sizes and poses are estimated from visual proportions.",
+    "The plant pillow rack is assumed to have pockets based on the insertion action; pocket clearance is estimated.",
+    "The robot base and world origin are not visible; pose coordinates are inferred relative to the work surface.",
+    "The astronaut’s hands and gloves are not labeled as separate objects."
+   ],
+   "open_questions": [
+    "What is the precise world-frame origin and scale for this work area?",
+    "Is the plant pillow a cylinder, box, or another primitive shape?",
+    "Does the tray have multiple pockets or a single recessed area?"
+   ],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "78a6b288413159fd4d915fbc1817aa6fe4eff40bae2b12a3b2c7ffccc8a28ac7",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "Astronaut inserts seed film into plant pillow aboard ISS",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "plant_pillow",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "plant_pillow",
+        "aperture_mm": 20
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "plant_pillow"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "steps[s2].tolerances.x_mm",
+        "question": "What tolerance band in x_mm around the pocket centre would count as failed insertion?",
+        "why": "tolerances empty for x_mm"
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow_rack",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow_rack",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow_rack",
+        "offset_mm": [
+         0,
+         0,
+         13
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "plant_pillow"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "plant_pillow",
+         "target": "plant_pillow_rack"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No measurable scale reference visible in the video; object sizes and poses are estimated from visual proportions",
+     "The plant pillow rack is assumed to have pockets based on the insertion action; pocket clearance is estimated",
+     "The robot base and world origin are not visible; pose coordinates are inferred relative to the work surface",
+     "The astronaut’s hands and gloves are not labeled as separate objects"
+    ]
+   },
+   "warnings": [
+    "dropped an ask for steps[s2].success: the spec already sets it"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 2333,
+     "completion_tokens": 496,
+     "seconds": 2.798
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "Astronaut inserts seed film into plant pillow aboard ISS",
+   "summary": "A crew member wearing blue gloves handles a clear plant pillow with a yellow strip, then pushes it down into a rectangular pocket among several other pillows on a work tray.",
+   "objects": [
+    {
+     "id": "plant_pillow",
+     "name": "plant pillow with seed film",
+     "shape": "box",
+     "size_mm": [
+      50,
+      20,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.6,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "plant_pillow_rack",
+     "name": "plant pillow tray with multiple pockets",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       15
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "pocket_clearance_mm": 10,
+     "confidence": 0.6,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "plant_pillow",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 1,
+     "t_end_s": 2,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "plant_pillow",
+     "target": {
+      "fixture": "pocket",
+      "frame": "plant_pillow_rack"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "inside_zone",
+       "object": "plant_pillow",
+       "target": "plant_pillow_rack"
+      },
+      {
+       "kind": "object_still",
+       "object": "plant_pillow"
+      }
+     ],
+     "tolerances": {
+      "x_mm": 4
+     },
+     "t_start_s": 5,
+     "t_end_s": 7,
+     "source": "vl#seg1",
+     "sources": {
+      "success": "interview#1",
+      "tolerances.x_mm": "interview#2"
+     }
+    }
+   ],
+   "warnings": [
+    "No measurable scale reference visible in the video; object sizes and poses are estimated from visual proportions.",
+    "The plant pillow rack is assumed to have pockets based on the insertion action; pocket clearance is estimated.",
+    "The robot base and world origin are not visible; pose coordinates are inferred relative to the work surface.",
+    "The astronaut’s hands and gloves are not labeled as separate objects."
+   ],
+   "open_questions": [
+    "What is the precise world-frame origin and scale for this work area?",
+    "Is the plant pillow a cylinder, box, or another primitive shape?",
+    "Does the tray have multiple pockets or a single recessed area?"
+   ],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "78a6b288413159fd4d915fbc1817aa6fe4eff40bae2b12a3b2c7ffccc8a28ac7",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "Astronaut inserts seed film into plant pillow aboard ISS",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "plant_pillow",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "plant_pillow",
+        "aperture_mm": 20
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "plant_pillow"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "plant_pillow_rack",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow_rack",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "plant_pillow_rack",
+        "offset_mm": [
+         0,
+         0,
+         13
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "plant_pillow"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "plant_pillow",
+         "target": "plant_pillow_rack"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No measurable scale reference visible in the video; object sizes and poses are estimated from visual proportions."
+    ]
+   },
+   "warnings": [
+    "dropped an ask for steps[s2].tolerances.x_mm: the spec already sets it"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 2348,
+     "completion_tokens": 382,
+     "seconds": 1.969
+    },
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 2865,
+     "completion_tokens": 404,
+     "seconds": 1.901
+    }
+   ]
+  }
  }
 ]
