@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
+import { SAMPLES, type Sample } from "@/lib/samples";
 import { fitToBench, type Fit } from "@/lib/sim/fit";
 import { formFor } from "@/lib/spec/answer";
 import { applyChanges } from "@/lib/spec/apply";
@@ -15,11 +16,6 @@ const Rehearsal = dynamic(() => import("./rehearsal").then((m) => m.Rehearsal), 
   loading: () => <div className="aspect-[4/3] w-full animate-pulse rounded-xl border bg-neutral-100" />,
 });
 
-/** Clips under samples/ (sources and licences in samples/README.md), each with the line its uploader would type. */
-const SAMPLES = [
-  { name: "iss-veggie-seed-film", label: "ISS: seed film into a plant pillow (NASA, 36 s)", hint: "aboard the ISS, planting seed film into the Veggie plant pillows" },
-  { name: "dev-clip", label: "ISS: chess (NASA, 30 s)", hint: "aboard the ISS, chess match" },
-] as const;
 /** Nano asks about one gap per compile; past this many rounds the page stops asking. */
 const MAX_ROUNDS = 6;
 
@@ -72,7 +68,7 @@ export function Flow() {
     reset();
   }
 
-  async function loadSample(s: (typeof SAMPLES)[number]) {
+  async function loadSample(s: Sample) {
     const id = ++pick.current;
     try {
       const r = await fetch(`/samples/${s.name}.mp4`);
