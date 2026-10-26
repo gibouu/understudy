@@ -1,0 +1,3128 @@
+{
+ "measurement": "finetune-single",
+ "models": {
+  "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B": {
+   "per_hour": false,
+   "passed": 11,
+   "of": 55,
+   "wilson95": [
+    0.1155209712045974,
+    0.3236513150690593
+   ],
+   "usd": 0.0044227799999999986,
+   "unparsed": 0,
+   "rows": [
+    {
+     "item": 0,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 2.5,
+      "hold_grip": true
+     },
+     "pass": false,
+     "score": 0.8775000000000001,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 104,
+     "usd": 0.0000735,
+     "ms": 3993
+    },
+    {
+     "item": 1,
+     "case_id": "insert/earth/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 34,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 15
+     },
+     "pass": false,
+     "score": 0.48208799484093695,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 901,
+     "completion_tokens": 178,
+     "usd": 0.00009677999999999999,
+     "ms": 2216
+    },
+    {
+     "item": 2,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 852,
+     "completion_tokens": 114,
+     "usd": 0.00007848,
+     "ms": 3589
+    },
+    {
+     "item": 3,
+     "case_id": "insert/orbit/handoff0",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 30,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 20
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated"
+     ],
+     "prompt_tokens": 903,
+     "completion_tokens": 151,
+     "usd": 0.00009041999999999999,
+     "ms": 2909
+    },
+    {
+     "item": 4,
+     "case_id": "insert/orbit/handoff5",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": -2,
+      "release_speed_mm_s": 8
+     },
+     "pass": false,
+     "score": 0.08362977472081529,
+     "changed": [
+      "release_height_mm",
+      "offset_correction_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 939,
+     "completion_tokens": 156,
+     "usd": 0.00009377999999999999,
+     "ms": 6188
+    },
+    {
+     "item": 5,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 1,
+     "set": {
+      "release_height_mm": 5,
+      "release_speed_mm_s": 15,
+      "wait_before_release_s": 2
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 868,
+     "completion_tokens": 104,
+     "usd": 0.00007704,
+     "ms": 3407
+    },
+    {
+     "item": 6,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 3,
+     "set": {
+      "wait_before_release_s": 0.2
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 986,
+     "completion_tokens": 110,
+     "usd": 0.00008555999999999999,
+     "ms": 2803
+    },
+    {
+     "item": 7,
+     "case_id": "pour/earth/target+30mm",
+     "seed": 2,
+     "set": {
+      "tilt_deg": 90,
+      "tilt_s": 0.6,
+      "target_offset_mm": 25,
+      "strategy": "pour"
+     },
+     "pass": false,
+     "score": 0.40499999999999997,
+     "changed": [
+      "tilt_s"
+     ],
+     "prompt_tokens": 968,
+     "completion_tokens": 118,
+     "usd": 0.00008639999999999999,
+     "ms": 3326
+    },
+    {
+     "item": 8,
+     "case_id": "pour/moon/nominal",
+     "seed": 1,
+     "set": {
+      "tilt_s": 1.5,
+      "target_offset_mm": 56,
+      "tilt_deg": 105,
+      "strategy": "hold-and-wait"
+     },
+     "pass": false,
+     "score": 0.68625,
+     "changed": [],
+     "prompt_tokens": 1018,
+     "completion_tokens": 155,
+     "usd": 0.00009827999999999999,
+     "ms": 3473
+    },
+    {
+     "item": 9,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "tilt_s": 3,
+      "target_offset_mm": 40,
+      "strategy": "pour"
+     },
+     "pass": false,
+     "score": 0.6075,
+     "changed": [
+      "tilt_s",
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 906,
+     "completion_tokens": 127,
+     "usd": 0.00008484,
+     "ms": 2738
+    },
+    {
+     "item": 10,
+     "case_id": "pour/moon/nominal",
+     "seed": 3,
+     "set": {
+      "tilt_deg": 90,
+      "tilt_s": 0.3,
+      "target_offset_mm": 20,
+      "strategy": "pour"
+     },
+     "pass": false,
+     "score": 0.495,
+     "changed": [
+      "tilt_s",
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 905,
+     "completion_tokens": 121,
+     "usd": 0.00008334,
+     "ms": 2559
+    },
+    {
+     "item": 11,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 2.5
+     },
+     "pass": false,
+     "score": 0.8775000000000001,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 102,
+     "usd": 0.00007301999999999999,
+     "ms": 3459
+    },
+    {
+     "item": 12,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 2
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 73,
+     "usd": 0.00006605999999999999,
+     "ms": 2252
+    },
+    {
+     "item": 13,
+     "case_id": "place/orbit/frame0.02g",
+     "seed": 3,
+     "set": {
+      "release_height_mm": 1
+     },
+     "pass": false,
+     "score": 0.3,
+     "changed": [
+      "release_height_mm"
+     ],
+     "prompt_tokens": 919,
+     "completion_tokens": 84,
+     "usd": 0.00007529999999999999,
+     "ms": 2503
+    },
+    {
+     "item": 14,
+     "case_id": "carry/moon/cup",
+     "seed": 3,
+     "set": {
+      "max_accel_m_s2": 2
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 814,
+     "completion_tokens": 123,
+     "usd": 0.00007835999999999999,
+     "ms": 3926
+    },
+    {
+     "item": 15,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 40,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 10
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 852,
+     "completion_tokens": 130,
+     "usd": 0.00008232,
+     "ms": 1869
+    },
+    {
+     "item": 16,
+     "case_id": "insert/orbit/offset-6mm+handoff5",
+     "seed": 2,
+     "set": {
+      "hold_until_seated": true,
+      "offset_correction_mm": 2,
+      "release_speed_mm_s": 6
+     },
+     "pass": false,
+     "score": 0.08217643526787262,
+     "changed": [
+      "offset_correction_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 1109,
+     "completion_tokens": 167,
+     "usd": 0.00010661999999999999,
+     "ms": 2106
+    },
+    {
+     "item": 17,
+     "case_id": "pour/moon/nominal",
+     "seed": 3,
+     "set": {
+      "target_offset_mm": 6
+     },
+     "pass": false,
+     "score": 0.50625,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 905,
+     "completion_tokens": 102,
+     "usd": 0.00007878,
+     "ms": 1872
+    },
+    {
+     "item": 18,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 2.5
+     },
+     "pass": false,
+     "score": 0.8775000000000001,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 90,
+     "usd": 0.00007013999999999999,
+     "ms": 3099
+    },
+    {
+     "item": 19,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "training_noise_mm_sigma": 0.5
+     },
+     "pass": false,
+     "score": 0.84375,
+     "changed": [],
+     "prompt_tokens": 809,
+     "completion_tokens": 285,
+     "usd": 0.00011693999999999999,
+     "ms": 9989
+    },
+    {
+     "item": 20,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_speed_mm_s": 50
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 852,
+     "completion_tokens": 120,
+     "usd": 0.00007992,
+     "ms": 1873
+    },
+    {
+     "item": 21,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 2,
+     "set": {
+      "wait_before_release_s": 1.5
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 801,
+     "completion_tokens": 99,
+     "usd": 0.00007182,
+     "ms": 2624
+    },
+    {
+     "item": 22,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 3,
+     "set": {
+      "release_height_mm": 18,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 840,
+     "completion_tokens": 81,
+     "usd": 0.00006984,
+     "ms": 2865
+    },
+    {
+     "item": 23,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.94
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 87,
+     "usd": 0.00006942,
+     "ms": 4909
+    },
+    {
+     "item": 24,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 17,
+      "hold_until_seated": true,
+      "offset_correction_mm": -1.8,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.48035446053427844,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated",
+      "offset_correction_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 852,
+     "completion_tokens": 113,
+     "usd": 0.00007824,
+     "ms": 2038
+    },
+    {
+     "item": 25,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 11
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm"
+     ],
+     "prompt_tokens": 801,
+     "completion_tokens": 109,
+     "usd": 0.00007421999999999999,
+     "ms": 2122
+    },
+    {
+     "item": 26,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "tilt_deg": 135,
+      "tilt_s": 1.5,
+      "target_offset_mm": 5,
+      "strategy": "hold-and-wait"
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "tilt_deg",
+      "tilt_s",
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 1068,
+     "completion_tokens": 141,
+     "usd": 0.00009791999999999998,
+     "ms": 3947
+    },
+    {
+     "item": 27,
+     "case_id": "pour/moon/nominal",
+     "seed": 3,
+     "set": {
+      "target_offset_mm": 2
+     },
+     "pass": false,
+     "score": 0.48375,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 905,
+     "completion_tokens": 101,
+     "usd": 0.00007853999999999999,
+     "ms": 3029
+    },
+    {
+     "item": 28,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 0.05
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 76,
+     "usd": 0.00006678,
+     "ms": 4858
+    },
+    {
+     "item": 29,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 6,
+     "set": {
+      "release_height_mm": 5,
+      "release_speed_mm_s": 5,
+      "wait_before_release_s": 0.5
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm"
+     ],
+     "prompt_tokens": 920,
+     "completion_tokens": 184,
+     "usd": 0.00009936,
+     "ms": 3333
+    },
+    {
+     "item": 30,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "tilt_s": 1.8
+     },
+     "pass": false,
+     "score": 0.43875000000000003,
+     "changed": [
+      "tilt_s"
+     ],
+     "prompt_tokens": 906,
+     "completion_tokens": 107,
+     "usd": 0.00008004,
+     "ms": 4236
+    },
+    {
+     "item": 31,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 3,
+      "hold_grip": true
+     },
+     "pass": false,
+     "score": 0.8775000000000001,
+     "changed": [
+      "hold_grip"
+     ],
+     "prompt_tokens": 808,
+     "completion_tokens": 103,
+     "usd": 0.00007319999999999999,
+     "ms": 4508
+    },
+    {
+     "item": 32,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 2.5
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 853,
+     "completion_tokens": 124,
+     "usd": 0.00008094,
+     "ms": 1909
+    },
+    {
+     "item": 33,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": -4.2,
+      "release_speed_mm_s": 8.3
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "offset_correction_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 928,
+     "completion_tokens": 168,
+     "usd": 0.00009599999999999999,
+     "ms": 2335
+    },
+    {
+     "item": 34,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 4,
+     "set": {
+      "release_height_mm": 30,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.4803543678525814,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 912,
+     "completion_tokens": 148,
+     "usd": 0.00009024,
+     "ms": 1431
+    },
+    {
+     "item": 35,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 3,
+      "hold_grip": true
+     },
+     "pass": false,
+     "score": 0.84375,
+     "changed": [
+      "hold_grip"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 68,
+     "usd": 0.00006486,
+     "ms": 3389
+    },
+    {
+     "item": 36,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 5,
+      "hold_grip": false
+     },
+     "pass": false,
+     "score": 0.8550000000000001,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 808,
+     "completion_tokens": 99,
+     "usd": 0.00007224,
+     "ms": 3201
+    },
+    {
+     "item": 37,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_grip"
+     ],
+     "prompt_tokens": 853,
+     "completion_tokens": 75,
+     "usd": 0.00006917999999999998,
+     "ms": 918
+    },
+    {
+     "item": 38,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 1,
+     "set": {
+      "release_height_mm": 20,
+      "wait_before_release_s": 0.3
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 861,
+     "completion_tokens": 107,
+     "usd": 0.00007733999999999999,
+     "ms": 2758
+    },
+    {
+     "item": 39,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "target_offset_mm": 15
+     },
+     "pass": false,
+     "score": 0.5175,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 906,
+     "completion_tokens": 71,
+     "usd": 0.0000714,
+     "ms": 3102
+    },
+    {
+     "item": 40,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 3,
+      "hold_grip": true
+     },
+     "pass": false,
+     "score": 0.84375,
+     "changed": [
+      "hold_grip"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 94,
+     "usd": 0.0000711,
+     "ms": 3929
+    },
+    {
+     "item": 41,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 2.5
+     },
+     "pass": false,
+     "score": 0.8775000000000001,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 808,
+     "completion_tokens": 112,
+     "usd": 0.00007536,
+     "ms": 3733
+    },
+    {
+     "item": 42,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 3
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [],
+     "prompt_tokens": 853,
+     "completion_tokens": 107,
+     "usd": 0.00007685999999999999,
+     "ms": 2903
+    },
+    {
+     "item": 43,
+     "case_id": "insert/mars/offset-6mm+handoff5",
+     "seed": 3,
+     "set": {
+      "hold_until_seated": true,
+      "release_height_mm": 32,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.4808145236674801,
+     "changed": [
+      "release_height_mm"
+     ],
+     "prompt_tokens": 917,
+     "completion_tokens": 178,
+     "usd": 0.00009774,
+     "ms": 3717
+    },
+    {
+     "item": 44,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 2,
+     "set": {
+      "release_speed_mm_s": 10
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 801,
+     "completion_tokens": 98,
+     "usd": 0.00007157999999999999,
+     "ms": 2438
+    },
+    {
+     "item": 45,
+     "case_id": "place/orbit/handoff5",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 3
+     },
+     "pass": false,
+     "score": 0.3,
+     "changed": [
+      "release_height_mm"
+     ],
+     "prompt_tokens": 822,
+     "completion_tokens": 106,
+     "usd": 0.00007476,
+     "ms": 2233
+    },
+    {
+     "item": 46,
+     "case_id": "place/orbit/handoff5",
+     "seed": 5,
+     "set": {
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0.6,
+     "changed": [
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 947,
+     "completion_tokens": 104,
+     "usd": 0.00008177999999999999,
+     "ms": 1657
+    },
+    {
+     "item": 47,
+     "case_id": "pour/mars/nominal",
+     "seed": 6,
+     "set": {
+      "target_offset_mm": 26
+     },
+     "pass": false,
+     "score": 0.6525000000000001,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 908,
+     "completion_tokens": 92,
+     "usd": 0.00007655999999999999,
+     "ms": 3180
+    },
+    {
+     "item": 48,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 4,
+      "hold_grip": true
+     },
+     "pass": false,
+     "score": 0.8099999999999999,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 99,
+     "usd": 0.0000723,
+     "ms": 4903
+    },
+    {
+     "item": 49,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 3.9
+     },
+     "pass": false,
+     "score": 0.86625,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 808,
+     "completion_tokens": 93,
+     "usd": 0.00007079999999999999,
+     "ms": 4410
+    },
+    {
+     "item": 50,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_grip"
+     ],
+     "prompt_tokens": 853,
+     "completion_tokens": 84,
+     "usd": 0.00007133999999999999,
+     "ms": 2792
+    },
+    {
+     "item": 51,
+     "case_id": "carry/moon/cup",
+     "seed": 3,
+     "set": {
+      "max_accel_m_s2": 4.5
+     },
+     "pass": false,
+     "score": 0.8550000000000001,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 814,
+     "completion_tokens": 93,
+     "usd": 0.00007115999999999999,
+     "ms": 5194
+    },
+    {
+     "item": 52,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 4,
+     "set": {
+      "release_height_mm": 12,
+      "release_speed_mm_s": 8,
+      "wait_before_release_s": 0
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 844,
+     "completion_tokens": 173,
+     "usd": 0.00009215999999999998,
+     "ms": 3687
+    },
+    {
+     "item": 53,
+     "case_id": "place/orbit/frame0.02g",
+     "seed": 4,
+     "set": {
+      "release_speed_mm_s": 10
+     },
+     "pass": false,
+     "score": 0.6,
+     "changed": [
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 839,
+     "completion_tokens": 128,
+     "usd": 0.00008105999999999999,
+     "ms": 3194
+    },
+    {
+     "item": 54,
+     "case_id": "carry/moon/cup",
+     "seed": 3,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 814,
+     "completion_tokens": 133,
+     "usd": 0.00008075999999999999,
+     "ms": 4388
+    }
+   ]
+  },
+  "nvidia/nemotron-3-super-120b-a12b": {
+   "per_hour": false,
+   "passed": 26,
+   "of": 55,
+   "wilson95": [
+    0.34692885310480803,
+    0.6020868092837061
+   ],
+   "usd": 0.0190419,
+   "unparsed": 0,
+   "rows": [
+    {
+     "item": 0,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 70,
+     "usd": 0.0003057,
+     "ms": 3109
+    },
+    {
+     "item": 1,
+     "case_id": "insert/earth/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 30,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.48208799484093695,
+     "changed": [
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 901,
+     "completion_tokens": 116,
+     "usd": 0.0003747,
+     "ms": 1094
+    },
+    {
+     "item": 2,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 852,
+     "completion_tokens": 109,
+     "usd": 0.0003537,
+     "ms": 1330
+    },
+    {
+     "item": 3,
+     "case_id": "insert/orbit/handoff0",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 0
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "release_height_mm"
+     ],
+     "prompt_tokens": 903,
+     "completion_tokens": 83,
+     "usd": 0.00034559999999999994,
+     "ms": 924
+    },
+    {
+     "item": 4,
+     "case_id": "insert/orbit/handoff5",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 30,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 939,
+     "completion_tokens": 102,
+     "usd": 0.00037349999999999997,
+     "ms": 991
+    },
+    {
+     "item": 5,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 1,
+     "set": {
+      "release_height_mm": 0.5,
+      "release_speed_mm_s": 0.5,
+      "wait_before_release_s": 3
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 868,
+     "completion_tokens": 113,
+     "usd": 0.00036209999999999997,
+     "ms": 1053
+    },
+    {
+     "item": 6,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 3,
+     "set": {
+      "release_height_mm": 0,
+      "release_speed_mm_s": 0.5,
+      "wait_before_release_s": 2
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 986,
+     "completion_tokens": 99,
+     "usd": 0.0003849,
+     "ms": 829
+    },
+    {
+     "item": 7,
+     "case_id": "pour/earth/target+30mm",
+     "seed": 2,
+     "set": {
+      "target_offset_mm": 35
+     },
+     "pass": false,
+     "score": 0.70875,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 968,
+     "completion_tokens": 89,
+     "usd": 0.0003705,
+     "ms": 2888
+    },
+    {
+     "item": 8,
+     "case_id": "pour/moon/nominal",
+     "seed": 1,
+     "set": {
+      "target_offset_mm": 56,
+      "tilt_deg": 105,
+      "tilt_s": 1.5,
+      "strategy": "hold-and-wait"
+     },
+     "pass": false,
+     "score": 0.68625,
+     "changed": [],
+     "prompt_tokens": 1018,
+     "completion_tokens": 95,
+     "usd": 0.0003909,
+     "ms": 3349
+    },
+    {
+     "item": 9,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "target_offset_mm": 10
+     },
+     "pass": false,
+     "score": 0.5175,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 906,
+     "completion_tokens": 127,
+     "usd": 0.0003861,
+     "ms": 3503
+    },
+    {
+     "item": 10,
+     "case_id": "pour/moon/nominal",
+     "seed": 3,
+     "set": {
+      "tilt_deg": 90,
+      "tilt_s": 2,
+      "target_offset_mm": 0,
+      "strategy": "hold-and-wait"
+     },
+     "pass": false,
+     "score": 0.55125,
+     "changed": [
+      "tilt_s",
+      "strategy"
+     ],
+     "prompt_tokens": 905,
+     "completion_tokens": 113,
+     "usd": 0.00037319999999999996,
+     "ms": 4279
+    },
+    {
+     "item": 11,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 70,
+     "usd": 0.0003057,
+     "ms": 3418
+    },
+    {
+     "item": 12,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 70,
+     "usd": 0.0003057,
+     "ms": 3669
+    },
+    {
+     "item": 13,
+     "case_id": "place/orbit/frame0.02g",
+     "seed": 3,
+     "set": {
+      "release_speed_mm_s": 0.5,
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0.6,
+     "changed": [
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 919,
+     "completion_tokens": 120,
+     "usd": 0.00038369999999999995,
+     "ms": 1024
+    },
+    {
+     "item": 14,
+     "case_id": "carry/moon/cup",
+     "seed": 3,
+     "set": {
+      "max_accel_m_s2": 1.5,
+      "hold_grip": false
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 814,
+     "completion_tokens": 100,
+     "usd": 0.0003342,
+     "ms": 3653
+    },
+    {
+     "item": 15,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 852,
+     "completion_tokens": 111,
+     "usd": 0.00035549999999999997,
+     "ms": 1066
+    },
+    {
+     "item": 16,
+     "case_id": "insert/orbit/offset-6mm+handoff5",
+     "seed": 2,
+     "set": {
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 2
+     },
+     "pass": false,
+     "score": 0.082190463381257,
+     "changed": [
+      "offset_correction_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 1109,
+     "completion_tokens": 87,
+     "usd": 0.000411,
+     "ms": 966
+    },
+    {
+     "item": 17,
+     "case_id": "pour/moon/nominal",
+     "seed": 3,
+     "set": {
+      "target_offset_mm": 10
+     },
+     "pass": false,
+     "score": 0.50625,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 905,
+     "completion_tokens": 114,
+     "usd": 0.0003741,
+     "ms": 2677
+    },
+    {
+     "item": 18,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 77,
+     "usd": 0.000312,
+     "ms": 1779
+    },
+    {
+     "item": 19,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 69,
+     "usd": 0.0003048,
+     "ms": 1569
+    },
+    {
+     "item": 20,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 852,
+     "completion_tokens": 109,
+     "usd": 0.0003537,
+     "ms": 1300
+    },
+    {
+     "item": 21,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 0,
+      "release_speed_mm_s": 5,
+      "wait_before_release_s": 0
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 801,
+     "completion_tokens": 96,
+     "usd": 0.00032669999999999997,
+     "ms": 1227
+    },
+    {
+     "item": 22,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 3,
+     "set": {
+      "release_height_mm": 0,
+      "release_speed_mm_s": 5,
+      "wait_before_release_s": 0
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 840,
+     "completion_tokens": 96,
+     "usd": 0.0003384,
+     "ms": 946
+    },
+    {
+     "item": 23,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 91,
+     "usd": 0.0003246,
+     "ms": 2815
+    },
+    {
+     "item": 24,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 852,
+     "completion_tokens": 109,
+     "usd": 0.0003537,
+     "ms": 985
+    },
+    {
+     "item": 25,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 0,
+      "release_speed_mm_s": 20,
+      "wait_before_release_s": 0
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm"
+     ],
+     "prompt_tokens": 801,
+     "completion_tokens": 95,
+     "usd": 0.0003258,
+     "ms": 1070
+    },
+    {
+     "item": 26,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "target_offset_mm": 10
+     },
+     "pass": false,
+     "score": 0.63,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 1068,
+     "completion_tokens": 89,
+     "usd": 0.0004005,
+     "ms": 1824
+    },
+    {
+     "item": 27,
+     "case_id": "pour/moon/nominal",
+     "seed": 3,
+     "set": {
+      "target_offset_mm": 10
+     },
+     "pass": false,
+     "score": 0.50625,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 905,
+     "completion_tokens": 102,
+     "usd": 0.0003633,
+     "ms": 2599
+    },
+    {
+     "item": 28,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 72,
+     "usd": 0.0003075,
+     "ms": 2943
+    },
+    {
+     "item": 29,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 6,
+     "set": {
+      "release_height_mm": 0,
+      "release_speed_mm_s": 5,
+      "wait_before_release_s": 0.5
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [],
+     "prompt_tokens": 920,
+     "completion_tokens": 114,
+     "usd": 0.0003786,
+     "ms": 1181
+    },
+    {
+     "item": 30,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "target_offset_mm": 10
+     },
+     "pass": false,
+     "score": 0.5175,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 906,
+     "completion_tokens": 123,
+     "usd": 0.0003825,
+     "ms": 2924
+    },
+    {
+     "item": 31,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 808,
+     "completion_tokens": 74,
+     "usd": 0.000309,
+     "ms": 3095
+    },
+    {
+     "item": 32,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_grip"
+     ],
+     "prompt_tokens": 853,
+     "completion_tokens": 79,
+     "usd": 0.000327,
+     "ms": 902
+    },
+    {
+     "item": 33,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [],
+     "prompt_tokens": 928,
+     "completion_tokens": 109,
+     "usd": 0.0003765,
+     "ms": 1088
+    },
+    {
+     "item": 34,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 4,
+     "set": {
+      "hold_until_seated": false,
+      "release_height_mm": 2,
+      "release_speed_mm_s": 5,
+      "offset_correction_mm": 0
+     },
+     "pass": false,
+     "score": 0.4803543678525814,
+     "changed": [
+      "hold_until_seated",
+      "release_height_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 912,
+     "completion_tokens": 117,
+     "usd": 0.0003789,
+     "ms": 1574
+    },
+    {
+     "item": 35,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 95,
+     "usd": 0.00032819999999999995,
+     "ms": 3504
+    },
+    {
+     "item": 36,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 808,
+     "completion_tokens": 77,
+     "usd": 0.0003117,
+     "ms": 3747
+    },
+    {
+     "item": 37,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_grip"
+     ],
+     "prompt_tokens": 853,
+     "completion_tokens": 73,
+     "usd": 0.0003216,
+     "ms": 953
+    },
+    {
+     "item": 38,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 1,
+     "set": {
+      "release_height_mm": 0,
+      "release_speed_mm_s": 5,
+      "wait_before_release_s": 0
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 861,
+     "completion_tokens": 78,
+     "usd": 0.0003285,
+     "ms": 888
+    },
+    {
+     "item": 39,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "target_offset_mm": 10
+     },
+     "pass": false,
+     "score": 0.5175,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 906,
+     "completion_tokens": 127,
+     "usd": 0.0003861,
+     "ms": 3863
+    },
+    {
+     "item": 40,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 70,
+     "usd": 0.0003057,
+     "ms": 3909
+    },
+    {
+     "item": 41,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 808,
+     "completion_tokens": 101,
+     "usd": 0.00033329999999999997,
+     "ms": 4490
+    },
+    {
+     "item": 42,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_grip"
+     ],
+     "prompt_tokens": 853,
+     "completion_tokens": 82,
+     "usd": 0.0003297,
+     "ms": 890
+    },
+    {
+     "item": 43,
+     "case_id": "insert/mars/offset-6mm+handoff5",
+     "seed": 3,
+     "set": {
+      "hold_until_seated": true,
+      "release_speed_mm_s": 1
+     },
+     "pass": false,
+     "score": 0.48079927289217167,
+     "changed": [
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 917,
+     "completion_tokens": 103,
+     "usd": 0.00036779999999999994,
+     "ms": 1003
+    },
+    {
+     "item": 44,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 0,
+      "release_speed_mm_s": 20,
+      "wait_before_release_s": 0
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm"
+     ],
+     "prompt_tokens": 801,
+     "completion_tokens": 93,
+     "usd": 0.00032399999999999996,
+     "ms": 1010
+    },
+    {
+     "item": 45,
+     "case_id": "place/orbit/handoff5",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 0
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "release_height_mm"
+     ],
+     "prompt_tokens": 822,
+     "completion_tokens": 85,
+     "usd": 0.0003231,
+     "ms": 895
+    },
+    {
+     "item": 46,
+     "case_id": "place/orbit/handoff5",
+     "seed": 5,
+     "set": {
+      "release_speed_mm_s": 6
+     },
+     "pass": false,
+     "score": 0.6,
+     "changed": [
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 947,
+     "completion_tokens": 72,
+     "usd": 0.00034889999999999997,
+     "ms": 984
+    },
+    {
+     "item": 47,
+     "case_id": "pour/mars/nominal",
+     "seed": 6,
+     "set": {
+      "target_offset_mm": 10
+     },
+     "pass": false,
+     "score": 0.6525000000000001,
+     "changed": [
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 908,
+     "completion_tokens": 133,
+     "usd": 0.0003921,
+     "ms": 3848
+    },
+    {
+     "item": 48,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 809,
+     "completion_tokens": 91,
+     "usd": 0.0003246,
+     "ms": 3799
+    },
+    {
+     "item": 49,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 808,
+     "completion_tokens": 73,
+     "usd": 0.00030809999999999995,
+     "ms": 4401
+    },
+    {
+     "item": 50,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_grip"
+     ],
+     "prompt_tokens": 853,
+     "completion_tokens": 73,
+     "usd": 0.0003216,
+     "ms": 948
+    },
+    {
+     "item": 51,
+     "case_id": "carry/moon/cup",
+     "seed": 3,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 814,
+     "completion_tokens": 66,
+     "usd": 0.00030359999999999995,
+     "ms": 4140
+    },
+    {
+     "item": 52,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 4,
+     "set": {
+      "release_height_mm": 0
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm"
+     ],
+     "prompt_tokens": 844,
+     "completion_tokens": 91,
+     "usd": 0.00033509999999999996,
+     "ms": 1222
+    },
+    {
+     "item": 53,
+     "case_id": "place/orbit/frame0.02g",
+     "seed": 4,
+     "set": {
+      "release_height_mm": 0,
+      "release_speed_mm_s": 0.5,
+      "wait_before_release_s": 0
+     },
+     "pass": false,
+     "score": 0.6,
+     "changed": [],
+     "prompt_tokens": 839,
+     "completion_tokens": 161,
+     "usd": 0.0003966,
+     "ms": 1822
+    },
+    {
+     "item": 54,
+     "case_id": "carry/moon/cup",
+     "seed": 3,
+     "set": {
+      "max_accel_m_s2": 1.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 814,
+     "completion_tokens": 59,
+     "usd": 0.00029729999999999996,
+     "ms": 5040
+    }
+   ]
+  },
+  "Qwen/Qwen3-30B-A3B-Instruct-2507": {
+   "per_hour": false,
+   "passed": 33,
+   "of": 55,
+   "wilson95": [
+    0.4681256091064502,
+    0.7188169621356643
+   ],
+   "usd": 0.0065783000000000005,
+   "unparsed": 1,
+   "rows": [
+    {
+     "item": 0,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 788,
+     "completion_tokens": 69,
+     "usd": 0.00009949999999999999,
+     "ms": 4207
+    },
+    {
+     "item": 1,
+     "case_id": "insert/earth/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 10
+     },
+     "pass": false,
+     "score": 0.48208799484093695,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 874,
+     "completion_tokens": 136,
+     "usd": 0.0001282,
+     "ms": 1170
+    },
+    {
+     "item": 2,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 10
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 828,
+     "completion_tokens": 161,
+     "usd": 0.0001311,
+     "ms": 1037
+    },
+    {
+     "item": 3,
+     "case_id": "insert/orbit/handoff0",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 2,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 20
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_until_seated"
+     ],
+     "prompt_tokens": 874,
+     "completion_tokens": 113,
+     "usd": 0.0001213,
+     "ms": 767
+    },
+    {
+     "item": 4,
+     "case_id": "insert/orbit/handoff5",
+     "seed": 2,
+     "set": {
+      "offset_correction_mm": 5,
+      "release_speed_mm_s": 5
+     },
+     "pass": false,
+     "score": 0.07622295517036953,
+     "changed": [
+      "offset_correction_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 910,
+     "completion_tokens": 94,
+     "usd": 0.00011919999999999998,
+     "ms": 752
+    },
+    {
+     "item": 5,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 1,
+     "set": {
+      "release_height_mm": 0.5,
+      "release_speed_mm_s": 0.5,
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [],
+     "prompt_tokens": 852,
+     "completion_tokens": 116,
+     "usd": 0.00011999999999999999,
+     "ms": 762
+    },
+    {
+     "item": 6,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 3,
+     "set": null,
+     "pass": false,
+     "score": 0,
+     "changed": [],
+     "prompt_tokens": 968,
+     "completion_tokens": 800,
+     "usd": 0.00033679999999999995,
+     "ms": 4455
+    },
+    {
+     "item": 7,
+     "case_id": "pour/earth/target+30mm",
+     "seed": 2,
+     "set": {
+      "target_offset_mm": 40,
+      "tilt_s": 2
+     },
+     "pass": false,
+     "score": 0.72,
+     "changed": [
+      "target_offset_mm",
+      "tilt_s"
+     ],
+     "prompt_tokens": 944,
+     "completion_tokens": 120,
+     "usd": 0.0001304,
+     "ms": 4971
+    },
+    {
+     "item": 8,
+     "case_id": "pour/moon/nominal",
+     "seed": 1,
+     "set": {
+      "target_offset_mm": 56,
+      "tilt_deg": 120,
+      "tilt_s": 2,
+      "strategy": "hold-and-wait"
+     },
+     "pass": false,
+     "score": 0.5175,
+     "changed": [
+      "tilt_deg",
+      "tilt_s"
+     ],
+     "prompt_tokens": 992,
+     "completion_tokens": 152,
+     "usd": 0.0001448,
+     "ms": 3642
+    },
+    {
+     "item": 9,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "tilt_deg": 120,
+      "tilt_s": 2,
+      "target_offset_mm": 10,
+      "strategy": "pour"
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "tilt_deg",
+      "tilt_s",
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 883,
+     "completion_tokens": 114,
+     "usd": 0.0001225,
+     "ms": 6049
+    },
+    {
+     "item": 10,
+     "case_id": "pour/moon/nominal",
+     "seed": 3,
+     "set": {
+      "tilt_deg": 120,
+      "tilt_s": 2,
+      "target_offset_mm": 10,
+      "strategy": "pour"
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "tilt_deg",
+      "tilt_s",
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 882,
+     "completion_tokens": 116,
+     "usd": 0.000123,
+     "ms": 5602
+    },
+    {
+     "item": 11,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 788,
+     "completion_tokens": 90,
+     "usd": 0.0001058,
+     "ms": 4526
+    },
+    {
+     "item": 12,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 788,
+     "completion_tokens": 88,
+     "usd": 0.00010519999999999998,
+     "ms": 4442
+    },
+    {
+     "item": 13,
+     "case_id": "place/orbit/frame0.02g",
+     "seed": 3,
+     "set": {
+      "wait_before_release_s": 2
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 901,
+     "completion_tokens": 87,
+     "usd": 0.00011619999999999999,
+     "ms": 843
+    },
+    {
+     "item": 14,
+     "case_id": "carry/moon/cup",
+     "seed": 3,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 793,
+     "completion_tokens": 99,
+     "usd": 0.000109,
+     "ms": 4225
+    },
+    {
+     "item": 15,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "release_speed_mm_s": 10
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 828,
+     "completion_tokens": 125,
+     "usd": 0.0001203,
+     "ms": 954
+    },
+    {
+     "item": 16,
+     "case_id": "insert/orbit/offset-6mm+handoff5",
+     "seed": 2,
+     "set": {
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 3
+     },
+     "pass": false,
+     "score": 0.08334104573993058,
+     "changed": [
+      "offset_correction_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 1066,
+     "completion_tokens": 115,
+     "usd": 0.0001411,
+     "ms": 885
+    },
+    {
+     "item": 17,
+     "case_id": "pour/moon/nominal",
+     "seed": 3,
+     "set": {
+      "tilt_deg": 120,
+      "tilt_s": 2,
+      "target_offset_mm": 10,
+      "strategy": "pour"
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "tilt_deg",
+      "tilt_s",
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 882,
+     "completion_tokens": 158,
+     "usd": 0.0001356,
+     "ms": 3661
+    },
+    {
+     "item": 18,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 788,
+     "completion_tokens": 100,
+     "usd": 0.00010879999999999999,
+     "ms": 1493
+    },
+    {
+     "item": 19,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 788,
+     "completion_tokens": 98,
+     "usd": 0.00010819999999999999,
+     "ms": 1543
+    },
+    {
+     "item": 20,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 20
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated"
+     ],
+     "prompt_tokens": 828,
+     "completion_tokens": 126,
+     "usd": 0.00012059999999999999,
+     "ms": 788
+    },
+    {
+     "item": 21,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 5,
+      "release_speed_mm_s": 10,
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 786,
+     "completion_tokens": 92,
+     "usd": 0.0001062,
+     "ms": 608
+    },
+    {
+     "item": 22,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 3,
+     "set": {
+      "release_height_mm": 5,
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 824,
+     "completion_tokens": 92,
+     "usd": 0.00010999999999999999,
+     "ms": 680
+    },
+    {
+     "item": 23,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 788,
+     "completion_tokens": 100,
+     "usd": 0.00010879999999999999,
+     "ms": 1487
+    },
+    {
+     "item": 24,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 10
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_height_mm",
+      "hold_until_seated",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 828,
+     "completion_tokens": 147,
+     "usd": 0.0001269,
+     "ms": 1150
+    },
+    {
+     "item": 25,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 5,
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 786,
+     "completion_tokens": 80,
+     "usd": 0.0001026,
+     "ms": 593
+    },
+    {
+     "item": 26,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "tilt_deg": 150,
+      "target_offset_mm": 10
+     },
+     "pass": false,
+     "score": 0.18,
+     "changed": [
+      "tilt_deg",
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 1041,
+     "completion_tokens": 98,
+     "usd": 0.0001335,
+     "ms": 897
+    },
+    {
+     "item": 27,
+     "case_id": "pour/moon/nominal",
+     "seed": 3,
+     "set": {
+      "tilt_deg": 120,
+      "tilt_s": 2,
+      "target_offset_mm": 10,
+      "strategy": "pour"
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "tilt_deg",
+      "tilt_s",
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 882,
+     "completion_tokens": 119,
+     "usd": 0.0001239,
+     "ms": 1678
+    },
+    {
+     "item": 28,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 788,
+     "completion_tokens": 67,
+     "usd": 0.00009889999999999999,
+     "ms": 1285
+    },
+    {
+     "item": 29,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 6,
+     "set": {
+      "release_height_mm": 0,
+      "release_speed_mm_s": 5,
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 903,
+     "completion_tokens": 84,
+     "usd": 0.0001155,
+     "ms": 703
+    },
+    {
+     "item": 30,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "tilt_deg": 120,
+      "tilt_s": 2,
+      "target_offset_mm": 10,
+      "strategy": "pour"
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "tilt_deg",
+      "tilt_s",
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 883,
+     "completion_tokens": 143,
+     "usd": 0.0001312,
+     "ms": 1850
+    },
+    {
+     "item": 31,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 1.5,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 787,
+     "completion_tokens": 96,
+     "usd": 0.0001075,
+     "ms": 1290
+    },
+    {
+     "item": 32,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "hold_grip": true,
+      "max_accel_m_s2": 2.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_grip",
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 832,
+     "completion_tokens": 85,
+     "usd": 0.00010869999999999999,
+     "ms": 676
+    },
+    {
+     "item": 33,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": 0,
+      "release_speed_mm_s": 10
+     },
+     "pass": false,
+     "score": 0.48035489938432596,
+     "changed": [
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 899,
+     "completion_tokens": 130,
+     "usd": 0.0001289,
+     "ms": 1000
+    },
+    {
+     "item": 34,
+     "case_id": "insert/moon/offset+4mm",
+     "seed": 4,
+     "set": {
+      "release_height_mm": 32,
+      "hold_until_seated": true,
+      "offset_correction_mm": -5,
+      "release_speed_mm_s": 10
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "offset_correction_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 885,
+     "completion_tokens": 117,
+     "usd": 0.0001236,
+     "ms": 845
+    },
+    {
+     "item": 35,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 1.5,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 788,
+     "completion_tokens": 113,
+     "usd": 0.00011269999999999999,
+     "ms": 1427
+    },
+    {
+     "item": 36,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 787,
+     "completion_tokens": 102,
+     "usd": 0.0001093,
+     "ms": 1379
+    },
+    {
+     "item": 37,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "hold_grip": true,
+      "max_accel_m_s2": 2.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_grip",
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 832,
+     "completion_tokens": 78,
+     "usd": 0.00010659999999999999,
+     "ms": 638
+    },
+    {
+     "item": 38,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 1,
+     "set": {
+      "release_height_mm": 0,
+      "release_speed_mm_s": 5,
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_speed_mm_s",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 845,
+     "completion_tokens": 119,
+     "usd": 0.0001202,
+     "ms": 943
+    },
+    {
+     "item": 39,
+     "case_id": "pour/moon/nominal",
+     "seed": 2,
+     "set": {
+      "tilt_deg": 120,
+      "tilt_s": 2,
+      "target_offset_mm": 10,
+      "strategy": "pour"
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "tilt_deg",
+      "tilt_s",
+      "target_offset_mm"
+     ],
+     "prompt_tokens": 883,
+     "completion_tokens": 117,
+     "usd": 0.0001234,
+     "ms": 1738
+    },
+    {
+     "item": 40,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 788,
+     "completion_tokens": 85,
+     "usd": 0.00010429999999999999,
+     "ms": 1279
+    },
+    {
+     "item": 41,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 787,
+     "completion_tokens": 83,
+     "usd": 0.0001036,
+     "ms": 1334
+    },
+    {
+     "item": 42,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_grip"
+     ],
+     "prompt_tokens": 832,
+     "completion_tokens": 85,
+     "usd": 0.00010869999999999999,
+     "ms": 676
+    },
+    {
+     "item": 43,
+     "case_id": "insert/mars/offset-6mm+handoff5",
+     "seed": 3,
+     "set": {
+      "hold_until_seated": true,
+      "release_height_mm": 32,
+      "release_speed_mm_s": 2
+     },
+     "pass": false,
+     "score": 0.48081369761201853,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s"
+     ],
+     "prompt_tokens": 890,
+     "completion_tokens": 117,
+     "usd": 0.00012409999999999998,
+     "ms": 948
+    },
+    {
+     "item": 44,
+     "case_id": "place/mars/frame0.2g",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 5,
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0,
+     "changed": [
+      "release_height_mm",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 786,
+     "completion_tokens": 84,
+     "usd": 0.0001038,
+     "ms": 610
+    },
+    {
+     "item": 45,
+     "case_id": "place/orbit/handoff5",
+     "seed": 2,
+     "set": {
+      "release_height_mm": 1,
+      "release_speed_mm_s": 1,
+      "wait_before_release_s": 2
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 805,
+     "completion_tokens": 100,
+     "usd": 0.00011049999999999999,
+     "ms": 793
+    },
+    {
+     "item": 46,
+     "case_id": "place/orbit/handoff5",
+     "seed": 5,
+     "set": {
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0.6,
+     "changed": [
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 928,
+     "completion_tokens": 64,
+     "usd": 0.00011199999999999998,
+     "ms": 537
+    },
+    {
+     "item": 47,
+     "case_id": "pour/mars/nominal",
+     "seed": 6,
+     "set": {
+      "target_offset_mm": 20,
+      "tilt_deg": 120,
+      "strategy": "pour"
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "target_offset_mm",
+      "tilt_deg"
+     ],
+     "prompt_tokens": 885,
+     "completion_tokens": 98,
+     "usd": 0.00011789999999999999,
+     "ms": 1353
+    },
+    {
+     "item": 48,
+     "case_id": "carry/moon/cup",
+     "seed": 2,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 788,
+     "completion_tokens": 74,
+     "usd": 0.00010099999999999999,
+     "ms": 1323
+    },
+    {
+     "item": 49,
+     "case_id": "carry/moon/cup",
+     "seed": 5,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 787,
+     "completion_tokens": 82,
+     "usd": 0.0001033,
+     "ms": 1340
+    },
+    {
+     "item": 50,
+     "case_id": "carry/orbit/tube",
+     "seed": 5,
+     "set": {
+      "hold_grip": true,
+      "max_accel_m_s2": 2.5
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "hold_grip",
+      "max_accel_m_s2"
+     ],
+     "prompt_tokens": 832,
+     "completion_tokens": 92,
+     "usd": 0.00011079999999999998,
+     "ms": 741
+    },
+    {
+     "item": 51,
+     "case_id": "carry/moon/cup",
+     "seed": 3,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 793,
+     "completion_tokens": 88,
+     "usd": 0.0001057,
+     "ms": 1388
+    },
+    {
+     "item": 52,
+     "case_id": "place/moon/frame0.2g",
+     "seed": 4,
+     "set": {
+      "release_height_mm": 5,
+      "wait_before_release_s": 2
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "release_height_mm",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 828,
+     "completion_tokens": 79,
+     "usd": 0.00010649999999999999,
+     "ms": 859
+    },
+    {
+     "item": 53,
+     "case_id": "place/orbit/frame0.02g",
+     "seed": 4,
+     "set": {
+      "release_height_mm": 5,
+      "release_speed_mm_s": 1,
+      "wait_before_release_s": 1
+     },
+     "pass": false,
+     "score": 0.3,
+     "changed": [
+      "release_height_mm",
+      "release_speed_mm_s",
+      "wait_before_release_s"
+     ],
+     "prompt_tokens": 823,
+     "completion_tokens": 100,
+     "usd": 0.00011229999999999999,
+     "ms": 790
+    },
+    {
+     "item": 54,
+     "case_id": "carry/moon/cup",
+     "seed": 3,
+     "set": {
+      "max_accel_m_s2": 2,
+      "hold_grip": true
+     },
+     "pass": true,
+     "score": 1,
+     "changed": [
+      "max_accel_m_s2",
+      "hold_grip"
+     ],
+     "prompt_tokens": 793,
+     "completion_tokens": 95,
+     "usd": 0.0001078,
+     "ms": 1405
+    }
+   ]
+  }
+ },
+ "generated_at": "2026-10-26T12:26:51.116Z"
+}
