@@ -14,7 +14,8 @@ const WORLDS: GravityName[] = ["earth", "orbit"];
 
 type Row = { world: GravityName; result: Rollout | { error: string } | "running" };
 
-export function Rehearsal({ spec, program, onFail }: { spec: TaskSpec; program: Program; onFail: (f: Failure | null) => void }) {
+/** `notes={false}` leaves out the Notes stage, which calls Token Factory (/space must never). */
+export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskSpec; program: Program; onFail: (f: Failure | null) => void; notes?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const clientRef = useRef<SimClient | null>(null);
   const [status, setStatus] = useState("starting");
@@ -144,7 +145,7 @@ export function Rehearsal({ spec, program, onFail }: { spec: TaskSpec; program: 
           </tbody>
         </table>
       )}
-      {failing?.program === program && <PatchLoop key={failing.n} spec={spec} program={program} first={failing.runs} rehearse={rehearsePatch} onBusy={setPatching} />}
+      {notes && failing?.program === program && <PatchLoop key={failing.n} spec={spec} program={program} first={failing.runs} rehearse={rehearsePatch} onBusy={setPatching} />}
     </div>
   );
 }
