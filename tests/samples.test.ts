@@ -1,22 +1,59 @@
-import { closeSync, openSync, readFileSync, readSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { SAMPLES } from "@/lib/samples";
 
 const DIR = path.join(process.cwd(), "samples");
 const README = readFileSync(path.join(DIR, "README.md"), "utf8");
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 5_000_000;
+const MAX_SECONDS = 40;
+const WIDTH = 1280;
 /** the label route keeps 200 characters of the hint */
 const MAX_HINT = 200;
 
-function head(file: string, n: number): Buffer {
-  const fd = openSync(file, "r");
-  try {
-    const buf = Buffer.alloc(n);
-    return buf.subarray(0, readSync(fd, buf, 0, n, 0));
-  } finally {
-    closeSync(fd);
+type Box = { type: string; body: number; end: number };
+
+function boxes(buf: Buffer, start: number, end: number): Box[] {
+  const out: Box[] = [];
+  for (let pos = start; pos + 8 <= end; ) {
+    let size = buf.readUInt32BE(pos);
+    let body = pos + 8;
+    if (size === 1) {
+      size = Number(buf.readBigUInt64BE(pos + 8));
+      body = pos + 16;
+    } else if (size === 0) size = end - pos;
+    if (size < body - pos || pos + size > end) break;
+    out.push({ type: buf.toString("latin1", pos + 4, pos + 8), body, end: pos + size });
+    pos += size;
   }
+  return out;
+}
+
+/** The tracks of an MP4 read from its boxes: handler, sample entry, picture width, seconds. */
+function tracks(file: string) {
+  const buf = readFileSync(file);
+  const down = (box: Box, ...path: string[]): Box | undefined =>
+    path.reduce<Box | undefined>((b, type) => b && boxes(buf, b.body, b.end).find((c) => c.type === type), box);
+  const moov = boxes(buf, 0, buf.length).find((b) => b.type === "moov");
+  if (!moov) return [];
+  return boxes(buf, moov.body, moov.end)
+    .filter((b) => b.type === "trak")
+    .map((trak) => {
+      const mdia = down(trak, "mdia")!;
+      const hdlr = down(mdia, "hdlr")!;
+      const mdhd = down(mdia, "mdhd")!;
+      const stsd = down(mdia, "minf", "stbl", "stsd")!;
+      const entry = boxes(buf, stsd.body + 8, stsd.end)[0];
+      const v1 = buf[mdhd.body] === 1;
+      const timescale = buf.readUInt32BE(mdhd.body + (v1 ? 20 : 12));
+      const ticks = v1 ? Number(buf.readBigUInt64BE(mdhd.body + 24)) : buf.readUInt32BE(mdhd.body + 16);
+      return {
+        handler: buf.toString("latin1", hdlr.body + 8, hdlr.body + 12),
+        entry: entry.type,
+        width: buf.readUInt16BE(entry.body + 24),
+        seconds: ticks / timescale,
+      };
+    });
 }
 
 describe("sample registry", () => {
@@ -26,13 +63,26 @@ describe("sample registry", () => {
     for (const s of SAMPLES) expect(s.name).toMatch(/^[\w-]+$/);
   });
 
-  it.each(SAMPLES)("$name: an H.264 file under 5 MB with a README row and a hint the label route keeps whole", ({ name, hint }) => {
+  it.each(SAMPLES)("$name: one H.264 video track, 1280 wide, at most 40 s and 5 MB, no audio", ({ name }) => {
     const file = path.join(DIR, `${name}.mp4`);
     expect(statSync(file).size).toBeLessThanOrEqual(MAX_BYTES);
-    const start = head(file, 4096);
-    expect(start.subarray(4, 8).toString("latin1")).toBe("ftyp");
-    expect(start.includes("avc1")).toBe(true);
-    expect(README).toContain(`\`${name}.mp4\``);
+    const [video, ...rest] = tracks(file);
+    expect(rest).toEqual([]);
+    expect(video).toMatchObject({ handler: "vide", entry: "avc1", width: WIDTH });
+    expect(video.seconds).toBeGreaterThan(0);
+    expect(video.seconds).toBeLessThanOrEqual(MAX_SECONDS);
+  });
+
+  it.each(SAMPLES)("$name: one README row with a source, the seconds used, the ffmpeg line and a licence", ({ name }) => {
+    const rows = README.split("\n").filter((l) => l.startsWith(`| \`${name}.mp4\` |`));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain("](https://");
+    expect(rows[0]).toMatch(/seconds \d+(\.\d+)? to \d+(\.\d+)?/);
+    expect(rows[0]).toContain("`ffmpeg ");
+    expect(rows[0]).toContain("Public domain (work of NASA)");
+  });
+
+  it.each(SAMPLES)("$name: a hint the label route keeps whole", ({ hint }) => {
     expect(hint.length).toBeGreaterThan(0);
     expect(hint.length).toBeLessThanOrEqual(MAX_HINT);
   });
@@ -40,11 +90,5 @@ describe("sample registry", () => {
   it("registers every clip under samples/", () => {
     const files = readdirSync(DIR).filter((f) => f.endsWith(".mp4"));
     expect(files.sort()).toEqual(SAMPLES.map((s) => `${s.name}.mp4`).sort());
-  });
-
-  it("records a licence on every README row", () => {
-    const rows = README.split("\n").filter((l) => /^\| `[\w-]+\.mp4` \|/.test(l));
-    expect(rows.length).toBe(SAMPLES.length);
-    for (const row of rows) expect(row).toContain("Public domain (work of NASA)");
   });
 });
