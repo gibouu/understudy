@@ -156,6 +156,9 @@ describe("the bench of a pour, as the scene builds it", () => {
     });
     const v = variant(buildVariant(nested, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1));
     expect(object(v.spec, "cup").pose!.xyz_mm).toEqual([300, 0, 31]);
+    // too wide for the 44 mm inside of a 52 mm one, it stands across the rims
+    const across = base((s) => Object.assign(object(s, "block"), { size_mm: [52, 52, 46], liquid_ml: 1 }));
+    expect(object(variant(buildVariant(across, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1)).spec, "cup").pose!.xyz_mm).toEqual([300, 0, 73]);
   });
 
   it("stands a container in a pocket on the pocket's floor, not on the fixture's top", () => {
