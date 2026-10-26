@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { MainModule, MjVFS } from "@mujoco/mujoco";
 import { beforeAll, describe, expect, it } from "vitest";
-import { scalePath, type HandSample } from "@/lib/sim/gesture";
+import { BOX_Y_MM, BOX_Z_MM, PLANE_X_MM, scalePath, type HandSample } from "@/lib/sim/gesture";
 import { environment, runToEnd } from "@/lib/sim/interpreter";
 import { SO101_XML, stageXml } from "@/lib/sim/so101";
 import { Program, TaskSpec, type PathPoint } from "@/lib/spec/schema";
@@ -109,6 +109,36 @@ describe("follow: a gesture path traced by the arm", () => {
     expect(r.log.join("\n")).toMatch(/the arm is held to 2/);
     expect(r.log.join("\n")).not.toMatch(/0\.00x/);
   }, 120_000);
+
+  /** a path through `corners` (y, z in mm, in the plane), a point every 5 mm, 0.05 s apart */
+  function through(corners: [number, number][]): PathPoint[] {
+    const out: PathPoint[] = [];
+    corners.slice(1).forEach(([y1, z1], i) => {
+      const [y0, z0] = corners[i];
+      const n = Math.max(1, Math.ceil(Math.hypot(y1 - y0, z1 - z0) / 5));
+      for (let k = i === 0 ? 0 : 1; k <= n; k++) out.push({ t_s: out.length * 0.05, xyz_mm: [PLANE_X_MM, y0 + ((y1 - y0) * k) / n, z0 + ((z1 - z0) * k) / n] });
+    });
+    return out;
+  }
+  const [y0, y1] = BOX_Y_MM;
+  const [z0, z1] = BOX_Z_MM;
+  const mid = (z0 + z1) / 2;
+
+  it.each([1, 0])("reaches every corner of the box and its bottom centre at %s g", (g) => {
+    const path = through([[0, z0], [y0, z0], [y0, z1], [y1, z1], [y1, z0], [0, z0], [0, mid]]);
+    const r = rollout(gestureSpec(path), FOLLOW, g);
+    expect(r.pass, r.log.join("\n")).toBe(true);
+    expect(r.followed![0].missed).toEqual([]);
+  }, 180_000);
+
+  it.each([1, 0])("follows a circle that fills the box at %s g", (g) => {
+    // a hand going round once, with no arm to scale by: the path fills the box
+    const samples: HandSample[] = Array.from({ length: 91 }, (_, k) => ({ t_s: k / 30, x_m: 0.2 * Math.cos((2 * Math.PI * k) / 90), y_m: 0.2 * Math.sin((2 * Math.PI * k) / 90) }));
+    const path = scalePath(samples, null).path;
+    expect(Math.min(...path.map((p) => p.xyz_mm[2]))).toBeCloseTo(z0, 0);
+    const r = rollout(gestureSpec(path), FOLLOW, g);
+    expect(r.pass, r.log.join("\n")).toBe(true);
+  }, 180_000);
 
   it("draws the path on the stage as markers that touch nothing", () => {
     const env = environment(gestureSpec(swing()));

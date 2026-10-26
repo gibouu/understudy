@@ -31,10 +31,14 @@ type Vec3 = [number, number, number];
 /** A hand sample in the person's frontal plane: metres, x to the image's right, y down. */
 export type HandSample = { t_s: number; x_m: number; y_m: number };
 
-/** The plane the path is drawn in and the box it must fit, mm, world frame (measured in reach with a front approach). */
+/**
+ * The plane the path is drawn in and the box it must fit, mm, world frame. Every corner, the bottom centre and a
+ * circle filling the box are followed within reach_mm at 1 g and 0 g (tests/sim/follow.test.ts); below z = 200 mm
+ * the arm cannot keep the gripper level in this plane (at z = 150 it falls 75 mm short).
+ */
 export const PLANE_X_MM = 220;
 export const BOX_Y_MM = [-120, 120] as const;
-export const BOX_Z_MM = [150, 330] as const;
+export const BOX_Z_MM = [200, 330] as const;
 /** The SO-101's arm, shoulder lift axis to wrist flex axis (upper arm 116 mm, lower arm 135 mm in assets/so101/so101.xml). */
 export const ARM_MM = 250;
 /** A path shorter than this, or with fewer samples, is not a gesture the arm can follow. */

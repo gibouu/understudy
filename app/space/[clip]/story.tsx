@@ -182,7 +182,10 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
           <div className="flex flex-col gap-3 self-start rounded-lg bg-paper-deep p-5">
             <h3 className="display text-xl font-semibold">Fitted to the robot’s bench</h3>
             <p className="text-neutral-700">
-              The SO-101 rehearses one manipulation: the {name(fit, fit.steps[0].object ?? "")} goes {fit.steps[1].target?.fixture === "pocket" ? "into" : "onto"} the {name(fit, fit.steps[1].target?.frame ?? "")}, laid out within its reach and sized for its gripper. Everything the fit changed or left out:
+              {fit.steps.length >= 2 && fit.steps[0].object !== undefined
+                ? <>The SO-101 rehearses one manipulation: the {name(fit, fit.steps[0].object)} goes {fit.steps[1].target?.fixture === "pocket" ? "into" : "onto"} the {name(fit, fit.steps[1].target?.frame ?? "")}, laid out within its reach and sized for its gripper.</>
+                : <>The SO-101 rehearses a gesture: the hand&apos;s path, scaled into its reach.</>}{" "}
+              Everything the fit changed or left out:
             </p>
             <ul className="list-disc pl-5 text-neutral-700">
               {session.fit.warnings.map((w) => (

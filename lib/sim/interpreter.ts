@@ -471,7 +471,8 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             if (path.some((p, k) => k > 0 && p.t_s <= path[k - 1].t_s)) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `follow: the path of step ${s.step_id} does not move forward in time` });
             const site = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, SO101_GRASP_SITE);
             // every point solved before the arm moves: the first from a front approach, the rest from the one
-            // before, keeping its tilt (yaw left free), so consecutive poses stay on one branch of the arm
+            // before, keeping its tilt (yaw left free), so consecutive poses stay on one branch of the arm; where
+            // that tilt cannot be kept at the point (low in the box), a front approach from the same seed is tried
             const keys: number[][] = [];
             let off = { i: 0, mm: 0 };
             const scratch = new mujoco.MjData(model);
@@ -483,7 +484,11 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
               keys.push(first.q);
               off = { i: 0, mm: first.pos_err_mm };
               for (let k = 1; k < path.length; k++) {
-                const r = solvePose(mujoco, model, scratch, SO101_GRASP_SITE, at(k), rot0, keys[k - 1], { yaw: 0 });
+                let r: { q: number[]; pos_err_mm: number } = solvePose(mujoco, model, scratch, SO101_GRASP_SITE, at(k), rot0, keys[k - 1], { yaw: 0 });
+                if (r.pos_err_mm > IK_PRECISION_MM) {
+                  const front = solveIk(mujoco, model, scratch, at(k), "front", keys[k - 1], SO101_GRASP_SITE);
+                  if (front.pos_err_mm < r.pos_err_mm) r = front;
+                }
                 keys.push(r.q);
                 if (r.pos_err_mm > off.mm) off = { i: k, mm: r.pos_err_mm };
               }

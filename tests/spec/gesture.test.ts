@@ -109,6 +109,10 @@ describe("fitToBench with gestures", () => {
     const fit = fitToBench(labelled);
     expect(fit.spec.objects).toEqual([]);
     expect(fit.spec.steps.map((s) => [s.id, s.verb, s.gesture?.path.length])).toEqual([["s1", "gesture", 20]]);
+    expect(fit.spec.steps[0].object).toBeUndefined();
+    const named = fitToBench(spec([gesture({ object: "jar" })], [jar]));
+    expect(named.spec.steps[0].object).toBeUndefined();
+    expect(named.spec.objects).toEqual([]);
     expect(fit.warnings.join("\n")).toMatch(/step a: the right hand's path, 20 points over 1.9 s, 119 mm across and 0 mm high in front of the arm/);
     expect(fit.warnings.join("\n")).toMatch(/step b: no hand path was traced from the clip; left out/);
     expect(fit.warnings.join("\n")).toMatch(/left out of the rehearsal: jar \(a gesture handles nothing\)/);

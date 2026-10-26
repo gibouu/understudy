@@ -129,7 +129,8 @@ function fitGestures(spec: TaskSpec): Fit {
     const span = (k: 1 | 2) => r0(Math.max(...path.map((p) => p.xyz_mm[k])) - Math.min(...path.map((p) => p.xyz_mm[k])));
     const hand = s.gesture?.hand ? `the ${s.gesture.hand} hand's` : "the hand's";
     warnings.push(`step ${s.id}: ${hand} path, ${path.length} points over ${path.at(-1)!.t_s.toFixed(1)} s, ${span(1)} mm across and ${span(2)} mm high in front of the arm`);
-    steps.push({ ...s, id: `s${steps.length + 1}`, via_points: [], preconditions: [], success: [] });
+    // the objects go, so nothing in the step may name one
+    steps.push({ ...s, id: `s${steps.length + 1}`, object: undefined, target: undefined, via_points: [], preconditions: [], success: [] });
   }
   if (steps.length === 0) return { spec, warnings: [...warnings, "no gesture with a hand path: nothing to rehearse"] };
   const others = spec.steps.length - steps.length;
