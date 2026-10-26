@@ -48,8 +48,14 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Check
   const client = wantsReplay(req) ? null : tokenFactory({ timeout: 25_000, maxRetries: 1 });
   const result = client ? await askSuper(client, spec.data, request) : replay(spec.data, request);
   if (result.status !== "done") return NextResponse.json(result);
+  let checked: Checked;
+  try {
+    checked = checkReply(spec.data, result.value, first);
+  } catch (err) {
+    // the calls were made: a checker bug must not hide what they cost
+    return NextResponse.json({ ...failed<Checked>(`the variants could not be checked: ${(err as Error).message}`.slice(0, 300), false), ledger: result.ledger });
+  }
   // a request gets one variant: the first that fits
-  const checked = checkReply(spec.data, result.value, first);
   if (request && checked.variants.length > 1) checked.variants = checked.variants.slice(0, 1);
   return NextResponse.json(done(checked, result.warnings, result.ledger));
 }

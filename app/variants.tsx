@@ -7,8 +7,8 @@ import { StageRenderer } from "@/lib/sim/render";
 import { GRAVITIES, type GravityName, type Predicate, type Program, type TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { costOf } from "@/lib/variants/cost";
-import type { NotYet } from "@/lib/variants/parse";
-import type { Checked, Edit, Variant } from "@/lib/variants/validate";
+import { MAX_VARIANTS, type NotYet } from "@/lib/variants/parse";
+import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
 
 /** The same two worlds as the rehearsal above. */
 const WORLDS: GravityName[] = ["earth", "orbit"];
@@ -16,8 +16,8 @@ const MAX_REQUEST_CHARS = 200;
 
 type WorldResult = Rollout | { error: string } | "running";
 type Run = { compile: StageResult<Program>; worlds: Partial<Record<GravityName, WorldResult>>; ledger: LedgerEntry[] };
-/** Every model call this section made, for the running total. */
-type Call = { what: string; ledger: LedgerEntry[]; replayed: boolean };
+/** Every request this section made, for the running total; a failed one may have spent tokens it does not report. */
+type Call = { what: string; ledger: LedgerEntry[]; replayed: boolean; failed: boolean };
 
 async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
   try {
@@ -29,6 +29,12 @@ async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
 }
 
 const replayed = (r: StageResult<unknown>) => r.status === "done" && r.warnings.some((w) => w.startsWith("replay"));
+const callOf = (what: string, r: StageResult<unknown>): Call => ({
+  what,
+  ledger: (r as { ledger?: LedgerEntry[] }).ledger ?? [],
+  replayed: replayed(r),
+  failed: r.status === "failed",
+});
 const usd = (x: number) => `US$${x < 0.01 ? x.toFixed(4) : x.toFixed(3)}`;
 
 /**
@@ -78,9 +84,13 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
   const [calls, setCalls] = useState<Call[]>([]);
   const [busy, setBusy] = useState(false);
   const [showing, setShowing] = useState<string | null>(null);
-  /** bumped when the task above changes: replies for the old one are dropped */
+  /** bumped when the section goes: replies and rollouts for it are dropped */
   const gen = useRef(0);
+  /** the next variant number: each request reserves its range when it is sent, so two in flight never share one */
   const next = useRef(1);
+  /** one rehearsal at a time on the one stage, even on a double click */
+  const rehearsing = useRef(false);
+  const offeredKeys = useRef(new Set<string>());
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -113,19 +123,31 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
     [],
   );
 
+  function reserve(n: number): number {
+    const first = next.current;
+    next.current += n;
+    return first;
+  }
+
   function receive(r: StageResult<Checked>, what: string, from: string) {
+    setCalls((cs) => [...cs, callOf(what, r)]);
     if (r.status !== "done") return;
-    setCalls((cs) => [...cs, { what, ledger: r.ledger ?? [], replayed: replayed(r) }]);
-    next.current += r.value.variants.length;
-    setOffered((xs) => [...xs, ...r.value.variants.map((variant) => ({ variant, from }))]);
+    // a later reply can repeat a variant already offered: the arm would do the same thing
+    const fresh = r.value.variants.filter((v) => {
+      const key = physicalKey(v.spec);
+      if (offeredKeys.current.has(key)) return false;
+      offeredKeys.current.add(key);
+      return true;
+    });
+    setOffered((xs) => [...xs, ...fresh.map((variant) => ({ variant, from }))]);
+    setChosen((c) => new Set([...c, ...fresh.map((v) => v.id)]));
     setNotYet((xs) => [...xs, ...r.value.not_yet]);
-    setChosen((c) => new Set([...c, ...r.value.variants.map((v) => v.id)]));
   }
 
   async function suggestVariants() {
     const id = gen.current;
     setSuggest(running("Super is thinking of similar tasks"));
-    const r = await post<Checked>("/api/variants", { spec, first: next.current });
+    const r = await post<Checked>("/api/variants", { spec, first: reserve(MAX_VARIANTS) });
     if (id !== gen.current) return;
     setSuggest(r);
     receive(r, "Suggestions", "suggested");
@@ -136,7 +158,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
     if (!line) return;
     const id = gen.current;
     setAsk(running("Super is writing it as spec changes"));
-    const r = await post<Checked>("/api/variants", { spec, request: line, first: next.current });
+    const r = await post<Checked>("/api/variants", { spec, request: line, first: reserve(1) });
     if (id !== gen.current) return;
     setAsk(r);
     receive(r, `“${line}”`, line);
@@ -144,7 +166,8 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
 
   async function rehearse(list: Variant[]) {
     const client = clientRef.current;
-    if (!client || busy) return;
+    if (!client || rehearsing.current) return;
+    rehearsing.current = true;
     const id = gen.current;
     setBusy(true);
     for (const v of list) {
@@ -156,8 +179,8 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
       update({ compile: running("Nano is writing its program"), worlds: {}, ledger: [] });
       const c = await post<Program>("/api/compile", { spec: v.spec, previous: program });
       if (id !== gen.current) return;
-      update({ compile: c, ledger: c.status === "done" ? (c.ledger ?? []) : [] });
-      if (c.status === "done") setCalls((cs) => [...cs, { what: `${v.title}: program`, ledger: c.ledger ?? [], replayed: replayed(c) }]);
+      update({ compile: c, ledger: callOf("", c).ledger });
+      setCalls((cs) => [...cs, callOf(`${v.title}: program`, c)]);
       if (c.status !== "done") continue;
       setShowing(v.id);
       try {
@@ -182,10 +205,12 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
         setRuns((rs) => ({ ...rs, [v.id]: { ...rs[v.id], worlds: { ...rs[v.id].worlds, [world]: result } } }));
       }
     }
+    rehearsing.current = false;
     setBusy(false);
   }
 
   const total = costOf(calls.flatMap((c) => c.ledger));
+  const failedCalls = calls.filter((c) => c.failed && c.ledger.length === 0).length;
   const anyReplayed = calls.some((c) => c.replayed);
   const picked = offered.filter((o) => chosen.has(o.variant.id)).map((o) => o.variant);
 
@@ -276,11 +301,12 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
             Model calls in this section so far: <span className="font-medium">{total.calls}</span>, <span className="font-medium">{usd(total.usd)}</span> at Token Factory list prices
             {total.unpriced > 0 && `, plus ${total.unpriced} with no list price`}
             {anyReplayed && " (replayed: the cost of the recorded calls)"}.
+            {failedCalls > 0 && ` ${failedCalls} request${failedCalls === 1 ? "" : "s"} failed; a failed request does not report what its calls cost, so that is not counted.`}
           </p>
           <ul className="mt-1 text-xs text-[color:var(--muted,#737373)]">
             {calls.map((c, i) => (
               <li key={i}>
-                {c.what}: {c.ledger.length} call{c.ledger.length === 1 ? "" : "s"}, {usd(costOf(c.ledger).usd)}
+                {c.what}: {c.failed && c.ledger.length === 0 ? "failed, cost not reported" : `${c.ledger.length} call${c.ledger.length === 1 ? "" : "s"}, ${usd(costOf(c.ledger).usd)}${c.failed ? ", then failed" : ""}`}
               </li>
             ))}
           </ul>

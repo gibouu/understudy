@@ -22,7 +22,7 @@
  * say: it reports a target out of reach as an embodiment limit.
  */
 import { fitToBench } from "@/lib/sim/fit";
-import { apply, buildScene, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses } from "@/lib/sim/scene";
+import { apply, buildScene, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses } from "@/lib/sim/scene";
 import { applyChanges, canonicalSlot, parsePath, valueAt } from "@/lib/spec/apply";
 import { AXES, FIXTURES, SHAPES, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
 import { validateSpec } from "@/lib/spec/validate";
@@ -36,6 +36,15 @@ export const REACH_MM = 300;
 export const MIN_REACH_MM = 80;
 /** How far a resting object may sit from its support, mm. */
 const REST_MM = 2;
+/** The smallest side the bench builds and grips: the fit's narrowest held side. */
+export const MIN_SIZE_MM = 6;
+const DEG = Math.PI / 180;
+/**
+ * Actions the rehearsal cannot run yet (it runs one grasp, then one insert
+ * or place): a variant whose name or summary claims one is not offered, even
+ * when its changes alone would run. The prompt lists the same ones.
+ */
+const NOT_YET_ACTIONS = /\b(pour(s|ing|ed)?|wav(e|es|ing|ed)|wip(e|es|ing|ed)|stir(s|ring|red)?|shak(e|es|ing)|screwing|folding|tying)\b/i;
 
 export type Edit = { path: string; before: unknown; after: unknown };
 export type Variant = {
@@ -69,7 +78,8 @@ function refusal(spec: TaskSpec, tokens: string[]): string | null {
   if (list === "steps") {
     if (!spec.steps.some((s) => s.id === id)) return `no step "${id}"`;
     if (rest.length) return no;
-    if ((field === "verb" || field === "success") && sub === undefined) return null;
+    if (field === "verb" && sub === undefined) return spec.steps.find((s) => s.id === id)?.target ? null : "the grasp stays a grasp: only the step that puts the object somewhere can change its verb";
+    if (field === "success" && sub === undefined) return null;
     if (field === "target" && (sub === undefined || sub === "fixture")) return null;
     if (field === "tolerances" && (sub === undefined || (AXES as readonly string[]).includes(sub))) return null;
     return no;
@@ -97,49 +107,83 @@ export function physicalKey(spec: TaskSpec): string {
 
 const usedAsPocket = (spec: TaskSpec, id: string) => spec.steps.some((s) => s.target?.fixture === "pocket" && s.target.frame === id);
 
-/** The world must exist as posed: within reach, footprints apart, the held object resting on something. */
+/** The opening the scene builder cuts in a pocket fixture, mm: the widest object that goes in, plus the clearance. */
+function opening(spec: TaskSpec, f: SpecObject): [number, number] {
+  const users = spec.steps.filter((s) => s.target?.fixture === "pocket" && s.target.frame === f.id).flatMap((s) => spec.objects.filter((o) => o.id === s.object));
+  const c = f.pocket_clearance_mm ?? DEFAULT_CLEARANCE_MM;
+  return [Math.max(...users.map((o) => footprintMm(o)[0])) + c, Math.max(...users.map((o) => footprintMm(o)[1])) + c];
+}
+
+/** Half extents of an object's footprint in another frame, turned by `yaw` degrees against it. */
+function halfExtents(o: SpecObject, yaw: number): [number, number] {
+  const [a, b] = footprintMm(o);
+  const [c, s] = [Math.abs(Math.cos(yaw * DEG)), Math.abs(Math.sin(yaw * DEG))];
+  return [(c * a + s * b) / 2, (s * a + c * b) / 2];
+}
+
+/**
+ * The world must exist as posed: sizes the scene can build, every object
+ * within the arm's reach and above the table, no two objects in the same
+ * place (a held object inside a pocket's opening or on a fixture's top is
+ * not a clash), and the held object resting on what is under it.
+ */
 function geometryProblem(spec: TaskSpec): string | null {
+  for (const o of spec.objects) {
+    if (Math.min(...o.size_mm) < MIN_SIZE_MM) return `${o.name} would be under ${MIN_SIZE_MM} mm in one direction`;
+    if (o.shape === "sphere" && new Set(o.size_mm).size > 1) return `${o.name} would be a sphere with different sizes in x, y and z`;
+  }
+  let world: ReturnType<typeof worldPoses>;
   try {
     buildScene(spec);
+    world = worldPoses(spec);
   } catch (err) {
     if (err instanceof SceneError) return err.message;
     throw err;
   }
-  const world = worldPoses(spec);
-  const onTable = spec.objects.filter((o) => o.pose?.frame === "world");
-  for (const o of onTable) {
-    const [x, y] = world[o.id].xyz_mm;
-    const r = Math.hypot(x, y);
+  const bottom = (o: SpecObject) => world[o.id].xyz_mm[2] - heightMm(o) / 2;
+  for (const o of spec.objects) {
+    const r = Math.hypot(world[o.id].xyz_mm[0], world[o.id].xyz_mm[1]);
     if (r > REACH_MM) return `${o.name} would be ${Math.round(r)} mm from the robot's base, beyond its ${REACH_MM} mm reach`;
     if (r < MIN_REACH_MM) return `${o.name} would be ${Math.round(r)} mm from the robot's base, too close to reach down to`;
-    if (world[o.id].xyz_mm[2] - heightMm(o) / 2 < -REST_MM) return `${o.name} would be partly below the table`;
+    if (bottom(o) < -REST_MM) return `${o.name} would be partly below the table`;
   }
-  for (let i = 0; i < onTable.length; i++) {
-    for (let j = i + 1; j < onTable.length; j++) {
-      const [a, b] = [onTable[i], onTable[j]];
+  /** Where `o`'s centre sits over fixture `f`: on its top, in its pocket's opening, or not over it. */
+  const over = (o: SpecObject, f: SpecObject): "top" | "opening" | null => {
+    const w = world[f.id];
+    const at = world[o.id].xyz_mm;
+    const local = apply(transpose(w.R), [at[0] - w.xyz_mm[0], at[1] - w.xyz_mm[1], at[2] - w.xyz_mm[2]]);
+    const [fx, fy] = footprintMm(f);
+    if (Math.abs(local[0]) > fx / 2 || Math.abs(local[1]) > fy / 2) return null;
+    if (!usedAsPocket(spec, f.id)) return "top";
+    const [ix, iy] = opening(spec, f);
+    const [ex, ey] = halfExtents(o, world[o.id].yaw_deg - w.yaw_deg);
+    return Math.abs(local[0]) + ex <= ix / 2 + 0.5 && Math.abs(local[1]) + ey <= iy / 2 + 0.5 ? "opening" : "top";
+  };
+  for (let i = 0; i < spec.objects.length; i++) {
+    for (let j = i + 1; j < spec.objects.length; j++) {
+      const [a, b] = [spec.objects[i], spec.objects[j]];
       const d = Math.hypot(world[a.id].xyz_mm[0] - world[b.id].xyz_mm[0], world[a.id].xyz_mm[1] - world[b.id].xyz_mm[1]);
       const disc = (o: SpecObject) => Math.hypot(...footprintMm(o)) / 2; // under any yaw
-      if (d < disc(a) + disc(b)) return `${a.name} and ${b.name} would overlap on the table`;
+      const z = Math.min(bottom(a) + heightMm(a), bottom(b) + heightMm(b)) - Math.max(bottom(a), bottom(b));
+      if (d >= disc(a) + disc(b) || z <= REST_MM) continue;
+      if ((a.role === "manipulated" && over(a, b) === "opening") || (b.role === "manipulated" && over(b, a) === "opening")) continue;
+      return `${a.name} and ${b.name} would be in the same place`;
     }
   }
   for (const o of spec.objects.filter((x) => x.role === "manipulated")) {
-    const at = world[o.id].xyz_mm;
-    const bottom = at[2] - heightMm(o) / 2;
-    // supports under the object's centre: a fixture's top or its pocket's floor, else the table
+    // what is under the object's centre: a fixture's top or its pocket's floor, else the table
     const supports: number[] = [];
     for (const f of spec.objects.filter((x) => x !== o && x.role !== "manipulated")) {
-      const w = world[f.id];
-      const local = apply(transpose(w.R), [at[0] - w.xyz_mm[0], at[1] - w.xyz_mm[1], at[2] - w.xyz_mm[2]]);
-      const [fx, fy] = footprintMm(f);
-      if (Math.abs(local[0]) > fx / 2 || Math.abs(local[1]) > fy / 2) continue;
+      const where = over(o, f);
+      if (!where) continue;
       const top = heightMm(f) / 2;
-      supports.push(w.xyz_mm[2] + (usedAsPocket(spec, f.id) ? -top + Math.min(WALL_M / MM, top) : top));
+      supports.push(world[f.id].xyz_mm[2] + (where === "opening" ? -top + Math.min(WALL_M / MM, top) : top));
     }
     if (supports.length === 0) supports.push(0);
-    const gap = Math.min(...supports.map((s) => Math.abs(bottom - s)));
-    if (gap > REST_MM) {
-      const nearest = supports.reduce((p, s) => (Math.abs(bottom - s) < Math.abs(bottom - p) ? s : p));
-      return `${o.name} would start ${bottom > nearest ? "in mid-air" : "sunk into what is under it"}, ${Math.round(Math.abs(bottom - nearest))} mm ${bottom > nearest ? "above" : "below"} the surface under it`;
+    const gaps = supports.map((s) => bottom(o) - s);
+    const gap = gaps.reduce((p, g) => (Math.abs(g) < Math.abs(p) ? g : p));
+    if (Math.abs(gap) > REST_MM) {
+      return `${o.name} would start ${gap > 0 ? "in mid-air" : "sunk into what is under it"}, ${Math.round(Math.abs(gap))} mm ${gap > 0 ? "above" : "below"} the surface under it`;
     }
   }
   return null;
@@ -165,6 +209,8 @@ export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: 
     changes.push({ path, value: c.value, source });
   }
   if (changes.length === 0) return { why: "it changes nothing in the task" };
+  const claim = `${idea.title} ${idea.summary}`.match(NOT_YET_ACTIONS);
+  if (claim) return { why: `not yet: "${claim[0].toLowerCase()}" is not something the rehearsal runs; it runs one grasp and then one insert or place` };
 
   // a new shape brings its symmetry: a cylinder turns freely about its axis, a sphere about any
   for (const c of changes.filter((c) => parsePath(c.path)[2] === "shape" && (SHAPES as readonly unknown[]).includes(c.value))) {

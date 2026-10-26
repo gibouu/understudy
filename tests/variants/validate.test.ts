@@ -105,11 +105,38 @@ describe("a variant of the ISS sample", () => {
     const pose = (o: string, xyz: number[], frame = "world") => [`objects[${o}].pose`, { xyz_mm: xyz, yaw_deg: 0, frame }] as [string, unknown];
     expect(why(build(pose("obj2", [320, 100, 15])))).toMatch(/beyond its 300 mm reach/);
     expect(why(build(pose("obj1", [40, 0, 20])))).toMatch(/too close to reach down to/);
-    expect(why(build(pose("obj1", [175, 40, 20])))).toMatch(/would overlap on the table/);
+    expect(why(build(pose("obj1", [175, 40, 20])))).toBe("seed film packet and Veggie plant pillow tray would be in the same place");
     expect(why(build(pose("obj1", [200, -100, 60])))).toMatch(/start in mid-air, 40 mm above/);
     expect(why(build(pose("obj1", [0, 0, 25], "obj2")))).toMatch(/start in mid-air, 12 mm above/);
     expect(why(build(pose("obj1", [0, 0, 5], "obj2")))).toMatch(/sunk into what is under it/);
     expect(why(build(pose("obj2", [175, 100, 5])))).toMatch(/partly below the table/);
+  });
+
+  it("refuses what MuJoCo cannot build or the arm cannot grip", () => {
+    expect(why(build(["objects[obj1].size_mm", [0.0001, 0.0001, 0.0001]]))).toBe("seed film packet would be under 6 mm in one direction");
+    const sphere = build(["objects[obj2].shape", "sphere"], ["steps[s2].verb", "place"], ["steps[s2].target.fixture", "zone"]);
+    expect(why(sphere)).toBe("Veggie plant pillow tray would be a sphere with different sizes in x, y and z");
+  });
+
+  it("refuses a start inside the pocket's wall, and accepts one inside its opening or on a zone's top", () => {
+    const inWall = why(build(["objects[obj1].pose", { xyz_mm: [50, 0, 13], yaw_deg: 0, frame: "obj2" }]));
+    expect(inWall).toBe("seed film packet and Veggie plant pillow tray would be in the same place");
+    // turned a quarter turn, the 40 mm side no longer fits the 20 mm side of the opening
+    expect(why(build(["objects[obj1].pose", { xyz_mm: [0, 0, 13], yaw_deg: 90, frame: "obj2" }]))).toBe("seed film packet and Veggie plant pillow tray would be in the same place");
+    const onTop = (frame: string, xyz: number[]) => build(["steps[s2].verb", "place"], ["steps[s2].target.fixture", "zone"], ["objects[obj1].pose", { xyz_mm: xyz, yaw_deg: 0, frame }]);
+    expect(why(onTop("world", [175, 100, 50]))).toBe("");
+    expect(why(onTop("obj2", [0, 0, 35]))).toBe("");
+  });
+
+  it("does not offer a variant that claims an action the rehearsal does not run", () => {
+    const pour = buildVariant(base, { title: "Pour into tray", summary: "The arm pours into the tray.", changes: [{ path: "objects[obj2].pocket_clearance_mm", value: 2 }] }, 1);
+    expect(why(pour)).toBe('not yet: "pour" is not something the rehearsal runs; it runs one grasp and then one insert or place');
+    const noun = buildVariant(base, { title: "Longer screw", summary: "A screw folded into the kit.", changes: [{ path: "objects[obj2].pocket_clearance_mm", value: 2 }] }, 1);
+    expect(why(noun)).toBe("");
+  });
+
+  it("keeps the grasp a grasp", () => {
+    expect(why(build(["steps[s1].verb", "place"]))).toBe("steps[s1].verb: the grasp stays a grasp: only the step that puts the object somewhere can change its verb");
   });
 
   it("widens a target too small for the object and its clearance, and says so", () => {
