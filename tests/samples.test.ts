@@ -43,12 +43,14 @@ function tracks(file: string) {
       const hdlr = down(mdia, "hdlr")!;
       const mdhd = down(mdia, "mdhd")!;
       const stsd = down(mdia, "minf", "stbl", "stsd")!;
-      const entry = boxes(buf, stsd.body + 8, stsd.end)[0];
+      const entries = boxes(buf, stsd.body + 8, stsd.end);
+      const entry = entries[0];
       const v1 = buf[mdhd.body] === 1;
       const timescale = buf.readUInt32BE(mdhd.body + (v1 ? 20 : 12));
       const ticks = v1 ? Number(buf.readBigUInt64BE(mdhd.body + 24)) : buf.readUInt32BE(mdhd.body + 16);
       return {
         handler: buf.toString("latin1", hdlr.body + 8, hdlr.body + 12),
+        entries: buf.readUInt32BE(stsd.body + 4),
         entry: entry.type,
         width: buf.readUInt16BE(entry.body + 24),
         seconds: ticks / timescale,
@@ -68,7 +70,7 @@ describe("sample registry", () => {
     expect(statSync(file).size).toBeLessThanOrEqual(MAX_BYTES);
     const [video, ...rest] = tracks(file);
     expect(rest).toEqual([]);
-    expect(video).toMatchObject({ handler: "vide", entry: "avc1", width: WIDTH });
+    expect(video).toMatchObject({ handler: "vide", entries: 1, entry: "avc1", width: WIDTH });
     expect(video.seconds).toBeGreaterThan(0);
     expect(video.seconds).toBeLessThanOrEqual(MAX_SECONDS);
   });
