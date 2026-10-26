@@ -12,18 +12,18 @@
   --paper-deep: #efe3cf;
   --ink: #16283f;
   --ink-deep: #0c1a2e;
-  /* --accent is safe as text on every paper tone (AA, 4.7:1 or more); the brighter print orange
-     (3.8:1) is for large type, fills and shadows; links and small labels use --accent-text */
-  --accent: #ad4117;
+  /* --accent is safe as text on every paper tone, the grain and the status tints included (AA);
+     the brighter print orange (3.8:1) is for large type, fills and shadows only */
+  --accent: #a33d15;
   --accent-bright: #cf5220;
   --accent-text: #9b3a12;
   --sun: #efb340;
-  --muted: #56657a;
+  --muted: #4f5d71;
   --faint: #8b98a8;
   --ok: #2c6045;
   --bad: #96271f;
   --hair: rgba(22, 40, 63, 0.18);
-  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .09 0 0 0 0 .16 0 0 0 0 .25 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .09 0 0 0 0 .16 0 0 0 0 .25 0 0 0 .045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
 }
 
 @theme inline {
@@ -50,7 +50,8 @@
   --color-neutral-100: #ebdfca;
   --color-neutral-200: #ddd0ba;
   --color-neutral-300: #c3bba9;
-  --color-neutral-400: var(--faint);
+  /* the flow and variants set small text in neutral-400: keep it readable (AA on paper) */
+  --color-neutral-400: #536278;
   --color-neutral-500: var(--muted);
   --color-neutral-600: #46546a;
   --color-neutral-700: #2f3d53;
@@ -84,9 +85,15 @@
     color: var(--ink);
     background-color: var(--paper);
     /* the press: a faint halftone dot and a grain, never over the content */
-    background-image: var(--grain), radial-gradient(rgba(22, 40, 63, 0.05) 1px, transparent 1.4px);
+    background-image: var(--grain), radial-gradient(rgba(22, 40, 63, 0.035) 1px, transparent 1.4px);
     background-size: 180px 180px, 22px 22px;
     font-feature-settings: "kern", "liga";
+  }
+
+  /* Tailwind's placeholder is half the text colour, 3:1 on paper */
+  ::placeholder {
+    color: var(--muted);
+    opacity: 1;
   }
 
   ::selection {
