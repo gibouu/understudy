@@ -243,7 +243,7 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 
 - A wave turns back several times a second: sampled at 10 fps it aliases into jitter (on the first sample clip the path came out half as wide), so the trace samples at the clip's 30 fps. A three-sample average weighted 1, 2, 1 takes off frame-to-frame jitter and keeps 90% of a 3 Hz swing.
 - In a palm wave the hand turns about the wrist, so the hand's centre (the mean of the pose model's wrist, index and pinky landmarks) travels further than the wrist across: 226 mm against 173 mm here (280 and 288 mm high). The path follows the hand's centre, which is what the gripper stands for, and averages three landmarks instead of one.
-- Scaled at 464 mm per metre (the SO-101's 250 mm arm over the person's 481 mm), the path was 130% of the box's height, as the hand comes down at the end, so it is shrunk a further 11%: 105 mm across and 130 mm high in front of the arm.
+- Scaled at 520 mm per metre (the SO-101's 250 mm arm over the person's 481 mm), the path was 112% of the box's height, as the hand comes down at the end, so it is shrunk a further 11% (464 mm per metre in all, the figure the trace prints): 105 mm across and 130 mm high in front of the arm.
 - MuJoCo (5 ms step, the SO-101's position actuators), point between the pads against the 66 points, reach 5 mm, each point within 0.25 s of its own time. At the clip's own pace a joint would have to turn at 6.7 rad/s; the arm is held to 2 rad/s, so it follows at 0.30x:
 
 | World | Reached within 5 mm | Farthest | First within reach, latest |
