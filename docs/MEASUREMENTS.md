@@ -293,4 +293,4 @@ UNDERSTUDY_ENV_FILE=.env.local node scripts/bench-label.mjs --runs 5 --clips iss
 node scripts/compare-report.mjs --json bench/results/compare-summary.json
 ```
 
-The last one prints section 10's tables from the saved results without spending anything. Qwen3.5 397B is no longer served, so the two commands that name it now stop at its first call.
+The last one prints section 10's tables from the saved results without spending anything. Token Factory withdrew Qwen3.5 397B for a while on 26 October; if a model named here is not served when you run these, the command stops at its first 404 and the report leaves the stopped run out.

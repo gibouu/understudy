@@ -119,7 +119,9 @@ if (patchRows.length) {
 const comp = read("bench/results/compare-compile.json");
 if (comp) {
   // Nemotron first, then the others in the order they ran
-  const rows = Object.values(comp.models).sort((a, b) => Number(b.model.startsWith("nvidia/")) - Number(a.model.startsWith("nvidia/"))).map((m) => {
+  // a model stopped by the cap or a withdrawn model is incomplete: listed under the table, never compared
+  const stoppedModels = [...Object.values(comp.models).filter((x) => x.stopped), ...Object.values(comp.stopped ?? {})];
+  const rows = Object.values(comp.models).filter((m) => !m.stopped).sort((a, b) => Number(b.model.startsWith("nvidia/")) - Number(a.model.startsWith("nvidia/"))).map((m) => {
     const runs = m.runs;
     const done = runs.filter((r) => r.status === "done");
     const deg = done.filter((r) => r.variant === "degraded");
@@ -160,6 +162,7 @@ if (comp) {
     ["Compiler", "Program back", "First answer clean", "Problems left after the repair round", "Asked for the missing fit itself", "Asked for the missing success check itself", "Asks written for a complete spec (mean)", "Rehearsal passes at 1 g (complete spec)", "Cost per compile", "Model time per compile (median)", `Calls over the route's ${ROUTE_TIMEOUT_S} s`],
     rows.map((r) => [nameOf(r.model), pct(r.done, r.compiles), pctCI(r.first_clean, r.compiles), `${r.problems_left} of ${r.done}`, pctCI(r.asked_fit, r.degraded), pctCI(r.asked_success, r.degraded), r.truth_asks_written.toFixed(1), `${r.rehearsal_pass} of ${r.truth_n}`, usd(r.cost_per_compile, 5), `${r.seconds_per_compile.toFixed(1)} s`, `${r.calls_over_route_timeout} of ${r.calls}`]),
   ));
+  for (const m of stoppedModels) lines.push(`\nLeft out of the compile table, stopped before the end: ${m.model} (${m.stopped}).`);
 }
 
 // --- labelling ---------------------------------------------------------------------------------
@@ -193,7 +196,9 @@ const labelRows = [];
 const nv = read("bench/results/label.json");
 const cl = read("bench/results/compare-label.json");
 if (nv) labelRows.push(labelRow(nv, nv.conditions.model));
-if (cl) labelRows.push(labelRow(cl, cl.conditions.model));
+// a labelling run stopped by the cap or a withdrawn model is incomplete: listed, never compared
+if (cl?.stopped) lines.push(`\nLeft out of the label table, stopped before the end: ${cl.conditions.model} (${cl.stopped}).`);
+else if (cl) labelRows.push(labelRow(cl, cl.conditions.model));
 if (labelRows.length) {
   lines.push("\n### Labelling: the ISS seed-film clip, seven input conditions, 5 runs each (35 labels), scored with the rubric of section 6\n");
   lines.push(table(

@@ -337,7 +337,10 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("compile comparison (live, Token
         // merge into what is on disk now, under a lock, so processes run side by side keep each other's models
         withFileLock(`${OUT}.lock`, () => {
           const disk = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : file;
-          disk.models = { ...disk.models, [model]: { model, finished: new Date().toISOString(), wall_s: Math.round((performance.now() - started) / 1000), stopped: budgetStop, runs: runs.filter(Boolean) } };
+          const entry = { model, finished: new Date().toISOString(), wall_s: Math.round((performance.now() - started) / 1000), stopped: budgetStop, runs: runs.filter(Boolean) };
+          // a stopped model is incomplete: kept apart, so it never replaces a complete run of the same model
+          if (budgetStop) disk.stopped = { ...disk.stopped, [model]: entry };
+          else disk.models = { ...disk.models, [model]: entry };
           Object.assign(disk, { generated_at: new Date().toISOString(), reproduce: file.reproduce, conditions: file.conditions });
           let body = JSON.stringify(disk, null, 1) + "\n";
           if (body.includes(KEY)) body = redact(body);
