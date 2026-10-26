@@ -85,7 +85,9 @@ describe("a variant of the ISS sample", () => {
     expect(why(build(["objects[obj2].size_mm", [-5, 100, 30]]))).toMatch(/^rejected \(objects\.1\.size_mm\.0: /);
     expect(why(build(["objects[obj2].size_mm", [100, 100, 30]], ["objects[obj1].size_mm", [0, 10, 40]]))).toMatch(/^rejected .*\(objects\[obj1\]\.size_mm: the batch is valid without it\)$/);
     expect(why(build(["objects[obj2].pocket_clearance_mm", null]))).toBe("objects[obj2].pocket_clearance_mm: no value given");
-    expect(why(build(["steps[s2].verb", "pour"]))).toMatch(/^rejected \(steps\.1\.verb/);
+    expect(why(build(["steps[s2].verb", "fling"]))).toMatch(/^rejected \(steps\.1\.verb/);
+    // pour is a verb of the spec now (#93), but variants do not offer it yet: refused, and the reason says so
+    expect(why(build(["steps[s2].verb", "pour"]))).toBe('not yet: the rehearsal runs one grasp and then one insert or place, not "pour"');
     expect(why(build(["steps[s2].verb", "release"]))).toMatch(/^not yet: the rehearsal runs one grasp and then one insert or place/);
   });
 
