@@ -27,6 +27,14 @@ export function formFor(spec: TaskSpec, slot: string): AskForm {
   const name = (id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
   const still: Predicate = { kind: "object_still", object: step.object };
   const options: { label: string; predicates: Predicate[] }[] = [];
+  if (step.pour) {
+    // a pour succeeds by where the liquid goes, not by where the container ends up
+    const into = step.pour.into;
+    for (const [value, label] of [[90, "nearly all of it"], [75, "most of it"], [50, "at least half of it"]] as const) {
+      options.push({ label: `${label} (${value}%) ends up in the ${name(into)}`, predicates: [{ kind: "liquid_inside", target: into, value }] });
+    }
+    return { kind: "success", options };
+  }
   if (step.target && step.target.frame !== "world") {
     const inside: Predicate = { kind: "inside_zone", object: step.object, target: step.target.frame };
     options.push({ label: `the ${name(step.object)} ends up in the ${name(step.target.frame)} and stays there`, predicates: [inside, still] });
@@ -53,8 +61,8 @@ export function askable(spec: TaskSpec, slot: string): boolean {
 
 /**
  * The gaps the rehearsal cannot run without, read from the spec: a pocket
- * with no clearance (the scene would assume 3 mm) and an insert or place
- * step with no success check. Each one the program does not already ask
+ * with no clearance (the scene would assume 3 mm) and an insert, place or
+ * pour step with no success check. Each one the program does not already ask
  * about gets an ask at the start of the step that needs it.
  */
 export function withRequiredAsks(spec: TaskSpec, program: Program): { program: Program; added: string[] } {
@@ -63,6 +71,13 @@ export function withRequiredAsks(spec: TaskSpec, program: Program): { program: P
   const added: string[] = [];
   const steps = program.steps.map((ps) => {
     const step = spec.steps.find((s) => s.id === ps.step_id);
+    if (step?.pour) {
+      const success = `steps[${step.id}].success`;
+      if (step.success.length > 0 || asked.has(success)) return ps;
+      added.push(success);
+      const ask = { op: "ask" as const, slot: success, question: `How much of what is in the ${name(step.object)} has to end up in the ${name(step.pour.into)} for the pour to count?`, why: "the step has no success check" };
+      return { ...ps, ops: [ask, ...ps.ops] };
+    }
     if (!step?.target || (step.verb !== "insert" && step.verb !== "place")) return ps;
     const asks: Extract<ProgramOp, { op: "ask" }>[] = [];
     const fixture = spec.objects.find((o) => o.id === step.target!.frame);

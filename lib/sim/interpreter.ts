@@ -97,6 +97,8 @@ const TILT_YAW_WEIGHT = 0.1;
 const TILT_POS_MM = 5;
 const TILT_DEG = 3;
 const TILT_TURN_DEG = 30;
+/** a held object tilted less than this counts as upright when a tilt starts */
+const TILT_UPRIGHT_DEG = 3;
 /** the cosine ease of a tilt, as the measured pours used (docs/MEASUREMENTS.md section 5) */
 const ease = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : (1 - Math.cos(Math.PI * u)) / 2);
 
@@ -290,11 +292,9 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
           case "tilt": {
             if (!held) return fail({ failed_step_id: s.step_id, why: "tilt: nothing is held" });
             const h = held;
-            if (!tilted && op.deg === 0) {
-              log.push(`${t.toFixed(2)} tilt 0°: ${h.body} is already upright`);
-              break;
-            }
             const site = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, SO101_HELD_SITE);
+            const goalOf = (frame: string) => (frame === "world" ? [0, 0, 0] : Object.hasOwn(beliefs, frame) ? beliefs[frame].xyz_m : undefined);
+            if (op.toward !== undefined && !goalOf(op.toward)) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `tilt: no frame "${op.toward}"` });
             // poses from a fresh kinematics pass: a grasp just moved the held site onto the object
             const scratch = new mujoco.MjData(model);
             const keys: number[][] = [];
@@ -309,20 +309,43 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
                 if (!o) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `tilt: ${h.body} is not in the spec` });
                 const c0 = vec(scratch.xpos, h.bodyId, 3);
                 const R0 = vec(scratch.xmat, h.bodyId, 9);
-                // toward the frame's origin; with none, or right above it, away from the robot
-                const goal = op.toward === undefined ? undefined : op.toward === "world" ? [0, 0, 0] : Object.hasOwn(beliefs, op.toward) ? beliefs[op.toward].xyz_m : undefined;
-                if (op.toward !== undefined && !goal) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `tilt: no frame "${op.toward}"` });
-                let d: Vec3 = goal ? [goal[0] - c0[0], goal[1] - c0[1], 0] : [0, 0, 0];
+                // tipped already (a program continued from here after one that tilted it): start from where it is,
+                // about its rim on the side it leans to; upright: toward the frame's origin, with none (or right
+                // above it) away from the robot
+                const up: Vec3 = [R0[2], R0[5], R0[8]];
+                const tipped = (Math.acos(Math.max(-1, Math.min(1, up[2]))) * 180) / Math.PI;
+                const leaning = tipped > TILT_UPRIGHT_DEG;
+                if (!leaning && op.deg === 0) {
+                  log.push(`${t.toFixed(2)} tilt 0°: ${h.body} is already upright`);
+                  break;
+                }
+                const goal = op.toward === undefined ? undefined : goalOf(op.toward)!;
+                let d: Vec3 = leaning ? [up[0], up[1], 0] : goal ? [goal[0] - c0[0], goal[1] - c0[1], 0] : [0, 0, 0];
                 if (Math.hypot(d[0], d[1]) < 0.005) d = [c0[0], c0[1], 0];
                 d = unit(d);
-                // the rim point on that side: where the line from the centre along d leaves the top face
+                // the rim point on that side: where the line from the centre along d (in the object's frame) leaves the top face
                 const [hx, hy] = footprintMm(o).map((v) => (v * MM) / 2);
                 const hz = (heightMm(o) * MM) / 2;
-                const dl = [R0[0] * d[0] + R0[3] * d[1], R0[1] * d[0] + R0[4] * d[1]];
+                const dl = unit([R0[0] * d[0] + R0[3] * d[1], R0[1] * d[0] + R0[4] * d[1], 0]);
                 const k = Math.min(Math.abs(dl[0]) > 1e-9 ? hx / Math.abs(dl[0]) : Infinity, Math.abs(dl[1]) > 1e-9 ? hy / Math.abs(dl[1]) : Infinity);
                 const lip = [dl[0] * k, dl[1] * k, hz];
                 const pivot: Vec3 = [0, 1, 2].map((r) => c0[r] + R0[3 * r] * lip[0] + R0[3 * r + 1] * lip[1] + R0[3 * r + 2] * lip[2]) as Vec3;
-                tl = { site0: vec(scratch.site_xpos, site, 3) as Vec3, rot0: vec(scratch.site_xmat, site, 9), pivot, axis: unit(cross([0, 0, 1], d)), deg: 0, toward: op.toward ?? "away from the robot" };
+                const axis = unit(cross([0, 0, 1], d));
+                // the held site's pose upright: the tilt it already has, undone about the pivot
+                const back = rotation(axis, leaning ? (-tipped * Math.PI) / 180 : 0);
+                const now = vec(scratch.site_xpos, site, 3).map((v, r) => v - pivot[r]) as Vec3;
+                const site0 = [0, 1, 2].map((r) => pivot[r] + back[3 * r] * now[0] + back[3 * r + 1] * now[1] + back[3 * r + 2] * now[2]) as Vec3;
+                tl = { site0, rot0: matmul(back, vec(scratch.site_xmat, site, 9)), pivot, axis, deg: leaning ? tipped : 0, toward: leaning ? "the side it leans to" : (op.toward ?? "away from the robot"), frame: leaning ? undefined : op.toward };
+                if (leaning) log.push(`${t.toFixed(2)} tilt: ${h.body} is already tipped ${tipped.toFixed(0)}°; carrying on from there, about its lower rim`);
+              }
+              // a tilt turns about the rim it started from: tipping toward somewhere else needs the object upright first
+              if (op.deg > 0 && op.toward !== undefined && tl.deg > 0 && op.toward !== tl.frame) {
+                const goal = goalOf(op.toward)!;
+                const lean = cross(tl.axis, [0, 0, 1]);
+                const to: Vec3 = [goal[0] - tl.pivot[0], goal[1] - tl.pivot[1], 0];
+                if (tl.frame !== undefined || (Math.hypot(to[0], to[1]) > 0.005 && dot3(lean, unit(to)) < Math.cos(Math.PI / 4))) {
+                  return fail({ failed_step_id: s.step_id, why: `tilt toward ${op.toward}: the ${h.body} is tipped toward ${tl.toward}; turn it upright first (tilt 0)` });
+                }
               }
               const { site0, rot0, pivot, axis, deg: from, toward } = tl;
               // the held site's pose along the path, solved every TILT_KEY_S from where the arm is now
@@ -439,9 +462,10 @@ export function runToEnd(sim: Sim, env: Environment, program: Program, mode: Mod
 type Vec3 = [number, number, number];
 /**
  * A tilt under way: the held site's pose when the object was upright, the pivot (its rim on the side it tips
- * toward) and the horizontal axis it turns about; `deg` is how far it is turned now.
+ * toward) and the horizontal axis it turns about; `deg` is how far it is turned now, `frame` the frame it was
+ * tipped toward (none when it was found tipped), `toward` that in words.
  */
-type Tilt = { site0: Vec3; rot0: number[]; pivot: Vec3; axis: Vec3; deg: number; toward: string };
+type Tilt = { site0: Vec3; rot0: number[]; pivot: Vec3; axis: Vec3; deg: number; toward: string; frame?: string };
 const vec = (field: unknown, i: number, n: number) => Array.from(toNumbers(field)).slice(n * i, n * i + n);
 const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const unit = (a: Vec3): Vec3 => {

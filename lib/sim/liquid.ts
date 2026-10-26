@@ -35,7 +35,7 @@ export const LIQUID_SPACING_M = 0.004;
 export const MAX_PARTICLES = 600;
 /** a container a pour step pours from without saying how much it holds is filled this far up */
 const DEFAULT_FILL = 0.5;
-/** at most this share of a container's inner volume is filled: the rest is freeboard */
+/** at most this share of a container's room is filled: the rest is freeboard */
 const MAX_FILL = 0.8;
 /** a particle this close to the table (in particle diameters) and in no container is on the table */
 const ON_TABLE = 1.5;
@@ -60,47 +60,56 @@ export type LiquidPlan = {
 /** Where the liquid is, as shares of all of it: per container id, on the table, and elsewhere (in the air, on other objects). */
 export type LiquidWhere = { containers: Record<string, number>; table: number; elsewhere: number };
 
+/** Whole particles of size `s` across `length` (40 mm over 4 mm is 10, not 9.999...). */
+const across = (length: number, s: number) => Math.floor(length / s + 1e-9);
+
+/** Lookups keyed by spec ids own nothing else: an id like "__proto__" must stay an ordinary key. */
+const dict = <T>(): Record<string, T> => Object.create(null) as Record<string, T>;
+
 /** The liquid a spec needs, or null when nothing in it holds liquid. `spec` is the laid-out spec the scene was built from. */
 export function planLiquid(spec: TaskSpec, scene: Pick<SceneBuild, "names" | "containers">): LiquidPlan | null {
   const ids = containerIds(spec);
   if (ids.size === 0) return null;
   const warnings: string[] = [];
-  const capacityMl = (id: string) => {
+  const spacing = LIQUID_SPACING_M;
+  const perParticleMl = spacing ** 3 * 1e6;
+  const has = (id: string) => Object.hasOwn(scene.containers, id);
+  // what a container holds is counted in the lattice its fill starts as: whole particles across, layers up
+  const room = (id: string) => {
     const c = scene.containers[id];
-    return c ? c.inner_m[0] * c.inner_m[1] * c.depth_m * 1e6 : 0;
+    return across(c.inner_m[0], spacing) * across(c.inner_m[1], spacing) * across(c.depth_m, spacing);
   };
-  let wanted = spec.objects.filter((o) => o.liquid_ml !== undefined && scene.containers[o.id]).map((o) => ({ id: o.id, ml: o.liquid_ml! }));
-  if (wanted.length === 0) {
-    const source = spec.steps.find((s) => s.verb === "pour")?.object;
-    if (!source || !scene.containers[source]) return null;
-    const ml = DEFAULT_FILL * capacityMl(source);
-    warnings.push(`no object says how much liquid it holds; "${source}" was filled half way (${Math.round(ml)} mL)`);
-    wanted = [{ id: source, ml }];
+  const wanted = spec.objects.filter((o) => o.liquid_ml !== undefined && has(o.id)).map((o) => ({ id: o.id, ml: o.liquid_ml! }));
+  // the first pour pours from something: when the spec does not say how much that holds, it is half full
+  const source = spec.steps.find((s) => s.verb === "pour")?.object;
+  if (source !== undefined && has(source) && !wanted.some((w) => w.id === source)) {
+    const ml = Math.floor(DEFAULT_FILL * room(source)) * perParticleMl;
+    warnings.push(`the spec does not say how much liquid "${source}" holds; it was filled half way (${Math.round(ml)} mL)`);
+    wanted.push({ id: source, ml });
   }
-  wanted = wanted.map(({ id, ml }) => {
-    const most = MAX_FILL * capacityMl(id);
+  if (wanted.length === 0) return null;
+  const capped = wanted.map(({ id, ml }) => {
+    const most = Math.floor(MAX_FILL * room(id)) * perParticleMl;
     if (ml <= most) return { id, ml };
     warnings.push(`"${id}" holds ${Math.round(most)} mL at most; ${Math.round(ml)} mL was asked`);
     return { id, ml: most };
   });
-  const total = wanted.reduce((s, w) => s + w.ml, 0);
-  const spacing = LIQUID_SPACING_M;
-  const perParticleMl = spacing ** 3 * 1e6;
+  const total = capped.reduce((s, w) => s + w.ml, 0);
   const cut = Math.min(1, (MAX_PARTICLES * perParticleMl) / total);
   if (cut < 1) warnings.push(`only ${Math.round(cut * 100)}% of the ${Math.round(total)} mL is simulated: ${MAX_PARTICLES} particles of ${spacing * 1000} mm keep the frame rate`);
-  const fills = wanted.map(({ id, ml }) => {
+  const fills = capped.map(({ id, ml }) => {
     const particles = Math.max(1, Math.round((ml * cut) / perParticleMl));
     return { id, ml: particles * perParticleMl, particles };
   });
-  const containers: Record<string, string> = {};
-  for (const id of ids) if (scene.containers[id]) containers[id] = `${scene.names[id]}_inside`;
+  const containers = dict<string>();
+  for (const id of ids) if (has(id)) containers[id] = `${scene.names[id]}_inside`;
   return { spacing_m: spacing, fills, containers, bodies: spec.objects.map((o) => scene.names[o.id]), warnings };
 }
 
 export class Liquid {
   readonly fluid: Fluid;
   private coupling: MujocoFluidCoupling;
-  private sites: Record<string, number> = {};
+  private sites = dict<number>();
   /** half-sizes of every site, from the model: the containers' insides do not change size */
   private siteSize: number[];
   private pending = 0;
@@ -148,8 +157,8 @@ export class Liquid {
     for (const { id, particles } of this.plan.fills) {
       const site = this.sites[id];
       const [hx, hy, hz] = [0, 1, 2].map((k) => size[3 * site + k]);
-      const nx = Math.max(1, Math.floor((2 * hx) / s));
-      const ny = Math.max(1, Math.floor((2 * hy) / s));
+      const nx = Math.max(1, across(2 * hx, s));
+      const ny = Math.max(1, across(2 * hy, s));
       const R = Array.from({ length: 9 }, (_, k) => xmat[9 * site + k]);
       const p = [0, 1, 2].map((k) => xpos[3 * site + k]);
       const out: number[] = [];
@@ -218,7 +227,7 @@ export class Liquid {
       else if (pz < ON_TABLE * this.plan.spacing_m) table++;
     }
     const share = (c: number) => (n ? c / n : 0);
-    const containers: Record<string, number> = {};
+    const containers = dict<number>();
     ids.forEach((id, k) => (containers[id] = share(counts[k])));
     const inside = counts.reduce((a, b) => a + b, 0);
     return { containers, table: share(table), elsewhere: share(n - inside - table) };
