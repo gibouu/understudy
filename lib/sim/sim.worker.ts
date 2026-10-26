@@ -13,6 +13,7 @@ import type { MainModule, MjData, MjModel, MjVFS } from "@mujoco/mujoco";
 import { graspIndex, isAttached, type Grasp } from "./grasp";
 import { solveIk, type Approach } from "./ik";
 import { environment, run, type Environment, type Rollout, type Tick } from "./interpreter";
+import { Liquid, LIQUID_STEP_S } from "./liquid";
 import { decodeName, sampleWaypoints, toNumbers } from "./names";
 import {
   GEOM_MESH,
@@ -24,7 +25,7 @@ import {
   type ToWorker,
   type Waypoint,
 } from "./protocol";
-import { G_M_S2, SO101_MESH_BUNDLE, SO101_MESHES, SO101_XML, stageXml } from "./so101";
+import { G_M_S2, park, SO101_MESH_BUNDLE, SO101_MESHES, SO101_XML, stageXml } from "./so101";
 
 type WorkerCtx = {
   postMessage: (message: FromWorker, transfer?: Transferable[]) => void;
@@ -32,10 +33,15 @@ type WorkerCtx = {
 };
 const ctx = self as unknown as WorkerCtx;
 
-type Runtime = { mujoco: MainModule; model: MjModel; data: MjData; meta: SimMeta; env: Environment; grasps: Grasp[] };
+type Runtime = { mujoco: MainModule; model: MjModel; data: MjData; meta: SimMeta; env: Environment; grasps: Grasp[]; liquid: Liquid | null };
 
 /** Simulated seconds of backlog we are willing to catch up per tick; beyond it time is dropped and reported. */
 const MAX_BACKLOG_S = 0.25;
+/**
+ * With a liquid, two of its steps at most: a liquid step that overruns the frame would otherwise make every
+ * tick catch up a quarter second of them, and the stage would stall instead of running slower than real time.
+ */
+const MAX_LIQUID_BACKLOG_S = 2 * LIQUID_STEP_S;
 const TICK_MS = 1000 / 60;
 
 let enginePromise: Promise<MainModule> | null = null;
@@ -97,7 +103,7 @@ ctx.onmessage = async (e) => {
         cancelRun("stopped");
         break;
       case "reset":
-        reset();
+        reset(msg.seed);
         break;
       case "setGravity":
         setGravity(msg.g);
@@ -115,8 +121,8 @@ ctx.onmessage = async (e) => {
         if (!runtime) throw new Error("model not loaded");
         cancelRun("a newer program replaced it");
         playing = null;
-        const { mujoco, model, data, env } = runtime;
-        running = { id: msg.id, it: run({ mujoco, model, data }, env, msg.program, msg.mode, { from: msg.from }) };
+        const { mujoco, model, data, env, liquid } = runtime;
+        running = { id: msg.id, it: run({ mujoco, model, data, liquid }, env, msg.program, msg.mode, { from: msg.from }) };
         break;
       }
     }
@@ -157,11 +163,16 @@ async function load(id: number, mujocoBase: string, assetBase: string, env: Envi
     status("compiling the model", 0.7);
     model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: gravityG, graspable: env.graspable }), vfs);
     data = new mujoco.MjData(model);
-    mujoco.mj_forward(model, data);
-    const meta = { ...extractMeta(model), gravity_g: gravityG };
+    park(mujoco, model, data);
+    const liquid = env.liquid ? new Liquid(mujoco, model, data, env.liquid, { gravity_g: gravityG }) : null;
+    const meta: SimMeta = {
+      ...extractMeta(model),
+      gravity_g: gravityG,
+      liquid: env.liquid && liquid ? { particles: liquid.count, spacing_m: env.liquid.spacing_m, ml: env.liquid.fills.reduce((s, f) => s + f.ml, 0), warnings: env.liquid.warnings } : null,
+    };
 
     const previous = runtime;
-    runtime = { mujoco, model, data, meta: { ...meta, meshes: [] }, env, grasps: env.graspable.map((b) => graspIndex(mujoco, model!, b)) };
+    runtime = { mujoco, model, data, meta: { ...meta, meshes: [] }, env, grasps: env.graspable.map((b) => graspIndex(mujoco, model!, b)), liquid };
     if (wantedGravity !== null) {
       // the user changed gravity while this load was in flight
       const g = wantedGravity;
@@ -328,7 +339,7 @@ function extractMeta(m: MjModel): SimMeta {
     meshes.push({ id, name: name(m.name_meshadr, id), vertices, faces });
   }
 
-  return { gravity_g: 1, nq, nv, nu, ngeom, nsite, timestep, joints, actuators, sites, bodies, geoms, meshes };
+  return { gravity_g: 1, nq, nv, nu, ngeom, nsite, timestep, joints, actuators, sites, bodies, geoms, meshes, liquid: null };
 }
 
 function setCtrl(values: number[]) {
@@ -350,9 +361,11 @@ function setGravity(g: number) {
   if (loading || !runtime) wantedGravity = g;
   if (!runtime) return;
   const opt = runtime.model.opt as { gravity: unknown };
-  const gz = -(G_M_S2 * Math.max(0, Math.min(2, g)));
+  const clamped = Math.max(0, Math.min(2, g));
+  const gz = -(G_M_S2 * clamped);
   if (ArrayBuffer.isView(opt.gravity)) (opt.gravity as unknown as Float64Array)[2] = gz;
   else (opt.gravity as { set: (i: number, v: number) => boolean }).set(2, gz);
+  runtime.liquid?.setGravity(clamped);
   runtime.meta.gravity_g = g;
 }
 
@@ -379,12 +392,13 @@ function nudge(body: string, velocity: [number, number, number]) {
   mujoco.mj_forward(model, data);
 }
 
-function reset() {
+function reset(seed?: number) {
   if (!runtime) return;
   playing = null;
   cancelRun("the physics was reset"); // mj_resetData also switches every weld back off
   runtime.mujoco.mj_resetData(runtime.model, runtime.data);
-  runtime.mujoco.mj_forward(runtime.model, runtime.data);
+  park(runtime.mujoco, runtime.model, runtime.data);
+  runtime.liquid?.fill(runtime.model, runtime.data, seed);
   simTime = 0;
   backlog = 0;
 }
@@ -396,13 +410,14 @@ function reset() {
  */
 function tick() {
   if (!runtime) return;
-  const { mujoco, model, data, meta } = runtime;
+  const { mujoco, model, data, meta, liquid } = runtime;
   const now = performance.now();
   backlog += (now - lastWall) / 1000;
   lastWall = now;
-  if (backlog > MAX_BACKLOG_S) {
-    dropped += backlog - MAX_BACKLOG_S;
-    backlog = MAX_BACKLOG_S;
+  const cap = liquid ? MAX_LIQUID_BACKLOG_S : MAX_BACKLOG_S;
+  if (backlog > cap) {
+    dropped += backlog - cap;
+    backlog = cap;
   }
   const dt = meta.timestep;
   let steps = 0;
@@ -429,6 +444,7 @@ function tick() {
       if (!playing.loop && t >= span) playing = null;
     }
     mujoco.mj_step(model, data);
+    liquid?.advance(model, data, dt);
     simTime += dt;
     backlog -= dt;
     steps++;
@@ -445,6 +461,7 @@ function tick() {
     geomXmat: Float64Array.from(toNumbers(data.geom_xmat)),
     siteXpos: Float64Array.from(toNumbers(data.site_xpos)),
     attached: runtime.grasps.find((g) => isAttached(data, g))?.body ?? null,
+    liquid: liquid ? { positions: liquid.fluid.copyPositions(), where: liquid.where(data), step_ms: liquid.stepMs } : undefined,
   };
   post({ type: "frame", frame }, [
     frame.qpos.buffer,
@@ -452,6 +469,7 @@ function tick() {
     frame.geomXpos.buffer,
     frame.geomXmat.buffer,
     frame.siteXpos.buffer,
+    ...(frame.liquid ? [frame.liquid.positions.buffer] : []),
   ]);
 }
 

@@ -14,6 +14,7 @@ const CHECKS: Record<Predicate["kind"], (p: Predicate, name: (id?: string) => st
   gripper_within: (p, n) => `the gripper is within ${p.value} mm of the ${n(p.object)}`,
   object_still: (p, n) => `the ${n(p.object)} is still`,
   time_under: (p) => `under ${p.value} s have passed`,
+  liquid_inside: (p, n) => `${p.value}% of the liquid is inside the ${n(p.target)}`,
 };
 
 function line(op: ProgramOp, name: (id?: string) => string): string {
@@ -27,6 +28,8 @@ function line(op: ProgramOp, name: (id?: string) => string): string {
       return `close the gripper to ${op.aperture_mm} mm on the ${name(op.object)}`;
     case "release":
       return "open the gripper";
+    case "tilt":
+      return op.deg === 0 ? `turn it back upright over ${op.seconds} s` : `tilt it ${op.deg}° toward ${op.toward ? `the ${name(op.toward)}` : "away from the robot"} over ${op.seconds} s`;
     case "wait_until":
       return `wait until ${CHECKS[op.predicate.kind](op.predicate, name)} (up to ${op.timeout_s} s)`;
     case "assert":

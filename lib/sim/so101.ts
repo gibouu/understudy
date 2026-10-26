@@ -4,6 +4,8 @@
  * publishes the MJCF, a gzipped mesh bundle and the raw meshes (fallback) under
  * /so101; the worker puts them into MuJoCo's virtual file system.
  */
+import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
+import { toNumbers } from "./names";
 export const SO101_ASSET_BASE = "/so101";
 export const SO101_XML = "so101.xml";
 /** 4-byte little-endian header length, a JSON index [{name, offset, length}], then the bytes; gzipped. */
@@ -64,6 +66,21 @@ export const graspWeld = (body: string) => `grasp_${body}`;
 export const SO101_HOME: number[] = [0, -1.3, 1.2, 0.6, 0, 0.3];
 
 export const G_M_S2 = 9.81;
+
+/**
+ * Put the arm at home, holding it there: a freshly built or reset model has it at qpos0 (all joints zero), and
+ * the move home from there sweeps through the space in front of the robot, knocking over what stands there.
+ */
+export function park(mujoco: MainModule, model: MjModel, data: MjData) {
+  const adr = toNumbers(model.jnt_qposadr);
+  const qpos = data.qpos as Float64Array;
+  SO101_JOINT_NAMES.forEach((name, i) => {
+    const j = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT.value, name);
+    if (j >= 0) qpos[adr[j]] = SO101_HOME[i];
+  });
+  (data.ctrl as Float64Array).set(SO101_HOME.slice(0, SO101_JOINT_NAMES.length));
+  mujoco.mj_forward(model, data);
+}
 
 /**
  * The stage: floor, light and the arm. The arm's own <option> sets the

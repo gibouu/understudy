@@ -32,7 +32,7 @@ export const SHAPES = ["cylinder", "box", "sphere"] as const;
 /** none: a box; axial: a cylinder (yaw does not matter); full: a sphere. */
 export const SYMMETRIES = ["none", "axial", "full"] as const;
 export const ROLES = ["manipulated", "fixture", "obstacle", "surface"] as const;
-export const VERBS = ["reach", "grasp", "move", "insert", "place", "release", "retract"] as const;
+export const VERBS = ["reach", "grasp", "move", "insert", "place", "release", "retract", "pour"] as const;
 export const APPROACHES = ["top", "side", "front"] as const;
 /** Closed enum: the simulator evaluates exactly these and nothing else. */
 export const PREDICATES = [
@@ -44,6 +44,7 @@ export const PREDICATES = [
   "gripper_within",
   "object_still",
   "time_under",
+  "liquid_inside",
 ] as const;
 /** Perturbation axes the saboteur may pick; a tolerance is a half-width. */
 export const AXES = [
@@ -88,6 +89,7 @@ export const PREDICATE_OPERANDS: Record<PredicateKind, { object: boolean; target
   gripper_within: { object: true, target: false, value: true, unit: "mm of aperture error" },
   object_still: { object: true, target: false, value: false },
   time_under: { object: false, target: false, value: true, unit: "seconds" },
+  liquid_inside: { object: false, target: true, value: true, unit: "% of the liquid inside the target" },
 };
 
 export const Predicate = z
@@ -129,6 +131,8 @@ export const SpecObject = z.object({
   pose: Pose.optional(),
   /** fixtures with a pocket: hole minus object, in mm */
   pocket_clearance_mm: z.number().nonnegative().optional(),
+  /** liquid the object holds at the start, mL; it is then built as an open container (as is a pour step's source or `into`) */
+  liquid_ml: z.number().positive().optional(),
   confidence: z.number().min(0).max(1).default(0.5),
   source: Source,
   sources: Sources,
@@ -156,6 +160,14 @@ export const Step = z
     success: z.array(Predicate).default([]),
     /** half-width of the band the step must survive, per axis, >= 0 */
     tolerances: z.partialRecord(z.enum(AXES), z.number().nonnegative()).default({}),
+    /** verb "pour": the held `object` is an open container whose liquid goes into the open container `into`, tilted by tilt_deg over tilt_s */
+    pour: z
+      .object({
+        into: z.string().min(1),
+        tilt_deg: z.number().gt(0).max(180),
+        tilt_s: z.number().positive().optional(),
+      })
+      .optional(),
     t_start_s: z.number().nonnegative(),
     t_end_s: z.number().nonnegative(),
     source: Source,
@@ -196,6 +208,16 @@ export const ProgramOp = z.discriminatedUnion("op", [
   }),
   z.object({ op: z.literal("grasp"), object: z.string().min(1), aperture_mm: z.number().nonnegative() }),
   z.object({ op: z.literal("release") }),
+  /**
+   * Tilt the held object by `deg` from upright toward the frame `toward`, over `seconds`, about its rim on that side
+   * (a pour); `deg` 0 turns it back upright about the same rim.
+   */
+  z.object({
+    op: z.literal("tilt"),
+    deg: z.number().min(0).max(180),
+    toward: z.string().min(1).optional(),
+    seconds: z.number().positive().default(1),
+  }),
   z.object({
     op: z.literal("wait_until"),
     predicate: Predicate,

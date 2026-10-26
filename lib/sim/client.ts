@@ -60,8 +60,8 @@ export class SimClient {
   stop() {
     this.send({ type: "stop" });
   }
-  reset() {
-    this.send({ type: "reset" });
+  reset(seed?: number) {
+    this.send({ type: "reset", seed });
   }
   jacobian(site: string): Promise<JacobianResult> {
     return this.request<JacobianResult>((id) => ({ type: "jacobian", id, site }));

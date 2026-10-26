@@ -14,8 +14,8 @@ export default function StagePage() {
         <h1 className="text-2xl font-semibold tracking-tight">Rehearsal stage</h1>
         <p className="text-sm text-neutral-600">
           The SO-101 loads from MuJoCo Menagerie into MuJoCo WebAssembly, steps in a worker, and
-          renders here, on Earth, on the Moon or in orbit. Via-points, perturbations and the program
-          interpreter come next.
+          renders here, on Earth, on the Moon or in orbit. Two scenes: a seed film tucked into a
+          pillow, and a cup poured into a bowl, its water a particle liquid stepped next to MuJoCo.
         </p>
       </header>
       <StageView />

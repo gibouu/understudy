@@ -77,3 +77,63 @@ export const DEMO_PROGRAMS = {
     ],
   }),
 };
+
+/**
+ * The pour on /stage: the measured setup of docs/MEASUREMENTS.md section 5 (a 40 x 40 x 50 mm cup holding
+ * 38 mL, its rim 100 mm above the table, poured into a 60 x 60 mm opening whose centre is 56 mm beyond the
+ * pour lip). The cup stands on a block at that height, so the arm grasps it from the front and tilts it in
+ * place by rolling its wrist: carried first, an open cup in orbit would lose its water before the pour.
+ */
+export const POUR_SPEC = TaskSpec.parse({
+  version: 1,
+  title: "cup into bowl",
+  summary: "Pick up the cup on the block and pour its water into the bowl beside it.",
+  objects: [
+    { id: "block", name: "block", shape: "box", size_mm: [60, 60, 46], symmetry: "none", role: "surface", pose: { xyz_mm: [300, 0, 23] }, source: "demo" },
+    { id: "cup", name: "cup", shape: "box", size_mm: [48, 48, 54], symmetry: "none", role: "manipulated", liquid_ml: 38, pose: { xyz_mm: [300, 0, 73] }, source: "demo" },
+    { id: "bowl", name: "bowl", shape: "box", size_mm: [68, 68, 40], symmetry: "none", role: "fixture", pose: { xyz_mm: [300, 80, 20] }, source: "demo" },
+  ],
+  steps: [
+    {
+      id: "s1",
+      verb: "pour",
+      object: "cup",
+      pour: { into: "bowl", tilt_deg: 120, tilt_s: 1.5 },
+      success: [{ kind: "liquid_inside", target: "bowl", value: 90 }],
+      t_start_s: 0,
+      t_end_s: 4,
+      source: "demo",
+    },
+  ],
+});
+
+/** Grasp the cup from the front, tilt it toward the bowl about its rim, wait for the water, turn it back, let go. */
+const pourWith = (deg: number, seconds: number, wait_s: number) =>
+  Program.parse({
+    spec_title: POUR_SPEC.title,
+    steps: [
+      {
+        step_id: "s1",
+        ops: [
+          { op: "move_to", frame: "cup", offset_mm: [0, 0, 50], approach: "front" },
+          { op: "move_to", frame: "cup", offset_mm: [0, 0, 0], approach: "front" },
+          { op: "grasp", object: "cup", aperture_mm: 48 },
+          { op: "tilt", deg, toward: "bowl", seconds },
+          { op: "wait_until", predicate: { kind: "liquid_inside", target: "bowl", value: 90 }, timeout_s: wait_s },
+          { op: "tilt", deg: 0, seconds },
+          { op: "release" },
+          { op: "move_to", frame: "cup", offset_mm: [0, 0, 50], approach: "front" },
+          { op: "assert", predicate: { kind: "liquid_inside", target: "bowl", value: 90 } },
+        ],
+      },
+    ],
+  });
+
+export const POUR_PROGRAMS = {
+  /** the pour a person makes: 120° over 1.5 s */
+  pour: pourWith(120, 1.5, 3),
+  /** the same tilt over 3 s: on Earth it pours, in orbit the water stays in the cup */
+  slow_pour: pourWith(120, 3, 3),
+  /** turned over in one second, then held until the water lands or 8 s pass: the measured way to pour in orbit */
+  flip_in_1_s: pourWith(180, 1, 8),
+};

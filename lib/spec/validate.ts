@@ -104,6 +104,7 @@ export function validateSpec(spec: TaskSpec): SpecIssue[] {
     stepIds.add(s.id);
     if (!reg.ids.has(s.object)) issues.push({ code: "unknown_object", path: `${at}.object`, message: `step "${s.id}" manipulates unknown object "${s.object}"`, severity: "error" });
     if (s.target && !reg.frames.has(s.target.frame)) issues.push({ code: "unknown_frame", path: `${at}.target.frame`, message: `step "${s.id}" targets unknown frame "${s.target.frame}"`, severity: "error" });
+    if (s.pour && !reg.ids.has(s.pour.into)) issues.push({ code: "unknown_frame", path: `${at}.pour.into`, message: `step "${s.id}" pours into unknown object "${s.pour.into}"`, severity: "error" });
     s.via_points.forEach((v, k) => {
       if (!reg.frames.has(v.frame)) issues.push({ code: "unknown_frame", path: `${at}.via_points[${k}].frame`, message: `via-point in unknown frame "${v.frame}"`, severity: "error" });
     });
@@ -130,6 +131,7 @@ export function validateProgram(program: Program, spec: TaskSpec): SpecIssue[] {
     ps.ops.forEach((op, k) => {
       const opAt = `${at}.ops[${k}]`;
       if (op.op === "move_to" && !reg.frames.has(op.frame)) issues.push({ code: "unknown_frame", path: `${opAt}.frame`, message: `move_to in unknown frame "${op.frame}"`, severity: "error" });
+      if (op.op === "tilt" && op.toward !== undefined && !reg.frames.has(op.toward)) issues.push({ code: "unknown_frame", path: `${opAt}.toward`, message: `tilt toward unknown frame "${op.toward}"`, severity: "error" });
       if (op.op === "grasp" && !reg.ids.has(op.object)) issues.push({ code: "unknown_grasp_object", path: `${opAt}.object`, message: `grasp of unknown object "${op.object}"`, severity: "error" });
       if (op.op === "assert" || op.op === "wait_until") checkPredicates([op.predicate], `${opAt}.predicate`, reg, issues);
     });
@@ -153,7 +155,8 @@ const REACH_MM = [50, 300] as const;
  * reference error from validateProgram, plus programs that cannot do the
  * step: a world-frame move outside the reach ring (an object offset written
  * in the wrong frame), a check of an object against itself, an insert or
- * place step that never lets go.
+ * place step that never lets go, a pour that never tilts toward where it
+ * pours or leaves the container tipped.
  */
 export function lintProgram(program: Program, spec: TaskSpec): string[] {
   const out = validateProgram(program, spec)
@@ -173,6 +176,11 @@ export function lintProgram(program: Program, spec: TaskSpec): string[] {
     const step = spec.steps.find((s) => s.id === ps.step_id);
     if (step && (step.verb === "insert" || step.verb === "place") && !ps.ops.some((op) => op.op === "release")) {
       out.push(`steps[${i}] (${step.verb}): never releases the ${step.object}`);
+    }
+    if (step?.verb === "pour" && step.pour) {
+      const tilts = ps.ops.filter((op) => op.op === "tilt");
+      if (!tilts.some((op) => op.deg > 0 && op.toward === step.pour!.into)) out.push(`steps[${i}] (pour): never tilts the ${step.object} toward "${step.pour.into}"`);
+      else if (tilts.at(-1)!.deg !== 0) out.push(`steps[${i}] (pour): leaves the ${step.object} tipped; end with {"op":"tilt","deg":0}`);
     }
     if (step?.target && ["insert", "place", "move"].includes(step.verb) && step.target.frame !== "world" && !ps.ops.some((op) => op.op === "move_to" && op.frame === step.target!.frame)) {
       out.push(`steps[${i}] (${step.verb}): never moves in the frame of its target "${step.target.frame}"`);

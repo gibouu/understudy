@@ -6,6 +6,7 @@
 import type { Mode, Program, Scenario, TaskSpec } from "@/lib/spec/schema";
 import type { Approach, IkResult } from "./ik";
 import type { Rollout } from "./interpreter";
+import type { LiquidWhere } from "./liquid";
 
 /** mjtGeom values we render. */
 export const GEOM_PLANE = 0;
@@ -52,6 +53,8 @@ export type SimMeta = {
   bodies: { name: string; id: number }[];
   geoms: GeomMeta[];
   meshes: MeshMeta[];
+  /** the spec's liquid, if it holds any: particle count and size, the volume they stand for */
+  liquid: { particles: number; spacing_m: number; ml: number; warnings: string[] } | null;
 };
 
 export type Frame = {
@@ -69,6 +72,8 @@ export type Frame = {
   siteXpos: Float64Array;
   /** the body welded to the gripper, if any */
   attached: string | null;
+  /** the liquid: particle positions (x y z ..., world metres), where it is, and what its latest step cost */
+  liquid?: { positions: Float32Array; where: LiquidWhere; step_ms: number };
 };
 
 export type Waypoint = { t: number; q: number[] };
@@ -81,7 +86,8 @@ export type ToWorker =
   | { type: "setCtrl"; ctrl: number[] }
   | { type: "play"; waypoints: Waypoint[]; loop?: boolean }
   | { type: "stop" }
-  | { type: "reset" }
+  /** back to the start: objects where the spec has them, the arm at home, the liquid refilled (jittered by `seed`) */
+  | { type: "reset"; seed?: number }
   | { type: "jacobian"; id: number; site: string }
   /** solve IK from the current state for `site` (the tip unless given); `target` in world metres; nothing moves */
   | { type: "ik"; id: number; target: [number, number, number]; approach: Approach; site?: string }
