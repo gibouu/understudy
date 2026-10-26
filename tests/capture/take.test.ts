@@ -29,7 +29,7 @@ describe("a camera take, as makeProxy's demuxer reads it", () => {
 
 describe("the take path in replay", () => {
   const sha = createHash("sha256").update(take("chromium-take.mp4")).digest("hex");
-  const post = (route: typeof label, body: unknown) => route(new Request("http://x/api?replay=1", { method: "POST", body: JSON.stringify(body) }));
+  const post = (route: (req: Request) => Promise<Response>, body: unknown) => route(new Request("http://x/api?replay=1", { method: "POST", body: JSON.stringify(body) }));
 
   it("labels the recorded take from its own recording, then compiles the fitted spec", async () => {
     expect(labels.some((r) => r.clip_sha256 === sha)).toBe(true);

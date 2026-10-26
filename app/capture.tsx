@@ -3,7 +3,7 @@
 /**
  * "Film yourself": the camera, a 3, 2, 1 countdown, an 8 s take, then Retake
  * or Use this clip, which hands the take to the flow like an upload. The take
- * stays in the browser; the flow sends only its 480p proxy to the model. Also
+ * stays in the browser; the flow sends only its 480-wide proxy to the model. Also
  * the unlock prompt for clips of your own (#35), asked once per tab.
  */
 import { useEffect, useReducer, useRef, useState } from "react";
@@ -80,14 +80,17 @@ export function FilmYourself({ onClip }: { onClip: (take: Blob) => void }) {
       }
       rec.stop();
       await stopped;
+      if (ac.signal.aborted) return;
       const take = new Blob(chunks, { type: rec.mimeType || chunks[0]?.type || "video/webm" });
-      dispatch({ type: "take", take, url: URL.createObjectURL(take) });
+      // an empty take becomes an error in `step`, so it gets no URL to leak
+      dispatch({ type: "take", take, url: take.size > 0 ? URL.createObjectURL(take) : "" });
     } catch (err) {
       if (!ac.signal.aborted) dispatch({ type: "fail", message: cameraError(err) });
     } finally {
       if (recorder && recorder.state !== "inactive") recorder.stop();
       media.getTracks().forEach((t) => t.stop());
-      setStream(null);
+      // a run cancelled while its camera prompt was open must not blank a newer run's preview
+      setStream((current) => (current === media ? null : current));
     }
   }
 
@@ -131,7 +134,7 @@ export function FilmYourself({ onClip }: { onClip: (take: Blob) => void }) {
             </button>
           </div>
           <p className="text-xs text-neutral-500">
-            Your clip stays in this browser. Only a small 480p copy goes to the model, and it is stored nowhere.
+            Your clip stays in this browser. Only a small copy, 480 pixels wide at 4 frames a second, goes to the model on Nebius Token Factory; this app keeps none of it.
           </p>
         </div>
       )}
@@ -164,15 +167,16 @@ function Take({ state, stream }: { state: CaptureState; stream: MediaStream | nu
   );
 }
 
-/** kept here too, for a tab whose sessionStorage is blocked */
+/** the code typed on this page; it wins over sessionStorage, which may hold an older one or refuse the write */
 let typed: string | undefined;
 
-/** The unlock code typed in this tab, sent with every label request. */
+/** The unlock code typed in this tab, sent with every label request: the latest typed here first, else the stored one. */
 export function unlockCode(): string | undefined {
+  if (typed) return typed;
   try {
-    return sessionStorage.getItem(UNLOCK_STORAGE_KEY) ?? typed;
+    return sessionStorage.getItem(UNLOCK_STORAGE_KEY) ?? undefined;
   } catch {
-    return typed;
+    return undefined;
   }
 }
 
