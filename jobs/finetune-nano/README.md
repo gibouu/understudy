@@ -72,6 +72,7 @@ nebius ai endpoint delete "$EP"
 
 # 4. the evaluation endpoint; the patch loop calls nano-base and nano-ft on it, then it goes
 EP=$("${ENDPOINT[@]}" --name nano-eval --env RUN=full | jq -r '.metadata.id'); watchdog "$EP" 120
+#    (the evaluation below, from the repository root on this Mac)
 nebius ai endpoint delete "$EP"
 
 # 5. clean up
@@ -80,3 +81,22 @@ nebius storage bucket delete "$BUCKET_ID"
 ```
 
 The endpoint's generated token is read from `nebius ai endpoint get` into a file outside the repository (mode 600) and never printed; if `get` does not return it, a MysteryBox secret passed with `--token-secret` replaces it ([endpoint create](https://docs.nebius.com/cli/reference/ai/endpoint/create.md)). The flags follow the Nebius docs and the [train-and-serve example](https://github.com/nebius/serverless-ai-cookbook/blob/main/training/train-and-serve/README.md); how `--args` splits a quoted command is the first thing the smoke job confirms.
+
+## Evaluation
+
+The patch loop's `ft-nano-*` arms (`tests/measure/patch-loop.test.ts`) on the 11 held-out cases of `bench/finetune/manifest.json`, seeds 1 to 12, thinking off, 5 patches, results in `bench/results/finetune-eval.json`:
+
+- `ft-nano-tf`: Nano on Token Factory, as the app calls it. Costs cents and needs no endpoint, so it runs first.
+- `ft-nano-base` and `ft-nano-ft`: the base weights and the adapter on the evaluation endpoint, two processes at once (the arms merge by name under a lock), so the endpoint lives half as long. Their calls are charged 0 on the ledger; the endpoint's hours are the cost. They send `chat_template_kwargs` at the top of the request, which is where vLLM reads it.
+
+```bash
+CASES=$(node -e "console.log(require('./bench/finetune/manifest.json').split.test_cases.join(','))")
+EVAL=(env BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local PATCH_SCRIPT=finetune-eval PATCH_CAP_USD=2 PATCH_OUT=finetune-eval.json
+  PATCH_SEEDS=1,2,3,4,5,6,7,8,9,10,11,12 PATCH_ONLY="$CASES" PATCH_ENDPOINT_URL=<endpoint URL>/v1 PATCH_ENDPOINT_TOKEN_FILE=<token file>)
+"${EVAL[@]}" PATCH_ARMS=ft-nano-tf node_modules/.bin/vitest run tests/measure/patch-loop.test.ts
+"${EVAL[@]}" PATCH_ARMS=ft-nano-base node_modules/.bin/vitest run tests/measure/patch-loop.test.ts &
+"${EVAL[@]}" PATCH_ARMS=ft-nano-ft node_modules/.bin/vitest run tests/measure/patch-loop.test.ts; wait
+node scripts/finetune-report.mjs bench/results/finetune-eval.json --endpoint-hours <from creation to deletion>
+```
+
+Checked without spending: both endpoint arms against a local stand-in for vLLM (the token sent, thinking off at the top of the body, the run recorded at no cost, the token absent from the results, the ledger and the call log), and the report against Super's saved runs on the same cases, which it reproduces (70% and 95%).
