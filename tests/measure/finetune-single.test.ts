@@ -1,16 +1,21 @@
 /**
- * One patch on the held-out repair prompts (issue #97). bench/finetune/val.jsonl holds 55 prompts of the
- * training cases that no training step sees; each is a failed rollout that some patcher repaired with one
- * patch. A model gets the same prompt, its patch is applied to the same program (val.meta.jsonl: case,
+ * One patch on repair prompts (issue #97): each prompt is a failed rollout that some patcher repaired with
+ * one patch. A model gets the same prompt, its patch is applied to the same program (the meta file: case,
  * seed, knobs) and rolled out in MuJoCo: the share that pass is its one-patch repair rate. The recorded
  * repair passes every time (checked first, no network), so each prompt has a fix within reach.
  *
- *   BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local SINGLE_MODELS=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B,Qwen/Qwen3-30B-A3B-Instruct-2507 \
+ * Two sets (SINGLE_SET): "heldout" (default), bench/finetune/heldout.jsonl, repairs on the 11 held-out
+ * cases that no training step and no validation step sees, the set for any tuned-against-base claim; and
+ * "val", bench/finetune/val.jsonl, 55 in-distribution validation prompts: their cases and seeds are in
+ * training, and the fine-tune job reports its validation loss on them.
+ *
+ *   BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local SINGLE_SET=heldout SINGLE_MODELS=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B,Qwen/Qwen3-30B-A3B-Instruct-2507 \
  *     node_modules/.bin/vitest run tests/measure/finetune-single.test.ts --reporter=verbose
  *
  * Nemotron models get enable_thinking false (as the patcher), a comparator its own least-reasoning setting
  * (scripts/compare-models.mjs). A model in SINGLE_PER_HOUR (a tuned model on a dedicated endpoint, billed
- * by the hour) is charged 0 per call. Results merge by model into bench/results/finetune-single.json;
+ * by the hour) is charged 0 per call; a tuned model served per token is priced by SINGLE_TUNED_USD_PER_MTOK
+ * ("<model>=<in>,<out>", US$ per 1M tokens), since no fixture lists it. Results merge by set and model into bench/results/finetune-single.json;
  * every call goes to the bench ledger (script finetune-eval) and the call log.
  */
 import { closeSync, existsSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
@@ -25,11 +30,13 @@ const SCRIPT = "finetune-eval";
 type Meta = { case_id: string; seed: number; knobs: Knobs; patcher: string };
 type Chat = { messages: { role: string; content: string }[] };
 
-const read = () => {
+const SETS = ["heldout", "val"] as const;
+type SetName = (typeof SETS)[number];
+const read = (set: SetName) => {
   const lines = (f: string) => readFileSync(path.join(ROOT, "bench/finetune", f), "utf8").trim().split("\n").map((l) => JSON.parse(l));
-  const chats = lines("val.jsonl") as Chat[];
-  const metas = lines("val.meta.jsonl") as Meta[];
-  if (chats.length !== metas.length) throw new Error("val.jsonl and val.meta.jsonl differ in length");
+  const chats = lines(`${set}.jsonl`) as Chat[];
+  const metas = lines(`${set}.meta.jsonl`) as Meta[];
+  if (chats.length !== metas.length) throw new Error(`${set}.jsonl and ${set}.meta.jsonl differ in length`);
   return chats.map((c, i) => ({ chat: c, meta: metas[i] }));
 };
 
@@ -76,12 +83,17 @@ const wilson = (k: number, n: number, z = 1.96) => {
 
 describe("one patch on the held-out repair prompts (no network)", () => {
   it.skipIf(process.platform !== "darwin" || process.arch !== "arm64")(
-    "the recorded repair of every held-out prompt passes again (the state rebuilds from the meta)",
+    "the recorded repair of every prompt of both sets passes again (the state rebuilds from the meta)",
     async () => {
       const mj = await loadMujoco();
-      for (const { chat, meta } of read()) {
-        const answer = JSON.parse(chat.messages.at(-1)!.content) as { set: unknown };
-        expect(rollout(mj, meta, answer.set).pass, `${meta.case_id} seed ${meta.seed}`).toBe(true);
+      const test = new Set(JSON.parse(readFileSync(path.join(ROOT, "bench/finetune/manifest.json"), "utf8")).split.test_cases as string[]);
+      for (const set of SETS) {
+        for (const { chat, meta } of read(set)) {
+          // the held-out set comes from the held-out cases only, the validation set from training cases only
+          expect(test.has(meta.case_id), `${set} ${meta.case_id}`).toBe(set === "heldout");
+          const answer = JSON.parse(chat.messages.at(-1)!.content) as { set: unknown };
+          expect(rollout(mj, meta, answer.set).pass, `${set} ${meta.case_id} seed ${meta.seed}`).toBe(true);
+        }
       }
     },
     300_000,
@@ -110,10 +122,21 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("one patch on the held-out repai
       const perHour = new Set((process.env.SINGLE_PER_HOUR ?? "").split(",").map((s) => s.trim()).filter(Boolean));
       const cap = Number(process.env.SINGLE_CAP_USD ?? 2);
       const priced = models.filter((m) => !perHour.has(m));
-      const PRICES = { ...ledger.loadPrices(priced.filter((m) => !cmp.COMPARATORS[m])), ...(priced.some((m) => cmp.COMPARATORS[m]) ? ledger.loadPrices(priced.filter((m) => cmp.COMPARATORS[m]), cmp.COMPARE_CATALOGUE) : {}) };
+      const tuned = Object.fromEntries(
+        (process.env.SINGLE_TUNED_USD_PER_MTOK ?? "").split(";").filter(Boolean).map((kv) => {
+          const [m, prices] = kv.split("=");
+          const [inp, out] = prices.split(",").map(Number);
+          if (!(inp > 0 && out > 0)) throw new Error(`SINGLE_TUNED_USD_PER_MTOK: ${kv} needs two prices above 0`);
+          return [m, { prompt: inp / 1e6, completion: out / 1e6, cache_read: null }];
+        }),
+      );
+      const listed = priced.filter((m) => !tuned[m]);
+      const PRICES = { ...ledger.loadPrices(listed.filter((m) => !cmp.COMPARATORS[m])), ...(listed.some((m) => cmp.COMPARATORS[m]) ? ledger.loadPrices(listed.filter((m) => cmp.COMPARATORS[m]), cmp.COMPARE_CATALOGUE) : {}), ...tuned };
       const client = tf.tokenFactory({ timeout: 240_000, maxRetries: 0 })!;
       const mj = await loadMujoco();
-      const items = read();
+      const setName = (process.env.SINGLE_SET ?? "heldout") as SetName;
+      if (!SETS.includes(setName)) throw new Error(`SINGLE_SET is one of ${SETS.join(", ")}`);
+      const items = read(setName);
       const mine: Record<string, unknown> = {};
       for (const model of models) {
         const p = PRICES[model] ?? { prompt: 0, completion: 0, cache_read: 0 };
@@ -131,13 +154,13 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("one patch on the held-out repai
             res = await client.chat.completions.create(params as any);
           } catch (e) {
             // the server may have done the work: the failed call costs its estimate, and the run stops
-            ledger.charge(SCRIPT, worst, { model, stage: "single", item: i, estimated: true, failed: true, status: (e as { status?: number }).status ?? null }, reservation);
+            ledger.charge(SCRIPT, worst, { model, stage: "single", set: setName, item: i, estimated: true, failed: true, status: (e as { status?: number }).status ?? null }, reservation);
             throw e;
           }
           const u = tf.usageOf(res);
           const usd = perHour.has(model) ? 0 : u.prompt_tokens * p.prompt + u.completion_tokens * p.completion;
-          ledger.charge(SCRIPT, usd, { model, stage: "single", item: i, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, ...(perHour.has(model) ? { per_hour: true } : {}) }, reservation);
-          const id = calls.logCall(SCRIPT, { stage: "single-patch", params, res, usage: u, cost_usd: usd, meta: { case: meta.case_id, seed: meta.seed, item: i } });
+          ledger.charge(SCRIPT, usd, { model, stage: "single", set: setName, item: i, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, ...(perHour.has(model) ? { per_hour: true } : {}) }, reservation);
+          const id = calls.logCall(SCRIPT, { stage: "single-patch", params, res, usage: u, cost_usd: usd, meta: { set: setName, case: meta.case_id, seed: meta.seed, item: i } });
           const parsed = parseJson(res.choices?.[0]?.message?.content ?? "");
           const set = parsed && typeof parsed.set === "object" && parsed.set !== null && !Array.isArray(parsed.set) ? parsed.set : null;
           const r = set ? rollout(mj, meta, set) : { pass: false, score: 0, changed: [] as string[] };
@@ -148,15 +171,19 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("one patch on the held-out repai
         const [lo, hi] = wilson(k, rows.length);
         const usd = rows.reduce((n, r) => n + r.usd, 0);
         mine[model] = { per_hour: perHour.has(model), passed: k, of: rows.length, wilson95: [lo, hi], usd, unparsed: rows.filter((r) => !r.set).length, rows };
-        console.log(`${model}: ${k} of ${rows.length} pass with one patch, ${Math.round((100 * k) / rows.length)}% [${Math.round(100 * lo)} to ${Math.round(100 * hi)}], US$${usd.toFixed(4)}`);
+        console.log(`${setName}, ${model}: ${k} of ${rows.length} pass with one patch, ${Math.round((100 * k) / rows.length)}% [${Math.round(100 * lo)} to ${Math.round(100 * hi)}], US$${usd.toFixed(4)}`);
       }
       // one writer at a time: re-read under the lock, merge this run's models, rename over (as the patch loop)
       const lock = `${OUT}.lock`;
       const fd = openSync(lock, "wx");
       try {
         writeSync(fd, `${process.pid}\n`);
-        const file = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : { measurement: "finetune-single", models: {} };
-        Object.assign(file.models, mine);
+        const file = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : { measurement: "finetune-single", sets: {} };
+        // the first runs had one set, the validation prompts, under "models"
+        if (file.models && !file.sets) file.sets = { val: { models: file.models } };
+        delete file.models;
+        file.sets[setName] ??= { models: {} };
+        Object.assign(file.sets[setName].models, mine);
         file.generated_at = new Date().toISOString();
         const body = (JSON.stringify(file, null, 1) + "\n").split(KEY).join("<redacted>");
         const tmp = `${OUT}.${process.pid}.tmp`;

@@ -200,9 +200,23 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
        * tuned on Token Factory, served on a dedicated endpoint under its routing key (PATCH_TUNED_MODEL)
        */
       const TUNED = process.env.PATCH_TUNED_MODEL;
-      // only a dedicated endpoint's routing key may be priced 0: a model id by mistake would make paid calls look free
-      if (TUNED && !TUNED.startsWith("dedicated/")) throw new Error(`PATCH_TUNED_MODEL must be a dedicated endpoint's routing key ("dedicated/..."), not ${TUNED}`);
-      const ENDPOINT_MODELS = new Set(["nano-base", "nano-ft", ...(TUNED ? [TUNED] : [])]);
+      /**
+       * how the tuned model is billed, said explicitly: "hour" for a dedicated endpoint (its routing key, "dedicated/...",
+       * charged 0 per call), "token" for a serverless LoRA (PATCH_TUNED_USD_PER_MTOK="<in>,<out>", US$ per 1M tokens).
+       * A model id given by mistake can then never be priced 0.
+       */
+      const TUNED_BILLING = process.env.PATCH_TUNED_BILLING;
+      let TUNED_PRICE: { prompt: number; completion: number; cache_read: null } | null = null;
+      if (TUNED) {
+        if (TUNED_BILLING === "hour") {
+          if (!TUNED.startsWith("dedicated/")) throw new Error(`PATCH_TUNED_BILLING=hour needs a dedicated endpoint's routing key ("dedicated/..."), not ${TUNED}`);
+        } else if (TUNED_BILLING === "token") {
+          const [inp, out] = (process.env.PATCH_TUNED_USD_PER_MTOK ?? "").split(",").map(Number);
+          if (!(inp > 0 && out > 0)) throw new Error('PATCH_TUNED_BILLING=token needs PATCH_TUNED_USD_PER_MTOK="<in>,<out>" (US$ per 1M tokens, both above 0)');
+          TUNED_PRICE = { prompt: inp / 1e6, completion: out / 1e6, cache_read: null };
+        } else throw new Error("PATCH_TUNED_MODEL needs PATCH_TUNED_BILLING: hour (a dedicated endpoint) or token (a serverless LoRA)");
+      }
+      const ENDPOINT_MODELS = new Set(["nano-base", "nano-ft", ...(TUNED && TUNED_BILLING === "hour" ? [TUNED] : [])]);
       let endpoint: typeof client | null = null;
       const endpointClient = async () => {
         if (endpoint) return endpoint;
@@ -616,11 +630,11 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         const outside = models.find((m) => cmp.COMPARATORS[m]);
         // the fine-tune study (issue #97) runs its base comparator under its own script and cap
         if (outside && SCRIPT !== "compare-patch" && SCRIPT !== "finetune-eval") throw new Error(`${armId} calls ${outside}: run it with PATCH_SCRIPT=compare-patch, so its spend counts against the study's cap`);
-        if (armId === "ft-qwen-ft" && !TUNED) throw new Error("ft-qwen-ft needs PATCH_TUNED_MODEL: the dedicated endpoint's routing key");
+        if (armId === "ft-qwen-ft" && !TUNED) throw new Error("ft-qwen-ft needs PATCH_TUNED_MODEL (and PATCH_TUNED_BILLING)");
         return models;
       });
       const others = needed.filter((m) => cmp.COMPARATORS[m]);
-      PRICES = { ...ledger.loadPrices(needed.filter((m) => !cmp.COMPARATORS[m] && !ENDPOINT_MODELS.has(m))), ...(others.length ? ledger.loadPrices(others, cmp.COMPARE_CATALOGUE) : {}) };
+      PRICES = { ...ledger.loadPrices(needed.filter((m) => !cmp.COMPARATORS[m] && !ENDPOINT_MODELS.has(m) && m !== TUNED)), ...(others.length ? ledger.loadPrices(others, cmp.COMPARE_CATALOGUE) : {}), ...(TUNED && TUNED_PRICE ? { [TUNED]: TUNED_PRICE } : {}) };
       for (const m of needed) price(m);
       // an endpoint arm's settings are checked before any call: a missing URL or token file stops the run here,
       // where inside a call it would read as five failed patches

@@ -21,7 +21,8 @@
       "carry/moon/cup+frame0.05g",
       "carry/orbit/tube+frame0.02g"
     ],
-    "validation": "about 1 prompt in 20 of the training cases, by a hash of the prompt"
+    "validation": "about 1 prompt in 20 of the training cases, by a hash of the prompt",
+    "heldout": "repairs on the held-out cases, one per prompt, at most 150 by a hash of the prompt: for the one-patch check only, never uploaded for training"
   },
   "files": {
     "train.jsonl": {
@@ -43,6 +44,16 @@
       "lines": 55,
       "bytes": 16790,
       "sha256": "e3352183e91b9f9106f6c438a30382660a923ef28a3f84a46e511fa5b8cb381b"
+    },
+    "heldout.jsonl": {
+      "lines": 150,
+      "bytes": 568400,
+      "sha256": "3920c52a8b2b9ed2f88e10c4db9122c51a02b8a9d46c8c979cedccb5e9cd147f"
+    },
+    "heldout.meta.jsonl": {
+      "lines": 150,
+      "bytes": 47916,
+      "sha256": "3f291735fdcdcb400254b607eeb5b603c707ae4edf413edd1a3142bf3f2f3eec"
     },
     "pairs.jsonl": {
       "lines": 524,
@@ -261,6 +272,23 @@
     "place": 13,
     "pour": 10
   },
+  "heldout_prompts": {
+    "with_a_repair": 318,
+    "kept": 150,
+    "by_case": {
+      "pour/orbit/nominal": 16,
+      "pour/moon/target+30mm": 22,
+      "carry/orbit/tube+frame0.02g": 10,
+      "place/moon/frame0.05g": 22,
+      "insert/orbit/offset+4mm": 9,
+      "place/earth/frame0.2g": 11,
+      "pour/earth/nominal": 14,
+      "insert/moon/offset-6mm+handoff5": 19,
+      "carry/moon/cup+frame0.05g": 14,
+      "place/orbit/handoff0": 5,
+      "insert/earth/offset-6mm+handoff5": 8
+    }
+  },
   "patch_numbers_checked": 621,
   "train_prompt_tokens": {
     "median": 884,
@@ -272,5 +300,5 @@
     "max": 213,
     "total": 97554
   },
-  "build_s": 430
+  "build_s": 575
 }

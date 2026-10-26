@@ -79,6 +79,8 @@ export type Example = {
 };
 
 export const MAX_PATCHES = 5;
+/** the most held-out repair prompts the one-patch check uses (cost and time; picked by hash) */
+export const HELDOUT_MAX = 150;
 /** the salt of the split hash: change it and the split changes */
 export const SPLIT_SALT = "understudy-ft-v1";
 const PROBE_ORDER: ProbeId[] = ["insert", "place", "pour", "carry"];
@@ -246,6 +248,8 @@ export type Built = {
   test_cases: string[];
   train: Example[];
   val: Example[];
+  /** repairs on the held-out cases, one per prompt: the one-patch check's held-out set, never trained on */
+  heldout: Example[];
   pairs: { prompt: Example; chosen: Example; rejected: Example }[];
   stats: Record<string, unknown>;
 };
@@ -285,6 +289,17 @@ export function buildDataset(mj: MainModule, results: SavedResults, opts: { onRu
     // a run with no patch has nothing to rebuild; a case and seed that no run repaired gives neither a repair nor a pair
     return reason ? [] : arm.runs.filter((r) => !testSet.has(r.case_id) && !r.stopped && r.iterations.length > 1 && repaired.has(`${r.case_id}|${r.seed}`));
   });
+  // the held-out cases are replayed apart: their repairs make the one-patch check's held-out prompts and nothing else
+  const heldoutRuns = Object.values(results.arms).flatMap((arm) => (armIncluded(arm) ? [] : arm.runs.filter((r) => testSet.has(r.case_id) && !r.stopped && r.iterations.length > 1 && r.passed_at)));
+  const heldoutAll: Example[] = [];
+  for (const run of heldoutRuns) {
+    const { examples, mismatch } = replayRun(mj, results, run, MAX_PATCHES, cache);
+    if (!mismatch) heldoutAll.push(...examples.filter((e) => e.kind === "patch" && e.pass_after));
+  }
+  // one per prompt, at most HELDOUT_MAX, in the order of a fixed hash of the prompt (no pick by hand)
+  const heldout = [...new Map(heldoutAll.sort((a, b) => fnv1a(`${SPLIT_SALT}:heldout:${a.user}`) - fnv1a(`${SPLIT_SALT}:heldout:${b.user}`)).map((e) => [e.user, e] as const)).values()]
+    .sort((a, b) => fnv1a(`${SPLIT_SALT}:heldout:${a.user}`) - fnv1a(`${SPLIT_SALT}:heldout:${b.user}`))
+    .slice(0, HELDOUT_MAX);
   let done = 0;
   for (const run of todo) {
     const { examples, mismatch } = replayRun(mj, results, run, MAX_PATCHES, cache);
@@ -336,6 +351,7 @@ export function buildDataset(mj: MainModule, results: SavedResults, opts: { onRu
     test_cases: test,
     train,
     val,
+    heldout,
     pairs,
     stats: {
       arms,
@@ -350,6 +366,7 @@ export function buildDataset(mj: MainModule, results: SavedResults, opts: { onRu
       train_by_gravity: count(train, (e) => e.gravity),
       train_by_patcher: count(train, (e) => e.patcher),
       val_by_probe: count(val, (e) => e.probe),
+      heldout_prompts: { with_a_repair: new Set(heldoutAll.map((e) => e.user)).size, kept: heldout.length, by_case: count(heldout, (e) => e.case_id) },
       patch_numbers_checked: todo.reduce((n, r) => n + patchesOf(r).flatMap((p) => numbersIn(p.set)).filter((v) => !Number.isInteger(v)).length, 0),
       train_prompt_tokens: quantiles(train.map((e) => e.prompt_tokens)),
       train_answer_tokens: quantiles(train.map((e) => e.answer_tokens)),

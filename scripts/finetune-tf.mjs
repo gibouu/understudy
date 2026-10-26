@@ -17,13 +17,22 @@
 //   node scripts/finetune-tf.mjs try-serve                    once the job succeeded: asks the tuned model for one
 //        tiny answer by two routes that need no dedicated endpoint (the checkpoint id on the serverless API, and
 //        the adapter registered as a LoRA model through /v0/models, the route of Token Factory's cookbook
-//        AddLora.ipynb) and keeps what each one said
+//        AddLora.ipynb) and keeps what each one said; each call goes on the ledger at an estimated price
+//   node scripts/finetune-tf.mjs delete-lora                  removes the LoRA model try-serve registered (DELETE
+//        /v1/models/<name>, as the cookbook does), once the evaluation is done
+//   node scripts/finetune-tf.mjs endpoint-create --custom-weights-id W --minutes M [--usd-per-gpu-hour 5.6]
+//        a dedicated endpoint serving the tuned weights (needs Support's custom-weights switch), one H200 in
+//        us-central1 (the only offer for this model), reserves M minutes at the GPU-hour price on the ledger and
+//        starts a watchdog that deletes it at the deadline (retrying until it is gone) and charges the hours run
+//   node scripts/finetune-tf.mjs endpoint-delete              deletes it now and charges the hours run
 //
 // A create that fails leaves the job "pending": no other create runs until adopt or release says what
 // happened, so a lost answer can never lead to a second paid job, and nothing is released by guesswork.
 // State (file ids, job id, price, checkpoints, losses; no key) is kept in bench/results/finetune-tf.json.
 // The key comes from UNDERSTUDY_ENV_FILE (default .env.local), as in every bench script.
+import { spawn } from "node:child_process";
 import { closeSync, existsSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +48,8 @@ const DATA = path.join(ROOT, "bench/finetune");
 const SCRIPT = "finetune-tf";
 export const BASE_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507";
 export const FLOOR_USD = 15;
+/** a minute, in ms; the tests shrink it so the watchdog's deadline comes in a moment */
+const MINUTE_MS = Number(process.env.FINETUNE_TF_MINUTE_MS ?? 60_000);
 /**
  * LoRA settings: rank 16 and alpha 32 as on the AI Cloud route. Token Factory wants at least 131,072 tokens
  * a batch (batch size x context length; a 422 said so), so at the shortest context, 8,192, the batch is
@@ -75,6 +86,17 @@ async function locked(fn) {
   } finally {
     closeSync(fd);
     unlinkSync(lock);
+  }
+}
+/** as locked(), waiting up to 2 minutes for the lock: the watchdog must not give up on a busy moment */
+async function lockedWait(fn) {
+  for (let i = 0; ; i++) {
+    try {
+      return await locked(fn);
+    } catch (e) {
+      if (!String(e?.message).includes("another finetune-tf command is running") || i >= 240) throw e;
+      await new Promise((r) => setTimeout(r, 500));
+    }
   }
 }
 /** the ledger already holds a charge that settles this reservation */
@@ -181,49 +203,133 @@ async function main() {
       console.log("released");
     });
   } else if (cmd === "try-serve") {
-    const s = state();
-    if (s.job?.status !== "succeeded") throw new Error("the job has not succeeded");
-    const tf = client();
-    const last = [...(s.checkpoints ?? [])].sort((a, b) => b.step - a.step)[0];
-    if (!last) throw new Error("no checkpoint listed: run status");
-    const ask = async (model) => {
+    await locked(async () => {
+      const s = state();
+      if (s.job?.status !== "succeeded") throw new Error("the job has not succeeded");
+      const tf = client();
+      const last = [...(s.checkpoints ?? [])].sort((a, b) => b.step - a.step)[0];
+      if (!last) throw new Error("no checkpoint listed: run status");
+      // a served LoRA's price is not published: each tiny call is charged an estimate at ten times the base model's
+      // list price (US$0.10 and US$0.30 per 1M), marked as estimated
+      const EST = { prompt: 1e-6, completion: 3e-6 };
+      const ask = async (model) => {
+        const worst = 100 * EST.prompt + 10 * EST.completion;
+        const reservation = guard(worst, { script: SCRIPT, capUsd: 100, meta: { model, stage: "try-serve" } });
+        try {
+          const r = await tf.chat.completions.create({ model, messages: [{ role: "user", content: 'Answer with {"ok":true} only.' }], max_tokens: 10 });
+          const u = r.usage ?? { prompt_tokens: 100, completion_tokens: 10 };
+          charge(SCRIPT, u.prompt_tokens * EST.prompt + u.completion_tokens * EST.completion, { model, stage: "try-serve", estimated: true, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens }, reservation);
+          return { ok: true, model, content: r.choices?.[0]?.message?.content ?? "", usage: r.usage ?? null };
+        } catch (e) {
+          // a refused model did no work; anything else may have, and costs the estimate
+          charge(SCRIPT, e?.status >= 400 && e?.status < 500 ? 0 : worst, { model, stage: "try-serve", failed: true, status: e?.status ?? null }, reservation);
+          return { ok: false, model, error: String(e?.message ?? e).slice(0, 300) };
+        }
+      };
+      s.serve = { checkpoint: last.model, tried_at: new Date().toISOString() };
+      // 1. the checkpoint id as a serverless model
+      s.serve.checkpoint_id = await ask(last.model);
+      // 2. the adapter as a LoRA model: download the checkpoint's files, zip them, upload, register
       try {
-        const r = await tf.chat.completions.create({ model, messages: [{ role: "user", content: 'Answer with {"ok":true} only.' }], max_tokens: 10 });
-        return { ok: true, model, content: r.choices?.[0]?.message?.content ?? "", usage: r.usage ?? null };
+        const files = {};
+        for (const id of (await tf.fineTuning.jobs.checkpoints.list(s.job.id)).data.find((c) => c.id === last.id)?.result_files ?? []) {
+          const meta = await tf.files.retrieve(id);
+          files[path.basename(meta.filename)] = new Uint8Array(await (await tf.files.content(id)).arrayBuffer());
+        }
+        if (!files["adapter_config.json"]) throw new Error(`no adapter_config.json among ${Object.keys(files).join(", ")}`);
+        const zip = zipSync(files);
+        const form = new FormData();
+        form.append("file", new Blob([zip]), "adapter.zip");
+        const auth = { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` };
+        const root = BASE_URL.replace(/\/v1\/?$/, "");
+        const up = await fetch(`${root}/v0/models/upload`, { method: "POST", headers: auth, body: form });
+        const upBody = await up.json().catch(() => ({}));
+        s.serve.lora_upload = { status: up.status, id: upBody.id ?? null, detail: upBody.detail ? String(JSON.stringify(upBody.detail)).slice(0, 300) : null };
+        if (up.ok && upBody.id) {
+          const mk = await fetch(`${root}/v0/models`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ source: upBody.id, base_model: BASE_MODEL, name: "understudy-patcher", description: "LoRA of the patch-loop repairs (issue #97)" }) });
+          const mkBody = await mk.json().catch(() => ({}));
+          s.serve.lora_model = { status: mk.status, name: mkBody.name ?? null, detail: mkBody.detail ? String(JSON.stringify(mkBody.detail)).slice(0, 300) : null };
+          if (mk.ok && mkBody.name) s.serve.lora_answer = await ask(mkBody.name);
+        }
       } catch (e) {
-        return { ok: false, model, error: String(e?.message ?? e).slice(0, 300) };
+        s.serve.lora_error = String(e?.message ?? e).slice(0, 300);
       }
-    };
-    s.serve = { checkpoint: last.model, tried_at: new Date().toISOString() };
-    // 1. the checkpoint id as a serverless model
-    s.serve.checkpoint_id = await ask(last.model);
-    // 2. the adapter as a LoRA model: download the checkpoint's files, zip them, upload, register
-    try {
-      const files = {};
-      for (const id of (await tf.fineTuning.jobs.checkpoints.list(s.job.id)).data.find((c) => c.id === last.id)?.result_files ?? []) {
-        const meta = await tf.files.retrieve(id);
-        files[path.basename(meta.filename)] = new Uint8Array(await (await tf.files.content(id)).arrayBuffer());
-      }
-      if (!files["adapter_config.json"]) throw new Error(`no adapter_config.json among ${Object.keys(files).join(", ")}`);
-      const zip = zipSync(files);
-      const form = new FormData();
-      form.append("file", new Blob([zip]), "adapter.zip");
-      const auth = { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` };
+      save(s);
+      console.log(JSON.stringify(s.serve, null, 2));
+    });
+  } else if (cmd === "delete-lora") {
+    await locked(async () => {
+      const s = state();
+      const name = s.serve?.lora_model?.name;
+      if (!name) throw new Error("try-serve registered no LoRA model");
+      client();
+      const res = await fetch(`${BASE_URL.replace(/\/v1\/?$/, "")}/v1/models/${encodeURIComponent(name)}`, { method: "DELETE", headers: { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` } });
+      s.serve.lora_deleted = { status: res.status, at: new Date().toISOString() };
+      save(s);
+      if (!res.ok && res.status !== 404) throw new Error(`delete ${name}: HTTP ${res.status}`);
+      console.log(`${name} deleted (HTTP ${res.status})`);
+    });
+  } else if (cmd === "endpoint-create") {
+    await locked(async () => {
+      const s = state();
+      if (s.endpoint && !s.endpoint.deleted) throw new Error(`endpoint ${s.endpoint.id} exists: endpoint-delete first`);
+      const weights = opt("--custom-weights-id");
+      const minutes = Number(opt("--minutes"));
+      const perHour = Number(opt("--usd-per-gpu-hour") ?? 5.6);
+      if (!weights) throw new Error("--custom-weights-id: the tuned weights, once Support has switched custom weights on");
+      if (!(minutes >= 10 && minutes <= 180)) throw new Error("--minutes: the endpoint's lifetime, 10 to 180; the watchdog deletes it then");
+      const tf = client();
       const root = BASE_URL.replace(/\/v1\/?$/, "");
-      const up = await fetch(`${root}/v0/models/upload`, { method: "POST", headers: auth, body: form });
-      const upBody = await up.json().catch(() => ({}));
-      s.serve.lora_upload = { status: up.status, id: upBody.id ?? null, detail: upBody.detail ? String(JSON.stringify(upBody.detail)).slice(0, 300) : null };
-      if (up.ok && upBody.id) {
-        const mk = await fetch(`${root}/v0/models`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ source: upBody.id, base_model: BASE_MODEL, name: "understudy-patcher", description: "LoRA of the patch-loop repairs (issue #97)" }) });
-        const mkBody = await mk.json().catch(() => ({}));
-        s.serve.lora_model = { status: mk.status, name: mkBody.name ?? null, detail: mkBody.detail ? String(JSON.stringify(mkBody.detail)).slice(0, 300) : null };
-        if (mk.ok && mkBody.name) s.serve.lora_answer = await ask(mkBody.name);
+      const auth = { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` };
+      const list = async () => ((await (await fetch(`${root}/v0/dedicated_endpoints`, { headers: auth })).json()).data ?? []);
+      const before = new Set((await list()).map((e) => e.id));
+      const usdMax = (minutes / 60) * perHour;
+      const reservation = guard(usdMax, { script: SCRIPT, capUsd: 100, meta: { stage: "endpoint", minutes, usd_per_gpu_hour: perHour } });
+      const name = `understudy-patcher-eval-${Date.now()}`;
+      const body = { name, model_name: BASE_MODEL, flavor_name: "base", gpu_type: "gpu-h200-sxm", region: "us-central1", gpu_count: 1, custom_weights_id: weights, scaling: { min_replicas: 1, max_replicas: 1 } };
+      let ep;
+      const res = await fetch(`${root}/v0/dedicated_endpoints`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch((e) => ({ ok: false, status: String(e) }));
+      if (res.ok) ep = (await res.json()).endpoint;
+      else {
+        // a lost answer may still have created it: look for it by its unique name before releasing anything
+        ep = (await list().catch(() => [])).find((e) => !before.has(e.id) && e.name === name);
+        if (!ep) {
+          release(reservation);
+          throw new Error(`endpoint create failed (HTTP ${res.status}${res.text ? `: ${(await res.text()).slice(0, 300)}` : ""})`);
+        }
       }
-    } catch (e) {
-      s.serve.lora_error = String(e?.message ?? e).slice(0, 300);
+      s.endpoint = { id: ep.id, name, routing_key: ep.routing_key, created: Date.now(), deadline: Date.now() + minutes * MINUTE_MS, usd_per_gpu_hour: perHour, reservation: reservation.id };
+      save(s);
+      // the watchdog runs on its own: it outlives this command and this session
+      const log = openSync(path.join(process.env.TMPDIR ?? os.tmpdir(), "understudy-ft-endpoint-watchdog.log"), "a");
+      const argv = [fileURLToPath(import.meta.url), "endpoint-watchdog"];
+      const child = process.platform === "darwin" ? spawn("caffeinate", ["-i", process.execPath, ...argv], { detached: true, stdio: ["ignore", log, log], env: process.env }) : spawn(process.execPath, argv, { detached: true, stdio: ["ignore", log, log], env: process.env });
+      child.unref();
+      console.log(`endpoint ${ep.id}, routing key ${ep.routing_key}; the watchdog deletes it at ${new Date(s.endpoint.deadline).toISOString()}`);
+    });
+  } else if (cmd === "endpoint-watchdog" || cmd === "endpoint-delete") {
+    const s = state();
+    if (!s.endpoint || s.endpoint.deleted) return console.log("no live endpoint");
+    if (cmd === "endpoint-watchdog") while (Date.now() < s.endpoint.deadline) await new Promise((r) => setTimeout(r, Math.min(20_000, Math.max(50, s.endpoint.deadline - Date.now()))));
+    client();
+    const root = BASE_URL.replace(/\/v1\/?$/, "");
+    for (;;) {
+      const res = await fetch(`${root}/v0/dedicated_endpoints/${s.endpoint.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` } }).catch((e) => ({ ok: false, status: String(e) }));
+      if (res.ok || res.status === 404) break;
+      console.log(`${new Date().toISOString()} delete ${s.endpoint.id}: HTTP ${res.status}, retrying in 30 s`);
+      await new Promise((r) => setTimeout(r, 30 * MINUTE_MS / 60));
     }
-    save(s);
-    console.log(JSON.stringify(s.serve, null, 2));
+    await lockedWait(async () => {
+      const now = state();
+      // deleted already (endpoint-delete before the deadline): the record and the charge stand
+      if (now.endpoint.deleted) return;
+      const hours = (Date.now() - now.endpoint.created) / 3.6e6 / (MINUTE_MS / 60_000);
+      const usd = hours * now.endpoint.usd_per_gpu_hour;
+      if (!settled(now.endpoint.reservation)) charge(SCRIPT, usd, { stage: "endpoint", endpoint: now.endpoint.id, hours: Number(hours.toFixed(3)), usd_per_gpu_hour: now.endpoint.usd_per_gpu_hour }, { id: now.endpoint.reservation });
+      Object.assign(now.endpoint, { deleted: new Date().toISOString(), hours, usd });
+      save(now);
+      console.log(`${new Date().toISOString()} endpoint ${now.endpoint.id} deleted after ${hours.toFixed(2)} h, US$${usd.toFixed(2)}`);
+    });
   } else if (cmd === "status") {
     const s = state();
     if (!s.job) throw new Error(s.pending ? "a create is pending: adopt or release first" : "no job yet");
@@ -245,7 +351,7 @@ async function main() {
     });
     console.log(JSON.stringify({ job: s.job, checkpoints: s.checkpoints.map((c) => ({ step: c.step, model: c.model, ...c.metrics })) }, null, 2));
   } else {
-    console.log("usage: node scripts/finetune-tf.mjs upload | create --usd-per-mtok P --balance-usd B [--epochs N] [--dry-run] | adopt | release --confirm-no-job | status");
+    console.log("usage: node scripts/finetune-tf.mjs upload | create --usd-per-mtok P --balance-usd B [--epochs N] [--dry-run] [--allow-another-job] | adopt | release --confirm-no-job | status | try-serve | delete-lora | endpoint-create --custom-weights-id W --minutes M | endpoint-delete");
     process.exitCode = 1;
   }
 }

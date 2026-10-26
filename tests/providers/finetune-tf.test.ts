@@ -20,6 +20,9 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
   const env = { ...process.env, UNDERSTUDY_ENV_FILE: path.join(dir, "env"), BENCH_LEDGER_PATH: path.join(dir, "ledger.jsonl"), FINETUNE_TF_STATE: path.join(dir, "state.json"), FINETUNE_TF_BASE_URL: "" };
   const jobs: Job[] = [];
   let failCreate: "no" | "lost-answer" | "rejected" = "no";
+  const served: string[] = [];
+  const endpoints: { id: string; name: string; routing_key: string; custom_weights_id: string }[] = [];
+  let refuseDeletes = 0;
   let server: http.Server;
 
   beforeAll(async () => {
@@ -33,6 +36,37 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
           res.end(JSON.stringify(o));
         };
         const url = req.url ?? "";
+        served.push(`${req.method} ${url.replace(/\?.*/, "")}`);
+        // the routes try-serve and delete-lora use
+        if (req.method === "GET" && /\/v1\/files\/file-ad-[a-z]+\/content$/.test(url)) {
+          res.writeHead(200, { "content-type": "application/octet-stream" });
+          return res.end(url.includes("cfg") ? '{"r":16}' : "weights");
+        }
+        if (req.method === "GET" && /\/v1\/files\/file-ad-[a-z]+$/.test(url)) return send(200, { id: url.split("/").at(-1), object: "file", bytes: 7, created_at: 1, filename: url.includes("cfg") ? "ckpt-1/adapter_config.json" : "ckpt-1/adapter_model.safetensors", purpose: "fine-tune-results" });
+        if (req.method === "POST" && url.endsWith("/chat/completions")) {
+          const r = JSON.parse(body);
+          if (String(r.model).startsWith("ft:")) return send(404, { error: { message: "model not found" } });
+          return send(200, { id: "c", object: "chat.completion", created: 0, model: r.model, choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"ok":true}' } }], usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 } });
+        }
+        if (req.method === "POST" && url.endsWith("/v0/models/upload")) return send(200, { id: body.includes("adapter_config.json") ? "upl-1" : "upl-empty" });
+        if (req.method === "POST" && url.endsWith("/v0/models")) return send(200, { name: `${JSON.parse(body).name}-ab12` });
+        if (req.method === "DELETE" && /\/v1\/models\//.test(url)) return send(200, { deleted: true });
+        // dedicated endpoints
+        if (req.method === "GET" && url.endsWith("/v0/dedicated_endpoints")) return send(200, { object: "list", data: endpoints });
+        if (req.method === "POST" && url.endsWith("/v0/dedicated_endpoints")) {
+          const r = JSON.parse(body);
+          const ep = { id: `ep-${endpoints.length + 1}`, name: r.name, routing_key: `dedicated/qwen-${endpoints.length + 1}`, custom_weights_id: r.custom_weights_id };
+          endpoints.push(ep);
+          return send(201, { endpoint: ep });
+        }
+        if (req.method === "DELETE" && /\/v0\/dedicated_endpoints\//.test(url)) {
+          const id = url.split("/").at(-1);
+          const i = endpoints.findIndex((e) => e.id === id);
+          if (i < 0) return send(404, { detail: "not found" });
+          if (refuseDeletes-- > 0) return send(503, { detail: "busy" });
+          endpoints.splice(i, 1);
+          return send(200, { deleted: true });
+        }
         if (req.method === "POST" && url.endsWith("/files")) return send(200, { id: `file-${body.includes("val.jsonl") ? "val" : "train"}`, object: "file", bytes: body.length, created_at: 1, filename: "x", purpose: "fine-tune" });
         if (req.method === "POST" && url.endsWith("/fine_tuning/jobs")) {
           const r = JSON.parse(body);
@@ -46,7 +80,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
         if (req.method === "GET" && m) {
           const job = jobs.find((j) => j.id === m[1]);
           if (!job) return send(404, { error: { message: "no job" } });
-          return m[2] ? send(200, { object: "list", data: [{ id: "ckpt-1", step_number: 330, fine_tuned_model_checkpoint: `ft:${job.model}:ckpt-step-330`, metrics: { valid_loss: 0.2 } }], has_more: false }) : send(200, job);
+          return m[2] ? send(200, { object: "list", data: [{ id: "ckpt-1", step_number: 330, fine_tuned_model_checkpoint: `ft:${job.model}:ckpt-step-330`, metrics: { valid_loss: 0.2 }, result_files: ["file-ad-cfg", "file-ad-w"] }], has_more: false }) : send(200, job);
         }
         send(404, { error: { message: url } });
       });
@@ -103,6 +137,50 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     expect(adjustments[0].usd).toBeCloseTo(30 - s.job.usd_est, 6);
     expect(state().job.usd_actual).toBe(30);
     expect(state().checkpoints[0].model).toMatch(/^ft:Qwen\/Qwen3-30B-A3B-Instruct-2507:/);
+  }, 60_000);
+
+  it("try-serve asks the tuned model by two routes, charges each call, and delete-lora removes what it registered", async () => {
+    const ledgerBefore = ledger().length;
+    await tf("try-serve");
+    const serve = state().serve;
+    expect(serve.checkpoint_id).toMatchObject({ ok: false });
+    expect(serve.lora_upload).toMatchObject({ status: 200, id: "upl-1" });
+    expect(serve.lora_model).toMatchObject({ status: 200, name: "understudy-patcher-ab12" });
+    expect(serve.lora_answer).toMatchObject({ ok: true, content: '{"ok":true}' });
+    // both calls are on the ledger: the refused one at 0, the answered one at its estimate
+    const calls = ledger().slice(ledgerBefore).filter((e) => !e.type && e.meta?.stage === "try-serve");
+    expect(calls).toHaveLength(2);
+    expect(calls[0].usd).toBe(0);
+    expect(calls[1].usd).toBeGreaterThan(0);
+    expect(calls[1].meta.estimated).toBe(true);
+    await tf("delete-lora");
+    expect(served).toContain("DELETE /v1/models/understudy-patcher-ab12");
+    expect(state().serve.lora_deleted.status).toBe(200);
+  }, 60_000);
+
+  it("a dedicated endpoint gets a deadline: the watchdog deletes it, retrying, and charges the hours once", async () => {
+    // one "minute" is 100 ms here, so a 10-minute endpoint lives one second
+    const fast = { ...env, FINETUNE_TF_MINUTE_MS: "100" };
+    const tfFast = (...args: string[]) => run("node", ["scripts/finetune-tf.mjs", ...args], { env: fast, cwd: process.cwd() });
+    expect(await fails("endpoint-create", "--minutes", "10")).toMatch(/--custom-weights-id/);
+    expect(await fails("endpoint-create", "--custom-weights-id", "w-1", "--minutes", "500")).toMatch(/10 to 180/);
+    refuseDeletes = 2;
+    await tfFast("endpoint-create", "--custom-weights-id", "w-1", "--minutes", "10");
+    const ep = state().endpoint;
+    expect(ep.routing_key).toBe("dedicated/qwen-1");
+    expect(endpoints).toHaveLength(1);
+    await new Promise((r) => setTimeout(r, 4000));
+    expect(endpoints).toHaveLength(0);
+    expect(served.filter((x) => x === `DELETE /v0/dedicated_endpoints/${ep.id}`).length).toBe(3);
+    expect(state().endpoint.deleted).toBeTruthy();
+    expect(ledger().filter((e) => !e.type && e.settles === ep.reservation)).toHaveLength(1);
+    // deleted by hand before the deadline: the watchdog then finds nothing to do and charges nothing more
+    await tfFast("endpoint-create", "--custom-weights-id", "w-2", "--minutes", "10");
+    const ep2 = state().endpoint;
+    await tfFast("endpoint-delete");
+    await new Promise((r) => setTimeout(r, 2500));
+    expect(ledger().filter((e) => !e.type && e.settles === ep2.reservation)).toHaveLength(1);
+    expect(endpoints).toHaveLength(0);
   }, 60_000);
 
   it("after a lost answer, blocks another create until adopt or release", async () => {
