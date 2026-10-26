@@ -125,7 +125,15 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("one patch on the held-out repai
           const reservation = ledger.guard(worst, { script: SCRIPT, capUsd: cap });
           const t0 = performance.now();
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const res: any = await client.chat.completions.create(params as any);
+          let res: any;
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            res = await client.chat.completions.create(params as any);
+          } catch (e) {
+            // the server may have done the work: the failed call costs its estimate, and the run stops
+            ledger.charge(SCRIPT, worst, { model, stage: "single", item: i, estimated: true, failed: true, status: (e as { status?: number }).status ?? null }, reservation);
+            throw e;
+          }
           const u = tf.usageOf(res);
           const usd = perHour.has(model) ? 0 : u.prompt_tokens * p.prompt + u.completion_tokens * p.completion;
           ledger.charge(SCRIPT, usd, { model, stage: "single", item: i, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, ...(perHour.has(model) ? { per_hour: true } : {}) }, reservation);

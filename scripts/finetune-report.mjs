@@ -5,6 +5,7 @@
 // hours at the H100 price, shared between them by their number of calls.
 //
 //   node scripts/finetune-report.mjs [results.json] --endpoint-hours 1.6 [--usd-per-hour 4.5]
+//        [--dedicated-hours H --dedicated-usd-per-hour P]   (a model tuned on Token Factory, on its dedicated endpoint)
 import { readFileSync } from "node:fs";
 
 const args = process.argv.slice(2);
@@ -15,6 +16,8 @@ const opt = (name, fallback) => {
 const file = args.find((a) => a.endsWith(".json")) ?? "bench/results/finetune-eval.json";
 const hours = opt("--endpoint-hours", NaN);
 const perHour = opt("--usd-per-hour", 4.5);
+const dedicatedHours = opt("--dedicated-hours", NaN);
+const dedicatedPerHour = opt("--dedicated-usd-per-hour", NaN);
 const results = JSON.parse(readFileSync(file, "utf8"));
 
 /** Wilson score interval, 95% (as tests/measure/patch-loop.test.ts) */
@@ -54,7 +57,9 @@ console.log("| Patcher | Fixed within 5 patches | Fixed on the first patch | Cos
 console.log("|---|---|---|---|");
 for (const [id, a] of arms) {
   const x = s[id];
-  const usd = a.config.endpoint ? (hours * perHour * x.calls) / endpointCalls : x.usd;
+  // AI Cloud endpoint arms share its hours by calls; a Token Factory dedicated endpoint serves one arm
+  const dedicated = String(a.config.model).startsWith("dedicated/");
+  const usd = a.config.endpoint ? (hours * perHour * x.calls) / endpointCalls : dedicated ? dedicatedHours * dedicatedPerHour : x.usd;
   const per = x.fixed.length && Number.isFinite(usd) ? `US$${(usd / x.fixed.length).toFixed(4)}` : "-";
   console.log(`| ${a.config.label ?? id} | ${rate(x.fixed.length, x.need.length)} | ${pct(x.first.length / x.need.length)} | ${per} |${x.stopped ? ` ${x.stopped} runs stopped` : ""}`);
 }
@@ -69,4 +74,5 @@ for (const [tuned, base] of [["ft-nano-ft", "ft-nano-base"], ["ft-qwen-ft", "ft-
   const pts = (x) => `${x >= 0 ? "+" : ""}${Math.round(100 * x)}`;
   console.log(`\n${tuned} against ${base}: within 5 patches ${pts(d)} points [${pts(lo)} to ${pts(hi)}], first patch ${pts(d1)} [${pts(lo1)} to ${pts(hi1)}] (Newcombe 95%).`);
 }
-if (!Number.isFinite(hours)) console.log("\nEndpoint arms: pass --endpoint-hours (from the endpoint's creation to its deletion) for their cost.");
+if (arms.some(([, a]) => a.config.endpoint) && !Number.isFinite(hours)) console.log("\nEndpoint arms: pass --endpoint-hours (from the endpoint's creation to its deletion) for their cost.");
+if (arms.some(([, a]) => String(a.config.model).startsWith("dedicated/")) && !(dedicatedHours * dedicatedPerHour >= 0)) console.log("\nThe tuned model's dedicated endpoint: pass --dedicated-hours and --dedicated-usd-per-hour for its cost.");

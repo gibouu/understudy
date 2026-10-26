@@ -200,6 +200,8 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
        * tuned on Token Factory, served on a dedicated endpoint under its routing key (PATCH_TUNED_MODEL)
        */
       const TUNED = process.env.PATCH_TUNED_MODEL;
+      // only a dedicated endpoint's routing key may be priced 0: a model id by mistake would make paid calls look free
+      if (TUNED && !TUNED.startsWith("dedicated/")) throw new Error(`PATCH_TUNED_MODEL must be a dedicated endpoint's routing key ("dedicated/..."), not ${TUNED}`);
       const ENDPOINT_MODELS = new Set(["nano-base", "nano-ft", ...(TUNED ? [TUNED] : [])]);
       let endpoint: typeof client | null = null;
       const endpointClient = async () => {
