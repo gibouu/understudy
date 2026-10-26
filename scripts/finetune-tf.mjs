@@ -6,10 +6,17 @@
 //   node scripts/finetune-tf.mjs upload                       checks the files against manifest.json, uploads them
 //   node scripts/finetune-tf.mjs create --usd-per-mtok P --balance-usd B [--epochs 3] [--dry-run]
 //        estimates the cost (training tokens x epochs x P), refuses when B minus it would fall under
-//        US$15 (the live demo's floor), reserves it on the bench ledger, creates the job
+//        US$15 (the live demo's floor), marks the job pending, reserves the estimate, creates the job and
+//        charges the estimate at once (so no long-open reservation is left for --settle-stale)
 //   node scripts/finetune-tf.mjs status                       the job's state, steps, losses, checkpoints;
-//        once it succeeds, charges the ledger for its trained tokens at P and keeps the last checkpoint
+//        once it ends, charges what it trained beyond the estimate, if anything (once)
+//   node scripts/finetune-tf.mjs adopt                        after a create whose answer was lost: takes the
+//        one new job on the uploaded training file and charges the estimate
+//   node scripts/finetune-tf.mjs release --confirm-no-job     after a create that started nothing (checked in
+//        the console): gives the reservation back and clears the pending mark
 //
+// A create that fails leaves the job "pending": no other create runs until adopt or release says what
+// happened, so a lost answer can never lead to a second paid job, and nothing is released by guesswork.
 // State (file ids, job id, price, checkpoints, losses; no key) is kept in bench/results/finetune-tf.json.
 // The key comes from UNDERSTUDY_ENV_FILE (default .env.local), as in every bench script.
 import { closeSync, existsSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
@@ -17,7 +24,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import OpenAI, { toFile } from "openai";
-import { charge, entries, guard } from "./bench-ledger.mjs";
+import { charge, entries, guard, release } from "./bench-ledger.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 // overridable for the tests only (tests/providers/finetune-tf.test.ts runs this script against a local mock)
@@ -89,16 +96,19 @@ function client() {
 async function main() {
   const manifest = JSON.parse(readFileSync(path.join(DATA, "manifest.json"), "utf8"));
   if (cmd === "upload") {
-    const s = state();
-    const tf = client();
-    for (const name of ["train.jsonl", "val.jsonl"]) {
-      const buf = readFileSync(path.join(DATA, name));
-      if (sha256(buf) !== manifest.files[name].sha256) throw new Error(`${name} does not match manifest.json: rebuild the dataset`);
-      const f = await tf.files.create({ file: await toFile(buf, name), purpose: "fine-tune" });
-      s[name] = { id: f.id, sha256: manifest.files[name].sha256, lines: manifest.files[name].lines };
-      console.log(`${name}: ${f.id} (${f.bytes} bytes)`);
-    }
-    save(s);
+    await locked(async () => {
+      const s = state();
+      if (s.job || s.pending) throw new Error("a job is pending or exists: uploading again would orphan it");
+      const tf = client();
+      for (const name of ["train.jsonl", "val.jsonl"]) {
+        const buf = readFileSync(path.join(DATA, name));
+        if (sha256(buf) !== manifest.files[name].sha256) throw new Error(`${name} does not match manifest.json: rebuild the dataset`);
+        const f = await tf.files.create({ file: await toFile(buf, name), purpose: "fine-tune" });
+        s[name] = { id: f.id, sha256: manifest.files[name].sha256, lines: manifest.files[name].lines };
+        console.log(`${name}: ${f.id} (${f.bytes} bytes)`);
+      }
+      save(s);
+    });
   } else if (cmd === "create") {
     await locked(async () => {
       const s = state();
@@ -108,6 +118,7 @@ async function main() {
         if (s[name] && s[name].sha256 !== manifest.files[name].sha256) throw new Error(`the uploaded ${name} is not the one in manifest.json: run upload again`);
       }
       if (s.job) throw new Error(`a job exists already (${s.job.id}): status, or remove it from ${STATE} on purpose`);
+      if (s.pending) throw new Error("a create is pending (its answer was lost): run adopt, or release --confirm-no-job once the console shows no job");
       const usdPerMtok = Number(opt("--usd-per-mtok"));
       if (!(usdPerMtok > 0)) throw new Error("--usd-per-mtok: Token Factory's training price per 1M tokens for this model, from the console; it is not published");
       const epochs = Number(opt("--epochs") ?? 3);
@@ -117,52 +128,76 @@ async function main() {
       const request = { model: BASE_MODEL, training_file: s["train.jsonl"]?.id ?? "<not uploaded>", validation_file: s["val.jsonl"]?.id ?? "<not uploaded>", hyperparameters: { ...HYPER, n_epochs: epochs }, seed: 42, suffix: "understudy-patcher" };
       console.log(JSON.stringify({ ...est, usd_per_mtok: usdPerMtok, request }, null, 2));
       if (dry) return;
-      const reservation = guard(est.usd_est, { script: SCRIPT, capUsd: 100, meta: { model: BASE_MODEL, stage: "fine-tune", ...est } });
+      // everything that can fail without spending comes first: the key, the job list
       const tf = client();
-      const jobIds = async () => new Set(((await tf.fineTuning.jobs.list({ limit: 100 })).data ?? []).map((j) => j.id));
-      // the jobs that exist before this create: after an error, only a job outside this set can be ours
-      const before = await jobIds().catch(() => null);
+      const before = [...new Set(((await tf.fineTuning.jobs.list({ limit: 100 })).data ?? []).map((j) => j.id))];
+      const reservation = guard(est.usd_est, { script: SCRIPT, capUsd: 100, meta: { model: BASE_MODEL, stage: "fine-tune", ...est } });
+      // the mark is on disk before the paid request: a crash or a lost answer leaves it, and it blocks another create
+      s.pending = { reservation: reservation.id, training_file: request.training_file, before, usd_per_mtok: usdPerMtok, epochs, ...est, at: new Date().toISOString() };
+      save(s);
       let job;
       try {
         job = await tf.fineTuning.jobs.create(request);
       } catch (e) {
-        // the request may have been accepted before the answer was lost: look for it before giving the reservation back
-        const after = before ? ((await tf.fineTuning.jobs.list({ limit: 100 }).catch(() => null))?.data ?? null) : null;
-        if (!after) throw new Error(`create failed (${e?.status ?? e}) and the job list cannot tell whether a job started: check the console; the reservation ${reservation.id} stays open`);
-        job = after.find((j) => !before.has(j.id) && j.training_file === request.training_file);
-        if (!job) {
-          charge(SCRIPT, 0, { model: BASE_MODEL, stage: "fine-tune", failed: true, status: e?.status ?? null }, reservation);
-          throw e;
-        }
-        console.log(`create answered with an error, but job ${job.id} exists: keeping it`);
+        s.pending.error = String(e?.status ?? e?.message ?? e).slice(0, 200);
+        save(s);
+        throw new Error(`create failed (${s.pending.error}); a job may still have started. Check, then run adopt, or release --confirm-no-job`);
       }
-      s.job = { id: job.id, created_at: job.created_at, status: job.status, usd_per_mtok: usdPerMtok, epochs, reservation: reservation.id, ...est };
+      start(s, job);
+    });
+  } else if (cmd === "adopt") {
+    await locked(async () => {
+      const s = state();
+      if (!s.pending) throw new Error("nothing pending");
+      const listed = (await client().fineTuning.jobs.list({ limit: 100 })).data ?? [];
+      const mine = listed.filter((j) => !s.pending.before.includes(j.id) && j.training_file === s.pending.training_file);
+      if (mine.length !== 1) throw new Error(`${mine.length} new jobs on ${s.pending.training_file}: adopt needs exactly one; check the console`);
+      start(s, mine[0]);
+    });
+  } else if (cmd === "release") {
+    if (!args.includes("--confirm-no-job")) throw new Error("release gives the reservation back: only with --confirm-no-job, after checking that the console shows no job");
+    await locked(async () => {
+      const s = state();
+      if (!s.pending) throw new Error("nothing pending");
+      release({ id: s.pending.reservation });
+      delete s.pending;
       save(s);
-      console.log(`job ${job.id}: ${job.status}`);
+      console.log("released");
     });
   } else if (cmd === "status") {
     const s = state();
-    if (!s.job) throw new Error("no job yet");
+    if (!s.job) throw new Error(s.pending ? "a create is pending: adopt or release first" : "no job yet");
     const tf = client();
     const job = await tf.fineTuning.jobs.retrieve(s.job.id);
     Object.assign(s.job, { status: job.status, trained_tokens: job.trained_tokens ?? null, trained_steps: job.trained_steps ?? null, total_steps: job.total_steps ?? null, estimated_finish: job.estimated_finish ?? null, finished_at: job.finished_at ?? null, error: job.error ?? null });
     const checkpoints = (await tf.fineTuning.jobs.checkpoints.list(job.id)).data ?? [];
     s.checkpoints = checkpoints.map((c) => ({ id: c.id, step: c.step_number, model: c.fine_tuned_model_checkpoint, metrics: c.metrics }));
-    const usd = ((job.trained_tokens ?? 0) / 1e6) * s.job.usd_per_mtok;
-    if (["succeeded", "failed", "cancelled"].includes(job.status)) {
-      // settle the reservation once: trained tokens at the price given (0 for a job that trained nothing); the
-      // ledger is the record of whether it is settled, so a crash or a second shell cannot charge it twice
-      await locked(async () => {
-        if (!settled(s.job.reservation)) charge(SCRIPT, usd, { model: BASE_MODEL, stage: "fine-tune", job: job.id, status: job.status, trained_tokens: job.trained_tokens ?? 0, usd_per_mtok: s.job.usd_per_mtok }, { id: s.job.reservation, script: SCRIPT, usd: s.job.usd_est });
-        s.job.charged = usd;
-        save(s);
-      });
-    } else save(s);
+    await locked(async () => {
+      if (["succeeded", "failed", "cancelled"].includes(job.status)) {
+        // the estimate was charged at the start; what the job trained beyond it is charged once, under its own id
+        const usd = ((job.trained_tokens ?? 0) / 1e6) * s.job.usd_per_mtok;
+        s.job.usd_actual = usd;
+        const over = usd - s.job.usd_est;
+        const adjustment = `adjust-${job.id}`;
+        if (over > 0 && !settled(adjustment)) charge(SCRIPT, over, { model: BASE_MODEL, stage: "fine-tune", job: job.id, adjustment: true, trained_tokens: job.trained_tokens, keep: true }, { id: adjustment });
+      }
+      save(s);
+    });
     console.log(JSON.stringify({ job: s.job, checkpoints: s.checkpoints.map((c) => ({ step: c.step, model: c.model, ...c.metrics })) }, null, 2));
   } else {
-    console.log("usage: node scripts/finetune-tf.mjs upload | create --usd-per-mtok P --balance-usd B [--epochs N] [--dry-run] | status");
+    console.log("usage: node scripts/finetune-tf.mjs upload | create --usd-per-mtok P --balance-usd B [--epochs N] [--dry-run] | adopt | release --confirm-no-job | status");
     process.exitCode = 1;
   }
+}
+
+/** a job has started: record it, charge the estimate (settles the reservation), clear the pending mark */
+function start(s, job) {
+  const p = s.pending;
+  if (!settled(p.reservation)) charge(SCRIPT, p.usd_est, { model: BASE_MODEL, stage: "fine-tune", job: job.id, estimated: true }, { id: p.reservation });
+  s.job = { id: job.id, created_at: job.created_at, status: job.status, usd_per_mtok: p.usd_per_mtok, epochs: p.epochs, reservation: p.reservation, tokens_per_epoch: p.tokens_per_epoch, trained_tokens_est: p.trained_tokens_est, usd_est: p.usd_est };
+  delete s.pending;
+  save(s);
+  console.log(`job ${job.id}: ${job.status}; US$${p.usd_est.toFixed(2)} charged on the ledger as its estimate`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) await main();

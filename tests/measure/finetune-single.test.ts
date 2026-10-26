@@ -111,7 +111,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("one patch on the held-out repai
       const cap = Number(process.env.SINGLE_CAP_USD ?? 2);
       const priced = models.filter((m) => !perHour.has(m));
       const PRICES = { ...ledger.loadPrices(priced.filter((m) => !cmp.COMPARATORS[m])), ...(priced.some((m) => cmp.COMPARATORS[m]) ? ledger.loadPrices(priced.filter((m) => cmp.COMPARATORS[m]), cmp.COMPARE_CATALOGUE) : {}) };
-      const client = tf.tokenFactory({ timeout: 240_000, maxRetries: 1 })!;
+      const client = tf.tokenFactory({ timeout: 240_000, maxRetries: 0 })!;
       const mj = await loadMujoco();
       const items = read();
       const mine: Record<string, unknown> = {};

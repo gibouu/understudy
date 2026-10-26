@@ -4,7 +4,7 @@
  * trained on data that is not the manifest's. No network, no spend.
  */
 import { execFile } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import os from "node:os";
@@ -75,46 +75,67 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     expect(ledger()).toEqual([]);
   });
 
-  it("starts one job, refuses a second, and settles it once", async () => {
+  it("starts one job, charges its estimate at once, refuses a second, and adjusts once", async () => {
     await tf("upload");
     expect(state()["train.jsonl"].id).toBe("file-train");
     await tf("create", "--usd-per-mtok", "5", "--balance-usd", "40");
-    expect(state().job.id).toBe("ftjob-1");
+    const s = state();
+    expect(s.job.id).toBe("ftjob-1");
+    expect(s.pending).toBeUndefined();
+    // the estimate is charged and settles the reservation: nothing is left open for --settle-stale
+    const estimateCharge = ledger().filter((e) => !e.type && e.settles === s.job.reservation);
+    expect(estimateCharge).toHaveLength(1);
+    expect(estimateCharge[0].usd).toBeCloseTo(s.job.usd_est, 6);
     expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/a job exists already/);
+    expect(await fails("upload")).toMatch(/pending or exists/);
     expect(jobs).toHaveLength(1);
-    // a lock held by another shell stops both create and settle
+    // a lock held by another shell stops create
     writeFileSync(`${env.FINETUNE_TF_STATE}.lock`, "123\n");
     expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/another finetune-tf command is running/);
-    (await import("node:fs")).unlinkSync(`${env.FINETUNE_TF_STATE}.lock`);
+    unlinkSync(`${env.FINETUNE_TF_STATE}.lock`);
+    // the job trained more than estimated: the difference is charged once, however often status runs
     jobs[0].status = "succeeded";
-    jobs[0].trained_tokens = 2_000_000;
+    jobs[0].trained_tokens = 4_000_000;
     await tf("status");
     await tf("status");
-    const charges = ledger().filter((e) => !e.type && e.settles === state().job.reservation);
-    expect(charges).toHaveLength(1);
-    expect(charges[0].usd).toBe(10);
+    const adjustments = ledger().filter((e) => !e.type && e.settles === "adjust-ftjob-1");
+    expect(adjustments).toHaveLength(1);
+    expect(adjustments[0].usd).toBeCloseTo(20 - s.job.usd_est, 6);
+    expect(state().job.usd_actual).toBe(20);
     expect(state().checkpoints[0].model).toMatch(/^ft:Qwen\/Qwen3-30B-A3B-Instruct-2507:/);
   });
 
-  it("keeps a job whose create answer was lost, and gives back the reservation of a rejected one", async () => {
-    const fresh = (await import("node:fs")).unlinkSync;
-    fresh(env.FINETUNE_TF_STATE);
+  it("after a lost answer, blocks another create until adopt or release", async () => {
+    unlinkSync(env.FINETUNE_TF_STATE);
     await tf("upload");
     failCreate = "lost-answer";
-    await tf("create", "--usd-per-mtok", "5", "--balance-usd", "40");
-    expect(state().job.id).toBe("ftjob-2");
-    fresh(env.FINETUNE_TF_STATE);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/adopt, or release --confirm-no-job/);
+    expect(state().pending).toBeDefined();
+    failCreate = "no";
+    const before = jobs.length;
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/a create is pending/);
+    expect(jobs).toHaveLength(before);
+    await tf("adopt");
+    expect(state().job.id).toBe(`ftjob-${before}`);
+    expect(state().pending).toBeUndefined();
+    // a create that started nothing: released only on explicit confirmation
+    unlinkSync(env.FINETUNE_TF_STATE);
     await tf("upload");
     failCreate = "rejected";
-    const before = jobs.length;
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/500/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "40")).toMatch(/adopt, or release/);
     expect(jobs).toHaveLength(before);
-    const last = ledger().at(-1);
-    expect(last).toMatchObject({ usd: 0, meta: { failed: true } });
+    expect(await fails("adopt")).toMatch(/0 new jobs/);
+    expect(await fails("release")).toMatch(/--confirm-no-job/);
+    const reservation = state().pending.reservation;
+    await tf("release", "--confirm-no-job");
+    expect(ledger().some((e) => e.type === "release" && e.id === reservation)).toBe(true);
+    expect(state().pending).toBeUndefined();
     failCreate = "no";
   });
 
   it("refuses an upload that is not the manifest's", async () => {
+    unlinkSync(env.FINETUNE_TF_STATE);
+    await tf("upload");
     const s = state();
     s["train.jsonl"].sha256 = "0".repeat(64);
     writeFileSync(env.FINETUNE_TF_STATE, JSON.stringify(s));
