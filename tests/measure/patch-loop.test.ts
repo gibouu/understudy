@@ -25,6 +25,11 @@
  *   r2-*        round 2 (clamping reported, escalation, tagged playbook v3, liquid pour); r2-ctrl*
  *               are the matched controls of the playbook arms: the same set-up call and playbook
  *               section with "(none)" in place of the rules
+ *   cmp-<model>-off|on  issue #96: the round-2 loop (as r2-super-off and r2-super-on) with a non-NVIDIA
+ *               model from Token Factory as the patcher (scripts/compare-models.mjs); runs only with
+ *               PATCH_SCRIPT=compare-patch, so its spend counts against the study's own cap; its results go
+ *               to their own file (PATCH_OUT=compare-patch.json) and scripts/compare-report.mjs sets
+ *               them beside the Nemotron arms of patch-loop.json
  *
  * The live part spends Token Factory credits and runs only with BENCH_LIVE=1:
  *
@@ -159,12 +164,22 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       // guard() reserves the worst case under a cross-process lock and returns the reservation; charge() settles it
       type Reservation = { id: string; script: string | null; usd: number };
       const ledger = (await import("../../scripts/bench-ledger.mjs")) as unknown as {
-        guard: (est: number, o?: { script?: string; capUsd?: number }) => Reservation;
+        guard: (est: number, o?: { script?: string; capUsd?: number; capScripts?: string[] }) => Reservation;
         charge: (script: string, usd: number, meta?: Record<string, unknown>, reservation?: Reservation) => void;
         spent: (script?: string) => number;
-        loadPrices: (models: string[]) => Record<string, { prompt: number; completion: number; cache_read: number | null }>;
+        loadPrices: (models: string[], file?: string) => Record<string, { prompt: number; completion: number; cache_read: number | null }>;
         BudgetError: new (m: string) => Error;
       };
+      const cmp = (await import("../../scripts/compare-models.mjs")) as unknown as {
+        COMPARATORS: Record<string, { short: string; off: Record<string, unknown>; on: Record<string, unknown> | null; always_reasons?: boolean; stands_in_for: string }>;
+        COMPARE_CATALOGUE: string;
+        COMPARE_SCRIPTS: string[];
+        COMPARE_CAP_USD: number;
+      };
+      // the comparison study's scripts share one cap (issue #96); every other script keeps its own
+      const inStudy = cmp.COMPARE_SCRIPTS.includes(SCRIPT);
+      const capUsd = inStudy ? cmp.COMPARE_CAP_USD : CAP_USD;
+      const capScripts = inStudy ? cmp.COMPARE_SCRIPTS : [SCRIPT];
       // the call log (#78): every request and answer in full, and the simulator's verdict on each patch
       const calls = (await import("../../scripts/call-log.mjs")) as unknown as {
         logCall: (script: string, o: Record<string, unknown>) => string | null;
@@ -188,10 +203,11 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       let budgetStop: string | null = null;
 
       type Role = "super" | "ultra";
-      type CallCfg = { role: Role; thinking: "off" | "on"; maxTokens: number };
+      /** model and params: a comparator (issue #96) in the role's place, with its own reasoning switch instead of enable_thinking */
+      type CallCfg = { role: Role; thinking: "off" | "on"; maxTokens: number; model?: string; params?: Record<string, unknown> };
       async function call(cfg: CallCfg, system: string, user: string, meta: Record<string, unknown>, trace: Trace = { session: null, parent: null }): Promise<{ rec: CallRec; parsed: Record<string, unknown> | null }> {
         const stage = String(meta.stage ?? (system === PREFLIGHT_SYSTEM ? "preflight" : "patch"));
-        const model = tf.MODELS[cfg.role];
+        const model = cfg.model ?? tf.MODELS[cfg.role];
         const p = price(model);
         const worst = Math.ceil((system.length + user.length) / 3) * p.prompt + cfg.maxTokens * p.completion;
         const rec: CallRec = { ok: false, ms: 0, prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: null, cost_usd: 0, finish: null, json_ok: false, empty: true, attempts: 0 };
@@ -200,7 +216,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
           let reservation: Reservation;
           try {
             // reserves the worst case atomically across processes; the caps count open reservations
-            reservation = ledger.guard(worst, { script: SCRIPT, capUsd: CAP_USD });
+            reservation = ledger.guard(worst, { script: SCRIPT, capUsd, capScripts });
           } catch (e) {
             budgetStop = redact((e as Error).message);
             throw e;
@@ -216,7 +232,8 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
             max_tokens: cfg.maxTokens,
             response_format: { type: "json_object" },
           };
-          if (cfg.thinking === "off") Object.assign(params, tf.thinkingOff());
+          if (cfg.params) Object.assign(params, cfg.params);
+          else if (cfg.thinking === "off") Object.assign(params, tf.thinkingOff());
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           let res: any;
           try {
@@ -231,6 +248,13 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
             rec.error = `${e?.status ?? "?"} ${redact(e?.message ?? err)}`.slice(0, 300);
             // a failed call keeps its record's id: the next rollout's verdict and the next call's parent point to it
             rec.log_id = calls.logCall(SCRIPT, { stage, params, error: rec.error, cost_usd: worst, meta: { ...meta, attempt, estimated: true }, ...trace }) ?? rec.log_id;
+            // a model the host no longer serves fails every call alike: stop the run rather than charge them all
+            // (Qwen3.5 397B was withdrawn from Token Factory in the middle of the #96 runs); budgetStop keeps every
+            // other worker from sending another call, the runs end as stopped and the arm is saved
+            if (e?.status === 404) {
+              budgetStop = `${model}: HTTP 404, not served by Token Factory any more`;
+              throw new ledger.BudgetError(budgetStop);
+            }
             const retriable = e?.status === undefined || e.status === 429 || e.status >= 500;
             if (!retriable || attempt === 3) return { rec, parsed: null };
             await new Promise((r) => setTimeout(r, 2000 * attempt));
@@ -294,6 +318,15 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       const ESC_ULTRA = { role: "ultra" as const, thinking: "off" as const, maxTokens: 800, label: "ultra-off" };
       const R2 = { preflight: false, rules: false, gravities: GRAVITY_ORDER, clampNote: true };
       const R2_MO = { preflight: true, rules: true, gravities: ["moon", "orbit"] as GravityId[], clampNote: true };
+      /** a comparator as the round-2 patcher: "off" is its least reasoning (800 tokens, or 4,096 when it always reasons), "on" its default with 4,096 */
+      const cmpArm = (model: string, thinking: "off" | "on"): ArmCfg => {
+        const c = cmp.COMPARATORS[model];
+        if (!c || (thinking === "on" && !c.on)) throw new Error(`no ${thinking} setting for ${model} in scripts/compare-models.mjs`);
+        const params = thinking === "off" ? c.off : c.on!;
+        const maxTokens = thinking === "on" || c.always_reasons ? 4096 : 800;
+        return { role: "super", model, params, thinking, maxTokens, ...R2, label: `${c.short} ${thinking === "off" && c.always_reasons ? "reasoning low" : `thinking ${thinking}`}` };
+      };
+      const cmpShort = (model: string) => cmp.COMPARATORS[model]?.short ?? model;
       const ARMS: Record<string, ArmCfg> = {
         "super-off": { role: "super", thinking: "off", maxTokens: 800, preflight: false, rules: false, gravities: GRAVITY_ORDER },
         "super-off-rep": { role: "super", thinking: "off", maxTokens: 800, preflight: false, rules: false, gravities: GRAVITY_ORDER },
@@ -322,6 +355,13 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         "r2-ctrl2-on": { ...SUPER_ON, ...R2_MO, rulesFrom: "playbook2", emptyRules: true, label: "super-on" },
         "r2-liquid-super-off": { ...SUPER_OFF, ...R2, liquid: true, label: "super-off" },
         "r2-liquid-super-on": { ...SUPER_ON, ...R2, liquid: true, label: "super-on" },
+        // issue #96: the same loop with another model as the patcher
+        "cmp-gpt-oss-120b-off": cmpArm("openai/gpt-oss-120b", "off"),
+        "cmp-gpt-oss-120b-on": cmpArm("openai/gpt-oss-120b", "on"),
+        "cmp-qwen3.5-397b-off": cmpArm("Qwen/Qwen3.5-397B-A17B", "off"),
+        "cmp-qwen3.5-397b-on": cmpArm("Qwen/Qwen3.5-397B-A17B", "on"),
+        "cmp-muse-spark-off": cmpArm("meta-models/muse-spark-open", "off"),
+        "cmp-muse-spark-on": cmpArm("meta-models/muse-spark-open", "on"),
       };
 
       const file: ResultsFile = existsSync(OUT)
@@ -335,7 +375,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
             example_notes: {},
           };
       file.reproduce =
-        "round 1: BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=<path to .env.local> PATCH_ARMS=super-off,super-off-rep,super-on,ultra,ultra-on,ultra-on-16k,preflight,playbook,playbook2,super-off-derived,super-off-retry node_modules/.bin/vitest run tests/measure/patch-loop.test.ts --reporter=verbose; round 2: the same with PATCH_SCRIPT=patch-loop-r2 PATCH_SEEDS=1,2,3,4,5,6 PATCH_ARMS=r2-playbook3,r2-super-off,r2-super-on,r2-esc-on,r2-esc-ultra,r2-playbook2-on,r2-playbook3-on,r2-playbook3-esc,r2-liquid-super-off,r2-liquid-super-on; matched controls: PATCH_ARMS=r2-ctrl3,r2-ctrl3-on,r2-ctrl3-esc,r2-ctrl2-on (arms can run one per process; they merge by arm under a lock file)";
+        "round 1: BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=<path to .env.local> PATCH_ARMS=super-off,super-off-rep,super-on,ultra,ultra-on,ultra-on-16k,preflight,playbook,playbook2,super-off-derived,super-off-retry node_modules/.bin/vitest run tests/measure/patch-loop.test.ts --reporter=verbose; round 2: the same with PATCH_SCRIPT=patch-loop-r2 PATCH_SEEDS=1,2,3,4,5,6 PATCH_ARMS=r2-playbook3,r2-super-off,r2-super-on,r2-esc-on,r2-esc-ultra,r2-playbook2-on,r2-playbook3-on,r2-playbook3-esc,r2-liquid-super-off,r2-liquid-super-on; matched controls: PATCH_ARMS=r2-ctrl3,r2-ctrl3-on,r2-ctrl3-esc,r2-ctrl2-on; other models (issue #96), in their own file: PATCH_OUT=compare-patch.json PATCH_SCRIPT=compare-patch PATCH_SEEDS=1,2,3,4,5,6 PATCH_CONCURRENCY=4 PATCH_ARMS=cmp-gpt-oss-120b-off,cmp-gpt-oss-120b-on,cmp-qwen3.5-397b-off,cmp-qwen3.5-397b-on,cmp-muse-spark-off,cmp-muse-spark-on (arms can run one per process; they merge by arm under a lock file)";
       file.conditions = {
         engine: "MuJoCo WebAssembly (@mujoco/mujoco) in Node, timestep 2 ms; probes in tests/measure/patch-probes.ts on tests/measure/gravity-harness.ts",
         models: tf.MODELS,
@@ -348,8 +388,9 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         seeds: "per arm, in each arm's config",
         round_2: "arms named r2-*: the next patch prompt says when a requested value was clamped to a bound or rejected; escalation arms switch patcher after a no-op patch (re-asked at once) or after the base patcher's second failed patch; ledger script patch-loop-r2 with its own cap",
         liquid: "pour-liquid: lib/sim/fluid.ts position-based liquid, 600 particles at 4 mm (38 mL), one-way coupled to the MuJoCo cups via lib/sim/fluid-mujoco.ts, 60 frames/s with the solver's defaults",
+        comparators: "arms named cmp-* (issue #96): the round-2 loop, prompts, cases and seeds of r2-super-off and r2-super-on with a non-NVIDIA model from Token Factory as the patcher; its reasoning switched as in scripts/compare-models.mjs (prices from tests/fixtures/models-compare.json); ledger script compare-patch under the study's cap; each arm's config records its concurrency",
         concurrency: CONCURRENCY,
-        cap_usd: CAP_USD,
+        cap_usd: capUsd,
       };
       const mineArms = new Set<string>();
       /** take the arms other processes have written since this one started (the file only ever changes by rename, so a read sees a whole file) */
@@ -416,7 +457,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
           let pending: PatchRec | undefined;
           let escalated = false;
           let basePatches = 0;
-          const label = (p: CallCfg) => `${p.role}-${p.thinking}`;
+          const label = (p: CallCfg) => `${p.model ? cmpShort(p.model) : p.role}-${p.thinking}`;
           for (let iter = 0; iter <= MAX_PATCHES; iter++) {
             const r = probe.run(mj, knobs, world, { derived: cfg.derived });
             const verdict = { pass: r.pass, score_before: run.iterations.at(-1)?.score ?? null, score_after: r.score, failure_class: r.failure_class };
@@ -532,9 +573,14 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       const needed = arms.flatMap((armId) => {
         const cfg = ARMS[armId];
         if (!cfg) throw new Error(`unknown arm ${armId}`);
-        return [cfg.role, ...(cfg.escalate ? [cfg.escalate.role] : []), ...(cfg.rules ? ["super" as const] : [])].map((role) => tf.MODELS[role]);
+        const models = [cfg.model ?? tf.MODELS[cfg.role], ...(cfg.escalate ? [tf.MODELS[cfg.escalate.role]] : []), ...(cfg.rules ? [tf.MODELS.super] : [])];
+        // checked on the resolved ids, so a role pointed at a comparator through UNDERSTUDY_MODEL_* is caught too
+        const outside = models.find((m) => cmp.COMPARATORS[m]);
+        if (outside && SCRIPT !== "compare-patch") throw new Error(`${armId} calls ${outside}: run it with PATCH_SCRIPT=compare-patch, so its spend counts against the study's cap`);
+        return models;
       });
-      PRICES = ledger.loadPrices(needed);
+      const others = needed.filter((m) => cmp.COMPARATORS[m]);
+      PRICES = { ...ledger.loadPrices(needed.filter((m) => !cmp.COMPARATORS[m])), ...(others.length ? ledger.loadPrices(others, cmp.COMPARE_CATALOGUE) : {}) };
       for (const m of needed) price(m);
       for (const armId of arms) {
         const cfg = ARMS[armId];
@@ -552,7 +598,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         const mine = (cfg.liquid ? liquidCases : cases).filter((c) => cfg.gravities.includes(c.world.gravity));
         const jobs = mine.flatMap((c) => SEEDS.map((seed) => () => runCase(armId, cfg, c, seed, book)));
         console.log(`\n== arm ${armId}: ${jobs.length} case runs (${mine.length} cases x ${SEEDS.length} seeds), ledger for ${SCRIPT} at $${ledger.spent(SCRIPT).toFixed(4)}`);
-        const arm: ArmRec = { config: { ...cfg, model: tf.MODELS[cfg.role], ...(cfg.escalate ? { escalate_model: tf.MODELS[cfg.escalate.role] } : {}), seeds: SEEDS, ledger_script: SCRIPT }, started: new Date().toISOString(), finished: null, runs: [], ...(playbook && !cfg.emptyRules ? { playbook } : {}) };
+        const arm: ArmRec = { config: { ...cfg, model: cfg.model ?? tf.MODELS[cfg.role], ...(cfg.escalate ? { escalate_model: tf.MODELS[cfg.escalate.role] } : {}), seeds: SEEDS, ledger_script: SCRIPT, concurrency: CONCURRENCY }, started: new Date().toISOString(), finished: null, runs: [], ...(playbook && !cfg.emptyRules ? { playbook } : {}) };
         let done = 0;
         arm.runs = await pool(
           jobs.map((job) => async () => {
@@ -572,7 +618,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
       }
       save();
       console.log(report(file));
-      console.log(`\nspent this run $${(ledger.spent(SCRIPT) - spentBefore).toFixed(4)}; ${SCRIPT} on the ledger $${ledger.spent(SCRIPT).toFixed(4)} of its $${CAP_USD} cap; ledger total $${ledger.spent().toFixed(4)}${budgetStop ? `\nSTOPPED: ${budgetStop}` : ""}`);
+      console.log(`\nspent this run $${(ledger.spent(SCRIPT) - spentBefore).toFixed(4)}; ${SCRIPT} on the ledger $${ledger.spent(SCRIPT).toFixed(4)}, its cap $${capUsd} over ${capScripts.join(" + ")}; ledger total $${ledger.spent().toFixed(4)}${budgetStop ? `\nSTOPPED: ${budgetStop}` : ""}`);
     },
     8 * 3600_000,
   );
@@ -740,6 +786,8 @@ function armStats(runs: RunRec[]) {
     failed_calls: calls.filter((c) => !c.ok).length,
     unparsed: calls.filter((c) => c.ok && !c.json_ok).length,
     empty: calls.filter((c) => c.ok && c.empty).length,
+    /** answers cut off at max_tokens (finish "length"): reasoning that did not fit the budget */
+    truncated: calls.filter((c) => c.finish === "length").length,
     no_change_patches: patches.filter(({ p }) => !p.changed.length).length,
     clamped_patches: patches.filter(({ p }) => p.clamped.length).length,
     rejected_patches: patches.filter(({ p }) => p.rejected.length).length,
@@ -794,7 +842,7 @@ function report(file: ResultsFile): string {
     );
     const s = armStats(runs);
     lines.push(
-      `\n${id}: cost $${s.cost_usd.toFixed(4)} for ${s.runs} runs; ${s.fixed} of ${s.need_fix} solvable failing runs fixed, $${s.cost_per_fixed_usd === null ? "-" : s.cost_per_fixed_usd.toFixed(5)} per fixed run; ${s.calls} calls (${s.failed_calls} failed, ${s.unparsed} unparseable, ${s.empty} empty), ${s.patches} patches (${s.no_change_patches} changed nothing, ${s.clamped_patches} clamped, ${s.rejected_patches} with rejected fields, ${fmt(s.knobs_per_patch, 2)} knobs changed per patch, ${s.worse_patches} made the next rollout score lower); latency mean ${fmt(s.latency_mean_s, 1)} s, p90 ${fmt(s.latency_p90_s, 1)} s; tokens ${s.prompt_tokens} in / ${s.completion_tokens} out (${s.reasoning_tokens} reasoning)`,
+      `\n${id}: cost $${s.cost_usd.toFixed(4)} for ${s.runs} runs; ${s.fixed} of ${s.need_fix} solvable failing runs fixed, $${s.cost_per_fixed_usd === null ? "-" : s.cost_per_fixed_usd.toFixed(5)} per fixed run; ${s.calls} calls (${s.failed_calls} failed, ${s.unparsed} unparseable, ${s.empty} empty, ${s.truncated} cut off at max_tokens), ${s.patches} patches (${s.no_change_patches} changed nothing, ${s.clamped_patches} clamped, ${s.rejected_patches} with rejected fields, ${fmt(s.knobs_per_patch, 2)} knobs changed per patch, ${s.worse_patches} made the next rollout score lower); latency mean ${fmt(s.latency_mean_s, 1)} s, p90 ${fmt(s.latency_p90_s, 1)} s; tokens ${s.prompt_tokens} in / ${s.completion_tokens} out (${s.reasoning_tokens} reasoning)`,
     );
     const never = runs.filter((r) => r.expert_pass && !r.iterations[0]?.pass && r.passed_at === null);
     if (never.length) lines.push(`never converged (solvable): ${[...new Set(never.map((r) => r.case_id))].map((id2) => `${id2} x${never.filter((r) => r.case_id === id2).length}`).join(", ")}`);

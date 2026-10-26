@@ -115,6 +115,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
   const tokens = session.ledger.reduce((a, c) => a + c.prompt_tokens + c.completion_tokens, 0);
   const asked = session.turns.filter((t) => t.asks.length > 0);
   const finalFails = !session.iterations[last].results.earth.pass || !session.iterations[last].results.orbit.pass;
+  const firstNote = session.iterations.findIndex((x) => x.source === "notes");
 
   function choose(i: number, scroll: boolean) {
     setPick(i);
@@ -130,7 +131,8 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         </Link>
         <h1 className="display text-4xl font-semibold text-ink-deep sm:text-5xl">{label.title}</h1>
         <p className="text-lg text-neutral-700">
-          {sample.label}. Recorded on {new Date(session.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })} in one run through Understudy; its {session.ledger.length} model calls cost {usd(session.total_usd)} in all. The last version of its program {verdict(session)}.
+          {sample.label}. Recorded on {new Date(session.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}{" "}
+          {session.selection ? `as one of ${session.selection.runs} recording runs of this clip, ${session.selection.kept}; labels and patches vary from run to run` : "as one run through Understudy (labels vary run to run)"}. Its {session.ledger.length} model calls cost {usd(session.total_usd)} in all. The last version of its program {verdict(session)}.
         </p>
       </header>
 
@@ -288,7 +290,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
                     ))}
                   </ul>
                 )}
-                <p className="text-sm text-muted">Why: {x.why}</p>
+                <p className="text-sm text-muted">Why: {named(x.spec, x.why)}</p>
               </div>
               <p className="tnum text-sm text-neutral-700 md:pr-3 md:text-right">
                 {usd(x.cost_usd)} for this version
@@ -298,10 +300,17 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
             </li>
           ))}
         </ol>
-        {session.pending.length > 0 && finalFails && (
+        {firstNote > 0 ? (
           <p className="max-w-3xl rounded-lg border-2 border-dashed border-accent p-4 text-[17px]">
-            This is where the Notes stage takes over: Super reads what the simulator measured in the failed rehearsal, patches the program’s numbers, and each patch is rehearsed again on Earth and in orbit. Its versions will join this story when this clip is recorded again with Notes. On small probe programs of two to four knobs, the same loop fixed 94% of the failures that could be fixed.
+            From version {firstNote} on, the Notes stage takes over: Super reads what the simulator measured in the previous version’s rehearsal and changes the numbers of the step that failed, and each patch is rehearsed again on Earth and in orbit. It thinks only once the cheap answer gets stuck.{session.selection?.others && ` ${session.selection.others}`} On small probe programs of two to four knobs, the same loop fixed 94% of the failures that could be fixed.
           </p>
+        ) : (
+          session.pending.length > 0 &&
+          finalFails && (
+            <p className="max-w-3xl rounded-lg border-2 border-dashed border-accent p-4 text-[17px]">
+              This recording stops before the Notes stage, where Super reads what the simulator measured in the failed rehearsal, patches the program’s numbers, and each patch is rehearsed again on Earth and in orbit.
+            </p>
+          )
         )}
         <p className="text-sm text-muted">
           All model calls for this recording: {session.ledger.length} calls on Nebius Token Factory, {tokens.toLocaleString("en")} tokens, {usd(session.total_usd)} at list prices, {session.ledger.reduce((a, c) => a + c.seconds, 0).toFixed(1)} s.

@@ -1,7 +1,6 @@
 /**
  * A showcase recording: one clip run once through the live path (label, fit,
- * compile with recorded answers, rehearsal, and Notes patches once #28 is on
- * main), saved as public/showcase/<clip>.json by lib/showcase/record.ts.
+ * compile with recorded answers, rehearsal, and Notes patches), saved as public/showcase/<clip>.json by lib/showcase/record.ts.
  * /space plays it back with no model call: every Token Factory answer comes
  * from here, and the simulator re-runs each iteration's program in the
  * browser. `results` are the rehearsals measured in node when it was
@@ -84,8 +83,13 @@ export const Session = z.object({
   fit: z.object({ spec: TaskSpec, warnings: z.array(z.string()) }),
   turns: z.array(Turn).min(1),
   iterations: z.array(Iteration).min(1),
-  /** set while the Notes stage (#28) is not on main: the story stops after the interview */
+  /** set when a recording ran without the Notes stage (#28): the story stops after the interview */
   pending: z.array(z.string()).default([]),
+  /**
+   * How this recording was chosen among several runs of its clip, said on its page. Written by
+   * hand after choosing; the recorder never writes it, so a new recording starts without the claim.
+   */
+  selection: z.object({ runs: z.number().int().positive(), kept: z.string(), others: z.string().optional() }).optional(),
   ledger: z.array(Call),
   total_usd: z.number(),
 });
