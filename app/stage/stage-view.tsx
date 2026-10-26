@@ -144,7 +144,7 @@ export function StageView() {
   }, [spec]);
 
   // after the effect above, so a fresh renderer gets the setting too
-  useEffect(() => rendererRef.current?.setSetting(setting), [setting, spec]);
+  useEffect(() => rendererRef.current?.setSetting(setting, spec), [setting, spec]);
 
   const onSlider = (i: number, v: number) => {
     const next = [...ctrl];

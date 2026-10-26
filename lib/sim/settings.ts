@@ -4,19 +4,22 @@
  * and a kitchen counter for everything else. Visual only: nothing here is in
  * the MuJoCo model, so the arm, the objects and the liquid move exactly as on
  * the bench. The work surface's top is the bench's z = 0, and every part stays
- * out of the volume the arm works in (CLEAR_M).
+ * out of the volume the arm works in (CLEAR_M), grown to hold every object of
+ * the scene where buildScene puts it (clearAround).
  *
  * World metres in MuJoCo's Z-up frame, the robot base at the origin. The room
  * is a corner behind the arm and to its left as the stage camera sees it: a
- * back wall at x = BACK_X, a side wall at y = SIDE_Y, the counter between them
- * and the room's floor a counter's height below. Walls are one-sided planes
+ * back wall and a side wall a fitting's depth beyond the clear volume, the
+ * counter under all of it and the room's floor a counter's height below. Walls
+ * are one-sided planes
  * facing the room, so orbiting behind one drops it out of the way. Parts are
  * boxes, cylinders and spheres merged into one mesh per material: a whole
  * setting is about a dozen draw calls. Shapes are generic; no agency marks.
  */
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import type { GravityName } from "@/lib/spec/schema";
+import type { GravityName, TaskSpec } from "@/lib/spec/schema";
+import { buildScene, MM } from "./scene";
 
 export const SETTINGS = ["station", "kitchen"] as const;
 export type SettingName = (typeof SETTINGS)[number];
@@ -26,7 +29,7 @@ export const SETTING_WORLD: Record<SettingName, GravityName> = { station: "orbit
 
 /** Words that put a clip aboard a spacecraft; any other clip is done at home. */
 const SPACE =
-  /\b(ISS|space ?stations?|orbit(al|ing)?|in space|astronauts?|cosmonauts?|spacecraft|space ?walks?|micro-?gravity|zero[- ]g(ravity)?|weightless(ness)?|aboard (the|a) (station|module))\b/i;
+  /\b(ISS|space ?stations?|orbit(ing)?|orbital (station|module|lab)|in space|astronauts?|cosmonauts?|spacecraft|space ?walks?|micro-?gravity|zero[- ]g(ravity)?|weightless(ness)?|aboard (the|a) (station|module))\b/i;
 
 /** The setting a clip belongs in, from its words: the label's title and summary, the uploader's hint. */
 export function settingFor(...texts: (string | undefined)[]): SettingName {
@@ -34,9 +37,32 @@ export function settingFor(...texts: (string | undefined)[]): SettingName {
 }
 
 type Vec = [number, number, number];
+type Box = { min: Vec; max: Vec };
 
-/** The volume the arm and the task's objects use; no part of a setting enters it. */
-export const CLEAR_M: { min: Vec; max: Vec } = { min: [-0.25, -0.5, 0.0005], max: [0.6, 0.5, 0.55] };
+/** The volume the arm and a fitted task's objects use; no part of a setting enters it. */
+export const CLEAR_M: Box = { min: [-0.25, -0.5, 0.0005], max: [0.6, 0.5, 0.55] };
+
+/** CLEAR_M grown to hold every object of `spec` where buildScene puts it, each as the sphere any rotation stays in. */
+export function clearAround(spec?: TaskSpec): Box {
+  const box: Box = { min: [...CLEAR_M.min], max: [...CLEAR_M.max] };
+  let frames: ReturnType<typeof buildScene>["frames"];
+  try {
+    if (!spec) return box;
+    frames = buildScene(spec).frames;
+  } catch {
+    return box; // a scene that cannot be built never loads on the stage either
+  }
+  for (const o of spec.objects) {
+    const at = frames[o.id]?.xyz_m;
+    if (!at) continue;
+    const r = (Math.hypot(...o.size_mm) * MM) / 2;
+    for (let k = 0; k < 3; k++) {
+      if (k < 2) box.min[k] = Math.min(box.min[k], at[k] - r); // the floor stays the work surface
+      box.max[k] = Math.max(box.max[k], at[k] + r);
+    }
+  }
+  return box;
+}
 
 /**
  * Where the stage camera goes when a setting comes on, [target, from]: back and up from the bench view, so the
@@ -48,21 +74,39 @@ export const SETTING_VIEW: [Vec, Vec] = [
   [0.8, -0.7, 0.56],
 ];
 
-const BACK_X = -0.35;
-const SIDE_Y = 0.6;
-/** the far end of the back wall and the open front of the room */
-const FAR_Y = -1.4;
-const NEAR_X = 1.7;
-/** the counter's front edge */
-const FRONT_X = 0.62;
 /** the room's floor, a counter's height below the work surface, and the top of the walls */
 const FLOOR_Z = -0.9;
 const TOP_Z = 1.3;
+/** how far a wall's fittings (lockers, rails, shelves, a laptop) stand out into the room, at most */
+const FITTINGS_M = 0.1;
 
 /** A wall seen from the room: the plane it stands in, which way it faces, and its extent along the floor. */
 type Wall = { face: "+x" | "-y"; plane: number; u: [number, number] };
-const BACK: Wall = { face: "+x", plane: BACK_X, u: [FAR_Y, SIDE_Y] };
-const SIDE: Wall = { face: "-y", plane: SIDE_Y, u: [BACK_X, NEAR_X] };
+
+/**
+ * The room around a clear volume: the back wall at x = backX and the side wall at y = sideY, each a fitting's
+ * depth beyond it; the back wall runs to farY, the side wall to the open front at nearX; the counter's front edge
+ * is frontX; wall cupboards start at cupboardZ, above everything.
+ */
+type Room = { backX: number; sideY: number; farY: number; nearX: number; frontX: number; cupboardZ: number; back: Wall; side: Wall };
+
+function roomAround(clear: Box): Room {
+  const backX = Math.min(-0.35, clear.min[0] - FITTINGS_M);
+  const sideY = Math.max(0.6, clear.max[1] + FITTINGS_M);
+  const farY = Math.min(-1.4, clear.min[1] - 0.4);
+  const frontX = Math.max(0.62, clear.max[0] + 0.02);
+  const nearX = frontX + 1.1;
+  return {
+    backX,
+    sideY,
+    farY,
+    nearX,
+    frontX,
+    cupboardZ: Math.max(0.72, clear.max[2] + 0.12),
+    back: { face: "+x", plane: backX, u: [farY, sideY] },
+    side: { face: "-y", plane: sideY, u: [backX, nearX] },
+  };
+}
 
 /** A point on a wall: `u` along it, `z` up, `d` out into the room. */
 const onWall = (w: Wall, u: number, z: number, d: number): Vec => (w.face === "+x" ? [w.plane + d, u, z] : [u, w.plane - d, z]);
@@ -122,12 +166,12 @@ class Parts {
   }
 
   /** the walls and the floor of the room, the walls painted to `wall` */
-  shell(wall: THREE.Material, floor: THREE.Material) {
+  shell(r: Room, wall: THREE.Material, floor: THREE.Material) {
     const h = TOP_Z - FLOOR_Z;
     const zc = (TOP_Z + FLOOR_Z) / 2;
-    this.plane(wall, "+x", [BACK_X, (FAR_Y + SIDE_Y) / 2, zc], SIDE_Y - FAR_Y, h);
-    this.plane(wall, "-y", [(BACK_X + NEAR_X) / 2, SIDE_Y, zc], NEAR_X - BACK_X, h);
-    this.plane(floor, "+z", [(BACK_X + NEAR_X) / 2, (FAR_Y + SIDE_Y) / 2, FLOOR_Z], NEAR_X - BACK_X, SIDE_Y - FAR_Y);
+    this.plane(wall, "+x", [r.backX, (r.farY + r.sideY) / 2, zc], r.sideY - r.farY, h);
+    this.plane(wall, "-y", [(r.backX + r.nearX) / 2, r.sideY, zc], r.nearX - r.backX, h);
+    this.plane(floor, "+z", [(r.backX + r.nearX) / 2, (r.farY + r.sideY) / 2, FLOOR_Z], r.nearX - r.backX, r.sideY - r.farY);
   }
 
   /**
@@ -174,7 +218,7 @@ function handrail(p: Parts, bar: THREE.Material, foot: THREE.Material, w: Wall, 
  * blue handrails, a framed light panel, a cargo bag strapped to the rack, a laptop on a bracket, hook-and-loop
  * patches.
  */
-function station(): { group: THREE.Group; background: number } {
+function station(r: Room): { group: THREE.Group; background: number } {
   const m = {
     rack: mat(0x8f99a4),
     locker: mat(0xe9e7e1, 0.7),
@@ -190,46 +234,46 @@ function station(): { group: THREE.Group; background: number } {
     screen: glow(0x6f93c4, 0.5),
   };
   const p = new Parts();
-  p.shell(m.rack, m.rack);
+  p.shell(r, m.rack, m.rack);
   // the work table on the racks: deck plates over a dark frame, a seat-track rail along its front edge
-  p.box(m.latch, [BACK_X, FAR_Y, -0.035], [FRONT_X, SIDE_Y, -0.003]);
-  const plateX = lines(BACK_X, FRONT_X, 0.32);
-  const plateY = lines(FAR_Y, SIDE_Y, 0.32);
+  p.box(m.latch, [r.backX, r.farY, -0.035], [r.frontX, r.sideY, -0.003]);
+  const plateX = lines(r.backX, r.frontX, 0.32);
+  const plateY = lines(r.farY, r.sideY, 0.32);
   for (let i = 0; i + 1 < plateX.length; i++)
     for (let k = 0; k + 1 < plateY.length; k++) p.box(m.plate, [plateX[i] + 0.004, plateY[k] + 0.004, -0.003], [plateX[i + 1] - 0.004, plateY[k + 1] - 0.004, 0]);
-  p.box(m.foot, [FRONT_X, FAR_Y, -0.035], [FRONT_X + 0.014, SIDE_Y, -0.01]);
+  p.box(m.foot, [r.frontX, r.farY, -0.035], [r.frontX + 0.014, r.sideY, -0.01]);
   // lockers under the table, on the back wall, on the side wall around the light panel and past the table
-  const under: Wall = { face: "+x", plane: FRONT_X - 0.02, u: [FAR_Y, SIDE_Y] };
+  const under: Wall = { face: "+x", plane: r.frontX - 0.02, u: [r.farY, r.sideY] };
   const rows = [0.02, 0.2, 0.38, 0.56, 0.78, 1.0, TOP_Z - 0.02];
-  p.doors(m.locker, under, lines(FAR_Y, SIDE_Y, 0.26), [FLOOR_Z + 0.04, -0.62, -0.34, -0.06], 0.015, 0.012, m.latch);
-  p.doors(m.locker, BACK, lines(FAR_Y, SIDE_Y - 0.05, 0.24), rows, 0.016, 0.012, m.latch);
-  const sideU = lines(BACK_X + 0.05, FRONT_X, 0.23);
-  p.doors(m.locker, SIDE, sideU, rows.slice(0, 3), 0.016, 0.012, m.latch);
-  p.doors(m.locker, SIDE, sideU.slice(0, 2), rows.slice(2, 4), 0.016, 0.012, m.latch);
-  p.doors(m.locker, SIDE, sideU, rows.slice(3), 0.016, 0.012, m.latch);
-  p.doors(m.locker, SIDE, lines(FRONT_X, NEAR_X, 0.26), [FLOOR_Z, -0.6, -0.3, 0, 0.3, 0.56, 0.78, 1.0, TOP_Z - 0.02], 0.016, 0.012, m.latch);
+  p.doors(m.locker, under, lines(r.farY, r.sideY, 0.26), [FLOOR_Z + 0.04, -0.62, -0.34, -0.06], 0.015, 0.012, m.latch);
+  p.doors(m.locker, r.back, lines(r.farY, r.sideY - 0.05, 0.24), rows, 0.016, 0.012, m.latch);
+  const sideU = lines(r.backX + 0.05, r.frontX, 0.23);
+  p.doors(m.locker, r.side, sideU, rows.slice(0, 3), 0.016, 0.012, m.latch);
+  p.doors(m.locker, r.side, sideU.slice(0, 2), rows.slice(2, 4), 0.016, 0.012, m.latch);
+  p.doors(m.locker, r.side, sideU, rows.slice(3), 0.016, 0.012, m.latch);
+  p.doors(m.locker, r.side, lines(r.frontX, r.nearX, 0.26), [FLOOR_Z, -0.6, -0.3, 0, 0.3, 0.56, 0.78, 1.0, TOP_Z - 0.02], 0.016, 0.012, m.latch);
   const lit: [number, number] = [sideU[1] + 0.02, sideU.at(-1)! - 0.02];
-  p.onWall(m.foot, SIDE, lit, [rows[2] + 0.01, rows[3] - 0.01], [0, 0.014]);
-  p.onWall(m.light, SIDE, [lit[0] + 0.02, lit[1] - 0.02], [rows[2] + 0.03, rows[3] - 0.03], [0.014, 0.016]);
+  p.onWall(m.foot, r.side, lit, [rows[2] + 0.01, rows[3] - 0.01], [0, 0.014]);
+  p.onWall(m.light, r.side, [lit[0] + 0.02, lit[1] - 0.02], [rows[2] + 0.03, rows[3] - 0.03], [0.014, 0.016]);
   // the corner post where the racks meet
-  p.box(m.foot, [BACK_X, SIDE_Y - 0.05, FLOOR_Z], [BACK_X + 0.05, SIDE_Y, TOP_Z]);
+  p.box(m.foot, [r.backX, r.sideY - 0.05, FLOOR_Z], [r.backX + 0.05, r.sideY, TOP_Z]);
   // handrails: one along the back wall behind the arm, one upright by the corner, more out of frame
-  handrail(p, m.rail, m.foot, BACK, [-0.2, 0.42], 0.29);
-  handrail(p, m.rail, m.foot, BACK, [-1.25, -0.7], 0.47);
-  handrail(p, m.rail, m.foot, SIDE, [0.85, 1.4], 0.47);
-  for (const z of [0.07, 0.33]) p.rod(m.foot, onWall(SIDE, -0.22, z, 0), onWall(SIDE, -0.22, z, 0.05), 0.009, 8);
-  p.rod(m.rail, onWall(SIDE, -0.22, 0.05, 0.05), onWall(SIDE, -0.22, 0.35, 0.05), 0.013);
+  handrail(p, m.rail, m.foot, r.back, [-0.2, 0.42], 0.29);
+  handrail(p, m.rail, m.foot, r.back, [-1.25, -0.7], 0.47);
+  handrail(p, m.rail, m.foot, r.side, [0.85, 1.4], 0.47);
+  for (const z of [0.07, 0.33]) p.rod(m.foot, onWall(r.side, -0.22, z, 0), onWall(r.side, -0.22, z, 0.05), 0.009, 8);
+  p.rod(m.rail, onWall(r.side, -0.22, 0.05, 0.05), onWall(r.side, -0.22, 0.35, 0.05), 0.013);
   // hook-and-loop patches where tools are stuck between uses
-  for (const [u, z] of [[0.05, 0.43], [0.2, 0.45], [-0.75, 0.25], [-1.1, 0.08]] as const) p.onWall(m.patch, BACK, [u, u + 0.05], [z, z + 0.035], [0.016, 0.019]);
-  for (const [u, z] of [[-0.12, 0.25], [0.3, 0.1]] as const) p.onWall(m.patch, SIDE, [u, u + 0.05], [z, z + 0.035], [0.016, 0.019]);
+  for (const [u, z] of [[0.05, 0.43], [0.2, 0.45], [-0.75, 0.25], [-1.1, 0.08]] as const) p.onWall(m.patch, r.back, [u, u + 0.05], [z, z + 0.035], [0.016, 0.019]);
+  for (const [u, z] of [[-0.12, 0.25], [0.3, 0.1]] as const) p.onWall(m.patch, r.side, [u, u + 0.05], [z, z + 0.035], [0.016, 0.019]);
   // a soft cargo bag strapped to the back-wall rack, left of the arm
-  p.onWall(m.bag, BACK, [-0.62, -0.26], [0.03, 0.22], [0.016, 0.09]);
-  for (const u of [-0.53, -0.36]) p.onWall(m.strap, BACK, [u, u + 0.03], [0.02, 0.23], [0.016, 0.094]);
-  p.onWall(m.strap, BACK, [-0.64, -0.24], [0.11, 0.135], [0.016, 0.094]);
+  p.onWall(m.bag, r.back, [-0.62, -0.26], [0.03, 0.22], [0.016, 0.09]);
+  for (const u of [-0.53, -0.36]) p.onWall(m.strap, r.back, [u, u + 0.03], [0.02, 0.23], [0.016, 0.094]);
+  p.onWall(m.strap, r.back, [-0.64, -0.24], [0.11, 0.135], [0.016, 0.094]);
   // a laptop on a bracket on the side wall
-  p.rod(m.foot, onWall(SIDE, 0.27, 0.22, 0.016), onWall(SIDE, 0.27, 0.22, 0.06), 0.012, 8);
-  p.onWall(m.laptop, SIDE, [0.13, 0.41], [0.12, 0.32], [0.06, 0.075]);
-  p.onWall(m.screen, SIDE, [0.145, 0.395], [0.135, 0.305], [0.075, 0.077]);
+  p.rod(m.foot, onWall(r.side, 0.27, 0.22, 0.016), onWall(r.side, 0.27, 0.22, 0.06), 0.012, 8);
+  p.onWall(m.laptop, r.side, [0.13, 0.41], [0.12, 0.32], [0.06, 0.075]);
+  p.onWall(m.screen, r.side, [0.145, 0.395], [0.135, 0.305], [0.075, 0.077]);
   const group = p.build();
   const lamp = new THREE.PointLight(0xf1f5ff, 1.2, 0, 2);
   lamp.position.set(0.6, -0.2, 0.95);
@@ -241,7 +285,7 @@ function station(): { group: THREE.Group; background: number } {
  * A kitchen: a wooden counter on cream cabinets, a tiled splashback, a spice shelf, a window with a pot of herbs on
  * the sill, a utensil crock and a cutting board in the far corner, wall cupboards above.
  */
-function kitchen(): { group: THREE.Group; background: number } {
+function kitchen(r: Room): { group: THREE.Group; background: number } {
   const m = {
     wall: mat(0xf0e4cf),
     floor: mat(0xb7a387),
@@ -262,15 +306,15 @@ function kitchen(): { group: THREE.Group; background: number } {
     leaf: mat(0x5d8a55),
   };
   const p = new Parts();
-  p.shell(m.wall, m.floor);
+  p.shell(r, m.wall, m.floor);
   // the counter, its top the bench's z = 0
-  p.box(m.wood, [BACK_X, FAR_Y, -0.04], [FRONT_X, SIDE_Y, 0]);
-  p.box(m.edge, [FRONT_X - 0.004, FAR_Y, -0.042], [FRONT_X + 0.004, SIDE_Y, -0.002]);
+  p.box(m.wood, [r.backX, r.farY, -0.04], [r.frontX, r.sideY, 0]);
+  p.box(m.edge, [r.frontX - 0.004, r.farY, -0.042], [r.frontX + 0.004, r.sideY, -0.002]);
   // cabinets under it: a carcass, a row of drawers, doors, a toe kick
-  p.box(m.carcass, [BACK_X, FAR_Y, FLOOR_Z + 0.1], [FRONT_X - 0.03, SIDE_Y, -0.04]);
-  p.box(m.handle, [BACK_X, FAR_Y, FLOOR_Z], [FRONT_X - 0.09, SIDE_Y, FLOOR_Z + 0.1]);
-  const front: Wall = { face: "+x", plane: FRONT_X - 0.03, u: [FAR_Y, SIDE_Y] };
-  const cols = lines(FAR_Y, SIDE_Y, 0.5);
+  p.box(m.carcass, [r.backX, r.farY, FLOOR_Z + 0.1], [r.frontX - 0.03, r.sideY, -0.04]);
+  p.box(m.handle, [r.backX, r.farY, FLOOR_Z], [r.frontX - 0.09, r.sideY, FLOOR_Z + 0.1]);
+  const front: Wall = { face: "+x", plane: r.frontX - 0.03, u: [r.farY, r.sideY] };
+  const cols = lines(r.farY, r.sideY, 0.5);
   p.doors(m.cabinet, front, cols, [-0.22, -0.045], 0.018, 0.01);
   p.doors(m.cabinet, front, cols, [FLOOR_Z + 0.1, -0.22], 0.018, 0.01);
   for (let i = 0; i + 1 < cols.length; i++) {
@@ -279,33 +323,36 @@ function kitchen(): { group: THREE.Group; background: number } {
     p.onWall(m.handle, front, [cols[i + 1] - 0.06, cols[i + 1] - 0.045], [-0.42, -0.3], [0.018, 0.03]);
   }
   // the splashback: square tiles on grout, on both walls up to the shelf
-  p.onWall(m.grout, BACK, [FAR_Y, SIDE_Y], [0, 0.4], [0, 0.003]);
-  p.doors(m.tile, BACK, lines(FAR_Y, SIDE_Y, 0.1), lines(0, 0.4, 0.1), 0.008, 0.006);
-  p.onWall(m.grout, SIDE, [BACK_X, FRONT_X], [0, 0.1], [0, 0.003]);
-  p.doors(m.tile, SIDE, lines(BACK_X, FRONT_X, 0.1), [0, 0.1], 0.008, 0.006);
+  p.onWall(m.grout, r.back, [r.farY, r.sideY], [0, 0.4], [0, 0.003]);
+  p.doors(m.tile, r.back, lines(r.farY, r.sideY, 0.1), lines(0, 0.4, 0.1), 0.008, 0.006);
+  p.onWall(m.grout, r.side, [r.backX, r.frontX], [0, 0.1], [0, 0.003]);
+  p.doors(m.tile, r.side, lines(r.backX, r.frontX, 0.1), [0, 0.1], 0.008, 0.006);
   // a spice shelf above the splashback, with jars
-  p.onWall(m.wood, BACK, [-1.3, 0.55], [0.4, 0.42], [0, 0.095]);
+  p.onWall(m.wood, r.back, [-1.3, r.sideY - 0.05], [0.4, 0.42], [0, 0.095]);
   const jars: [number, number, THREE.Material][] = [[-1.2, 0.11, m.ink], [-1.1, 0.08, m.accent], [-1.0, 0.13, m.sun], [-0.88, 0.09, m.ink], [-0.62, 0.12, m.plate], [-0.5, 0.1, m.accent], [0.1, 0.12, m.ink], [0.22, 0.08, m.sun], [0.34, 0.1, m.plate], [0.45, 0.13, m.accent]];
-  for (const [u, h, jm] of jars) p.rod(jm, onWall(BACK, u, 0.42, 0.05), onWall(BACK, u, 0.42 + h, 0.05), 0.032, 16);
+  for (const [u, h, jm] of jars) p.rod(jm, onWall(r.back, u, 0.42, 0.05), onWall(r.back, u, 0.42 + h, 0.05), 0.032, 16);
   // wall cupboards higher up, out of the stage camera's frame until it pulls back
-  p.onWall(m.carcass, BACK, [FAR_Y, -0.05], [0.72, TOP_Z], [0, 0.3]);
-  p.doors(m.cabinet, { ...BACK, plane: BACK_X + 0.3 }, lines(FAR_Y, -0.05, 0.45), [0.73, TOP_Z - 0.01], 0.015, 0.01);
+  if (r.cupboardZ + 0.3 < TOP_Z) {
+    p.onWall(m.carcass, r.back, [r.farY, -0.05], [r.cupboardZ, TOP_Z], [0, 0.3]);
+    p.doors(m.cabinet, { ...r.back, plane: r.backX + 0.3 }, lines(r.farY, -0.05, 0.45), [r.cupboardZ + 0.01, TOP_Z - 0.01], 0.015, 0.01);
+  }
   // a window on the side wall, a sill and a pot of herbs
   const win = { u: [-0.08, 0.38] as [number, number], z: [0.16, 0.62] as [number, number] };
-  p.onWall(m.frame, SIDE, win.u, win.z, [0, 0.02]);
-  p.onWall(m.glass, SIDE, [win.u[0] + 0.03, win.u[1] - 0.03], [win.z[0] + 0.03, win.z[1] - 0.03], [0.02, 0.022]);
-  p.onWall(m.frame, SIDE, [(win.u[0] + win.u[1]) / 2 - 0.012, (win.u[0] + win.u[1]) / 2 + 0.012], win.z, [0.022, 0.03]);
-  p.onWall(m.frame, SIDE, win.u, [(win.z[0] + win.z[1]) / 2 - 0.012, (win.z[0] + win.z[1]) / 2 + 0.012], [0.022, 0.03]);
-  p.onWall(m.frame, SIDE, [win.u[0] - 0.03, win.u[1] + 0.03], [win.z[0] - 0.03, win.z[0]], [0, 0.07]);
-  p.rod(m.pot, onWall(SIDE, 0.27, win.z[0], 0.04), onWall(SIDE, 0.27, win.z[0] + 0.07, 0.04), 0.035, 16);
-  for (const [du, dz, r] of [[0, 0.11, 0.04], [-0.03, 0.09, 0.03], [0.03, 0.095, 0.032], [0.005, 0.14, 0.028]] as const)
-    p.ball(m.leaf, onWall(SIDE, 0.27 + du, win.z[0] + dz, 0.04), r);
+  p.onWall(m.frame, r.side, win.u, win.z, [0, 0.02]);
+  p.onWall(m.glass, r.side, [win.u[0] + 0.03, win.u[1] - 0.03], [win.z[0] + 0.03, win.z[1] - 0.03], [0.02, 0.022]);
+  p.onWall(m.frame, r.side, [(win.u[0] + win.u[1]) / 2 - 0.012, (win.u[0] + win.u[1]) / 2 + 0.012], win.z, [0.022, 0.03]);
+  p.onWall(m.frame, r.side, win.u, [(win.z[0] + win.z[1]) / 2 - 0.012, (win.z[0] + win.z[1]) / 2 + 0.012], [0.022, 0.03]);
+  p.onWall(m.frame, r.side, [win.u[0] - 0.03, win.u[1] + 0.03], [win.z[0] - 0.03, win.z[0]], [0, 0.07]);
+  p.rod(m.pot, onWall(r.side, 0.27, win.z[0], 0.04), onWall(r.side, 0.27, win.z[0] + 0.07, 0.04), 0.035, 16);
+  for (const [du, dz, size] of [[0, 0.11, 0.04], [-0.03, 0.09, 0.03], [0.03, 0.095, 0.032], [0.005, 0.14, 0.028]] as const)
+    p.ball(m.leaf, onWall(r.side, 0.27 + du, win.z[0] + dz, 0.04), size);
   // a utensil crock and a cutting board in the far corners of the counter, out of the arm's way
-  p.rod(m.ink, [-0.3, 0.545, 0], [-0.3, 0.545, 0.12], 0.04, 16);
+  const [cx, cy] = [r.backX + 0.05, r.sideY - 0.055];
+  p.rod(m.ink, [cx, cy, 0], [cx, cy, 0.12], 0.04, 16);
   for (const [dx, dy, h] of [[-0.012, 0.01, 0.25], [0.012, -0.008, 0.23], [0, 0.015, 0.21]] as const)
-    p.rod(m.edge, [-0.3 + dx, 0.545 + dy, 0.1], [-0.3 + dx * 2, 0.545 + dy * 2, h], 0.006, 6);
-  p.box(m.wood, [BACK_X + 0.003, -1.05, 0], [BACK_X + 0.025, -0.7, 0.3]);
-  p.ball(m.plate, [BACK_X + 0.012, -0.875, 0.27], 0.012);
+    p.rod(m.edge, [cx + dx, cy + dy, 0.1], [cx + dx * 2, cy + dy * 2, h], 0.006, 6);
+  p.box(m.wood, [r.backX + 0.003, -1.05, 0], [r.backX + 0.025, -0.7, 0.3]);
+  p.ball(m.plate, [r.backX + 0.012, -0.875, 0.27], 0.012);
   const group = p.build();
   const lamp = new THREE.PointLight(0xffe4c0, 1.4, 0, 2);
   lamp.position.set(0.7, -0.3, 0.95);
@@ -318,8 +365,13 @@ export class Dressing {
   readonly group: THREE.Group;
   readonly background: THREE.Color;
 
-  constructor(readonly name: SettingName) {
-    const built = name === "station" ? station() : kitchen();
+  /** `around`: the spec on the stage, whose objects the room is built around. */
+  constructor(
+    readonly name: SettingName,
+    readonly around?: TaskSpec,
+  ) {
+    const room = roomAround(clearAround(around));
+    const built = name === "station" ? station(room) : kitchen(room);
     this.group = built.group;
     this.background = new THREE.Color(built.background);
   }

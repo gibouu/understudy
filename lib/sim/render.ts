@@ -21,6 +21,7 @@ import {
   type GeomMeta,
   type SimMeta,
 } from "./protocol";
+import type { TaskSpec } from "@/lib/spec/schema";
 import { Dressing, SETTING_VIEW, type SettingName } from "./settings";
 
 const ROT_Z_TO_Y = new THREE.Matrix4().makeRotationX(Math.PI / 2);
@@ -85,8 +86,13 @@ export class StageRenderer {
     this.camera.updateProjectionMatrix();
   }
 
-  /** Look at `target` from `from`, world metres. */
+  /** Look at `target` from `from`, world metres; with a setting drawn, also the view the bare bench gets back. */
   view(target: [number, number, number], from: [number, number, number]) {
+    if (this.dressing) this.benchView = [target, from];
+    this.look(target, from);
+  }
+
+  private look(target: [number, number, number], from: [number, number, number]) {
     this.camera.position.set(...from);
     this.controls.target.set(...target);
     this.controls.update();
@@ -127,21 +133,24 @@ export class StageRenderer {
     }
   }
 
-  /** Draw a setting around the bench, or the bare bench again with null. Visual only: the physics never sees it. */
-  setSetting(name: SettingName | null) {
+  /**
+   * Draw a setting around the bench, its room built around the objects of `around` (the spec on the stage), or the
+   * bare bench again with null. Visual only: the physics never sees it.
+   */
+  setSetting(name: SettingName | null, around?: TaskSpec) {
     const was = this.dressing;
-    if ((was?.name ?? null) === name) return;
+    if (was ? was.name === name && was.around === around : !name) return;
     if (was) {
       this.scene.remove(was.group);
       was.dispose();
     } else this.benchView = [this.controls.target.toArray(), this.camera.position.toArray()];
-    this.dressing = name ? new Dressing(name) : null;
+    this.dressing = name ? new Dressing(name, around) : null;
     if (this.dressing) this.scene.add(this.dressing.group);
     this.scene.background = this.dressing?.background ?? BENCH;
     for (const o of this.objects.values()) if (o.userData.floor) o.visible = !this.dressing;
     // into a room from the bench: step back so the walls show; back to the bench: the view it had
-    if (!was) this.view(...SETTING_VIEW);
-    else if (!this.dressing && this.benchView) this.view(...this.benchView);
+    if (!was) this.look(...SETTING_VIEW);
+    else if (!this.dressing && this.benchView) this.look(...this.benchView);
   }
 
   private setLiquid(l: SimMeta["liquid"]) {

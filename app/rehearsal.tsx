@@ -35,8 +35,8 @@ export function Rehearsal({ spec, program, onFail, notes = true, hint }: { spec:
   /** the last rehearsal in every world, when it failed somewhere a patch can reach; `n` keys a fresh patch loop */
   const [failing, setFailing] = useState<{ program: Program; runs: WorldRun[]; n: number } | null>(null);
   const [patching, setPatching] = useState(false);
-  /** the worlds where the program's latest rehearsal passed */
-  const [passed, setPassed] = useState<{ program: Program; worlds: GravityName[] } | null>(null);
+  /** the worlds where the last program played on this stage passed (`ran`: the prop, or a patch of it) */
+  const [passed, setPassed] = useState<{ program: Program; ran: Program; worlds: GravityName[] } | null>(null);
   const [picked, setPicked] = useState<Shown | "auto">("auto");
   const suggested = useMemo(() => settingFor(spec.title, spec.summary, hint), [spec, hint]);
   const earned = passed?.program === program && passed.worlds.includes(SETTING_WORLD[suggested]);
@@ -69,7 +69,7 @@ export function Rehearsal({ spec, program, onFail, notes = true, hint }: { spec:
   }, [spec]);
 
   // after the effect above, so a fresh renderer gets the setting too
-  useEffect(() => rendererRef.current?.setSetting(shown), [shown, spec]);
+  useEffect(() => rendererRef.current?.setSetting(shown, spec), [shown, spec]);
 
   /** One rollout of `p` per world, each from the spec's start; `show` puts them in the table. */
   const play = useCallback(async (p: Program, worlds: GravityName[], show: boolean): Promise<Row[]> => {
@@ -88,6 +88,12 @@ export function Rehearsal({ spec, program, onFail, notes = true, hint }: { spec:
         result = { error: (err as Error).message };
       }
       out.push({ world, result });
+      // the stage now shows this rollout, a patch's included: the setting follows what it shows
+      const won = typeof result === "object" && !("error" in result) && result.pass;
+      setPassed((prev) => {
+        const kept = prev?.program === program && prev.ran === p ? prev.worlds.filter((w) => w !== world) : [];
+        return { program, ran: p, worlds: won ? [...kept, world] : kept };
+      });
       if (!show) continue;
       setRows((rs) => rs.map((r) => (r.world === world ? { world, result } : r)));
       if (!first && !("error" in result) && !result.pass && result.failed_step_id) {
@@ -96,7 +102,7 @@ export function Rehearsal({ spec, program, onFail, notes = true, hint }: { spec:
       }
     }
     return out;
-  }, [onFail]);
+  }, [onFail, program]);
 
   async function rehearse(worlds: GravityName[]) {
     if (!clientRef.current || busy || patching) return;
@@ -105,8 +111,6 @@ export function Rehearsal({ spec, program, onFail, notes = true, hint }: { spec:
     setFailing(null);
     onFail(null);
     const out = await play(program, worlds, true);
-    const won = out.flatMap(({ world, result }) => (typeof result === "object" && !("error" in result) && result.pass ? [world] : []));
-    setPassed((p) => ({ program, worlds: [...(p?.program === program ? p.worlds.filter((w) => !worlds.includes(w)) : []), ...won] }));
     const runs = out.flatMap(({ world, result }) => (typeof result === "object" && !("error" in result) ? [{ world, rollout: result }] : []));
     // a spec gap (an unanswered question, an unknown object) is the interview's to fix, not a patch's
     if (worlds.length === WORLDS.length && runs.length === WORLDS.length && runs.some((r) => !r.rollout.pass) && runs.every((r) => r.rollout.pass || r.rollout.failure_class !== "spec_gap")) {

@@ -1,7 +1,9 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { CLEAR_M, Dressing, SETTINGS, settingFor } from "@/lib/sim/settings";
+import { DEMO_SPEC, POUR_SPEC } from "@/lib/sim/demo-spec";
+import { CLEAR_M, clearAround, Dressing, SETTINGS, settingFor } from "@/lib/sim/settings";
 import { SAMPLES } from "@/lib/samples";
+import type { TaskSpec } from "@/lib/spec/schema";
 
 describe("settingFor", () => {
   it("puts every space sample's hint in the station module", () => {
@@ -13,6 +15,7 @@ describe("settingFor", () => {
     expect(settingFor("pour the cup", "A crew member pours water in microgravity.")).toBe("station");
     expect(settingFor("tighten a bolt", "Done in orbit, on a rack.")).toBe("station");
     expect(settingFor("stow the bag", "", "aboard the station")).toBe("station");
+    expect(settingFor("plug in a sample", "Inside an orbital lab.")).toBe("station");
   });
 
   it("sends household and unmarked clips to the kitchen", () => {
@@ -22,17 +25,38 @@ describe("settingFor", () => {
   });
 
   it("is not fooled by words that only contain a space word", () => {
-    for (const t of ["a charging station on the desk", "a soldering workstation", "the space between the cups", "kiss the cook", "a glass mission jar"])
+    for (const t of ["a charging station on the desk", "a soldering workstation", "the space between the cups", "kiss the cook", "a glass mission jar", "sanding a board with an orbital sander"])
       expect(settingFor(t), t).toBe("kitchen");
   });
 });
 
-describe("Dressing", () => {
-  const clear = new THREE.Box3(new THREE.Vector3(...CLEAR_M.min), new THREE.Vector3(...CLEAR_M.max));
+/** the demo scene with its objects moved out where the default room's walls and its far end would be */
+const SPREAD: TaskSpec = {
+  ...DEMO_SPEC,
+  objects: DEMO_SPEC.objects.map((o, i) => ({ ...o, pose: { ...o.pose!, xyz_mm: i ? [250, 600, 15] : [700, -900, 20] } })),
+};
 
-  for (const name of SETTINGS) {
-    it(`${name}: keeps out of the volume the arm works in`, () => {
-      const d = new Dressing(name);
+describe("clearAround", () => {
+  it("is CLEAR_M for the fitted demo scenes and without a spec", () => {
+    for (const spec of [undefined, DEMO_SPEC, POUR_SPEC]) expect(clearAround(spec)).toEqual(CLEAR_M);
+  });
+
+  it("grows to hold every object, whatever its rotation", () => {
+    const c = clearAround(SPREAD);
+    const pillow = Math.hypot(...SPREAD.objects[1].size_mm) / 2000;
+    expect(c.max[1]).toBeCloseTo(0.6 + pillow, 6);
+    expect(c.max[0]).toBeGreaterThan(0.7);
+    expect(c.min[1]).toBeLessThan(-0.9);
+    expect(c.min[2]).toBe(CLEAR_M.min[2]); // the work surface stays the floor
+  });
+});
+
+describe("Dressing", () => {
+  for (const [name, around] of SETTINGS.flatMap((n) => [[n, undefined], [n, POUR_SPEC], [n, SPREAD]] as const)) {
+    it(`${name}${around ? ` around ${around === SPREAD ? "objects out by the walls" : around.title}` : ""}: keeps out of the volume the arm and the objects use`, () => {
+      const c = clearAround(around);
+      const clear = new THREE.Box3(new THREE.Vector3(...c.min), new THREE.Vector3(...c.max));
+      const d = new Dressing(name, around);
       const tri = new THREE.Triangle();
       let triangles = 0;
       d.group.traverse((o) => {
@@ -50,7 +74,9 @@ describe("Dressing", () => {
       expect(triangles).toBeGreaterThan(500);
       d.dispose();
     });
+  }
 
+  for (const name of SETTINGS) {
     it(`${name}: costs one draw call per material, a few dozen at most`, () => {
       const d = new Dressing(name);
       const meshes: THREE.Mesh[] = [];
