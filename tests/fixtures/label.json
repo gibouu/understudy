@@ -475,14 +475,14 @@
   }
  },
  {
-  "clip_sha256": "4b1646700b5a7aef4d78fa3c3c817d70a173f844da111bd83010efdc18ddcb44",
+  "clip_sha256": "444805860057d0b6ef99e1e5af4a2e9f6dd46819f20c543ea629afa5f65a1df4",
   "hint": "aboard the ISS, waving hello to the camera with one hand, a microphone in the other",
   "result": {
    "status": "done",
    "value": {
     "version": 1,
-    "title": "ISS astronaut waves hello while holding a microphone",
-    "summary": "Aboard the ISS, a person in a red shirt waves with one hand and holds a microphone in the other, greeting the camera. No objects are manipulated and there are no robot-relevant steps.",
+    "title": "Astronaut waves hello aboard ISS while holding a microphone",
+    "summary": "An astronaut seated on the ISS holds a microphone in one hand and waves to the camera with the other, then lowers the hand and continues speaking.",
     "objects": [
      {
       "id": "mic1",
@@ -491,20 +491,21 @@
       "size_mm": [
        25,
        25,
-       160
+       150
       ],
       "symmetry": "axial",
       "role": "manipulated",
       "pose": {
        "xyz_mm": [
-        0,
-        0,
-        0
+        450,
+        300,
+        850
        ],
        "yaw_deg": 0,
        "frame": "world"
       },
-      "confidence": 0.3,
+      "pocket_clearance_mm": 0,
+      "confidence": 0.35,
       "source": "vl#seg1",
       "sources": {}
      }
@@ -522,24 +523,31 @@
        "path": [],
        "reach_mm": 5
       },
-      "t_start_s": 0,
-      "t_end_s": 8,
+      "t_start_s": 1,
+      "t_end_s": 3.2,
       "source": "vl#seg1",
       "sources": {}
      }
     ],
     "anchor": {
      "t_s": 0,
-     "confidence": 0.2
+     "confidence": 0
     },
-    "warnings": [],
+    "warnings": [
+     "No grasp or tool-use occurs; no anchor grasp to timestamp",
+     "Microphone size and pose are estimated without a visible scale; world-frame origin is not defined in the image",
+     "No pocket, zone, stack, or surface fixture is present in the clip",
+     "pocket_clearance_mm is set to 0 because no pocket is visible"
+    ],
     "open_questions": [
-     "microphone pose and scale cannot be determined without a reference object"
+     "microphone size_mm",
+     "microphone pose xyz_mm/yaw_deg",
+     "world frame origin definition"
     ],
     "sources": {},
     "provenance": {
      "label_input": "video",
-     "clip_sha256": "4b1646700b5a7aef4d78fa3c3c817d70a173f844da111bd83010efdc18ddcb44",
+     "clip_sha256": "444805860057d0b6ef99e1e5af4a2e9f6dd46819f20c543ea629afa5f65a1df4",
      "model": "nvidia/Nemotron-3.5-Super-VL"
     }
    },
@@ -549,10 +557,17 @@
    "ledger": [
     {
      "model": "nvidia/Nemotron-3.5-Super-VL",
-     "prompt_tokens": 2050,
-     "completion_tokens": 238,
+     "prompt_tokens": 1734,
+     "completion_tokens": 419,
      "cached_tokens": 0,
-     "seconds": 2.235
+     "seconds": 2.072
+    },
+    {
+     "model": "nvidia/Nemotron-3.5-Super-VL",
+     "prompt_tokens": 2204,
+     "completion_tokens": 438,
+     "cached_tokens": 0,
+     "seconds": 1.994
     }
    ]
   }

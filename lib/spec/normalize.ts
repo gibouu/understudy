@@ -152,6 +152,10 @@ export function normalizeSpec(raw: unknown): Normalized {
           warnings.push(`${where}: hand ${show(g.hand)} is not left or right; dropped`);
           delete g.hand;
         }
+      } else if (s.gesture !== undefined) {
+        // the prompt's step shape lists a gesture block; on any other verb it is a copy, not a gesture
+        warnings.push(`${where}: a ${show(s.verb)} step has no gesture block; dropped`);
+        delete s.gesture;
       }
       s.preconditions = normalizePredicates(s.preconditions, `${where} preconditions`, warnings, questions);
       s.success = normalizePredicates(s.success, `${where} success`, warnings, questions);

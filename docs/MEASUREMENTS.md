@@ -239,19 +239,21 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 
 ## 11. Following a gesture
 
-`samples/iss-wave.mp4` (8 s at 30 fps, an astronaut waving to the camera) traced in the browser by `lib/vision/trace.ts` on 26 October: Super VL labels one gesture step of the right hand over 0 to 8 s; MediaPipe pose sees the hand in 240 of 240 frames, on an arm of 492 mm, so the path is drawn at 508 mm per metre the hand moved. The landmarks are kept in `tests/fixtures/vision/wave.json`, and `tests/sim/wave-fixture.test.ts` replays them through the scaling and the arm.
+`samples/iss-wave.mp4` (6 s at 30 fps, an astronaut waving to the camera) traced in the browser by `lib/vision/trace.ts` on 26 October. In the recorded label, Super VL calls 1 to 3.2 s one gesture of the right hand, the first wave; another run on the same clip called it 1 to 4 s and added a microphone grasp beside it, so the window varies from run to run. MediaPipe pose sees the hand in 66 of 66 frames of that window, on an arm of 481 mm. The landmarks are kept in `tests/fixtures/vision/wave.json`, and `tests/sim/wave-fixture.test.ts` replays them through the scaling and the arm.
 
-- The wave turns back about three times a second. Sampled at 10 fps it aliases into jitter (the first trace drew a path 24 mm across); the trace samples at the clip's 30 fps. A three-sample average weighted 1, 2, 1 takes off frame-to-frame jitter and keeps 90% of a 3 Hz swing.
-- In a palm wave the hand turns about the wrist, so the hand's centre (the mean of the pose model's wrist, index and pinky landmarks) moves a little more than the wrist: 44 mm across and 56 mm high on the robot's scale, against 36 and 60 for the wrist alone. The path follows the hand's centre, which is what the gripper stands for, and averages three landmarks instead of one.
-- MuJoCo (5 ms step, the SO-101's position actuators), point between the pads against the 240 points, reach 5 mm, each point within 0.25 s after its own time:
+- A wave turns back several times a second: sampled at 10 fps it aliases into jitter (on the first sample clip the path came out half as wide), so the trace samples at the clip's 30 fps. A three-sample average weighted 1, 2, 1 takes off frame-to-frame jitter and keeps 90% of a 3 Hz swing.
+- In a palm wave the hand turns about the wrist, so the hand's centre (the mean of the pose model's wrist, index and pinky landmarks) travels further than the wrist across: 226 mm against 173 mm here (280 and 288 mm high). The path follows the hand's centre, which is what the gripper stands for, and averages three landmarks instead of one.
+- Scaled at 464 mm per metre (the SO-101's 250 mm arm over the person's 481 mm), the path was 130% of the box's height, as the hand comes down at the end, so it is shrunk a further 11%: 105 mm across and 130 mm high in front of the arm.
+- MuJoCo (5 ms step, the SO-101's position actuators), point between the pads against the 66 points, reach 5 mm, each point within 0.25 s of its own time. At the clip's own pace a joint would have to turn at 6.7 rad/s; the arm is held to 2 rad/s, so it follows at 0.30x:
 
-| Played | Fastest joint | Reached within 5 mm | Farthest | First within reach, latest |
-|---|---|---|---|---|
-| At the clip's speed, Earth | 2.9 rad/s | 238 of 240 | 5.2 mm | |
-| At 0.70x (joints held to 2 rad/s), Earth | 2.0 rad/s | 240 of 240 | 1.1 mm | 0.01 s |
-| At 0.70x, orbit (0 g) | 2.0 rad/s | 240 of 240 | 1.0 mm | 0.01 s |
+| World | Reached within 5 mm | Farthest | First within reach, latest |
+|---|---|---|---|
+| Earth, Node (`tests/sim/wave-fixture.test.ts`) | 66 of 66 | 0.3 mm | 0 s |
+| Orbit (0 g), Node | 66 of 66 | 0.3 mm | 0 s |
+| Earth, browser worker, two runs | 66 of 66 | 0.5 and 0.8 mm | |
+| Orbit, browser worker, two runs | 66 of 66 | 0.6 mm | |
 
-In the browser's simulator worker, which paces the run in real time, the same path read 1.2 and 1.5 mm on Earth and 1.6 mm in orbit over two runs. So the interpreter plays a gesture slower than the clip whenever a joint would turn faster than 2 rad/s, and the page says by how much. The unaveraged landmarks would ask a joint for 6.2 rad/s. Live spend for this section, about US$0.03: Super VL labelled the sample six times and two camera takes of it (Film yourself, with the clip as a fake camera) while the label prompt and clean-up were tuned, and Nano compiled three of those specs before a program made only of gestures stopped needing a model.
+On the first sample clip (a slower palm wave, replaced because an agency placard and flags were in view, so these numbers are no longer reproducible from the repository), at the clip's own pace the joints turned at up to 2.9 rad/s and the arm reached 238 of 240 points within 5 mm, the farthest 5.2 mm off; held to 2 rad/s it reached all 240 within 1.1 mm. That is where the cap comes from; it was chosen in the simulator, not from a real servo. The reach box, 240 mm across and z 200 to 330 mm in the plane x = 220 mm, is checked corner by corner and with a circle that fills it, at 1 g and 0 g (`tests/sim/follow.test.ts`). Live spend for this section, about US$0.04: Super VL labels of the two sample clips and of two camera takes while the label prompt and clean-up were tuned, and three Nano compiles before a program made only of gestures stopped needing a model.
 
 ## Reproduce
 

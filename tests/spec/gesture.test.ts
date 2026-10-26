@@ -62,6 +62,16 @@ describe("a labelled gesture", () => {
     expect(TaskSpec.parse(bare).steps[0].gesture).toEqual({ path: [], reach_mm: 5 });
   });
 
+  it("drops a gesture block the model copied onto another verb", () => {
+    const raw = { title: "t", summary: "", objects: [jar], steps: [{ id: "s1", verb: "grasp", object: "jar", gesture: { hand: "right" }, t_start_s: 0, t_end_s: 6 }, { id: "s2", verb: "gesture", gesture: { hand: "right" }, t_start_s: 1, t_end_s: 4 }] };
+    const { data, warnings } = tidyLabel(raw, 6);
+    const s = TaskSpec.parse(data);
+    expect(s.steps[0].gesture).toBeUndefined();
+    expect(s.steps[1].gesture?.hand).toBe("right");
+    expect(warnings.join(" ")).toMatch(/a "grasp" step has no gesture block; dropped/);
+    expect(validateSpec(s).map((i) => i.code)).not.toContain("gesture_block_on_other_verb");
+  });
+
   it("never keeps a path or a reach the model wrote: the path is measured from the clip", () => {
     const invented = { title: "t", summary: "", objects: [], steps: [{ id: "s1", verb: "gesture", gesture: { hand: "left", path: [{ t_s: 0, xyz_mm: [220, 0, 240] }, { t_s: 1, xyz_mm: [220, 60, 240] }], reach_mm: 50 }, t_start_s: 0, t_end_s: 8 }] };
     const { data, warnings } = tidyLabel(invented, 8);

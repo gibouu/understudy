@@ -130,7 +130,7 @@ export type Reach = {
 
 /**
  * A point may be reached this long after the path's own time for it: a position servo trails a moving target (by
- * 0.01 to 0.03 s at the joint-speed cap, docs/MEASUREMENTS.md section 11). Shorter than a wave's swing, so an arm
+ * at most 0.03 s at the joint-speed cap, docs/MEASUREMENTS.md section 11). Shorter than a wave's swing, so an arm
  * half a swing behind does not pass.
  */
 export const MAX_LAG_S = 0.25;
