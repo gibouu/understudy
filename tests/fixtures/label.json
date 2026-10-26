@@ -246,5 +246,232 @@
     }
    ]
   }
+ },
+ {
+  "clip_sha256": "78a6b288413159fd4d915fbc1817aa6fe4eff40bae2b12a3b2c7ffccc8a28ac7",
+  "hint": "aboard the ISS, pushing seed film into a plant pillow",
+  "result": {
+   "status": "done",
+   "value": {
+    "version": 1,
+    "title": "Astronaut inserts seed film into plant pillow aboard ISS",
+    "summary": "A crew member wearing blue gloves handles a clear plant pillow with a yellow strip, then pushes it down into a rectangular pocket among several other pillows on a work tray.",
+    "objects": [
+     {
+      "id": "plant_pillow",
+      "name": "plant pillow with seed film",
+      "shape": "box",
+      "size_mm": [
+       80,
+       80,
+       20
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        150,
+        120,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "plant_pillow_rack",
+      "name": "plant pillow tray with multiple pockets",
+      "shape": "box",
+      "size_mm": [
+       200,
+       150,
+       30
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        130,
+        100,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 10,
+      "confidence": 0.6,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "work_surface",
+      "name": "blue work surface",
+      "shape": "box",
+      "size_mm": [
+       400,
+       300,
+       10
+      ],
+      "symmetry": "none",
+      "role": "surface",
+      "pose": {
+       "xyz_mm": [
+        0,
+        0,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "reach",
+      "object": "plant_pillow",
+      "target": {
+       "fixture": "zone",
+       "frame": "work_surface"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 1,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "grasp",
+      "object": "plant_pillow",
+      "target": {
+       "fixture": "zone",
+       "frame": "work_surface"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1,
+      "t_end_s": 2,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s3",
+      "verb": "move",
+      "object": "plant_pillow",
+      "target": {
+       "fixture": "zone",
+       "frame": "plant_pillow_rack"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 5,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s4",
+      "verb": "insert",
+      "object": "plant_pillow",
+      "target": {
+       "fixture": "pocket",
+       "frame": "plant_pillow_rack"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 5,
+      "t_end_s": 7,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s5",
+      "verb": "release",
+      "object": "plant_pillow",
+      "target": {
+       "fixture": "pocket",
+       "frame": "plant_pillow_rack"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 7,
+      "t_end_s": 8,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s6",
+      "verb": "retract",
+      "object": "plant_pillow",
+      "target": {
+       "fixture": "zone",
+       "frame": "work_surface"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 8,
+      "t_end_s": 8,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "anchor": {
+     "t_s": 1.5,
+     "confidence": 0.7
+    },
+    "warnings": [
+     "No measurable scale reference visible in the video; object sizes and poses are estimated from visual proportions.",
+     "The plant pillow rack is assumed to have pockets based on the insertion action; pocket clearance is estimated.",
+     "The robot base and world origin are not visible; pose coordinates are inferred relative to the work surface.",
+     "The astronaut’s hands and gloves are not labeled as separate objects."
+    ],
+    "open_questions": [
+     "What are the exact dimensions of the plant pillow and the tray pockets?",
+     "What is the precise world-frame origin and scale for this work area?",
+     "Is the plant pillow a cylinder, box, or another primitive shape?",
+     "Does the tray have multiple pockets or a single recessed area?",
+     "objects[work_surface].size_mm: is blue work surface really [400, 300, 10] mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "78a6b288413159fd4d915fbc1817aa6fe4eff40bae2b12a3b2c7ffccc8a28ac7",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "warnings": [
+    "step s6: times 8-9 s clamped to the 7.995733333333333 s clip",
+    "object work_surface: size_mm [400, 300, 10] is outside 5 to 300 mm"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/Nemotron-3.5-Super-VL",
+     "prompt_tokens": 1924,
+     "completion_tokens": 830,
+     "cached_tokens": 0,
+     "seconds": 3.068
+    }
+   ]
+  }
  }
 ]
