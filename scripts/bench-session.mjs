@@ -28,6 +28,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BudgetError, charge, costOf as ledgerCostOf, guard, loadPrices } from "./bench-ledger.mjs";
+import { logCall } from "./call-log.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 process.loadEnvFile(process.env.UNDERSTUDY_ENV_FILE ?? ".env.local");
@@ -381,6 +382,7 @@ async function call(ctx, stage, role, { system, user, maxTokens, thinking = "off
   } catch (err) {
     // the server may have done the work before the error or timeout: charge the reserved estimate
     charge(SCRIPT, worst, { model, stage, run: ctx.run, estimated: true, failed: true, status: err?.status ?? null }, reservation);
+    logCall(SCRIPT, { stage, params, error: `${err?.status ?? "?"} ${redact(err?.message ?? err)}`.slice(0, 300), cost_usd: worst, meta: { role, run: ctx.run, estimated: true }, session: ctx.session, parent: ctx.lastCall });
     ctx.cost += worst;
     totalCost += worst;
     Object.assign(rec, { ok: false, ms: Math.round(performance.now() - started), status: err?.status ?? null, error: redact(err?.message ?? err).slice(0, 300), cost_usd: 0, estimated_usd: worst, prompt_tokens: 0, completion_tokens: 0 });
@@ -394,6 +396,7 @@ async function call(ctx, stage, role, { system, user, maxTokens, thinking = "off
   const u = usageOf(res);
   const cost = costOf(model, u);
   charge(SCRIPT, cost, { model, stage, run: ctx.run, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens }, reservation);
+  ctx.lastCall = logCall(SCRIPT, { stage, params, res, usage: u, cost_usd: cost, meta: { role, run: ctx.run }, session: ctx.session, parent: ctx.lastCall }) ?? ctx.lastCall;
   Object.assign(rec, {
     ok: true,
     ms: Math.round(performance.now() - started),
@@ -420,7 +423,7 @@ async function call(ctx, stage, role, { system, user, maxTokens, thinking = "off
 
 // --- One session --------------------------------------------------------------
 async function session(run) {
-  const ctx = { run, calls: [], cost: 0, notes: [] };
+  const ctx = { run, calls: [], cost: 0, notes: [], session: `${SCRIPT}/${new Date().toISOString()}/run${run}`, lastCall: null };
   const shape = {};
   const started = performance.now();
   try {

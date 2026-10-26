@@ -34,7 +34,9 @@
  * Every paid call goes through scripts/bench-ledger.mjs (guard before, charge
  * after; this script's cap PATCH_CAP_USD, default 30, under the global cap).
  * Results merge into bench/results/patch-loop.json by arm: knobs, patches,
- * metrics, tokens, cost and latency per iteration; no prompts, no key. The
+ * metrics, tokens, cost and latency per iteration; no prompts, no key. The full
+ * prompts and answers, and the simulator's verdict on each patch, go to the call
+ * log (scripts/call-log.mjs, bench/calls/), linked by each call's log_id. The
  * summary tables print at the end of every live run, over every arm in the file.
  * Without BENCH_LIVE a cheap unit test of the probes runs (no network).
  */
@@ -43,6 +45,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { fmt, loadMujoco, mdTable } from "./gravity-harness";
 import { applyPatch, type CaseDef, caseGrid, describeWorld, type GravityId, knobLines, type Knobs, liquidCaseGrid, type Metrics, PROBES, type ProbeId, type World } from "./patch-probes";
+import { type Book, historyLine, PATCH_SYSTEM, patchCheckLine, patchPrompt, PLAYBOOK_SYSTEM, PLAYBOOK_SYSTEM_V3, PREFLIGHT_SYSTEM, preflightPrompt, retryPrompt, type Rule } from "./patch-prompts";
 
 const ROOT = process.cwd();
 /** PATCH_OUT names another bench/results/patch-*.json, for smoke runs */
@@ -56,72 +59,8 @@ const SCRIPT = process.env.PATCH_SCRIPT ?? "patch-loop";
 const GRAVITY_ORDER: GravityId[] = ["earth", "mars", "moon", "orbit"];
 const PROBE_ORDER: ProbeId[] = ["insert", "place", "pour", "carry"];
 
-// --- the patcher's prompts ----------------------------------------------------------
-const PATCH_SYSTEM = `You edit a small robot program after a failed rehearsal in a physics simulator. The program is a set of knobs with bounds. You get the task, the world, the knobs with their current values, the earlier attempts, and the simulator's failure note: what it measured in the failed rollout. Propose one patch: the knob values to change for the next rollout, the change most likely to make it pass. The success check is fixed and you cannot change it. Use only the listed knob names; keep numbers within bounds; booleans true or false; enum values exactly as listed.
-Return one JSON object only: {"set":{<knob>:<value>,...},"why":<one sentence citing the measurement behind the change>,"expect":<one sentence: what the next rollout should show>}`;
-
-const PREFLIGHT_SYSTEM = `You set up a small robot program before its first rehearsal in a physics simulator. The program is a set of knobs with bounds, currently at their defaults. You get the task, the world and the knobs. If the defaults are likely to fail in this world, propose one patch: the knob values to change before the first rollout; otherwise return an empty set. Use only the listed knob names; keep numbers within bounds; booleans true or false; enum values exactly as listed.
-Return one JSON object only: {"set":{<knob>:<value>,...},"why":<one sentence>,"expect":<one sentence: what the first rollout should show>}`;
-
-const PLAYBOOK_SYSTEM = `You maintain a playbook for a robot that rehearses short manipulation programs in a physics simulator under different gravities. You get repairs that worked: a program failed, a patch to its knobs made it pass. Write at most 8 general rules that a programmer could apply before the first rehearsal of these tasks in another world (another gravity, another disturbance). Each rule must be supported by the repairs: give the evidence (which probes and worlds, how many repairs). Prefer rules stated in physical terms (what to do when gravity is lower or absent, when the vehicle accelerates, when the object is offset) over rules that only restate one case.
-Return one JSON object only: {"rules":[{"rule":string,"evidence":string}]}`;
-
-const PLAYBOOK_SYSTEM_V3 = `${PLAYBOOK_SYSTEM.split("\nReturn one JSON object only")[0]} Tag each rule with the one task it was learned on (insert, place, pour or carry), or "all" only when repairs on two or more tasks support it: a tagged rule is shown only for its task. All the repairs come from Earth 1 g and Mars 0.379 g; say in each rule what it assumes about gravity.
-Return one JSON object only: {"rules":[{"task":"insert"|"place"|"pour"|"carry"|"all","rule":string,"evidence":string}]}`;
-
-type Rule = { rule: string; evidence: string; task?: string };
-/**
- * v1/v2: every rule for every task; v3: only the rules tagged with this task or "all", with the
- * gravity range they come from. empty: the matched control, the same section in the same places
- * (v3: only for the tasks that have rules) with "(none)" instead of the rules.
- */
-const rulesBlock = (rules: Rule[], probe: ProbeId, version: number, empty = false) => {
-  const lines = (rs: Rule[]) => (empty ? "(none)" : rs.map((r, i) => `${i + 1}. ${r.rule}`).join("\n"));
-  if (version < 3) return `Playbook (rules learned from earlier repairs on Earth and Mars):\n${lines(rules)}`;
-  const mine = rules.filter((r) => r.task === probe || r.task === "all");
-  return mine.length ? `Playbook for this task (rules learned from repairs at Earth 1 g and Mars 0.379 g only; untested in other gravities):\n${lines(mine)}` : null;
-};
-
-/** the factual one-liner of a note used in the attempt history */
-const outcomeLine = (note: string) => note.split("\n").find((l) => /^(Checks?|Count):/.test(l)) ?? note.split("\n").at(-1) ?? "";
-
-type Book = { rules: Rule[]; version: number; empty?: boolean } | null;
-const bookLines = (book: Book, probe: ProbeId) => {
-  const b = book ? rulesBlock(book.rules, probe, book.version, book.empty) : null;
-  return b ? [b] : [];
-};
-
-/** what happened to the last patch's values, for the next prompt (round 2: no more silent clamping) */
-function patchCheckLine(p: PatchRec | undefined): string | null {
-  if (!p) return null;
-  const parts = [
-    ...(p.clamps ?? []).map((c) => `${c.name} = ${c.requested} is outside its bounds and was clamped to ${c.applied}`),
-    ...p.rejected.map((n) => `${n} was not applied (not a knob, or not a usable value)`),
-  ];
-  return parts.length ? `Your last patch: ${parts.join("; ")}.` : null;
-}
-
-function patchPrompt(probeId: ProbeId, world: World, knobs: Knobs, history: string[], note: string, attempt: number, book: Book, check: string | null): string {
-  const probe = PROBES[probeId];
-  return [
-    `Task: ${probe.task}`,
-    `World: ${describeWorld(world)}.`,
-    ...bookLines(book, probeId),
-    `Knobs (current values):\n${knobLines(probe, knobs)}`,
-    `Attempts so far:\n${history.join("\n")}`,
-    ...(check ? [check] : []),
-    `Failure note from the last rollout (attempt ${attempt - 1}):\n${note}`,
-    `Return patch ${attempt} of at most ${MAX_PATCHES}.`,
-  ].join("\n\n");
-}
-
-function preflightPrompt(probeId: ProbeId, world: World, knobs: Knobs, book: Book): string {
-  const probe = PROBES[probeId];
-  return [`Task: ${probe.task}`, `World: ${describeWorld(world)}.`, ...bookLines(book, probeId), `Knobs (defaults):\n${knobLines(probe, knobs)}`, "No rollout has run yet. Return the patch to apply before the first rollout (an empty set keeps the defaults)."].join("\n\n");
-}
-
 // --- types of the results file --------------------------------------------------------
-type CallRec = { ok: boolean; ms: number; prompt_tokens: number; completion_tokens: number; reasoning_tokens: number | null; cost_usd: number; finish: string | null; json_ok: boolean; empty: boolean; error?: string; attempts: number };
+type CallRec = { ok: boolean; ms: number; prompt_tokens: number; completion_tokens: number; reasoning_tokens: number | null; cost_usd: number; finish: string | null; json_ok: boolean; empty: boolean; error?: string; attempts: number; log_id?: string };
 type PatchRec = {
   set: Record<string, unknown> | null;
   why: string | null;
@@ -226,6 +165,13 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         loadPrices: (models: string[]) => Record<string, { prompt: number; completion: number; cache_read: number | null }>;
         BudgetError: new (m: string) => Error;
       };
+      // the call log (#78): every request and answer in full, and the simulator's verdict on each patch
+      const calls = (await import("../../scripts/call-log.mjs")) as unknown as {
+        logCall: (script: string, o: Record<string, unknown>) => string | null;
+        logVerdict: (script: string, id: string | undefined, v: Record<string, unknown>) => void;
+      };
+      const RUN_ID = `${new Date().toISOString()}-${process.pid}`;
+      type Trace = { session: string | null; parent: string | null };
       const client = tf.tokenFactory({ timeout: 240_000, maxRetries: 0 });
       if (!client) throw new Error("no Token Factory client");
       const catalog = JSON.parse(readFileSync(path.join(ROOT, "tests/fixtures/models.json"), "utf8")) as { fetched: string };
@@ -243,7 +189,8 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
 
       type Role = "super" | "ultra";
       type CallCfg = { role: Role; thinking: "off" | "on"; maxTokens: number };
-      async function call(cfg: CallCfg, system: string, user: string, meta: Record<string, unknown>): Promise<{ rec: CallRec; parsed: Record<string, unknown> | null }> {
+      async function call(cfg: CallCfg, system: string, user: string, meta: Record<string, unknown>, trace: Trace = { session: null, parent: null }): Promise<{ rec: CallRec; parsed: Record<string, unknown> | null }> {
+        const stage = String(meta.stage ?? (system === PREFLIGHT_SYSTEM ? "preflight" : "patch"));
         const model = tf.MODELS[cfg.role];
         const p = price(model);
         const worst = Math.ceil((system.length + user.length) / 3) * p.prompt + cfg.maxTokens * p.completion;
@@ -282,6 +229,8 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
             rec.cost_usd += worst;
             rec.ms = Math.round(performance.now() - t0);
             rec.error = `${e?.status ?? "?"} ${redact(e?.message ?? err)}`.slice(0, 300);
+            // a failed call keeps its record's id: the next rollout's verdict and the next call's parent point to it
+            rec.log_id = calls.logCall(SCRIPT, { stage, params, error: rec.error, cost_usd: worst, meta: { ...meta, attempt, estimated: true }, ...trace }) ?? rec.log_id;
             const retriable = e?.status === undefined || e.status === 429 || e.status >= 500;
             if (!retriable || attempt === 3) return { rec, parsed: null };
             await new Promise((r) => setTimeout(r, 2000 * attempt));
@@ -304,6 +253,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
           });
           const parsed = parseJson(text);
           rec.json_ok = parsed !== null;
+          rec.log_id = calls.logCall(SCRIPT, { stage, params, res, usage: u, cost_usd: cost, meta: { ...meta, attempt }, ...trace }) ?? undefined;
           return { rec, parsed };
         }
         return { rec, parsed: null };
@@ -445,10 +395,18 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
           run.latency_ms += r.ms;
         };
         const meta = (iter: number) => ({ arm: armId, case: c.id, seed, iter });
+        // one session per run in the call log; each call's parent is the call before it in the run
+        const trace: Trace = { session: `${RUN_ID}/${armId}/${c.id}/${seed}`, parent: null };
+        const traced = async (...a: Parameters<typeof call>) => {
+          const out = await call(a[0], a[1], a[2], a[3], { ...trace });
+          trace.parent = out.rec.log_id ?? trace.parent;
+          return out;
+        };
+        const judge = (p: PatchRec | undefined, v: Record<string, unknown>) => calls.logVerdict(SCRIPT, p?.call.log_id, v);
         let knobs: Knobs = { ...probe.naive };
         try {
           if (cfg.preflight) {
-            const { rec, parsed } = await call(cfg, PREFLIGHT_SYSTEM, preflightPrompt(c.probe, world, knobs, book), meta(-1));
+            const { rec, parsed } = await traced(cfg, PREFLIGHT_SYSTEM, preflightPrompt(c.probe, world, knobs, book), meta(-1));
             account(rec);
             const out = toPatch(c.probe, knobs, parsed, rec);
             run.preflight = out.patch;
@@ -461,16 +419,19 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
           const label = (p: CallCfg) => `${p.role}-${p.thinking}`;
           for (let iter = 0; iter <= MAX_PATCHES; iter++) {
             const r = probe.run(mj, knobs, world, { derived: cfg.derived });
+            const verdict = { pass: r.pass, score_before: run.iterations.at(-1)?.score ?? null, score_after: r.score, failure_class: r.failure_class };
+            if (pending) judge(pending, { ...verdict, changed: pending.changed });
+            else if (iter === 0 && run.preflight) judge(run.preflight, { ...verdict, changed: run.preflight.changed });
             run.iterations.push({ iter, knobs: { ...knobs }, pass: r.pass, score: r.score, failure_class: r.failure_class, metrics: r.metrics, ...(pending ? { patch_before: pending } : {}) });
             if (r.pass) {
               run.passed_at = iter;
               break;
             }
-            history.push(iter === 0 ? `- attempt 0${cfg.preflight ? " (after your set-up patch)" : ""}: ${JSON.stringify(knobs)} -> FAIL. ${outcomeLine(r.note)}` : `- attempt ${iter}: set ${JSON.stringify(pending?.set ?? {})} -> FAIL. ${outcomeLine(r.note)}`);
+            history.push(historyLine(iter, knobs, pending?.set, r.note, cfg.preflight));
             if (iter === MAX_PATCHES) break;
-            const prompt = patchPrompt(c.probe, world, knobs, history, r.note, iter + 1, book, cfg.clampNote ? patchCheckLine(pending) : null);
+            const prompt = patchPrompt(c.probe, world, knobs, history, r.note, iter + 1, book, cfg.clampNote ? patchCheckLine(pending) : null, MAX_PATCHES);
             const who: CallCfg = escalated && cfg.escalate ? cfg.escalate : cfg;
-            const { rec, parsed } = await call(who, PATCH_SYSTEM, prompt, { ...meta(iter + 1), patcher: label(who) });
+            const { rec, parsed } = await traced(who, PATCH_SYSTEM, prompt, { ...meta(iter + 1), patcher: label(who) });
             account(rec);
             let out = toPatch(c.probe, knobs, parsed, rec);
             out.patch.patcher = label(who);
@@ -480,7 +441,8 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
                 // a no-op from the base patcher: ask the escalated one at once, and keep it
                 escalated = true;
                 run.escalated_at = iter + 1;
-                const up = await call(cfg.escalate, PATCH_SYSTEM, prompt, { ...meta(iter + 1), patcher: label(cfg.escalate), escalation: "noop" });
+                judge(out.patch, { pass: false, score_before: r.score, score_after: r.score, failure_class: r.failure_class, changed: [], replaced: "escalation" });
+                const up = await traced(cfg.escalate, PATCH_SYSTEM, prompt, { ...meta(iter + 1), patcher: label(cfg.escalate), escalation: "noop" });
                 account(up.rec);
                 const second = toPatch(c.probe, knobs, up.parsed, up.rec);
                 out = { knobs: second.knobs, patch: { ...second.patch, patcher: label(cfg.escalate), escalated_after_noop: out.patch } };
@@ -490,7 +452,8 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
               }
             }
             if (cfg.retryNoop && !out.patch.changed.length) {
-              const again = await call(cfg, PATCH_SYSTEM, `${prompt}\n\nYour patch ${JSON.stringify(out.patch.set ?? {})} changes no knob value: the next rollout would repeat the last one exactly. Propose a different change.`, { ...meta(iter + 1), retry: true });
+              judge(out.patch, { pass: false, score_before: r.score, score_after: r.score, failure_class: r.failure_class, changed: [], replaced: "retry" });
+              const again = await traced(cfg, PATCH_SYSTEM, retryPrompt(prompt, out.patch.set), { ...meta(iter + 1), retry: true });
               account(again.rec);
               const second = toPatch(c.probe, knobs, again.parsed, again.rec);
               out = { knobs: second.knobs, patch: { ...second.patch, retried_after_noop: out.patch } };
@@ -548,8 +511,9 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         const user = [`Probes and their knobs:\n${PROBE_ORDER.map((p) => `${p}: ${PROBES[p].task}\n${knobLines(PROBES[p], PROBES[p].naive)}`).join("\n\n")}`, `Repairs that worked (${fixes.length}), Earth 1 g and Mars 0.379 g:\n${lines.join("\n")}`].join("\n\n");
         const arm = version === 3 ? "r2-playbook3" : version === 2 ? "playbook2" : "playbook";
         const system = version === 3 ? PLAYBOOK_SYSTEM_V3 : PLAYBOOK_SYSTEM;
-        let res = await call({ role: "super", thinking: "on", maxTokens: 8000 }, system, user, { arm, stage: "distil" });
-        if (!Array.isArray(res.parsed?.rules)) res = await call({ role: "super", thinking: "off", maxTokens: 2000 }, system, user, { arm, stage: "distil-retry" });
+        const trace = { session: `${RUN_ID}/${arm}/distil`, parent: null };
+        let res = await call({ role: "super", thinking: "on", maxTokens: 8000 }, system, user, { arm, stage: "distil" }, trace);
+        if (!Array.isArray(res.parsed?.rules)) res = await call({ role: "super", thinking: "off", maxTokens: 2000 }, system, user, { arm, stage: "distil-retry" }, { ...trace, parent: res.rec.log_id ?? null });
         const tasks = ["insert", "place", "pour", "carry", "all"];
         const rules: Rule[] = (Array.isArray(res.parsed?.rules) ? (res.parsed!.rules as unknown[]) : [])
           .slice(0, 8)
