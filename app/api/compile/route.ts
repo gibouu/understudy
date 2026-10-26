@@ -15,6 +15,7 @@ import { AXES, PREDICATE_OPERANDS, Program, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type StageResult } from "@/lib/spec/stage-result";
 import { lintProgram, validateProgram } from "@/lib/spec/validate";
 import { canonicalSlot, valueAt } from "@/lib/spec/apply";
+import { askable, withRequiredAsks } from "@/lib/spec/answer";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
 
 export const maxDuration = 60;
@@ -38,7 +39,7 @@ Geometry: millimetres. The world frame sits at the robot base on the table: x aw
 Rules:
 - One entry in steps per spec step, in the spec's order, with step_id the spec step's id.
 - Offsets are relative to the named frame. Use the step's via_points when it has them; otherwise build each step from the listed moves: approach, down to the grip, grasp, lift; then over the target, down, release. You choose which listed moves to use and where to release.
-- You execute only what the spec states. Every value you would have to guess becomes an ask instead: a missing object pose, a missing pocket_clearance_mm on a pocket fixture, a grasp aperture the object size does not imply, a missing tolerance band on the axes the step is sensitive to (${AXES.join(", ")}), a step without a success predicate. One ask per missing field, placed in the step that needs it; slot is the spec path, for example objects[rack].pose, objects[rack].pocket_clearance_mm, steps[s2].tolerances.x_mm, steps[s2].success.
+- You execute only what the spec states. Every value you would have to guess becomes an ask instead, and only these can be asked: a missing pocket_clearance_mm on a pocket fixture, a missing tolerance band on the axes the step is sensitive to (${AXES.join(", ")}), a step without a success predicate. One ask per missing field, placed in the step that needs it; slot is the spec path, for example objects[rack].pocket_clearance_mm, steps[s2].tolerances.x_mm, steps[s2].success.
 - A missing value is never a warning: it is an ask op, because the asks become the questions put to the person who did the task. Warnings are only for what no answer can fix.
 - A field already set in the spec is settled, whatever its source (vl#, interview#, notes#, user#edit): never ask about it again.
 - End each insert or place step with an assert of its success predicate when the spec gives one.
@@ -118,13 +119,17 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
       ops: s.ops
         .map((op) => (op.op === "ask" ? { ...op, slot: canonicalSlot(spec.data, op.slot) } : op))
         .filter((op) => {
-          if (op.op !== "ask" || !settled(spec.data, op.slot)) return true;
-          warnings.push(`dropped an ask for ${op.slot}: the spec already sets it`);
+          if (op.op !== "ask") return true;
+          if (settled(spec.data, op.slot)) warnings.push(`dropped an ask for ${op.slot}: the spec already sets it`);
+          else if (!askable(spec.data, op.slot)) warnings.push(`dropped an ask for ${op.slot} ("${op.question}"): not something the person who did the task can answer`);
+          else return true;
           return false;
         }),
     })),
   };
+  const required = withRequiredAsks(spec.data, program);
+  for (const slot of required.added) warnings.push(`added an ask for ${slot}: the rehearsal needs it`);
   // a dangling reference stays in the program: the interpreter reports it as a spec gap
-  for (const i of validateProgram(program, spec.data)) warnings.push(`${i.path}: ${i.message}`);
-  return NextResponse.json(done(program, warnings, result.ledger));
+  for (const i of validateProgram(required.program, spec.data)) warnings.push(`${i.path}: ${i.message}`);
+  return NextResponse.json(done(required.program, warnings, result.ledger));
 }

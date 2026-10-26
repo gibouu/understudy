@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyChanges } from "@/lib/spec/apply";
-import { formFor } from "@/lib/spec/answer";
-import { TaskSpec } from "@/lib/spec/schema";
+import { askable, formFor, withRequiredAsks } from "@/lib/spec/answer";
+import { Program, TaskSpec } from "@/lib/spec/schema";
 
 const spec = TaskSpec.parse({
   version: 1,
@@ -32,5 +32,39 @@ describe("formFor", () => {
   it("says when it cannot take an answer", () => {
     expect(formFor(spec, "objects[block].pose")).toEqual({ kind: "unsupported" });
     expect(formFor(spec, "steps[nope].success")).toEqual({ kind: "unsupported" });
+  });
+});
+
+describe("askable", () => {
+  it("keeps the questions a person can answer", () => {
+    expect(askable(spec, "objects[block].pocket_clearance_mm")).toBe(true);
+    expect(askable(spec, "steps[s2].tolerances.x_mm")).toBe(true);
+    expect(askable(spec, "steps[s2].success")).toBe(true);
+  });
+
+  it("drops questions about motion, unknown ids and fields the fit sets", () => {
+    expect(askable(spec, "steps[s2].carry_point")).toBe(false);
+    expect(askable(spec, "steps[s2].via_points")).toBe(false);
+    expect(askable(spec, "steps[s9].success")).toBe(false);
+    expect(askable(spec, "objects[block].pose")).toBe(false);
+    expect(askable(spec, "objects[peg].pocket_clearance_mm")).toBe(false);
+    expect(askable(spec, "steps[s2].tolerances.speed_mm")).toBe(false);
+    expect(askable(spec, "carry_height")).toBe(false);
+  });
+});
+
+describe("withRequiredAsks", () => {
+  const program = Program.parse({ spec_title: "t", steps: [{ step_id: "s2", ops: [{ op: "release" }] }] });
+
+  it("asks for a missing clearance and success check, once", () => {
+    const { program: out, added } = withRequiredAsks(spec, program);
+    expect(added).toEqual(["objects[block].pocket_clearance_mm", "steps[s2].success"]);
+    expect(out.steps[0].ops.map((op) => op.op)).toEqual(["ask", "ask", "release"]);
+    expect(withRequiredAsks(spec, out).added).toEqual([]);
+  });
+
+  it("asks nothing once the spec has both", () => {
+    const answered = TaskSpec.parse({ ...spec, objects: [spec.objects[0], { ...spec.objects[1], pocket_clearance_mm: 8 }], steps: [{ ...spec.steps[0], success: [{ kind: "object_still", object: "peg" }] }] });
+    expect(withRequiredAsks(answered, program).added).toEqual([]);
   });
 });

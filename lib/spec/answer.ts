@@ -5,7 +5,7 @@
  * step's `success`. Anything else is not answerable here yet.
  */
 import { parsePath } from "./apply";
-import type { Predicate, TaskSpec } from "./schema";
+import { AXES, type Predicate, type Program, type ProgramOp, type TaskSpec } from "./schema";
 
 export type AskForm =
   | { kind: "number"; unit: string }
@@ -36,3 +36,46 @@ export function formFor(spec: TaskSpec, slot: string): AskForm {
   return { kind: "success", options };
 }
 
+
+/**
+ * The slots a person who did the task can answer: a pocket's clearance, a
+ * step's tolerance on one axis, what counts as success. Poses and sizes come
+ * from the fit and moves from the compile route, so an ask about anything
+ * else (a carry point, a speed) has no one to answer it.
+ */
+export function askable(spec: TaskSpec, slot: string): boolean {
+  const [list, id, field, sub, ...rest] = parsePath(slot);
+  if (rest.length) return false;
+  if (list === "objects") return spec.objects.some((o) => o.id === id && o.role === "fixture") && field === "pocket_clearance_mm" && sub === undefined;
+  if (list !== "steps" || !spec.steps.some((s) => s.id === id)) return false;
+  return (field === "success" && sub === undefined) || (field === "tolerances" && (AXES as readonly string[]).includes(sub));
+}
+
+/**
+ * The gaps the rehearsal cannot run without, read from the spec: a pocket
+ * with no clearance (the scene would assume 3 mm) and an insert or place
+ * step with no success check. Each one the program does not already ask
+ * about gets an ask at the start of the step that needs it.
+ */
+export function withRequiredAsks(spec: TaskSpec, program: Program): { program: Program; added: string[] } {
+  const asked = new Set(program.steps.flatMap((s) => s.ops).flatMap((op) => (op.op === "ask" ? [op.slot] : [])));
+  const name = (id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
+  const added: string[] = [];
+  const steps = program.steps.map((ps) => {
+    const step = spec.steps.find((s) => s.id === ps.step_id);
+    if (!step?.target || (step.verb !== "insert" && step.verb !== "place")) return ps;
+    const asks: Extract<ProgramOp, { op: "ask" }>[] = [];
+    const fixture = spec.objects.find((o) => o.id === step.target!.frame);
+    const clearance = `objects[${step.target.frame}].pocket_clearance_mm`;
+    if (step.target.fixture === "pocket" && fixture && fixture.pocket_clearance_mm === undefined && !asked.has(clearance)) {
+      asks.push({ op: "ask", slot: clearance, question: `How much wider than the ${name(step.object)} is the opening of the ${name(fixture.id)}?`, why: "the pocket's clearance was not visible" });
+    }
+    const success = `steps[${step.id}].success`;
+    if (step.success.length === 0 && !asked.has(success)) {
+      asks.push({ op: "ask", slot: success, question: `When does putting the ${name(step.object)} in the ${name(step.target.frame)} count as done?`, why: "the step has no success check" });
+    }
+    added.push(...asks.map((a) => a.slot));
+    return asks.length ? { ...ps, ops: [...asks, ...ps.ops] } : ps;
+  });
+  return { program: { ...program, steps }, added };
+}
