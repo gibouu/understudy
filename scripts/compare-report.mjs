@@ -102,18 +102,19 @@ function patchRow(armId, arm) {
   return row;
 }
 const patchRows = [];
-if (nemo) for (const a of ["r2-super-off", "r2-super-on", "r2-esc-on", "r2-esc-ultra"]) if (nemo.arms[a]) patchRows.push(patchRow(a, nemo.arms[a]));
-/** an arm stopped by the cap or a withdrawn model is incomplete: listed, never compared */
-const stoppedArms = other ? Object.entries(other.arms).filter(([, arm]) => arm.runs.some((r) => r.stopped)) : [];
-if (other) for (const [a, arm] of Object.entries(other.arms)) if (!stoppedArms.some(([s]) => s === a)) patchRows.push(patchRow(a, arm));
+/** every arm compared: Nemotron's round-2 arms, then the others; an arm stopped by a cap or a withdrawn model is incomplete: listed, never compared */
+const arms = [...(nemo ? ["r2-super-off", "r2-super-on", "r2-esc-on", "r2-esc-ultra"].filter((a) => nemo.arms[a]).map((a) => [a, nemo.arms[a]]) : []), ...(other ? Object.entries(other.arms) : [])];
+const stoppedArms = arms.filter(([, arm]) => arm.runs.some((r) => r.stopped));
+for (const [a, arm] of arms) if (!stoppedArms.some(([s]) => s === a)) patchRows.push(patchRow(a, arm));
 if (patchRows.length) {
   lines.push("\n### Patching: the self-improvement loop of section 8 (round 2), the same 180 solvable failures, 6 seeds, at most 5 patches\n");
   lines.push(table(["Patcher", "Fixed within 5 patches", "Fixed on the first patch", "Cost per fixed case", "Model time per fixed case", "Answers cut off / unparseable / failed calls"], patchRows.map((r) => [r.patcher, pctCI(r.fixed, r.need_fix), pct(r.first, r.need_fix), r.cost_per_fix === null ? "-" : usd(r.cost_per_fix), r.model_s_per_fix === null ? "-" : `${Math.round(r.model_s_per_fix)} s`, `${r.truncated} / ${r.unparsed} / ${r.failed} of ${r.calls}`])));
   lines.push("\nBy task, fixed of solvable failures:\n");
   lines.push(table(["Patcher", "insert", "place", "pour", "carry"], patchRows.map((r) => [r.patcher, r.by_probe.insert, r.by_probe.place, r.by_probe.pour, r.by_probe.carry])));
   lines.push(`\nSpend on the loop: ${patchRows.map((r) => `${r.arm} ${usd(r.cost_usd, 2)}`).join(", ")}.`);
-  for (const [a, arm] of stoppedArms) lines.push(`Left out, stopped before the end: ${a} (${arm.runs.filter((r) => r.stopped).length} of ${arm.runs.length} runs stopped: ${arm.runs.find((r) => r.stopped).stopped}).`);
 }
+
+for (const [a, arm] of stoppedArms) lines.push(`\nLeft out of the patch tables, stopped before the end: ${a} (${arm.runs.filter((r) => r.stopped).length} of ${arm.runs.length} runs stopped: ${arm.runs.find((r) => r.stopped).stopped}).`);
 
 // --- compiling ---------------------------------------------------------------------------------
 const comp = read("bench/results/compare-compile.json");
