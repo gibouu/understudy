@@ -9,6 +9,7 @@ import { applyChanges } from "@/lib/spec/apply";
 import type { Predicate, Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
+import { GroundChips } from "./ground-chips";
 import { ProgramView, type Failure } from "./program-view";
 
 const Rehearsal = dynamic(() => import("./rehearsal").then((m) => m.Rehearsal), {
@@ -174,6 +175,17 @@ export function Flow() {
           <Status result={label} />
           {label.status === "done" && <SpecSummary spec={label.value} />}
         </Section>
+      )}
+
+      {label.status === "done" && spec && (
+        <GroundChips
+          spec={spec}
+          busy={program.status === "running"}
+          onSpec={(next) => {
+            setSpec(next);
+            compile(next, program.status === "done" ? program.value : undefined);
+          }}
+        />
       )}
 
       {fit && (

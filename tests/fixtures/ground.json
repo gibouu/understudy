@@ -1,0 +1,82 @@
+[
+  {
+    "spec_title": "ISS Veggie seed film placement into plant pillows",
+    "recorded": "2026-10-26, live: Tavily search + extract (basic), Nemotron 3 Nano filter",
+    "result": {
+      "status": "done",
+      "value": {
+        "query": "ISS Veggie seed film placement into plant pillows (seed film packet, Veggie plant pillow tray): precautions, preconditions and tolerances",
+        "pages": [
+          {
+            "url": "https://www.academia.edu/57174967/Plant_Pillow_Preparation_for_the_Veggie_Plant_Growth_System_on_the_International_Space_Station",
+            "title": "(PDF) Plant Pillow Preparation for the Veggie Plant Growth System on the International Space Station"
+          },
+          {
+            "url": "https://www.academia.edu/115553424/Plant_Pillow_Preparation_for_the_Veggie_Plant_Growth_System_on_the_International_Space_Station",
+            "title": "(PDF) Plant Pillow Preparation for the Veggie Plant Growth System on the International Space Station"
+          },
+          {
+            "url": "https://www.academia.edu/118129216/Plant_Pillow_Preparation_for_the_Veggie_Plant_Growth_System_on_the_International_Space_Station",
+            "title": "(PDF) Plant Pillow Preparation for the Veggie Plant Growth System on the International Space Station"
+          },
+          {
+            "url": "https://reference-global.com/download/article/10.2478/gsr-2017-0002.pdf",
+            "title": "[PDF] Plant Pillow Preparation for the Veggie Plant Growth System on the ..."
+          },
+          {
+            "url": "https://www.academia.edu/figures/32774632/table-2-plant-pillow-preparation-for-the-veggie-plant-growth",
+            "title": "Table 2 - from Plant Pillow Preparation for the Veggie Plant"
+          }
+        ],
+        "chips": [
+          {
+            "text": "A second requirement imposed upon the Veggie system was that seeds would be surface sterilized prior to planting in the pillows to reduce the potential incidence of plant disease or contamination on the ISS.",
+            "url": "https://reference-global.com/download/article/10.2478/gsr-2017-0002.pdf",
+            "title": "[PDF] Plant Pillow Preparation for the Veggie Plant Growth System on the ...",
+            "kind": "precondition"
+          },
+          {
+            "text": "Surface sterilization methods were optimized for specific seed types to ensure high germination rates.",
+            "url": "https://www.academia.edu/57174967/Plant_Pillow_Preparation_for_the_Veggie_Plant_Growth_System_on_the_International_Space_Station",
+            "title": "(PDF) Plant Pillow Preparation for the Veggie Plant Growth System on the International Space Station",
+            "kind": "hazard"
+          },
+          {
+            "text": "Percentages of germination and microbial contamination in preliminary lettuce seed tests of fuming surface sterilization methods.",
+            "url": "https://www.academia.edu/57174967/Plant_Pillow_Preparation_for_the_Veggie_Plant_Growth_System_on_the_International_Space_Station",
+            "title": "(PDF) Plant Pillow Preparation for the Veggie Plant Growth System on the International Space Station",
+            "kind": "hazard"
+          }
+        ]
+      },
+      "warnings": [
+        "nano: steps[s2].tolerances.x_mm = 8 from sentence 2 left out",
+        "nano: steps[s2].tolerances.y_mm = 10 from sentence 2 left out"
+      ],
+      "ledger": [
+        {
+          "model": "tavily/search",
+          "prompt_tokens": 0,
+          "completion_tokens": 0,
+          "seconds": 0.502,
+          "credits": 1,
+          "request_id": "b6722f35-5e54-449d-9a5b-a5b136a62d6e"
+        },
+        {
+          "model": "tavily/extract",
+          "prompt_tokens": 0,
+          "completion_tokens": 0,
+          "seconds": 0.719,
+          "credits": 1,
+          "request_id": "747f25b1-8682-4ca4-a9c3-adf5bc1fd8e7"
+        },
+        {
+          "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+          "prompt_tokens": 857,
+          "completion_tokens": 136,
+          "seconds": 0.855
+        }
+      ]
+    }
+  }
+]

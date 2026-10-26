@@ -11,6 +11,9 @@ export type LedgerEntry = {
   seconds: number;
   /** priced from GET /v1/models?verbose=true when known */
   usd?: number;
+  /** a Tavily call: the credits it reported and its id for support */
+  credits?: number;
+  request_id?: string;
 };
 
 export type StageResult<T> =
