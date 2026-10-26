@@ -1,0 +1,70 @@
+/**
+ * The one model call every route makes: JSON mode and thinking off, one retry
+ * without those optional parameters when Token Factory answers 400, one more
+ * ask when the output does not parse, and then the caller's previous value
+ * (when it has one) instead of a failure, so a bad recompile never loses a
+ * working program. Spec v2 risk 3.
+ */
+import OpenAI from "openai";
+import type { z } from "zod";
+import { ModelOutputError, parseModelJson, type Normalizer } from "@/lib/spec/parse";
+import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
+import { MODELS, thinkingOff, usageOf, type ModelRole } from "./tokenfactory";
+
+export type CallOptions<T> = {
+  role: ModelRole;
+  system: string;
+  user: string;
+  maxTokens: number;
+  schema: z.ZodType<T>;
+  normalize?: Normalizer;
+  /** kept, with a warning, when the second answer still does not parse */
+  previous?: T;
+};
+
+export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<StageResult<T>> {
+  const model = MODELS[o.role];
+  const ledger: LedgerEntry[] = [];
+  const messages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "system", content: o.system },
+    { role: "user", content: o.user },
+  ];
+  let optional = true;
+
+  async function ask(): Promise<string> {
+    const started = Date.now();
+    const params = { model, messages, max_tokens: o.maxTokens };
+    let res;
+    try {
+      res = await client.chat.completions.create(optional ? { ...params, response_format: { type: "json_object" }, ...thinkingOff() } : params);
+    } catch (err) {
+      if (!(optional && err instanceof OpenAI.APIError && err.status === 400)) throw err;
+      optional = false;
+      return ask();
+    }
+    const u = usageOf(res);
+    ledger.push({ model, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, cached_tokens: u.cached_tokens, seconds: (Date.now() - started) / 1000 });
+    return res.choices[0]?.message?.content ?? "";
+  }
+
+  try {
+    for (let attempt = 1; ; attempt++) {
+      const text = await ask();
+      try {
+        const { value, warnings } = parseModelJson(text, o.schema, { normalize: o.normalize });
+        return done(value, warnings, ledger);
+      } catch (err) {
+        if (!(err instanceof ModelOutputError)) throw err;
+        if (attempt === 2) {
+          if (o.previous !== undefined) return done(o.previous, [`${o.role}: ${err.message}; previous value kept`], ledger);
+          return failed(`${o.role}: ${err.message}`);
+        }
+        messages.push({ role: "assistant", content: text }, { role: "user", content: `That answer was not usable (${err.message}). Return the whole answer again as one JSON object only.` });
+      }
+    }
+  } catch (err) {
+    // network, auth, rate limit: the SDK already retried what it could
+    const status = err instanceof OpenAI.APIError ? err.status : undefined;
+    return failed(`${o.role}: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300), status === undefined || status === 429 || status >= 500);
+  }
+}

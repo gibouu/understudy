@@ -1,0 +1,398 @@
+[
+ {
+  "spec": {
+   "version": 1,
+   "title": "seed film into plant pillow",
+   "summary": "Pick up the seed film and tuck it into the plant pillow's pocket.",
+   "objects": [
+    {
+     "id": "film",
+     "name": "seed film",
+     "shape": "box",
+     "size_mm": [
+      15,
+      6,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ]
+     },
+     "source": "demo"
+    },
+    {
+     "id": "pillow",
+     "name": "plant pillow",
+     "shape": "box",
+     "size_mm": [
+      100,
+      60,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pocket_clearance_mm": 5,
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       15
+      ]
+     },
+     "source": "demo"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "film",
+     "t_start_s": 0,
+     "t_end_s": 1,
+     "source": "demo"
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "film",
+     "target": {
+      "fixture": "pocket",
+      "frame": "pillow"
+     },
+     "t_start_s": 1,
+     "t_end_s": 2,
+     "source": "demo"
+    }
+   ]
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "seed film into plant pillow",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "film",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "film",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "film",
+        "aperture_mm": 6
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "film"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "film",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pillow",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "ask",
+        "slot": "steps[s2].tolerances.x_mm",
+        "question": "What is the x-mm tolerance for step s2?",
+        "why": "no tolerance band for x_mm"
+       },
+       {
+        "op": "move_to",
+        "frame": "pillow",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "film"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "film"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": []
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 1778,
+     "completion_tokens": 311,
+     "seconds": 1.71
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "seed film into plant pillow",
+   "summary": "Pick up the seed film and tuck it into the plant pillow's pocket.",
+   "objects": [
+    {
+     "id": "film",
+     "name": "seed film",
+     "shape": "box",
+     "size_mm": [
+      15,
+      6,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ]
+     },
+     "source": "demo"
+    },
+    {
+     "id": "pillow",
+     "name": "plant pillow",
+     "shape": "box",
+     "size_mm": [
+      100,
+      60,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pocket_clearance_mm": 5,
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       15
+      ]
+     },
+     "source": "demo"
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "film",
+     "t_start_s": 0,
+     "t_end_s": 1,
+     "source": "demo",
+     "success": [
+      {
+       "kind": "contact_both_pads",
+       "object": "film"
+      }
+     ],
+     "sources": {
+      "success": "interview#1"
+     }
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "film",
+     "target": {
+      "fixture": "pocket",
+      "frame": "pillow"
+     },
+     "t_start_s": 1,
+     "t_end_s": 2,
+     "source": "demo",
+     "success": [
+      {
+       "kind": "inside_zone",
+       "object": "film",
+       "target": "pillow"
+      }
+     ],
+     "tolerances": {
+      "x_mm": 2,
+      "y_mm": 2,
+      "yaw_deg": 5
+     },
+     "sources": {
+      "success": "interview#2",
+      "tolerances": "interview#3"
+     }
+    }
+   ]
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "seed film into plant pillow",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "film",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "film",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "film",
+        "aperture_mm": 6
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "film"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "film",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pillow",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pillow",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "film"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "film",
+         "target": "pillow"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": []
+   },
+   "warnings": [
+    "dropped an ask for steps[s2].tolerances.x_mm: the spec already sets it"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 1843,
+     "completion_tokens": 320,
+     "seconds": 1.807
+    }
+   ]
+  }
+ }
+]
