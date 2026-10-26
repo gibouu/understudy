@@ -16,7 +16,7 @@ import { Program, TaskSpec } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
 import { forgetLiveCalls } from "@/lib/unlock/cap";
 import { UNLOCK_ENV } from "@/lib/unlock/check";
-import { LIVE_CLOSED, LIVE_NEEDS_PASS, UNLOCK_NEEDED } from "@/lib/unlock/messages";
+import { gateNote, LIVE_CLOSED, LIVE_NEEDS_PASS, UNLOCK_NEEDED } from "@/lib/unlock/messages";
 import { readSampleToken, sampleToken, TOKEN_ENV } from "@/lib/unlock/token";
 
 /** Token Factory stand-in: every create() is counted; the vision model answers the recorded label. */
@@ -65,9 +65,9 @@ const BODIES: Record<Exclude<Route, "label">, object> = {
 
 let tavily = 0;
 
-async function post(route: Route, body: object): Promise<{ status: number; json: StageResult<unknown> & { sample_token?: string }; live: boolean }> {
+async function post(route: Route, body: object, query = ""): Promise<{ status: number; json: StageResult<unknown> & { sample_token?: string }; live: boolean }> {
   const before = tf.calls + tavily;
-  const res = await routes[route](new Request(`http://test/api/${route}`, { method: "POST", body: JSON.stringify(body) }));
+  const res = await routes[route](new Request(`http://test/api/${route}${query}`, { method: "POST", body: JSON.stringify(body) }));
   return { status: res.status, json: await res.json(), live: tf.calls + tavily > before };
 }
 
@@ -125,9 +125,14 @@ describe.each(Object.keys(BODIES) as Exclude<Route, "label">[])("the guard on /a
     expect((await post(route, { ...body, sample_token: sampleToken() })).live).toBe(true);
   });
 
-  it("never reaches the guard in replay", async () => {
-    const res = await routes[route](new Request(`http://test/api/${route}?replay=1`, { method: "POST", body: JSON.stringify(body) }));
-    expect(JSON.stringify(await res.json())).not.toContain(LIVE_NEEDS_PASS);
+  it("in replay, calls nothing and never reaches the guard", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv(UNLOCK_ENV, "");
+    const r = await post(route, body, "?replay=1");
+    expect(r.live).toBe(false);
+    expect(gateNote(r.json.status === "done" ? r.json.warnings : [])).toBeUndefined();
+    expect(JSON.stringify(r.json)).not.toContain(LIVE_CLOSED);
+    expect(console.warn).not.toHaveBeenCalled();
   });
 });
 

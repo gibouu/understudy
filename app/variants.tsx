@@ -10,6 +10,7 @@ import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib
 import { costOf } from "@/lib/variants/cost";
 import { MAX_VARIANTS, type NotYet } from "@/lib/variants/parse";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
+import { gateNote } from "@/lib/unlock/messages";
 import { liveAuth } from "./capture";
 import { PatchLoop } from "./patch-loop";
 
@@ -378,7 +379,7 @@ function VariantPatch({ id, setOwner, ...loop }: Omit<React.ComponentProps<typeo
 function StatusLine({ result }: { result: StageResult<Checked> }) {
   if (result.status === "running") return <span className="animate-pulse text-sm text-[color:var(--muted,#737373)]">{result.note}…</span>;
   if (result.status === "failed") return <span className="text-sm text-red-700">{result.message}</span>;
-  if (replayed(result)) return <span className="text-xs text-amber-700">replayed from a recording</span>;
+  if (replayed(result) && result.status === "done") return <span className="text-xs text-amber-700">{gateNote(result.warnings) ?? "replayed from a recording"}</span>;
   return null;
 }
 

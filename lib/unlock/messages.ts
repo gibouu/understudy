@@ -17,7 +17,7 @@ export const LIVE_NEEDS_PASS = "replay: live model calls need the unlock code, o
 export const LIVE_WRONG_CODE = "replay: the unlock code sent is not right";
 export const LIVE_EXPIRED = "replay: this sample session is over an hour old; watch the clip again to go live";
 export const LIVE_NO_SECRET = "replay: this deployment cannot vouch for sample sessions, so live calls after the label need the unlock code";
-export const LIVE_CLOSED = "replay: live model calls are closed on this deployment until its unlock code is set";
+export const LIVE_CLOSED = "replay: live model calls outside a sample session are closed on this deployment until its unlock code is set";
 export const LIVE_BUSY = "replay: this server has made all the live calls it allows for this minute; try again shortly";
 
 const GATE_NOTES: readonly string[] = [LIVE_NEEDS_PASS, LIVE_WRONG_CODE, LIVE_EXPIRED, LIVE_NO_SECRET, LIVE_CLOSED, LIVE_BUSY];
