@@ -148,6 +148,24 @@ describe("a variant of the ISS sample", () => {
     expect(why(plate([42, 42, 35]))).toBe("seed film packet would start in mid-air, 30 mm above the surface under it");
   });
 
+  it("treats a pocket as the box the scene cuts, even in a round fixture", () => {
+    const cylPocket = (xyz: number[]) =>
+      build(["objects[obj1].shape", "cylinder"], ["objects[obj1].size_mm", [20, 20, 40]], ["objects[obj1].pose", { xyz_mm: xyz, yaw_deg: 0, frame: "world" }], ["objects[obj2].shape", "cylinder"], ["objects[obj2].size_mm", [70, 70, 30]], ["objects[obj2].pose", { xyz_mm: [175, 60, 15], yaw_deg: 0, frame: "world" }]);
+    expect(why(cylPocket([211, 96, 20]))).toBe("seed film packet and Veggie plant pillow tray would be in the same place");
+    expect(why(cylPocket([200, -60, 20]))).toBe("");
+  });
+
+  it("measures a box against a round target from its nearest corner", () => {
+    const beside = (yaw: number) =>
+      build(["steps[s2].verb", "place"], ["steps[s2].target.fixture", "zone"], ["objects[obj2].shape", "cylinder"], ["objects[obj2].size_mm", [100, 100, 30]], ["objects[obj2].pose", { xyz_mm: [175, 100, 15], yaw_deg: yaw, frame: "world" }], ["objects[obj1].pose", { xyz_mm: [230, 150, 20], yaw_deg: 0, frame: "world" }]);
+    expect(why(beside(0))).toBe("");
+    expect(why(beside(45))).toBe("");
+  });
+
+  it("refuses a start across a pocket's rim", () => {
+    expect(why(build(["objects[obj1].pose", { xyz_mm: [8, 0, 35], yaw_deg: 0, frame: "obj2" }]))).toBe("seed film packet would start across the edge of Veggie plant pillow tray's pocket and tip in");
+  });
+
   it("finds the table under a raised fixture", () => {
     const r = build(["objects[obj2].pose", { xyz_mm: [175, 100, 60], yaw_deg: 0, frame: "world" }], ["objects[obj1].pose", { xyz_mm: [175, 100, 20], yaw_deg: 0, frame: "world" }]);
     expect(why(r)).toBe("");

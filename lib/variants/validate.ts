@@ -115,12 +115,10 @@ function opening(spec: TaskSpec, f: SpecObject): [number, number] {
   return [Math.max(...users.map((o) => footprintMm(o)[0])) + c, Math.max(...users.map((o) => footprintMm(o)[1])) + c];
 }
 
-const round = (o: SpecObject) => o.shape !== "box";
-
 /** Half extents of an object's footprint along another frame's axes, turned by `yaw` degrees against it. */
-function halfExtents(o: SpecObject, yaw: number): [number, number] {
+function halfExtents(o: SpecObject, yaw: number, round: boolean): [number, number] {
   const [a, b] = footprintMm(o);
-  if (round(o)) return [a / 2, a / 2];
+  if (round) return [a / 2, a / 2];
   const [c, s] = [Math.abs(Math.cos(yaw * DEG)), Math.abs(Math.sin(yaw * DEG))];
   return [(c * a + s * b) / 2, (s * a + c * b) / 2];
 }
@@ -145,6 +143,8 @@ function geometryProblem(spec: TaskSpec): string | null {
     throw err;
   }
   const bottom = (o: SpecObject) => world[o.id].xyz_mm[2] - heightMm(o) / 2;
+  // a pocket is cut as a box whatever the fixture's shape (lib/sim/scene.ts)
+  const round = (o: SpecObject) => o.shape !== "box" && !usedAsPocket(spec, o.id);
   for (const o of spec.objects) {
     const r = Math.hypot(world[o.id].xyz_mm[0], world[o.id].xyz_mm[1]);
     if (r > REACH_MM) return `${o.name} would be ${Math.round(r)} mm from the robot's base, beyond its ${REACH_MM} mm reach`;
@@ -158,27 +158,35 @@ function geometryProblem(spec: TaskSpec): string | null {
     return apply(transpose(w.R), [at[0] - w.xyz_mm[0], at[1] - w.xyz_mm[1], at[2] - w.xyz_mm[2]]);
   };
   const floorTop = (f: SpecObject) => world[f.id].xyz_mm[2] - heightMm(f) / 2 + Math.min(WALL_M / MM, heightMm(f) / 2);
-  /** Whether `o`'s whole footprint stands inside pocket fixture `f`'s opening, on or above its floor. */
-  const inOpening = (o: SpecObject, f: SpecObject) => {
-    if (!usedAsPocket(spec, f.id) || bottom(o) < floorTop(f) - REST_MM) return false;
+  /** Whether `o`'s centre is over pocket fixture `f`'s opening, and whether its whole footprint stands in it, on or above the floor. */
+  const opened = (o: SpecObject, f: SpecObject): { over: boolean; inside: boolean } => {
+    if (!usedAsPocket(spec, f.id)) return { over: false, inside: false };
     const [lx, ly] = localIn(f, o);
     const [ix, iy] = opening(spec, f);
-    const [ex, ey] = halfExtents(o, world[o.id].yaw_deg - world[f.id].yaw_deg);
-    return Math.abs(lx) + ex <= ix / 2 + 0.5 && Math.abs(ly) + ey <= iy / 2 + 0.5;
+    const [ex, ey] = halfExtents(o, world[o.id].yaw_deg - world[f.id].yaw_deg, round(o));
+    const over = Math.abs(lx) <= ix / 2 && Math.abs(ly) <= iy / 2;
+    const fits = Math.abs(lx) + ex <= ix / 2 + 0.5 && Math.abs(ly) + ey <= iy / 2 + 0.5;
+    return { over, inside: over && fits && bottom(o) >= floorTop(f) - REST_MM };
   };
-  /** Whether the footprints of `a` and `b` overlap: separating axes for boxes, distance for round ones. */
+  /** Whether the footprints of `a` and `b` overlap: separating axes for two boxes, the nearest point for a box and a disc, distance for two discs. */
   const footprintsOverlap = (a: SpecObject, b: SpecObject) => {
+    const r = (o: SpecObject) => footprintMm(o)[0] / 2;
     if (round(a) && round(b)) {
-      const d = Math.hypot(world[a.id].xyz_mm[0] - world[b.id].xyz_mm[0], world[a.id].xyz_mm[1] - world[b.id].xyz_mm[1]);
-      return d < footprintMm(a)[0] / 2 + footprintMm(b)[0] / 2;
+      return Math.hypot(world[a.id].xyz_mm[0] - world[b.id].xyz_mm[0], world[a.id].xyz_mm[1] - world[b.id].xyz_mm[1]) < r(a) + r(b);
+    }
+    if (round(a) !== round(b)) {
+      const [box, disc] = round(a) ? [b, a] : [a, b];
+      const [lx, ly] = localIn(box, disc);
+      const [hx, hy] = halfExtents(box, 0, false);
+      return Math.hypot(lx - Math.max(-hx, Math.min(hx, lx)), ly - Math.max(-hy, Math.min(hy, ly))) < r(disc);
     }
     for (const [p, q] of [
       [a, b],
       [b, a],
     ]) {
       const [lx, ly] = localIn(p, q);
-      const [px, py] = halfExtents(p, 0);
-      const [qx, qy] = halfExtents(q, world[q.id].yaw_deg - world[p.id].yaw_deg);
+      const [px, py] = halfExtents(p, 0, false);
+      const [qx, qy] = halfExtents(q, world[q.id].yaw_deg - world[p.id].yaw_deg, false);
       if (Math.abs(lx) >= px + qx || Math.abs(ly) >= py + qy) return false;
     }
     return true;
@@ -188,7 +196,7 @@ function geometryProblem(spec: TaskSpec): string | null {
       const [a, b] = [spec.objects[i], spec.objects[j]];
       const z = Math.min(bottom(a) + heightMm(a), bottom(b) + heightMm(b)) - Math.max(bottom(a), bottom(b));
       if (z <= REST_MM || !footprintsOverlap(a, b)) continue;
-      if ((a.role === "manipulated" && inOpening(a, b)) || (b.role === "manipulated" && inOpening(b, a))) continue;
+      if ((a.role === "manipulated" && opened(a, b).inside) || (b.role === "manipulated" && opened(b, a).inside)) continue;
       return `${a.name} and ${b.name} would be in the same place`;
     }
   }
@@ -199,7 +207,11 @@ function geometryProblem(spec: TaskSpec): string | null {
       const [lx, ly] = localIn(f, o);
       const [fx, fy] = footprintMm(f);
       const under = round(f) ? Math.hypot(lx, ly) <= fx / 2 : Math.abs(lx) <= fx / 2 && Math.abs(ly) <= fy / 2;
-      if (under) supports.push(inOpening(o, f) ? floorTop(f) : world[f.id].xyz_mm[2] + heightMm(f) / 2);
+      if (!under) continue;
+      const hole = opened(o, f);
+      // centred over the opening but not standing in it, it lies across the rim and tips in
+      if (hole.over && !hole.inside && bottom(o) >= floorTop(f) - REST_MM) return `${o.name} would start across the edge of ${f.name}'s pocket and tip in`;
+      supports.push(hole.inside ? floorTop(f) : world[f.id].xyz_mm[2] + heightMm(f) / 2);
     }
     // it rests on the highest surface at or below its bottom
     const below = supports.filter((s) => s <= bottom(o) + REST_MM);
