@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyChanges, parsePath } from "@/lib/spec/apply";
+import { applyChanges, canonicalSlot, parsePath } from "@/lib/spec/apply";
 import { TaskSpec } from "@/lib/spec/schema";
 
 const spec = TaskSpec.parse({
@@ -128,5 +128,15 @@ describe("applyChanges", () => {
     const { spec: next, warnings } = applyChanges(spec, [{ path: "objects[rack].id", value: "holder", source: "user#edit" }]);
     expect(warnings).toEqual([]);
     expect(next.objects[1].id).toBe("holder");
+  });
+});
+
+describe("canonicalSlot", () => {
+  it("puts a bare object or step id in brackets and leaves the rest alone", () => {
+    expect(canonicalSlot(spec, "rack.pocket_clearance_mm")).toBe("objects[rack].pocket_clearance_mm");
+    expect(canonicalSlot(spec, "s2.tolerances.x_mm")).toBe("steps[s2].tolerances.x_mm");
+    expect(canonicalSlot(spec, "objects[rack].pose")).toBe("objects[rack].pose");
+    expect(canonicalSlot(spec, "anchor.t_s")).toBe("anchor.t_s");
+    expect(canonicalSlot(spec, "object_pose_rack")).toBe("object_pose_rack");
   });
 });
