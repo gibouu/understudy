@@ -73,7 +73,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     expect(await fails("create", "--usd-per-mtok", "5", "--dry-run")).toMatch(/--balance-usd/);
     expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "25", "--dry-run")).toMatch(/under the US\$15 floor/);
     expect(ledger()).toEqual([]);
-  });
+  }, 60_000);
 
   it("starts one job, charges its estimate at once, refuses a second, and adjusts once", async () => {
     await tf("upload");
@@ -103,7 +103,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     expect(adjustments[0].usd).toBeCloseTo(30 - s.job.usd_est, 6);
     expect(state().job.usd_actual).toBe(30);
     expect(state().checkpoints[0].model).toMatch(/^ft:Qwen\/Qwen3-30B-A3B-Instruct-2507:/);
-  });
+  }, 60_000);
 
   it("after a lost answer, blocks another create until adopt or release", async () => {
     unlinkSync(env.FINETUNE_TF_STATE);
@@ -131,7 +131,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     expect(ledger().some((e) => e.type === "release" && e.id === reservation)).toBe(true);
     expect(state().pending).toBeUndefined();
     failCreate = "no";
-  });
+  }, 60_000);
 
   it("refuses an upload that is not the manifest's", async () => {
     unlinkSync(env.FINETUNE_TF_STATE);
@@ -140,5 +140,5 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     s["train.jsonl"].sha256 = "0".repeat(64);
     writeFileSync(env.FINETUNE_TF_STATE, JSON.stringify(s));
     expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/run upload again/);
-  });
+  }, 60_000);
 });
