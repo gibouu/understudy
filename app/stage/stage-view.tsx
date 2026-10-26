@@ -7,8 +7,10 @@ import type { Approach, IkResult } from "@/lib/sim/ik";
 import type { Frame, SimMeta } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { buildScene } from "@/lib/sim/scene";
+import { SETTINGS } from "@/lib/sim/settings";
 import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
 import { APPROACHES, GRAVITIES, type GravityName, type Program, type TaskSpec } from "@/lib/spec/schema";
+import { SettingNote, SettingSwitch, type Shown } from "../setting-switch";
 
 const SCENE = buildScene(DEMO_SPEC);
 /** the spec's moved object and the fixture it goes into: the page names neither */
@@ -24,11 +26,12 @@ type Scene = "film" | "pour";
 /** what the readout shows of the liquid: where it is, and what it costs a frame */
 type LiquidReadout = { where: NonNullable<Frame["liquid"]>["where"]; step_ms: number; frames_s: number };
 
-/** `?scene=pour` opens the pour; `?ml=64` fills its cup with that much (1,000 particles at 64 mL) */
-function fromUrl(): { scene: Scene; ml?: number } {
+/** `?scene=pour` opens the pour; `?ml=64` fills its cup with that much (1,000 particles at 64 mL); `?setting=kitchen` draws a setting */
+function fromUrl(): { scene: Scene; ml?: number; setting: Shown } {
   const q = new URLSearchParams(window.location.search);
   const ml = Number(q.get("ml"));
-  return { scene: q.get("scene") === "pour" ? "pour" : "film", ml: ml > 0 ? ml : undefined };
+  const setting = SETTINGS.find((s) => s === q.get("setting")) ?? null;
+  return { scene: q.get("scene") === "pour" ? "pour" : "film", ml: ml > 0 ? ml : undefined, setting };
 }
 const pourSpec = (ml?: number): TaskSpec =>
   ml ? { ...POUR_SPEC, objects: POUR_SPEC.objects.map((o) => (o.liquid_ml !== undefined ? { ...o, liquid_ml: ml } : o)) } : POUR_SPEC;
@@ -70,6 +73,7 @@ export function StageView() {
   const [ml] = useState<number | undefined>(() => fromUrl().ml);
   const spec = useMemo(() => (scene === "pour" ? pourSpec(ml) : DEMO_SPEC), [scene, ml]);
   const [liquid, setLiquid] = useState<LiquidReadout | null>(null);
+  const [setting, setSetting] = useState<Shown>(() => fromUrl().setting);
   const [seed, setSeed] = useState(1);
   const [busy, setBusy] = useState(false);
   const frames = useRef<{ n: number; since: number; rate: number }>({ n: 0, since: 0, rate: 0 });
@@ -138,6 +142,9 @@ export function StageView() {
       renderer.dispose();
     };
   }, [spec]);
+
+  // after the effect above, so a fresh renderer gets the setting too
+  useEffect(() => rendererRef.current?.setSetting(setting), [setting, spec]);
 
   const onSlider = (i: number, v: number) => {
     const next = [...ctrl];
@@ -265,11 +272,14 @@ export function StageView() {
             if (p) moveTo([Math.round(p[0] * 1000), Math.round(p[1] * 1000), target[2]], approach, true);
           }}
         />
-        <div className="pointer-events-none absolute left-3 top-3 rounded bg-white/80 px-2 py-1 text-xs text-neutral-700">
-          {error ? <span className="text-red-700">error: {error}</span> : status.message}
-          {status.progress !== undefined && status.progress < 1 && (
-            <span className="ml-2 text-neutral-500">{Math.round(status.progress * 100)}%</span>
-          )}
+        <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-col items-start gap-1 text-xs text-neutral-700">
+          <div className="rounded bg-white/80 px-2 py-1">
+            {error ? <span className="text-red-700">error: {error}</span> : status.message}
+            {status.progress !== undefined && status.progress < 1 && (
+              <span className="ml-2 text-neutral-500">{Math.round(status.progress * 100)}%</span>
+            )}
+          </div>
+          <SettingNote shown={setting} />
         </div>
         {meta && (
           <div className="pointer-events-none absolute bottom-3 left-3 rounded bg-white/80 px-2 py-1 font-mono text-[11px] text-neutral-700">
@@ -292,6 +302,7 @@ export function StageView() {
       </div>
 
       <div className="flex flex-col gap-3 text-sm">
+        <SettingSwitch shown={setting} onPick={setSetting} />
         <div className="flex flex-wrap items-center gap-2" aria-label="scene">
           <span className="text-xs text-neutral-500">scene</span>
           {(["film", "pour"] as const).map((x) => (

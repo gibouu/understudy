@@ -15,6 +15,7 @@ Every piece exists (MediaPipe; GPT-4V for Robotics, SeeDo, GF-VLA; MimicGen, Dex
 - Objects are primitives sized from a monocular clip; sizes are approximate and are the first thing the interview checks.
 - The exported dataset is a format-valid LeRobot v2.1 skeleton for GR00T's loader with scripted, primitive-rendered episodes. It is not training data and the quality report says so.
 - A pass does not predict that a learned policy or a real robot would succeed.
+- The station module and the kitchen counter drawn around the arm once a program passes are decoration: three.js scenery with no part in the physics. The rehearsal always runs on the bench, and the setting says so on the stage.
 
 ## Orbit mode
 

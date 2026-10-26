@@ -4,7 +4,8 @@
  * MuJoCo is Z-up; the camera is told so and everything else follows.
  * The liquid, when the scene has one, is one instanced sphere per particle
  * (diameter the particle spacing), tinted from deep blue at rest to pale
- * when it moves fast.
+ * when it moves fast. A setting (lib/sim/settings.ts) can be drawn around the
+ * bench: decoration only, the bench's floor hidden under its work surface.
  */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -20,12 +21,14 @@ import {
   type GeomMeta,
   type SimMeta,
 } from "./protocol";
+import { Dressing, SETTING_VIEW, type SettingName } from "./settings";
 
 const ROT_Z_TO_Y = new THREE.Matrix4().makeRotationX(Math.PI / 2);
 const STILL = new THREE.Color(0x1d4ed8);
 const FAST = new THREE.Color(0xbae6fd);
 /** a particle at this speed or faster is drawn FAST, m/s */
 const FAST_M_S = 0.5;
+const BENCH = new THREE.Color(0xf4f1ea);
 
 export class StageRenderer {
   private renderer: THREE.WebGLRenderer;
@@ -40,11 +43,14 @@ export class StageRenderer {
   private liquidPrev: { positions: Float32Array; t: number } | null = null;
   /** the move_to target */
   private marker = new THREE.Mesh(new THREE.SphereGeometry(0.006, 16, 12), new THREE.MeshBasicMaterial({ color: 0xd9480f }));
+  /** the setting drawn around the bench, and the bench view to go back to */
+  private dressing: Dressing | null = null;
+  private benchView: [THREE.Vector3Tuple, THREE.Vector3Tuple] | null = null;
 
   constructor(private canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.scene.background = new THREE.Color(0xf4f1ea);
+    this.scene.background = BENCH;
     this.camera = new THREE.PerspectiveCamera(40, 1, 0.01, 20);
     this.camera.up.set(0, 0, 1);
     this.camera.position.set(0.7, -0.6, 0.45);
@@ -114,9 +120,28 @@ export class StageRenderer {
       if (g.group >= 3) continue; // collision-only geoms
       const obj = this.buildGeom(g, meshById);
       if (!obj) continue;
+      obj.userData.floor = g.type === GEOM_PLANE;
+      obj.visible = !(obj.userData.floor && this.dressing);
       this.scene.add(obj);
       this.objects.set(g.id, obj);
     }
+  }
+
+  /** Draw a setting around the bench, or the bare bench again with null. Visual only: the physics never sees it. */
+  setSetting(name: SettingName | null) {
+    const was = this.dressing;
+    if ((was?.name ?? null) === name) return;
+    if (was) {
+      this.scene.remove(was.group);
+      was.dispose();
+    } else this.benchView = [this.controls.target.toArray(), this.camera.position.toArray()];
+    this.dressing = name ? new Dressing(name) : null;
+    if (this.dressing) this.scene.add(this.dressing.group);
+    this.scene.background = this.dressing?.background ?? BENCH;
+    for (const o of this.objects.values()) if (o.userData.floor) o.visible = !this.dressing;
+    // into a room from the bench: step back so the walls show; back to the bench: the view it had
+    if (!was) this.view(...SETTING_VIEW);
+    else if (!this.dressing && this.benchView) this.view(...this.benchView);
   }
 
   private setLiquid(l: SimMeta["liquid"]) {
@@ -241,6 +266,7 @@ export class StageRenderer {
     this.resizeObserver.disconnect();
     this.controls.dispose();
     disposeObject(this.marker);
+    this.dressing?.dispose();
     this.setLiquid(null);
     for (const o of this.objects.values()) {
       this.scene.remove(o);
