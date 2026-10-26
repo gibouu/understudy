@@ -25,6 +25,8 @@ export type CallOptions<T> = {
   normalize?: Normalizer;
   /** kept, with a warning, when the second answer still does not parse */
   previous?: T;
+  /** problems a parsed value still has; the model is asked once to fix them, and what remains becomes warnings */
+  check?: (value: T) => string[];
 };
 
 export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<StageResult<T>> {
@@ -35,6 +37,7 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
     { role: "user", content: o.user as OpenAI.ChatCompletionUserMessageParam["content"] },
   ];
   let optional = true;
+  let checked: { value: T; warnings: string[] } | null = null;
 
   async function ask(): Promise<string> {
     const started = Date.now();
@@ -57,10 +60,15 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
       const text = await ask();
       try {
         const { value, warnings } = parseModelJson(text, o.schema, { normalize: o.normalize });
-        return done(value, warnings, ledger);
+        const problems = o.check?.(value) ?? [];
+        if (problems.length === 0 || attempt === 2) return done(value, [...warnings, ...problems.map((p) => `${o.role}: ${p}`)], ledger);
+        checked = { value, warnings: [...warnings, ...problems.map((p) => `${o.role}: ${p}`)] };
+        messages.push({ role: "assistant", content: text }, { role: "user", content: `That answer has problems:\n- ${problems.join("\n- ")}\nFix them and return the whole answer again as one JSON object only.` });
       } catch (err) {
         if (!(err instanceof ModelOutputError)) throw err;
         if (attempt === 2) {
+          // a fix that does not parse: the first answer, problems and all, beats nothing
+          if (checked) return done(checked.value, [...checked.warnings, `${o.role}: the corrected answer did not parse`], ledger);
           if (o.previous !== undefined) return done(o.previous, [`${o.role}: ${err.message}; previous value kept`], ledger);
           return failed(`${o.role}: ${err.message}`);
         }

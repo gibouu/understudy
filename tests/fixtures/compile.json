@@ -549,10 +549,10 @@
        {
         "op": "wait_until",
         "predicate": {
-         "kind": "object_still",
+         "kind": "contact_both_pads",
          "object": "obj1"
         },
-        "timeout_s": 2
+        "timeout_s": 1
        },
        {
         "op": "move_to",
@@ -611,17 +611,20 @@
       ]
      }
     ],
-    "warnings": []
+    "warnings": [
+     "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+    ]
    },
    "warnings": [
-    "dropped an ask for steps[s2].tolerances.x_mm: the spec already sets it"
+    "dropped an ask for objects[obj1].pose.xyz_mm: the spec already sets it",
+    "dropped an ask for objects[obj1].size_mm: the spec already sets it"
    ],
    "ledger": [
     {
      "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
-     "prompt_tokens": 2121,
-     "completion_tokens": 330,
-     "seconds": 2.126
+     "prompt_tokens": 2218,
+     "completion_tokens": 387,
+     "seconds": 1.889
     }
    ]
   }

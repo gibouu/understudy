@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Program, TaskSpec } from "@/lib/spec/schema";
-import { validateProgram, validateSpec } from "@/lib/spec/validate";
+import { lintProgram, validateProgram, validateSpec } from "@/lib/spec/validate";
 
 const base = TaskSpec.parse({
   version: 1,
@@ -93,5 +93,60 @@ describe("validateProgram", () => {
     expect(validateProgram(swapped, base).map((i) => i.code)).toEqual(["program_step_order"]);
     const good = Program.parse({ spec_title: "x", steps: [{ step_id: "s1", ops: [] }, { step_id: "s2", ops: [] }] });
     expect(validateProgram(good, base)).toEqual([]);
+  });
+});
+
+describe("lintProgram", () => {
+  // the program Nano wrote on 26 Oct for the fitted hero spec, as the page showed it
+  const spec = TaskSpec.parse({
+    version: 1,
+    title: "t",
+    summary: "",
+    objects: [
+      { id: "film", name: "seed film", shape: "box", size_mm: [15, 6, 40], symmetry: "none", role: "manipulated", pose: { xyz_mm: [200, -100, 20] } },
+      { id: "pillow", name: "plant pillow", shape: "box", size_mm: [100, 60, 30], symmetry: "none", role: "fixture", pose: { xyz_mm: [175, 100, 15] } },
+    ],
+    steps: [
+      { id: "s1", verb: "grasp", object: "film", t_start_s: 0, t_end_s: 1 },
+      { id: "s2", verb: "insert", object: "film", target: { fixture: "pocket", frame: "pillow" }, t_start_s: 1, t_end_s: 2 },
+    ],
+  });
+  const bad = Program.parse({
+    spec_title: "t",
+    steps: [
+      { step_id: "s1", ops: [{ op: "move_to", frame: "world", offset_mm: [0, 0, 62] }, { op: "grasp", object: "film", aperture_mm: 6 }] },
+      { step_id: "s2", ops: [{ op: "move_to", frame: "pillow", offset_mm: [0, 0, 55] }, { op: "assert", predicate: { kind: "inside_zone", object: "pillow", target: "pillow" } }] },
+    ],
+  });
+
+  it("names each thing that keeps the program from doing the task", () => {
+    const issues = lintProgram(bad, spec);
+    expect(issues).toEqual([
+      expect.stringMatching(/^steps\[0\]\.ops\[0\]: move_to in "world" is 0 mm from the robot base/),
+      expect.stringMatching(/compares "pillow" with itself/),
+      "steps[1] (insert): never releases the film",
+    ]);
+  });
+
+  it("refuses an insert that never goes to its target", () => {
+    const self = Program.parse({
+      spec_title: "t",
+      steps: [
+        { step_id: "s1", ops: [{ op: "move_to", frame: "film", offset_mm: [0, 0, 12] }, { op: "grasp", object: "film", aperture_mm: 6 }] },
+        { step_id: "s2", ops: [{ op: "move_to", frame: "film", offset_mm: [0, 0, 36] }, { op: "release" }] },
+      ],
+    });
+    expect(lintProgram(self, spec)).toEqual(['steps[1] (insert): never moves in the frame of its target "pillow"']);
+  });
+
+  it("passes a program that can do it", () => {
+    const good = Program.parse({
+      spec_title: "t",
+      steps: [
+        { step_id: "s1", ops: [{ op: "move_to", frame: "world", offset_mm: [200, -100, 60] }, { op: "grasp", object: "film", aperture_mm: 6 }] },
+        { step_id: "s2", ops: [{ op: "move_to", frame: "pillow", offset_mm: [0, 0, 36] }, { op: "release" }, { op: "assert", predicate: { kind: "inside_zone", object: "film", target: "pillow" } }] },
+      ],
+    });
+    expect(lintProgram(good, spec)).toEqual([]);
   });
 });

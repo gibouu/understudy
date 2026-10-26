@@ -144,3 +144,39 @@ export function validateProgram(program: Program, spec: TaskSpec): SpecIssue[] {
   }
   return issues;
 }
+
+/** The ring of world positions the arm can reach from its base, in mm (lib/sim/ik.ts measures the real limit). */
+const REACH_MM = [100, 300] as const;
+
+/**
+ * What a compiler should refuse, as sentences the model can act on: every
+ * reference error from validateProgram, plus programs that cannot do the
+ * step: a world-frame move outside the reach ring (an object offset written
+ * in the wrong frame), a check of an object against itself, an insert or
+ * place step that never lets go.
+ */
+export function lintProgram(program: Program, spec: TaskSpec): string[] {
+  const out = validateProgram(program, spec)
+    .filter((i) => i.severity === "error")
+    .map((i) => `${i.path}: ${i.message}`);
+  program.steps.forEach((ps, i) => {
+    ps.ops.forEach((op, k) => {
+      const at = `steps[${i}].ops[${k}]`;
+      if (op.op === "move_to" && op.frame === "world") {
+        const r = Math.round(Math.hypot(op.offset_mm[0], op.offset_mm[1]));
+        if (r < REACH_MM[0] || r > REACH_MM[1]) out.push(`${at}: move_to in "world" is ${r} mm from the robot base, outside its reach (${REACH_MM[0]} to ${REACH_MM[1]} mm); a point near an object uses that object's id as the frame`);
+      }
+      if ((op.op === "assert" || op.op === "wait_until") && op.predicate.object && op.predicate.object === op.predicate.target) {
+        out.push(`${at}: ${op.predicate.kind} compares "${op.predicate.object}" with itself; the object is the one moved, the target the one it goes into`);
+      }
+    });
+    const step = spec.steps.find((s) => s.id === ps.step_id);
+    if (step && (step.verb === "insert" || step.verb === "place") && !ps.ops.some((op) => op.op === "release")) {
+      out.push(`steps[${i}] (${step.verb}): never releases the ${step.object}`);
+    }
+    if (step?.target && step.target.frame !== "world" && !ps.ops.some((op) => op.op === "move_to" && op.frame === step.target!.frame)) {
+      out.push(`steps[${i}] (${step.verb}): never moves in the frame of its target "${step.target.frame}"`);
+    }
+  });
+  return out;
+}
