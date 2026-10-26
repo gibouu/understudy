@@ -36,6 +36,12 @@ function fromUrl(): { scene: Scene; ml?: number } {
 const pourSpec = (ml?: number): TaskSpec =>
   ml ? { ...POUR_SPEC, objects: POUR_SPEC.objects.map((o) => (o.liquid_ml !== undefined ? { ...o, liquid_ml: ml } : o)) } : POUR_SPEC;
 const nameOf = (spec: TaskSpec, id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
+/** The pour spec as `program` tilts it (how far, how fast), so similar tasks start from the pour that ran. */
+const asRun = (spec: TaskSpec, program: Program): TaskSpec => {
+  const tilt = program.steps.flatMap((s) => s.ops).find((op) => op.op === "tilt" && op.deg > 0);
+  if (tilt?.op !== "tilt") return spec;
+  return { ...spec, steps: spec.steps.map((s) => (s.verb === "pour" && s.pour ? { ...s, pour: { ...s.pour, tilt_deg: tilt.deg, tilt_s: tilt.seconds } } : s)) };
+};
 
 /** Known targets: the first four reachable, the last three not. */
 const PRESETS: [[number, number, number], Approach, string][] = [
@@ -77,6 +83,8 @@ export function StageView() {
   const [busy, setBusy] = useState(false);
   /** the pour program last run from the start: similar tasks start from it */
   const [poured, setPoured] = useState<keyof typeof POUR_PROGRAMS | null>(null);
+  /** one object per pour run, so the similar tasks below start afresh only when the pour changes */
+  const ran = useMemo(() => (poured ? asRun(spec, POUR_PROGRAMS[poured]) : null), [spec, poured]);
   const frames = useRef<{ n: number; since: number; rate: number }>({ n: 0, since: 0, rate: 0 });
   const lastCtrl = useRef<number[]>(SO101_HOME);
   const lastUi = useRef(0);
@@ -498,10 +506,10 @@ export function StageView() {
         </p>
       </div>
 
-      {scene === "pour" && poured && (
+      {scene === "pour" && poured && ran && (
         <section className="flex flex-col gap-2 lg:col-span-2" aria-label="similar tasks">
           <h2 className="text-lg font-semibold tracking-tight">Try a similar task</h2>
-          <Variants spec={spec} program={POUR_PROGRAMS[poured]} />
+          <Variants spec={ran} program={POUR_PROGRAMS[poured]} />
         </section>
       )}
     </div>

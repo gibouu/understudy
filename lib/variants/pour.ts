@@ -15,10 +15,9 @@ export type Pour = Step & { pour: NonNullable<Step["pour"]> };
 /** The rehearsed pour of a spec: its first step that pours, whole (lib/sim/liquid.ts fills that one's container). */
 export const pourOf = (spec: TaskSpec): Pour | undefined => spec.steps.find((s): s is Pour => s.verb === "pour" && s.pour !== undefined);
 
-/** Half the width of an object's footprint along the unit direction `u` of the table, turned `yaw` degrees. */
+/** Half the width of a container's footprint along the unit direction `u` of the table, turned `yaw` degrees: the scene builds every container as an open box, whatever its shape. */
 export function halfAlong(o: SpecObject, yaw: number, u: [number, number]): number {
   const [a, b] = footprintMm(o);
-  if (o.shape !== "box") return a / 2;
   const [c, s] = [Math.cos(yaw * DEG), Math.sin(yaw * DEG)];
   return (Math.abs(u[0] * c + u[1] * s) * a + Math.abs(-u[0] * s + u[1] * c) * b) / 2;
 }

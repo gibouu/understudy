@@ -426,7 +426,7 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
                       <Outcome result={run.worlds[w]} />
                     </td>
                     {pours && <td className="py-0.5 pr-3">{liquidIn(v.spec, run.worlds[w])}</td>}
-                    <td className="py-0.5 text-[color:var(--muted,#737373)]">{[why(run.worlds[w]), pours && liquidElsewhere(v.spec, w, run.worlds[w])].filter(Boolean).join("; ")}</td>
+                    <td className="py-0.5 text-[color:var(--muted,#737373)]">{[why(run.worlds[w]), pours && liquidElsewhere(v.spec, run.worlds[w])].filter(Boolean).join("; ")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -456,16 +456,21 @@ const percent = (v: number) => (v > 0 && v < 0.005 ? "under 1%" : `${Math.round(
 const nameIn = (spec: TaskSpec, id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
 const ended = (result?: WorldResult) => (result && result !== "running" && !("error" in result) ? result.liquid : undefined);
 
-/** The share of the liquid in the pour's target when the rollout ended, as the simulator measured it. */
+/**
+ * The share of all the liquid in the pour's target when the rollout ended, as
+ * the simulator measured it. When only the held container starts with liquid
+ * that is the share the check measures; otherwise the card says it is of all.
+ */
 function liquidIn(spec: TaskSpec, result?: WorldResult): string {
   const where = ended(result);
-  const into = pourOf(spec)?.pour.into;
-  if (!where || into === undefined) return "";
-  return `${percent(where.containers[into] ?? 0)} of the liquid in the ${nameIn(spec, into)}`;
+  const pour = pourOf(spec);
+  if (!where || !pour) return "";
+  const all = spec.objects.some((o) => o.id !== pour.object && o.liquid_ml !== undefined);
+  return `${percent(where.containers[pour.pour.into] ?? 0)} of ${all ? "all " : ""}the liquid in the ${nameIn(spec, pour.pour.into)}`;
 }
 
-/** Where the rest of the liquid ended: still in a container, on the table, or in the air (floating free at 0 g). */
-function liquidElsewhere(spec: TaskSpec, world: GravityName, result?: WorldResult): string {
+/** Where the rest of the liquid ended: in a container, on the table, or above it in no container. */
+function liquidElsewhere(spec: TaskSpec, result?: WorldResult): string {
   const where = ended(result);
   const into = pourOf(spec)?.pour.into;
   if (!where) return "";
@@ -473,7 +478,8 @@ function liquidElsewhere(spec: TaskSpec, world: GravityName, result?: WorldResul
     .filter(([id, v]) => id !== into && v > 0)
     .map(([id, v]) => `${percent(v)} in the ${nameIn(spec, id)}`);
   if (where.table > 0) parts.push(`${percent(where.table)} on the table`);
-  if (where.elsewhere > 0) parts.push(`${percent(where.elsewhere)} ${GRAVITIES[world] > 0 ? "elsewhere" : "floating free"}`);
+  // lib/sim/liquid.ts counts as elsewhere whatever is above the table and in no container: in the air, or on another object
+  if (where.elsewhere > 0) parts.push(`${percent(where.elsewhere)} in the air or on other objects`);
   return parts.join(", ");
 }
 

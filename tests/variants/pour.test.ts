@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { POST } from "@/app/api/variants/route";
 import { loadEngine, rollout, type Engine } from "@/lib/showcase/rehearse";
 import { POUR_PROGRAMS, POUR_SPEC } from "@/lib/sim/demo-spec";
+import { evaluate, type World } from "@/lib/sim/predicates";
 import { valueAt } from "@/lib/spec/apply";
 import type { Predicate, TaskSpec } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
@@ -95,6 +96,8 @@ describe("a variant of a pour", () => {
     expect(why(build(["objects[bowl].role", "manipulated"]))).toMatch(/not something a variant can change/);
     // turned round one way and not the other, it would pour into itself
     expect(why(build(["steps[s1].object", "bowl"], ["steps[s1].pour.into", "bowl"]))).toBe('step "s1" pours the bowl into itself');
+    // turned round and back in one batch: the liquid and the check must not stay turned round
+    expect(why(build(["steps[s1].object", "bowl"], ["steps[s1].object", "cup"], ["steps[s1].pour.into", "bowl"]))).toBe('its changes disagree on which way it pours: from "bowl" into "cup", not from "cup" into "bowl"');
     expect(why(build(["objects[bowl].name", "basin"]))).toBe("the arm would do exactly the task above");
   });
 
@@ -109,6 +112,52 @@ describe("a variant of a pour", () => {
   it("may say it pours, and still not that it waves", () => {
     expect(why(buildVariant(POUR_SPEC, { title: "Pour it back", summary: "The water is poured back into the cup.", changes: [{ path: "steps[s1].object", value: "bowl" }] }, 1))).toBe("");
     expect(why(buildVariant(POUR_SPEC, { title: "Wave, then pour", summary: "", changes: [{ path: "steps[s1].pour.tilt_s", value: 2 }] }, 1))).toBe('not yet: "wave" is not something the rehearsal runs; it runs one pour from a container the arm holds');
+  });
+});
+
+describe("the bench of a pour, as the scene builds it", () => {
+  const base = (f: (s: TaskSpec) => void) => {
+    const s = structuredClone(POUR_SPEC);
+    f(s);
+    return s;
+  };
+
+  it("lays out a round container as the open box the scene builds, turned with it", () => {
+    const turned = base((s) => Object.assign(object(s, "bowl"), { shape: "cylinder", symmetry: "axial", pose: { xyz_mm: [300, 80, 20], yaw_deg: 45, frame: "world" } }));
+    const v = variant(buildVariant(turned, idea("Bigger", ["objects[bowl].size_mm", [100, 100, 40]]), 1));
+    // half a 68 mm box turned 45 degrees is 48.1 mm along the line, a 100 mm one 70.7 mm: the gap to the cup's rim stays 7.9 mm
+    expect(object(v.spec, "bowl").pose).toEqual({ xyz_mm: [300, 102.6, 20], yaw_deg: 45, frame: "world" });
+    // its corner, not a disc, meets the block
+    expect(why(buildVariant(turned, idea("Bigger, closer", ["objects[bowl].size_mm", [100, 100, 40]], ["objects[bowl].pose", { xyz_mm: [300, 96, 20], yaw_deg: 45, frame: "world" }]), 1))).toBe("block and bowl would be in the same place");
+  });
+
+  it("stands a target posed in the held container's frame where it belongs after the container moves", () => {
+    const tied = base((s) => (object(s, "bowl").pose = { xyz_mm: [0, 80, -53], yaw_deg: 0, frame: "cup" }));
+    const v = variant(buildVariant(tied, idea("Taller cup", ["objects[cup].size_mm", [48, 48, 74]]), 1));
+    expect(object(v.spec, "cup").pose!.xyz_mm).toEqual([300, 0, 83]);
+    expect(object(v.spec, "bowl").pose).toEqual({ xyz_mm: [300, 80, 20], yaw_deg: 0, frame: "world" });
+  });
+
+  it("stands a container in a pocket on the pocket's floor, not on the fixture's top", () => {
+    // the cup stands in a holder's pocket: 8 mm walls, its floor 8 mm above the table
+    const held = base((s) => {
+      Object.assign(object(s, "block"), { role: "fixture", size_mm: [100, 100, 46], pocket_clearance_mm: 8 });
+      object(s, "cup").pose = { xyz_mm: [300, 0, 35], yaw_deg: 0, frame: "world" };
+      object(s, "bowl").pose = { xyz_mm: [300, 100, 20], yaw_deg: 0, frame: "world" };
+      s.steps[0].target = { fixture: "pocket", frame: "block" };
+    });
+    const v = variant(buildVariant(held, idea("Slower", ["steps[s1].pour.tilt_s", 2]), 1));
+    expect(object(v.spec, "cup").pose!.xyz_mm).toEqual([300, 0, 35]);
+  });
+});
+
+describe("the liquid check's wording", () => {
+  it("never shows a failing share as the threshold", () => {
+    const at = (share: number, value: number) => evaluate({ liquid: { shareIn: () => share } } as unknown as World, { kind: "liquid_inside", object: "cup", target: "bowl", value });
+    expect(at(569 / 599, 95)).toMatchObject({ ok: false, why: "94.9% of the liquid from cup is inside bowl, wanted >= 95%" });
+    expect(at(0.9481, 95)).toMatchObject({ ok: false, why: "94.8% of the liquid from cup is inside bowl, wanted >= 95%" });
+    expect(at(0.9, 95).why).toBe("90% of the liquid from cup is inside bowl, wanted >= 95%");
+    expect(at(0.951, 95)).toMatchObject({ ok: true, why: "95% of the liquid from cup is inside bowl, wanted >= 95%" });
   });
 });
 

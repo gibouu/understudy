@@ -27,7 +27,7 @@
  * say: it reports a target out of reach as an embodiment limit.
  */
 import { fitToBench } from "@/lib/sim/fit";
-import { apply, buildScene, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses, type Pose3 } from "@/lib/sim/scene";
+import { apply, buildScene, containerIds, DEFAULT_CLEARANCE_MM, footprintMm, heightMm, MM, SceneError, transpose, WALL_M, worldPoses, type Pose3 } from "@/lib/sim/scene";
 import { applyChanges, canonicalSlot, parsePath, valueAt } from "@/lib/spec/apply";
 import { AXES, FIXTURES, PREDICATE_OPERANDS, SHAPES, type Predicate, type PredicateKind, type SpecChange, type SpecObject, type TaskSpec } from "@/lib/spec/schema";
 import { validateSpec } from "@/lib/spec/validate";
@@ -162,8 +162,9 @@ function geometryProblem(spec: TaskSpec): string | null {
     throw err;
   }
   const bottom = (o: SpecObject) => world[o.id].xyz_mm[2] - heightMm(o) / 2;
-  // a pocket is cut as a box whatever the fixture's shape (lib/sim/scene.ts)
-  const round = (o: SpecObject) => o.shape !== "box" && !usedAsPocket(spec, o.id);
+  // a pocket is cut as a box whatever the fixture's shape, and a container is built as an open box (lib/sim/scene.ts)
+  const containers = containerIds(spec);
+  const round = (o: SpecObject) => o.shape !== "box" && !usedAsPocket(spec, o.id) && !containers.has(o.id);
   // a pour's target only catches the liquid: the arm never reaches for it
   const caught = pourOf(spec)?.pour.into;
   for (const o of spec.objects) {
@@ -336,16 +337,26 @@ function pourBack(spec: TaskSpec, a: string, b: string, source: string): TaskSpe
   return out;
 }
 
-/** The top of what stands under the point (x, y) of the table, mm: a fixture or surface whose footprint covers it, or the table. */
+/**
+ * The top of what stands under the point (x, y) of the table, mm: a fixture
+ * or surface whose footprint covers it (over a pocket's opening, the pocket's
+ * floor), or the table.
+ */
 function restingOn(spec: TaskSpec, world: Record<string, Pose3>, [x, y]: [number, number], skip: Set<string>): number {
+  const containers = containerIds(spec);
   let top = 0;
   for (const f of spec.objects) {
     if (skip.has(f.id) || f.role === "manipulated" || !world[f.id]) continue;
     const w = world[f.id];
     const [lx, ly] = apply(transpose(w.R), [x - w.xyz_mm[0], y - w.xyz_mm[1], 0]);
     const [fx, fy] = footprintMm(f);
-    const under = f.shape === "box" ? Math.abs(lx) <= fx / 2 && Math.abs(ly) <= fy / 2 : Math.hypot(lx, ly) <= fx / 2;
-    if (under) top = Math.max(top, w.xyz_mm[2] + heightMm(f) / 2);
+    // the scene cuts a pocket in a fixture a step puts something into, and builds a container as a box (lib/sim/scene.ts)
+    const pocket = usedAsPocket(spec, f.id) && !containers.has(f.id);
+    const under = f.shape === "box" || pocket || containers.has(f.id) ? Math.abs(lx) <= fx / 2 && Math.abs(ly) <= fy / 2 : Math.hypot(lx, ly) <= fx / 2;
+    if (!under) continue;
+    const [ix, iy] = pocket ? opening(spec, f) : [0, 0];
+    const floor = w.xyz_mm[2] - heightMm(f) / 2 + Math.min(WALL_M / MM, heightMm(f) / 2);
+    top = Math.max(top, pocket && Math.abs(lx) <= ix / 2 && Math.abs(ly) <= iy / 2 ? floor : w.xyz_mm[2] + heightMm(f) / 2);
   }
   return top;
 }
@@ -392,31 +403,38 @@ function pourBench(base: TaskSpec, spec: TaskSpec, changes: SpecChange[]): { spe
     held.sources = { ...held.sources, size_mm: "fit" };
   }
 
-  let world: Record<string, Pose3>;
-  try {
-    world = worldPoses(out);
-  } catch (err) {
-    if (err instanceof SceneError) return { why: err.message };
-    throw err;
-  }
   const skip = new Set([held.id, target.id]);
+  /** Where everything stands now: an object posed in another's frame moves with it. */
+  const standing = () => {
+    try {
+      return worldPoses(out);
+    } catch (err) {
+      if (err instanceof SceneError) return err.message;
+      throw err;
+    }
+  };
   /** Stand `o` at (x, y), turned `yaw`, on what is under it: unless the variant moved it, or it already stands there. */
-  const stand = (o: SpecObject, [x, y]: [number, number], yaw: number) => {
-    if (touched(o.id, "pose")) return;
+  const stand = (o: SpecObject, [x, y]: [number, number], yaw: number): string | null => {
+    const world = standing();
+    if (typeof world === "string") return world;
+    if (touched(o.id, "pose")) return null;
     const xyz: [number, number, number] = [r1(x), r1(y), r1(restingOn(out, world, [x, y], skip) + heightMm(o) / 2)];
-    const now = world[o.id];
-    if (now && now.yaw_deg === yaw && xyz.every((v, i) => Math.abs(v - now.xyz_mm[i]) < 0.05)) return;
+    const at = world[o.id];
+    if (at && at.yaw_deg === yaw && xyz.every((v, i) => Math.abs(v - at.xyz_mm[i]) < 0.05)) return null;
     o.pose = { xyz_mm: xyz, yaw_deg: yaw, frame: "world" };
     o.sources = { ...o.sources, pose: "fit" };
-    const [c, s] = [Math.cos(yaw * DEG), Math.sin(yaw * DEG)];
-    world[o.id] = { xyz_mm: xyz, R: [c, -s, 0, s, c, 0, 0, 0, 1], yaw_deg: yaw };
+    return null;
   };
-  stand(held, spot, wb[was.object].yaw_deg);
+  const stood = stand(held, spot, wb[was.object].yaw_deg);
+  if (stood) return { why: stood };
   // the target from wherever the held container stands now, the same gap from its rim
+  const world = standing();
+  if (typeof world === "string") return { why: world };
   const from: [number, number] = [world[held.id].xyz_mm[0], world[held.id].xyz_mm[1]];
   const yaw = wb[was.pour.into].yaw_deg;
   const reach = halfAlong(held, world[held.id].yaw_deg, u) + gap + halfAlong(target, yaw, u);
-  stand(target, [from[0] + u[0] * reach, from[1] + u[1] * reach], yaw);
+  const placed = stand(target, [from[0] + u[0] * reach, from[1] + u[1] * reach], yaw);
+  if (placed) return { why: placed };
   return { spec: out, warnings };
 }
 
@@ -479,6 +497,12 @@ export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: 
   }
   const issue = validateSpec(applied.spec).find((i) => i.severity === "error");
   if (issue) return { why: issue.message };
+  if (pour) {
+    // turned round once and back again in the same batch would leave the liquid and the check turned round
+    const [from, into] = back ? [pour.pour.into, pour.object] : [pour.object, pour.pour.into];
+    const now = pourOf(applied.spec);
+    if (now && (now.object !== from || now.pour.into !== into)) return { why: `its changes disagree on which way it pours: from "${from}" into "${into}", not from "${now.object}" into "${now.pour.into}"` };
+  }
 
   let spec: TaskSpec;
   const warnings: string[] = [];

@@ -73,8 +73,8 @@ export function evaluate(w: World, p: Predicate): Check {
       if (!w.liquid) throw new Error("there is no liquid in the scene");
       const pc = 100 * w.liquid.shareIn(w.data, p.target!, p.object);
       const whose = p.object ? `the liquid from ${p.object}` : "the liquid";
-      // a share just short of the threshold keeps its decimal: "95%, wanted >= 95%" would read as a pass
-      const shown = pc < p.value! && Math.round(pc) >= p.value! ? pc.toFixed(1) : pc.toFixed(0);
+      // a share just short of the threshold is cut, not rounded, to a decimal: "95%, wanted >= 95%" would read as a pass
+      const shown = pc < p.value! && Math.round(pc) >= p.value! ? (Math.floor(pc * 10) / 10).toFixed(1) : pc.toFixed(0);
       return { ok: pc >= p.value!, measured: pc, why: `${shown}% of ${whose} is inside ${p.target}, wanted >= ${p.value}%` };
     }
   }
