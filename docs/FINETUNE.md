@@ -2,7 +2,7 @@
 
 Goal (gib, 26 October 2026, issue #97): by the end of the week, a first small fine-tune of one Nemotron model on our own repairs, measured against the same model with our prompts on the same failures.
 
-**Status, 26 October:** the dataset is built from the saved patch-loop runs and the call log now keeps every request and answer in full. gib approved up to US$30 of AI Cloud (one H100, eu-north1) for the Nano LoRA and its evaluation endpoint. The job is ready in `jobs/finetune-nano/` and waits for the AI Cloud account, billing and CLI login, which are gib's. No training has run and nothing has been spent.
+**Status, 26 October:** the dataset is built from the saved patch-loop runs and the call log now keeps every request and answer in full. Two routes are ready and neither has trained yet. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`, up to US$30 approved by gib) waits for gib's AI Cloud account, and moves to issue #122. A stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), waits for the console's price and balance and for custom weights. The baselines both are measured against are in (section 5).
 
 ## 1. Where to fine-tune on Nebius
 
@@ -102,7 +102,38 @@ The job, its config and the endpoint script are in `jobs/finetune-nano/` with th
 
 ## 4. Result
 
-None yet: no training has run.
+No tuned model yet. The baselines are in section 5.
+
+## 5. A stand-in on Token Factory
+
+gib asked on 26 October for a fine-tune on Token Factory itself while Nemotron cannot be tuned there; the Nemotron Nano LoRA moves to issue #122, to be paid with the AI Builders credit he applied for.
+
+**Why not Nemotron there.** Token Factory's fine-tuning list still has no NVIDIA model (checked again on 26 October, section 1).
+
+**The model: `Qwen/Qwen3-30B-A3B-Instruct-2507`.** It is on the list with LoRA and full fine-tuning ([models](https://docs.tokenfactory.nebius.com/post-training/models.md)), it has Nano's shape (30B total, 3B active, US$0.10 and US$0.30 per 1M tokens), and #96 measured it on our harness as Nano's stand-in: a clean first program in 98% of compiles against Nano's 55 to 70%. `openai/gpt-oss-120b` (LoRA too) is the fallback.
+
+**Cost and serving.** Token Factory publishes no supervised fine-tuning price; the API's only training price is for speculative-draft training of this size, 5.0 with no unit given (likely US$ per 1M tokens). The training set is 0.90 million billed tokens an epoch, so 3 epochs are about 3.0 million with a 10% margin for Qwen's tokenizer: about US$15 if the price is US$5 per 1M. A tuned model is served only on a dedicated endpoint with custom weights, a beta that Support enables on request, billed per GPU-hour at a price that is not published either. `scripts/finetune-tf.mjs` refuses to create the job without the console's price and the current balance, and when the estimate would take the balance under the US$15 the live demo needs; it reserves the estimate on the bench ledger and settles it from the job's trained tokens.
+
+**The baselines, measured before any training (US$0.13 on the ledger).** The closed loop on the 11 held-out cases, seeds 1 to 12, 5 patches, thinking off (`bench/results/finetune-eval.json`):
+
+| Patcher, held-out cases | Fixed within 5 patches | Fixed on the first patch | Cost per fixed case |
+|---|---|---|---|
+| Nemotron 3 Nano, Token Factory | 29% [22 to 37] (38 of 132) | 8% | US$0.0014 |
+| Qwen3 30B-A3B, Token Factory | 73% [65 to 80] (97 of 132) | 19% | US$0.0005 |
+| Nemotron 3 Super, thinking off (seeds 1 to 6, section 3) | 70% [58 to 79] (46 of 66) | 26% | US$0.0014 |
+| Nemotron 3 Super, thinking on (seeds 1 to 6, section 3) | 95% [87 to 98] (63 of 66) | 48% | US$0.0029 |
+
+One patch on the 55 held-out repair prompts: the model's patch is applied to the same program and rolled out (`tests/measure/finetune-single.test.ts`, `bench/results/finetune-single.json`); every recorded repair passes again first, so a fix is within reach of each prompt:
+
+| Model, thinking off | Pass with one patch | Spend |
+|---|---|---|
+| Nemotron 3 Nano | 20% [12 to 32] (11 of 55) | US$0.0044 |
+| Nemotron 3 Super | 47% [35 to 60] (26 of 55) | US$0.0190 |
+| Qwen3 30B-A3B | 60% [47 to 72] (33 of 55) | US$0.0066 |
+
+What this says before any training: on these cases plain Qwen3 30B-A3B patches about as well as Super with thinking off, at a third of its cost per fix, and Nano is far behind both (the case for tuning Nano in #122). A tuned Qwen has to beat 73% within 5 patches and 19% on the first, toward Super with thinking on.
+
+**Status.** The job waits for three things only gib can give: the Token Factory balance and the fine-tune price, both shown only in the signed-in console, and Support switching on custom weights so the tuned model can answer.
 
 ## Reproduce
 
