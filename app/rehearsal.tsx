@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { WorldRun } from "@/lib/notes/note";
 import { SimClient } from "@/lib/sim/client";
 import type { Rollout } from "@/lib/sim/interpreter";
 import { StageRenderer } from "@/lib/sim/render";
+import { SETTING_NAMES, SETTING_WORLD, settingFor } from "@/lib/sim/settings";
 import { PatchLoop } from "./patch-loop";
+import { SettingNote, SettingSwitch, type Shown } from "./setting-switch";
 import type { Failure } from "./program-view";
 import { GRAVITIES, type GravityName, type Program, type TaskSpec } from "@/lib/spec/schema";
 
@@ -17,10 +19,15 @@ type Row = { world: GravityName; result: Rollout | { error: string } | "running"
 /** Where the liquid ended, as the rollout logged it, when the scene has one. */
 const liquidOf = (r: Rollout) => r.log.findLast((l) => l.includes(" liquid: "))?.split(" liquid: ")[1];
 
-/** `notes={false}` leaves out the Notes stage, which calls Token Factory (/space must never). */
-export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskSpec; program: Program; onFail: (f: Failure | null) => void; notes?: boolean }) {
+/**
+ * `notes={false}` leaves out the Notes stage, which calls Token Factory (/space must never). Once the program passes
+ * in the world a setting stands for, the stage is drawn in the setting the clip points to (its label and `hint`):
+ * the station module after an orbit pass, the kitchen counter after an Earth pass. A setting picked by hand wins.
+ */
+export function Rehearsal({ spec, program, onFail, notes = true, hint }: { spec: TaskSpec; program: Program; onFail: (f: Failure | null) => void; notes?: boolean; hint?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const clientRef = useRef<SimClient | null>(null);
+  const rendererRef = useRef<StageRenderer | null>(null);
   const [status, setStatus] = useState("starting");
   const [ready, setReady] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
@@ -28,12 +35,19 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
   /** the last rehearsal in every world, when it failed somewhere a patch can reach; `n` keys a fresh patch loop */
   const [failing, setFailing] = useState<{ program: Program; runs: WorldRun[]; n: number } | null>(null);
   const [patching, setPatching] = useState(false);
+  /** the worlds where the last program played on this stage passed (`ran`: the prop, or a patch of it) */
+  const [passed, setPassed] = useState<{ program: Program; ran: Program; worlds: GravityName[] } | null>(null);
+  const [picked, setPicked] = useState<Shown | "auto">("auto");
+  const suggested = useMemo(() => settingFor(spec.title, spec.summary, hint), [spec, hint]);
+  const earned = passed?.program === program && passed.worlds.includes(SETTING_WORLD[suggested]);
+  const shown = picked !== "auto" ? picked : earned ? suggested : null;
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     let alive = true; // Strict Mode disposes and re-runs this effect; the first client must stay silent
     const renderer = new StageRenderer(canvas);
+    rendererRef.current = renderer;
     const client = new SimClient()
       .on("status", (message) => alive && setStatus(message))
       .on("error", (message) => alive && setStatus(`error: ${message}`))
@@ -54,6 +68,9 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
     };
   }, [spec]);
 
+  // after the effect above, so a fresh renderer gets the setting too
+  useEffect(() => rendererRef.current?.setSetting(shown, spec), [shown, spec]);
+
   /** One rollout of `p` per world, each from the spec's start; `show` puts them in the table. */
   const play = useCallback(async (p: Program, worlds: GravityName[], show: boolean): Promise<Row[]> => {
     const client = clientRef.current;
@@ -71,6 +88,12 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
         result = { error: (err as Error).message };
       }
       out.push({ world, result });
+      // the stage now shows this rollout, a patch's included: the setting follows what it shows
+      const won = typeof result === "object" && !("error" in result) && result.pass;
+      setPassed((prev) => {
+        const kept = prev?.program === program && prev.ran === p ? prev.worlds.filter((w) => w !== world) : [];
+        return { program, ran: p, worlds: won ? [...kept, world] : kept };
+      });
       if (!show) continue;
       setRows((rs) => rs.map((r) => (r.world === world ? { world, result } : r)));
       if (!first && !("error" in result) && !result.pass && result.failed_step_id) {
@@ -79,7 +102,7 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
       }
     }
     return out;
-  }, [onFail]);
+  }, [onFail, program]);
 
   async function rehearse(worlds: GravityName[]) {
     if (!clientRef.current || busy || patching) return;
@@ -109,7 +132,10 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
     <div className="flex flex-col gap-3">
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border bg-[#f4f1ea]">
         <canvas ref={canvasRef} className="h-full w-full" />
-        <div className="pointer-events-none absolute left-3 top-3 rounded bg-white/80 px-2 py-1 text-xs text-neutral-700">{status}</div>
+        <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-col items-start gap-1 text-xs text-neutral-700">
+          <div className="rounded bg-white/80 px-2 py-1">{status}</div>
+          <SettingNote shown={shown} />
+        </div>
       </div>
       <div className="flex flex-wrap gap-2 text-sm">
         <button className="rounded bg-neutral-900 px-3 py-1.5 text-white disabled:opacity-40" disabled={!ready || busy || patching} onClick={() => rehearse(WORLDS)}>
@@ -124,6 +150,7 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
           </button>
         ))}
       </div>
+      <SettingSwitch shown={shown} onPick={setPicked} note={picked === "auto" && !shown ? `after a pass ${SETTING_WORLD[suggested] === "orbit" ? "in orbit" : "on Earth"}: the ${SETTING_NAMES[suggested]}` : undefined} />
       {rows.length > 0 && (
         <table className="w-full text-left text-sm">
           <thead className="text-xs text-neutral-500">
