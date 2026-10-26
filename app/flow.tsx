@@ -252,7 +252,7 @@ export function Flow() {
       {ready && program.status === "done" && (
         <Section n={5} title="Rehearse" model="MuJoCo WebAssembly · SO-101">
           {asks.length > 0 && <p className="text-sm text-amber-700">Some questions are still open: the rehearsal stops at the first one.</p>}
-          <Rehearsal spec={spec} program={program.value} onFail={setFailure} />
+          <Rehearsal spec={spec} program={program.value} onFail={setFailure} hint={hint} />
         </Section>
       )}
 
