@@ -36,6 +36,17 @@ function resolveIndex(list: unknown[], token: string): number {
   return -1;
 }
 
+/** The value at a spec path (ids or indexes in brackets), or undefined when the path does not resolve. */
+export function valueAt(spec: TaskSpec, path: string): unknown {
+  let node: unknown = spec;
+  for (const t of parsePath(path)) {
+    if (Array.isArray(node)) node = node[resolveIndex(node, t)];
+    else if (isRec(node) && Object.hasOwn(node, t)) node = node[t];
+    else return undefined;
+  }
+  return node;
+}
+
 /** Follow a path of resolved tokens (array positions are numeric strings). */
 function getResolved(root: unknown, resolved: string[]): unknown {
   let node = root;
