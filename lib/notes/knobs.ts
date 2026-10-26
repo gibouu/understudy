@@ -141,8 +141,11 @@ const canonical = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "")
 
 /** Validate, clamp and apply a patch's `set` to the knobs of `steps`; the result always parses as a Program. */
 export function applyPatch(spec: TaskSpec, program: Program, set: Record<string, unknown> | null | undefined, steps?: ReadonlySet<string>): Applied {
-  const all = knobsOf(spec, program, steps);
+  // names resolve against every knob, then only the given steps may change: a loose spelling of an
+  // excluded knob must not land on an allowed one
+  const all = knobsOf(spec, program);
   const exact = new Map(all.map((k) => [k.name, k]));
+  const editable = (k: Knob) => !steps || steps.has(program.steps[k.step].step_id);
   /** a loose spelling counts only when it names one knob: s-1 and s1 must not patch each other */
   const loose = (asked: string) => {
     const hits = all.filter((k) => canonical(k.name) === canonical(asked));
@@ -153,7 +156,7 @@ export function applyPatch(spec: TaskSpec, program: Program, set: Record<string,
   for (const [asked, raw] of Object.entries(set ?? {})) {
     const k = exact.get(asked) ?? loose(asked);
     const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
-    if (!k || !Number.isFinite(n)) {
+    if (!k || !editable(k) || !Number.isFinite(n)) {
       out.rejected.push(asked);
       continue;
     }

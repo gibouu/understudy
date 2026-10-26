@@ -71,6 +71,9 @@ describe("the knobs", () => {
     expect(applyPatch(small, prog, { "s1.op1.z_mm": 70 }).set).toEqual({ "s1.op1.z_mm": 70 });
     expect(applyPatch(small, prog, { s1op1zmm: 30 }).rejected).toEqual(["s1op1zmm"]);
     expect(applyPatch(small, prog, { "s-1.op0_z_mm": 70 }).set).toEqual({ "s-1.op0.z_mm": 70 });
+    // with only s1 editable, a knob of s-1 is refused rather than read as s1's
+    expect(applyPatch(small, prog, { "s-1.op1.z_mm": 30 }, new Set(["s1"]))).toMatchObject({ set: {}, rejected: ["s-1.op1.z_mm"], noop: true });
+    expect(applyPatch(small, prog, { s1op1zmm: 30 }, new Set(["s1"])).rejected).toEqual(["s1op1zmm"]);
   });
 
   it("call a patch that changes no value a no-op", () => {
