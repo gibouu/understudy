@@ -25,7 +25,7 @@
  * slots, no key). Without BENCH_LIVE only the no-network check below runs.
  */
 import { AsyncLocalStorage } from "node:async_hooks";
-import { existsSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { MainModule, MjVFS } from "@mujoco/mujoco";
 import { describe, expect, it, vi } from "vitest";
@@ -90,6 +90,33 @@ async function loadSim(): Promise<{ mujoco: MainModule; vfs: MjVFS }> {
   vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
   for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
   return { mujoco, vfs };
+}
+
+/** Run `fn` holding an exclusive lock file (O_EXCL), waiting up to 2 min; a lock older than 1 min is a crashed writer's. */
+function withFileLock<T>(lock: string, fn: () => T): T {
+  const nap = new Int32Array(new SharedArrayBuffer(4));
+  const deadline = Date.now() + 120_000;
+  let fd: number | null = null;
+  while (fd === null) {
+    try {
+      fd = openSync(lock, "wx");
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
+      try {
+        if (Date.now() - statSync(lock).mtimeMs > 60_000) unlinkSync(lock);
+      } catch {
+        // released between the two calls
+      }
+      if (Date.now() > deadline) throw new Error(`could not take ${lock}`);
+      Atomics.wait(nap, 0, 0, 50 + Math.random() * 100);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    closeSync(fd);
+    unlinkSync(lock);
+  }
 }
 
 function rehearse(sim: { mujoco: MainModule; vfs: MjVFS }, spec: TaskSpec, program: Program) {
@@ -201,6 +228,8 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("compile comparison (live, Token
         const create = client.chat.completions.create.bind(client.chat.completions);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (client.chat.completions as any).create = async (body: any) => {
+          // after a stop (cap or 404) no call goes out, not even a repair round already under way
+          if (budgetStop) throw new ledger.BudgetError(budgetStop);
           const model: string = body.model;
           const c = cmp.COMPARATORS[model];
           // the route's enable_thinking false gives way to the comparator's own switch
@@ -305,15 +334,17 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("compile comparison (live, Token
             }
           }),
         );
-        // merge into what is on disk now (another model may have been written since this process started)
-        const disk = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : file;
-        disk.models = { ...disk.models, [model]: { model, finished: new Date().toISOString(), wall_s: Math.round((performance.now() - started) / 1000), stopped: budgetStop, runs: runs.filter(Boolean) } };
-        Object.assign(disk, { generated_at: new Date().toISOString(), reproduce: file.reproduce, conditions: file.conditions });
-        let body = JSON.stringify(disk, null, 1) + "\n";
-        if (body.includes(KEY)) body = redact(body);
-        const tmp = `${OUT}.${process.pid}.tmp`;
-        writeFileSync(tmp, body);
-        renameSync(tmp, OUT);
+        // merge into what is on disk now, under a lock, so processes run side by side keep each other's models
+        withFileLock(`${OUT}.lock`, () => {
+          const disk = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : file;
+          disk.models = { ...disk.models, [model]: { model, finished: new Date().toISOString(), wall_s: Math.round((performance.now() - started) / 1000), stopped: budgetStop, runs: runs.filter(Boolean) } };
+          Object.assign(disk, { generated_at: new Date().toISOString(), reproduce: file.reproduce, conditions: file.conditions });
+          let body = JSON.stringify(disk, null, 1) + "\n";
+          if (body.includes(KEY)) body = redact(body);
+          const tmp = `${OUT}.${process.pid}.tmp`;
+          writeFileSync(tmp, body);
+          renameSync(tmp, OUT);
+        });
       }
       console.log(`\n${SCRIPT} on the ledger $${ledger.spent(SCRIPT).toFixed(4)}; ledger total $${ledger.spent().toFixed(4)}${budgetStop ? `\nSTOPPED: ${budgetStop}` : ""}`);
       vi.doUnmock("@/lib/providers/tokenfactory");

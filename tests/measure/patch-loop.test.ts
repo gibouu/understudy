@@ -301,7 +301,11 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
             rec.error = `${e?.status ?? "?"} ${redact(e?.message ?? err)}`.slice(0, 300);
             // a model the host no longer serves fails every call alike: stop the run rather than charge them all
             // (Qwen3.5 397B was withdrawn from Token Factory in the middle of the #96 runs)
-            if (e?.status === 404) throw new Error(`${model}: HTTP 404, not served by Token Factory any more; stopping before more calls are charged`);
+            // budgetStop keeps every other worker from sending another call; the runs end as stopped and the arm is saved
+            if (e?.status === 404) {
+              budgetStop = `${model}: HTTP 404, not served by Token Factory any more`;
+              throw new ledger.BudgetError(budgetStop);
+            }
             const retriable = e?.status === undefined || e.status === 429 || e.status >= 500;
             if (!retriable || attempt === 3) return { rec, parsed: null };
             await new Promise((r) => setTimeout(r, 2000 * attempt));

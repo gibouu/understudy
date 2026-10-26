@@ -293,8 +293,6 @@ async function label(clip, cond, run) {
       charge(SCRIPT, worst, { ...meta, attempt, estimated: true, failed: true, status }, reservation);
       rec.estimated_usd += worst;
       Object.assign(rec, { ok: false, ms: Math.round(performance.now() - started), status, error: redact(err?.message ?? err).slice(0, 300), cost_usd: 0, score: score(clip, null) });
-      // a model the host no longer serves fails every call alike: stop rather than charge them all
-      if (status === 404) throw new BudgetError(`${model}: HTTP 404, not served by Token Factory any more`);
       if (attempt === 1 && (status === null || status === 429 || status >= 500)) {
         await sleep(5000);
         continue;
@@ -344,6 +342,8 @@ try {
         if (CONDITION_DEFS[cond].clips && !CONDITION_DEFS[cond].clips.includes(clip)) continue;
         const rec = await label(clip, cond, r);
         runs.push(rec);
+        // a model the host no longer serves fails every call alike: stop rather than charge them all (the call is recorded above)
+        if (rec.status === 404) throw new BudgetError(`${rec.model}: HTTP 404, not served by Token Factory any more`);
         const s = rec.score;
         console.log(`${clip} ${cond} run ${r}: ${rec.ok ? `${String(rec.ms).padStart(6)} ms in ${String(rec.prompt_tokens).padStart(6)} out ${String(rec.completion_tokens).padStart(5)} $${rec.cost_usd.toFixed(5)} ${rec.finish}` : `FAILED ${rec.status}: ${rec.error}`}  score ${s.score}/5 [${["verb", "object", "fixture", "steps", "size"].map((k) => (s[k] ? k : "-")).join(" ")}]${clip === "iss" && s.parsed ? ` scene ${s.scene ? "ok" : "WRONG"}` : ""}  main="${rec.label ? mainObject({ objects: rec.label.objects, steps: rec.label.steps.map((x) => ({ ...x })) })?.name ?? "" : ""}"`);
       }

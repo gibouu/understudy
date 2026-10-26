@@ -1,11 +1,13 @@
 {
   "measurement": "compare-probe",
-  "date": "2026-10-26T09:35:01.033Z",
-  "reproduce": "UNDERSTUDY_ENV_FILE=<path to .env.local> node scripts/bench-compare-probe.mjs [--sections reasoning,video]",
+  "date": "2026-10-26T11:26:20.047Z",
+  "reproduce": "UNDERSTUDY_ENV_FILE=<path to .env.local> node scripts/bench-compare-probe.mjs [--sections reasoning,video] [--only <ids>] [--save-catalogue]",
   "catalogue": {
     "fetched": "2026-10-26",
     "count": 30,
-    "file": "tests/fixtures/models-compare.json"
+    "file": "tests/fixtures/models-compare.json",
+    "live_count": 30,
+    "withdrawn_since": []
   },
   "reasoning": [
     {
@@ -430,7 +432,18 @@
       "duration_s": null,
       "frames_differ": null,
       "what": null
+    },
+    {
+      "model": "deepseek-ai/DeepSeek-V4.1-Flash",
+      "ok": false,
+      "ms": 818,
+      "status": 400,
+      "error": "400 This model does not support video input",
+      "cost_usd": 0.0033,
+      "duration_s": null,
+      "frames_differ": null,
+      "what": null
     }
   ],
-  "spend_usd": 0.210804
+  "spend_usd": 0.214104
 }

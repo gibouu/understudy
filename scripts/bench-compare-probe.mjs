@@ -4,7 +4,9 @@
 //
 //   UNDERSTUDY_ENV_FILE=/path/to/.env.local node scripts/bench-compare-probe.mjs [--out bench/results/compare-probe.json]
 //
-// 1. GET /v1/models?verbose=true, saved as tests/fixtures/models-compare.json (prices for the ledger).
+// 1. GET /v1/models?verbose=true, saved as tests/fixtures/models-compare.json (prices for the ledger) when that file
+//    does not exist yet or with --save-catalogue; otherwise only compared with it (a model withdrawn since keeps its price).
+// --only <id,...> probes only those models and keeps the file's other entries.
 // 2. Reasoning switch: one short arithmetic question in JSON mode per model and variant (default; enable_thinking
 //    false; for gpt-oss reasoning_effort low and high); records reasoning tokens, finish and whether the answer parses.
 // 3. Video: the first 6 s of the ISS clip as a 480-wide, 4 fps H.264 data URI in a video_url part (as the Label
@@ -38,9 +40,11 @@ const res = await fetch(`${TOKEN_FACTORY_BASE_URL}models?verbose=true`, { header
 if (!res.ok) throw new Error(`GET /models: HTTP ${res.status}`);
 const listed = await res.json();
 const models = listed.data ?? listed.models ?? listed;
-const catalogue = { fetched: new Date().toISOString().slice(0, 10), source: "GET https://api.tokenfactory.nebius.com/v1/models?verbose=true", models };
-writeFileSync(COMPARE_CATALOGUE, JSON.stringify(catalogue, null, 2) + "\n");
-console.log(`${models.length} models listed; saved ${path.relative(ROOT, COMPARE_CATALOGUE)}`);
+const live = { fetched: new Date().toISOString().slice(0, 10), source: "GET https://api.tokenfactory.nebius.com/v1/models?verbose=true", models };
+if (!existsSync(COMPARE_CATALOGUE) || args["save-catalogue"]) writeFileSync(COMPARE_CATALOGUE, JSON.stringify(live, null, 2) + "\n");
+const catalogue = JSON.parse(readFileSync(COMPARE_CATALOGUE, "utf8"));
+const withdrawn = catalogue.models.map((m) => m.id).filter((id) => !models.some((m) => m.id === id));
+console.log(`${models.length} models listed live; ${path.relative(ROOT, COMPARE_CATALOGUE)} from ${catalogue.fetched}${withdrawn.length ? `; withdrawn since: ${withdrawn.join(", ")}` : ""}`);
 
 const TEXT = ["Qwen/Qwen3-30B-A3B-Instruct-2507", "openai/gpt-oss-120b", "Qwen/Qwen3.5-397B-A17B", "zai-org/GLM-5.3", "deepseek-ai/DeepSeek-V4-Pro", "meta-models/muse-spark-open"];
 /** switches tried beyond the default and enable_thinking false, per model (the families differ) */
@@ -50,8 +54,11 @@ const MORE_VARIANTS = {
   "deepseek-ai/DeepSeek-V4-Pro": [["chat_template thinking true", { extra_body: { chat_template_kwargs: { thinking: true } } }], ["thinking enabled", { extra_body: { thinking: { type: "enabled" } } }], ["reasoning_effort high", { reasoning_effort: "high" }]],
   "meta-models/muse-spark-open": [["reasoning_effort none", { reasoning_effort: "none" }], ["reasoning_effort low", { reasoning_effort: "low" }]],
 };
-const VIDEO = [MODELS.vl, "meta-models/muse-spark-open", "MiniMaxAI/MiniMax-M3.1-Flash", "openbmb/MiniCPM-V-4_5", "moonshotai/Kimi-K2.6", "moonshotai/Kimi-K3", "Qwen/Qwen3.8-27B", "Qwen/Qwen3.5-397B-A17B", "zai-org/GLM-5.3-Flash", "deepseek-ai/DeepSeek-V4.1-Flash-1017"];
-const PRICES = loadPrices([...TEXT, ...VIDEO], COMPARE_CATALOGUE);
+/** every model the catalogue lists with image input, plus Qwen3.5 397B, whose description claims video */
+const VIDEO = [MODELS.vl, "meta-models/muse-spark-open", "MiniMaxAI/MiniMax-M3.1-Flash", "openbmb/MiniCPM-V-4_5", "moonshotai/Kimi-K2.6", "moonshotai/Kimi-K3", "Qwen/Qwen3.8-27B", "Qwen/Qwen3.5-397B-A17B", "zai-org/GLM-5.3-Flash", "deepseek-ai/DeepSeek-V4.1-Flash-1017", "deepseek-ai/DeepSeek-V4.1-Flash"];
+const ONLY = typeof args.only === "string" ? args.only.split(",") : null;
+const picked = (ids) => (ONLY ? ids.filter((id) => ONLY.includes(id)) : ids);
+const PRICES = loadPrices(picked([...TEXT, ...VIDEO]), COMPARE_CATALOGUE);
 
 async function call(model, params, estTokens, meta) {
   const p = PRICES[model];
@@ -82,11 +89,17 @@ const parse = (text) => {
 };
 
 const before = existsSync(OUT) ? JSON.parse(readFileSync(OUT, "utf8")) : null;
-const out = { measurement: "compare-probe", date: new Date().toISOString(), reproduce: "UNDERSTUDY_ENV_FILE=<path to .env.local> node scripts/bench-compare-probe.mjs [--sections reasoning,video]", catalogue: { fetched: catalogue.fetched, count: models.length, file: path.relative(ROOT, COMPARE_CATALOGUE) }, reasoning: SECTIONS.includes("reasoning") ? [] : (before?.reasoning ?? []), video: SECTIONS.includes("video") ? [] : (before?.video ?? []), spend_usd: 0 };
+const out = { measurement: "compare-probe", date: new Date().toISOString(), reproduce: "UNDERSTUDY_ENV_FILE=<path to .env.local> node scripts/bench-compare-probe.mjs [--sections reasoning,video] [--only <ids>] [--save-catalogue]", catalogue: { fetched: catalogue.fetched, count: catalogue.models.length, file: path.relative(ROOT, COMPARE_CATALOGUE) }, reasoning: [], video: [], spend_usd: 0 };
+/** a section not run, and with --only the other models' entries of a section run, are kept from the file */
+const keep = (section) => (before?.[section] ?? []).filter((r) => !SECTIONS.includes(section) || (ONLY && !ONLY.includes(r.model)));
+out.reasoning = keep("reasoning");
+out.video = keep("video");
+out.catalogue.live_count = models.length;
+out.catalogue.withdrawn_since = withdrawn;
 try {
   // --- 2. how reasoning is switched ------------------------------------------------------------
   const QUESTION = 'A tube 17 mm wide must go into a pocket 20 mm wide whose centre is 4.1 mm from the tube along +x. How far, in mm, must the tube move along x? Return one JSON object only: {"dx_mm": number}.';
-  for (const model of SECTIONS.includes("reasoning") ? TEXT : []) {
+  for (const model of SECTIONS.includes("reasoning") ? picked(TEXT) : []) {
     const variants = [
       ["default", {}],
       ["enable_thinking false", ENABLE_THINKING_OFF],
@@ -108,7 +121,7 @@ try {
   execFileSync("ffmpeg", ["-y", "-v", "error", "-i", path.join(ROOT, "samples/iss-veggie-seed-film.mp4"), "-t", "6", "-an", "-vf", "scale=480:-2,fps=4", "-c:v", "libx264", "-crf", "28", "-pix_fmt", "yuv420p", "-movflags", "+faststart", clip]);
   const uri = `data:video/mp4;base64,${readFileSync(clip).toString("base64")}`;
   const ASK = 'Watch the video. Return one JSON object only: {"duration_s": <how long the video is, in seconds>, "frames_differ": <true if the picture changes during the video>, "what": <one sentence: what the person does>}.';
-  for (const model of SECTIONS.includes("video") ? VIDEO : []) {
+  for (const model of SECTIONS.includes("video") ? picked(VIDEO) : []) {
     const r = await call(model, { messages: [{ role: "user", content: [{ type: "text", text: ASK }, { type: "video_url", video_url: { url: uri } }] }], max_tokens: 2000, response_format: { type: "json_object" }, ...ENABLE_THINKING_OFF }, 3000, { probe: "video" });
     const v = parse(r.text);
     out.video.push({ model, ...r, text: undefined, duration_s: v?.duration_s ?? null, frames_differ: v?.frames_differ ?? null, what: typeof v?.what === "string" ? v.what.slice(0, 200) : null });
