@@ -7,17 +7,17 @@ import type { Approach, IkResult } from "@/lib/sim/ik";
 import type { Frame, SimMeta } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { buildScene } from "@/lib/sim/scene";
-import { GRIPPER_OPEN, SO101_GRASP_SITE, SO101_HELD_SITE, SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
+import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
 import { APPROACHES, GRAVITIES, type GravityName, type Program } from "@/lib/spec/schema";
 
 const SCENE = buildScene(DEMO_SPEC);
-const TUBE = SCENE.names.tube;
-const POCKET_SITE = `${SCENE.names.rack}_pocket`;
-const TUBE_HALF_MM = DEMO_SPEC.objects.find((o) => o.id === "tube")!.size_mm[2] / 2;
-/** grip 17 mm below the tube's top, so the jaws stay above the rack once the tube is seated */
-const GRIP_BELOW_TOP_MM = 17;
-/** a via point this far above a pick or place, so the jaws come down onto the tube instead of sweeping into it */
-const CLEAR_MM = 35;
+/** the spec's moved object and the fixture it goes into: the page names neither */
+const OBJECT = DEMO_SPEC.objects.find((o) => o.role === "manipulated")!;
+const POCKET_STEP = DEMO_SPEC.steps.find((s) => s.target?.fixture === "pocket")!;
+const BODY = SCENE.names[OBJECT.id];
+/** the manual pick and place reuses the demo program's moves, so the wrist is squared the same way */
+const [PICK, PLACE] = DEMO_PROGRAMS.hold_until_seated.steps;
+const GRASP = PICK.ops.find((op) => op.op === "grasp")!;
 
 type Jac = { nv: number; norm: number; rows: string[] } | null;
 
@@ -41,8 +41,7 @@ export function StageView() {
   const [error, setError] = useState<string | null>(null);
   const [ctrl, setCtrl] = useState<number[]>(SO101_HOME);
   const [tip, setTip] = useState<[number, number, number] | null>(null);
-  const [tube, setTube] = useState<[number, number, number] | null>(null);
-  const [pocket, setPocket] = useState<[number, number, number] | null>(null);
+  const [object, setObject] = useState<[number, number, number] | null>(null);
   const [simT, setSimT] = useState(0);
   const [dropped, setDropped] = useState(0);
   const [jac, setJac] = useState<Jac>(null);
@@ -83,9 +82,8 @@ export function StageView() {
             const i = 3 * (list?.find((x) => x.name === name)?.id ?? -1);
             return i < 0 ? null : ([xpos[i], xpos[i + 1], xpos[i + 2]] as [number, number, number]);
           };
-          setTube(xyz(client.meta?.geoms, frame.geomXpos, `${TUBE}_geom`));
+          setObject(xyz(client.meta?.geoms, frame.geomXpos, `${BODY}_geom`));
           setTip(xyz(client.meta?.sites, frame.siteXpos, SO101_TIP_SITE));
-          setPocket(xyz(client.meta?.sites, frame.siteXpos, POCKET_SITE));
           setAttached(frame.attached);
         }
       });
@@ -215,7 +213,7 @@ export function StageView() {
           <div className="pointer-events-none absolute bottom-3 left-3 rounded bg-white/80 px-2 py-1 font-mono text-[11px] text-neutral-700">
             t={simT.toFixed(2)}s{dropped > 0 ? ` (dropped ${dropped.toFixed(1)}s)` : ""} · dof {meta.nq} · geoms {meta.ngeom} · {SO101_TIP_SITE}{" "}
             {tip ? `(${tip.map((v) => (v * 1000).toFixed(0)).join(", ")}) mm` : ""}
-            {tube ? ` · tube (${tube.map((v) => (v * 1000).toFixed(0)).join(", ")}) mm` : ""}
+            {object ? ` · ${OBJECT.name} (${object.map((v) => (v * 1000).toFixed(0)).join(", ")}) mm` : ""}
           </div>
         )}
       </div>
@@ -232,8 +230,8 @@ export function StageView() {
               {name} {GRAVITIES[name]} g
             </button>
           ))}
-          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" onClick={() => clientRef.current?.nudge(TUBE, [0.04, 0.03, 0.12])} disabled={!meta}>
-            Nudge the tube
+          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" onClick={() => clientRef.current?.nudge(BODY, [0.04, 0.03, 0.12])} disabled={!meta}>
+            Nudge the {OBJECT.name}
           </button>
         </div>
 
@@ -298,30 +296,18 @@ export function StageView() {
           <span className="text-neutral-500">pick and place (top)</span>
           <button
             className="rounded border border-orange-600 px-3 py-1 text-orange-700"
-            disabled={!meta || !tube || !!attached}
-            onClick={() => {
-              if (!tube) return;
-              const [x, y, z] = tube.map((v) => Math.round(v * 1000));
-              const grip: [number, number, number] = [x, y, z + TUBE_HALF_MM - GRIP_BELOW_TOP_MM];
-              moveTo(grip, "top", false, { site: SO101_GRASP_SITE, via: [[x, y, grip[2] + CLEAR_MM]], gripper: GRIPPER_OPEN });
-            }}
+            disabled={!meta || !!attached}
+            onClick={() => runProgram("go to", { ...one(GRASP), steps: [{ step_id: PICK.step_id, ops: PICK.ops.slice(0, PICK.ops.indexOf(GRASP)) }] }, "here")}
           >
-            1. Go to the tube
+            1. Go to the {OBJECT.name}
           </button>
-          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" disabled={!meta || !!attached} onClick={() => runProgram("grasp", one({ op: "grasp", object: "tube", aperture_mm: 17 }), "here")}>
+          <button className="rounded border border-orange-600 px-3 py-1 text-orange-700" disabled={!meta || !!attached} onClick={() => runProgram("grasp", one(GRASP), "here")}>
             2. Grasp
           </button>
           <button
             className="rounded border border-orange-600 px-3 py-1 text-orange-700"
-            disabled={!meta || !pocket || !tube || !attached}
-            onClick={() => {
-              if (!pocket || !tube) return;
-              // the tube's centre over the opening, its bottom 2 mm above; lift the tube straight up first
-              const [x, y, z] = pocket.map((v) => Math.round(v * 1000));
-              const over: [number, number, number] = [x, y, z + 2 + TUBE_HALF_MM];
-              const [tx, ty] = tube.map((v) => Math.round(v * 1000));
-              moveTo(over, "top", false, { site: SO101_HELD_SITE, via: [[tx, ty, over[2]]] });
-            }}
+            disabled={!meta || !attached}
+            onClick={() => runProgram("over the pocket", { ...one(GRASP), steps: [{ step_id: PLACE.step_id, ops: [PICK.ops.at(-1)!, PLACE.ops[0]] }] }, "here")}
           >
             3. Over the pocket
           </button>
@@ -379,7 +365,7 @@ export function StageView() {
         <p className="text-xs text-neutral-500">
           SO-101 from MuJoCo Menagerie (Apache-2.0), MuJoCo 3.17 WebAssembly in a Web Worker,
           three.js on the main thread. Drag to orbit, scroll to zoom. The scene is built from a
-          task spec: the tube is a free body, the rack a fixture with a pocket. Nudge the tube on
+          task spec: the {OBJECT.name} is a free body, the {POCKET_STEP.target!.frame} a fixture with a pocket. Nudge it on
           Earth and it falls back; nudge it in orbit and it keeps drifting.
         </p>
       </div>

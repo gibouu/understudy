@@ -23,7 +23,7 @@ beforeAll(async () => {
 function rollout(program: Program, mode: Mode, scenario?: Partial<Scenario>, spec: TaskSpec = DEMO_SPEC) {
   const env: Environment = environment(
     spec,
-    scenario && { id: "t", name: "t", axis: "x_mm", offset: 0, object: "rack", expected: "unknown", why: "", gravity_g: 1, ...scenario },
+    scenario && { id: "t", name: "t", axis: "x_mm", offset: 0, object: "pillow", expected: "unknown", why: "", gravity_g: 1, ...scenario },
   );
   const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: env.gravity_g, graspable: env.graspable }), vfs);
   const data = new mujoco.MjData(model);
@@ -47,8 +47,8 @@ describe("the program interpreter", () => {
     if (!pass) expect(r.failed_predicate?.kind).toBe("inside_zone");
   }, 60_000);
 
-  it("a 6 mm rack offset fails blind and passes sensed", () => {
-    const scenario = { axis: "x_mm" as const, offset: 6, object: "rack" };
+  it("a 6 mm pillow offset fails blind and passes sensed", () => {
+    const scenario = { axis: "x_mm" as const, offset: 6, object: "pillow" };
     const blind = rollout(DEMO_PROGRAMS.hold_until_seated, "blind", scenario);
     expect(blind.pass, blind.log.join("\n")).toBe(false);
     const sensed = rollout(DEMO_PROGRAMS.hold_until_seated, "sensed", scenario);

@@ -11,10 +11,11 @@ Every piece exists (MediaPipe; GPT-4V for Robotics, SeeDo, GF-VLA; MimicGen, Dex
 - One 5-DoF arm plus a gripper (SO-101 from MuJoCo Menagerie); no humanoid, no dexterous hand.
 - Hands: MediaPipe's hand model returns nothing on nitrile gloves and on hands under about thirty pixels. The sepia wrist crop recovers hands in many frames of the ISS clip, not all; where it does not, the pose model's wrist carries the motion and the hand aperture is an interview question, not a measurement.
 - Grasp is a geometric weld gate: no friction, no slip, no deformation.
+- The demo scene stands in for the NASA seed film clip with primitives: the film is a stiff 15 x 6 x 40 mm strip (a real film is far thinner and flexible, too thin for the gripper) and the plant pillow a rigid box with a pocket 5 mm wider than the strip.
 - Objects are primitives sized from a monocular clip; sizes are approximate and are the first thing the interview checks.
 - The exported dataset is a format-valid LeRobot v2.1 skeleton for GR00T's loader with scripted, primitive-rendered episodes. It is not training data and the quality report says so.
 - A pass does not predict that a learned policy or a real robot would succeed.
 
 ## Orbit mode
 
-Orbit mode is rigid-body physics with gravity set to 0 g (the Moon preset uses 0.1654 g). It models one thing well: a released object keeps its velocity instead of resting, so a program must constrain an object before it lets go. It does not model air currents, tethers and cable drag, contact with floating neighbours, the arm's own reaction forces on a free-flying base, flight rules, or any certification. A drifting tube in the rehearsal is a model of the failure, not a flight test.
+Orbit mode is rigid-body physics with gravity set to 0 g (the Moon preset uses 0.1654 g). It models one thing well: a released object keeps its velocity instead of resting, so a program must constrain an object before it lets go. It does not model air currents, tethers and cable drag, contact with floating neighbours, the arm's own reaction forces on a free-flying base, flight rules, or any certification. A drifting object in the rehearsal is a model of the failure, not a flight test.
