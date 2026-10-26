@@ -372,20 +372,32 @@ const auth = () => ({ Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` });
 /** an endpoint exists: record it, start its watchdog, or delete it at once if the watchdog cannot start */
 async function startEndpoint(s, ep) {
   const p = s.endpoint_pending;
-  const created = Date.now();
+  // its clock starts when it was asked for, not when it is adopted: an adopted endpoint past its lifetime goes at once
+  const created = Date.parse(p.at);
   s.endpoint = { id: ep.id, name: p.name, routing_key: ep.routing_key, created, deadline: created + p.minutes * MINUTE_MS, usd_per_gpu_hour: p.usd_per_gpu_hour, reservation: p.reservation };
   delete s.endpoint_pending;
   save(s);
-  const log = openSync(path.join(process.env.TMPDIR ?? os.tmpdir(), "understudy-ft-endpoint-watchdog.log"), "a");
-  const argv = [fileURLToPath(import.meta.url), "endpoint-watchdog", ep.id, p.reservation, String(created), String(s.endpoint.deadline), String(p.usd_per_gpu_hour)];
-  // absolute paths: a PATH without /usr/bin must not leave a paid endpoint without its watchdog
-  const awake = process.platform === "darwin" && existsSync("/usr/bin/caffeinate");
-  const child = awake ? spawn("/usr/bin/caffeinate", ["-i", process.execPath, ...argv], { detached: true, stdio: ["ignore", log, log], env: process.env }) : spawn(process.execPath, argv, { detached: true, stdio: ["ignore", log, log], env: process.env });
-  const started = await new Promise((r) => {
-    child.once("spawn", () => r(true));
-    child.once("error", () => r(false));
-  });
-  if (!started) {
+  let child = null;
+  try {
+    let out = "ignore";
+    try {
+      out = openSync(path.join(process.env.TMPDIR ?? os.tmpdir(), "understudy-ft-endpoint-watchdog.log"), "a");
+    } catch {
+      // no log is no reason to leave an endpoint without its watchdog
+    }
+    const argv = [fileURLToPath(import.meta.url), "endpoint-watchdog", ep.id, p.reservation, String(created), String(s.endpoint.deadline), String(p.usd_per_gpu_hour)];
+    // absolute paths: a PATH without /usr/bin must not leave a paid endpoint without its watchdog
+    const awake = process.platform === "darwin" && existsSync("/usr/bin/caffeinate");
+    child = awake ? spawn("/usr/bin/caffeinate", ["-i", process.execPath, ...argv], { detached: true, stdio: ["ignore", out, out], env: process.env }) : spawn(process.execPath, argv, { detached: true, stdio: ["ignore", out, out], env: process.env });
+    const started = await new Promise((r) => {
+      child.once("spawn", () => r(true));
+      child.once("error", () => r(false));
+    });
+    if (!started) child = null;
+  } catch {
+    child = null;
+  }
+  if (!child) {
     await deleteEndpoint(ep.id);
     await settleEndpoint(s.endpoint, true);
     throw new Error(`the watchdog could not start, so endpoint ${ep.id} was deleted at once`);

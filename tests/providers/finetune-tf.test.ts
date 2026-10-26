@@ -200,14 +200,21 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     expect(await fails("endpoint-create", "--custom-weights-id", "w-4", "--minutes", "10")).toMatch(/refused \(HTTP 422/);
     expect(state().endpoint_pending).toBeUndefined();
     expect(ledger().at(-1)).toMatchObject({ type: "release" });
+    // a lost answer, adopted after the endpoint's lifetime (1 s here): its clock started at the request, so it goes at once
+    const fast = { ...env, FINETUNE_TF_MINUTE_MS: "100" };
     failEndpoint = "lost";
     expect(await fails("endpoint-create", "--custom-weights-id", "w-4", "--minutes", "10")).toMatch(/endpoint-adopt/);
     failEndpoint = "no";
     expect(await fails("endpoint-create", "--custom-weights-id", "w-4", "--minutes", "10")).toMatch(/pending/);
-    await tf("endpoint-adopt");
-    expect(state().endpoint.id).toBe(endpoints.at(-1)!.id);
-    await tf("endpoint-delete");
+    await new Promise((r) => setTimeout(r, 1500));
+    await run("node", ["scripts/finetune-tf.mjs", "endpoint-adopt"], { env: fast, cwd: process.cwd() });
+    const adopted = state().endpoint;
+    expect(adopted.deadline).toBeLessThan(Date.now());
+    await new Promise((r) => setTimeout(r, 1500));
     expect(endpoints).toHaveLength(0);
+    // charged from the request: at least its 10 "minutes" (1 s here), in hours of 100 ms minutes
+    const charged = ledger().find((e) => !e.type && e.settles === adopted.reservation);
+    expect(charged.meta.hours).toBeGreaterThanOrEqual(10 / 60);
   }, 60_000);
 
   it("after a lost answer, blocks another create until adopt or release", async () => {
