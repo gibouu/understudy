@@ -158,15 +158,20 @@ function geometryProblem(spec: TaskSpec): string | null {
     return apply(transpose(w.R), [at[0] - w.xyz_mm[0], at[1] - w.xyz_mm[1], at[2] - w.xyz_mm[2]]);
   };
   const floorTop = (f: SpecObject) => world[f.id].xyz_mm[2] - heightMm(f) / 2 + Math.min(WALL_M / MM, heightMm(f) / 2);
-  /** Whether `o`'s centre is over pocket fixture `f`'s opening, and whether its whole footprint stands in it, on or above the floor. */
-  const opened = (o: SpecObject, f: SpecObject): { over: boolean; inside: boolean } => {
-    if (!usedAsPocket(spec, f.id)) return { over: false, inside: false };
+  /**
+   * Where `o` is against pocket fixture `f`'s opening: centred over it, standing
+   * in it (its whole footprint, on or above the floor), or bridging it (past
+   * both opposite rims along one axis, so it lies on the two).
+   */
+  const opened = (o: SpecObject, f: SpecObject): { over: boolean; inside: boolean; bridge: boolean } => {
+    if (!usedAsPocket(spec, f.id)) return { over: false, inside: false, bridge: false };
     const [lx, ly] = localIn(f, o);
     const [ix, iy] = opening(spec, f);
     const [ex, ey] = halfExtents(o, world[o.id].yaw_deg - world[f.id].yaw_deg, round(o));
     const over = Math.abs(lx) <= ix / 2 && Math.abs(ly) <= iy / 2;
     const fits = Math.abs(lx) + ex <= ix / 2 + 0.5 && Math.abs(ly) + ey <= iy / 2 + 0.5;
-    return { over, inside: over && fits && bottom(o) >= floorTop(f) - REST_MM };
+    const spans = (c: number, e: number, i: number) => c - e < -i / 2 && c + e > i / 2;
+    return { over, inside: over && fits && bottom(o) >= floorTop(f) - REST_MM, bridge: spans(lx, ex, ix) || spans(ly, ey, iy) };
   };
   /** Whether the footprints of `a` and `b` overlap: separating axes for two boxes, the nearest point for a box and a disc, distance for two discs. */
   const footprintsOverlap = (a: SpecObject, b: SpecObject) => {
@@ -209,8 +214,8 @@ function geometryProblem(spec: TaskSpec): string | null {
       const under = round(f) ? Math.hypot(lx, ly) <= fx / 2 : Math.abs(lx) <= fx / 2 && Math.abs(ly) <= fy / 2;
       if (!under) continue;
       const hole = opened(o, f);
-      // centred over the opening but not standing in it, it lies across the rim and tips in
-      if (hole.over && !hole.inside && bottom(o) >= floorTop(f) - REST_MM) return `${o.name} would start across the edge of ${f.name}'s pocket and tip in`;
+      // centred over the opening, neither standing in it nor lying across it: it hangs on one rim and tips in
+      if (hole.over && !hole.inside && !hole.bridge && bottom(o) >= floorTop(f) - REST_MM) return `${o.name} would start across the edge of ${f.name}'s pocket and tip in`;
       supports.push(hole.inside ? floorTop(f) : world[f.id].xyz_mm[2] + heightMm(f) / 2);
     }
     // it rests on the highest surface at or below its bottom

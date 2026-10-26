@@ -162,8 +162,10 @@ describe("a variant of the ISS sample", () => {
     expect(why(beside(45))).toBe("");
   });
 
-  it("refuses a start across a pocket's rim", () => {
+  it("refuses a start hanging on one rim of a pocket, and accepts one lying across both", () => {
     expect(why(build(["objects[obj1].pose", { xyz_mm: [8, 0, 35], yaw_deg: 0, frame: "obj2" }]))).toBe("seed film packet would start across the edge of Veggie plant pillow tray's pocket and tip in");
+    // turned a quarter turn, the 40 mm packet lies across the 20 mm side of the opening
+    expect(why(build(["objects[obj1].pose", { xyz_mm: [0, 0, 35], yaw_deg: 90, frame: "obj2" }]))).toBe("");
   });
 
   it("finds the table under a raised fixture", () => {

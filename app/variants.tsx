@@ -84,7 +84,8 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
   const [runs, setRuns] = useState<Record<string, Run>>({});
   const [calls, setCalls] = useState<Call[]>([]);
   const [busy, setBusy] = useState(false);
-  const [patching, setPatching] = useState(false);
+  /** the variant whose patch loop has the stage, if any */
+  const [patching, setPatching] = useState<string | null>(null);
   const [showing, setShowing] = useState<string | null>(null);
   /** bumped when the section goes: replies and rollouts for it are dropped */
   const gen = useRef(0);
@@ -92,11 +93,11 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
   const next = useRef(1);
   /** one rehearsal or patch loop at a time on the one stage, even on a double click */
   const rehearsing = useRef(false);
-  const patchingRef = useRef(false);
-  // stable: the patch loop stops itself when this changes
-  const onPatchBusy = useCallback((b: boolean) => {
-    patchingRef.current = b;
-    setPatching(b);
+  const patchingRef = useRef<string | null>(null);
+  const setPatchOwner = useCallback((id: string, b: boolean) => {
+    if (b) patchingRef.current = id;
+    else if (patchingRef.current === id) patchingRef.current = null;
+    setPatching(patchingRef.current);
   }, []);
   const offeredKeys = useRef(new Set<string>());
 
@@ -233,6 +234,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
 
   /** The patch loop's rehearsal of a patched program, on this stage. */
   const patchRehearsal = (v: Variant) => async (p: Program): Promise<WorldRun[]> => {
+    if (rehearsing.current || patchingRef.current !== v.id) throw new Error("the stage is busy with another rehearsal");
     const runs = await runWorlds(v, p, false, gen.current);
     if (!runs) throw new Error("the section was closed");
     return runs;
@@ -287,14 +289,26 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
               run={runs[v.id]}
               showing={showing === v.id}
               checked={chosen.has(v.id)}
-              disabled={busy || patching}
+              disabled={busy || patching !== null}
               onCheck={(on) => setChosen((c) => (on ? new Set([...c, v.id]) : new Set([...c].filter((x) => x !== v.id))))}
               onRehearse={() => rehearse([v])}
               patch={(() => {
                 const run = runs[v.id];
                 const first = patchable(run);
                 if (!first || run.compile.status !== "done") return null;
-                return <PatchLoop key={`${v.id}:${run.n}`} spec={v.spec} program={run.compile.value} first={first} rehearse={patchRehearsal(v)} onBusy={onPatchBusy} onPatch={(r) => setCalls((cs) => [...cs, callOf(`${v.title}: patch`, r)])} />;
+                return (
+                  <VariantPatch
+                    key={`${v.id}:${run.n}`}
+                    id={v.id}
+                    setOwner={setPatchOwner}
+                    spec={v.spec}
+                    program={run.compile.value}
+                    first={first}
+                    rehearse={patchRehearsal(v)}
+                    onPatch={(r) => setCalls((cs) => [...cs, callOf(`${v.title}: patch`, r)])}
+                    disabled={busy || (patching !== null && patching !== v.id)}
+                  />
+                );
               })()}
             />
           ))}
@@ -317,7 +331,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
 
       {offered.length > 0 && (
         <div>
-          <button className="rounded bg-[var(--ink,#171717)] px-3 py-1.5 text-sm text-[color:var(--paper,#fff)] disabled:opacity-40" disabled={!ready || busy || patching || picked.length === 0} onClick={() => rehearse(picked)}>
+          <button className="rounded bg-[var(--ink,#171717)] px-3 py-1.5 text-sm text-[color:var(--paper,#fff)] disabled:opacity-40" disabled={!ready || busy || patching !== null || picked.length === 0} onClick={() => rehearse(picked)}>
             Rehearse the {picked.length} chosen on Earth, then in orbit
           </button>
         </div>
@@ -352,6 +366,12 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
       )}
     </div>
   );
+}
+
+/** The patch loop under one variant; its onBusy stays the same function, since the loop stops itself when that changes. */
+function VariantPatch({ id, setOwner, ...loop }: Omit<React.ComponentProps<typeof PatchLoop>, "onBusy"> & { id: string; setOwner: (id: string, busy: boolean) => void }) {
+  const onBusy = useCallback((b: boolean) => setOwner(id, b), [id, setOwner]);
+  return <PatchLoop {...loop} onBusy={onBusy} />;
 }
 
 function StatusLine({ result }: { result: StageResult<Checked> }) {

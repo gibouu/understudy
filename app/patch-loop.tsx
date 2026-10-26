@@ -16,7 +16,7 @@ const WHY_THINKING = { noop: "thinking on: the cheap patch changed nothing", two
  * times, until the program passes everywhere. `rehearse` runs one program in the page's stage.
  * Keyed by the rehearsal it patches, so a new one starts from scratch.
  */
-export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch }: { spec: TaskSpec; program: Program; first: WorldRun[]; rehearse: (p: Program) => Promise<WorldRun[]>; onBusy: (busy: boolean) => void; onPatch?: (r: StageResult<NotePatch>) => void }) {
+export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, disabled = false }: { spec: TaskSpec; program: Program; first: WorldRun[]; rehearse: (p: Program) => Promise<WorldRun[]>; onBusy: (busy: boolean) => void; onPatch?: (r: StageResult<NotePatch>) => void; disabled?: boolean }) {
   const [its, setIts] = useState<Iteration[]>([]);
   const [busy, setBusy] = useState(false);
   /** bumped on unmount (a new rehearsal or program mounts a fresh loop): a reply for an old one is dropped */
@@ -80,7 +80,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch }: {
         Super reads what the simulator measured and changes the numbers of the step that failed. Each patch is rehearsed again on Earth and in orbit, up to {MAX_PATCHES} times. It thinks only when the cheap answer gets stuck.
       </p>
       <div>
-        <button className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40" disabled={busy} onClick={patch}>
+        <button className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40" disabled={busy || disabled} onClick={patch}>
           {its.length ? "Patch again from the compiled program" : "Patch it"}
         </button>
       </div>
