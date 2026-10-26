@@ -76,11 +76,12 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
   if (knobs.length === 0) return NextResponse.json(failed("the step that failed has no numbers to tune", false));
   const note = failureNote(spec, program, runs);
   const user = patchPrompt(spec, program, knobs, first, history, note);
-  const ask = (thinking: boolean) => callModel(client, { role: "super", system: PATCH_SYSTEM, user, maxTokens: thinking ? MAX_TOKENS_ON : MAX_TOKENS_OFF, schema: PatchReply, thinking });
+  // one ledger for every call of this patch, the unusable answers too: each was billed
+  const ledger: LedgerEntry[] = [];
+  const ask = (thinking: boolean) => callModel(client, { role: "super", system: PATCH_SYSTEM, user, maxTokens: thinking ? MAX_TOKENS_ON : MAX_TOKENS_OFF, schema: PatchReply, thinking, ledger });
 
   let why = escalation(history);
   let r = await ask(why !== null);
-  const ledger: LedgerEntry[] = [...(r.status === "done" ? (r.ledger ?? []) : [])];
   const warnings: string[] = r.status === "done" ? [...r.warnings] : [];
   let applied = r.status === "done" ? applyPatch(spec, program, r.value.set, steps) : null;
   if (why === null && (r.status !== "done" || applied!.noop)) {
@@ -89,16 +90,19 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
     why = "noop";
     r = await ask(true);
     if (r.status === "done") {
-      ledger.push(...(r.ledger ?? []));
       warnings.push(...r.warnings);
       applied = applyPatch(spec, program, r.value.set, steps);
     }
   }
-  if (r.status !== "done" || !applied) return NextResponse.json(r.status === "done" ? failed("the patch could not be applied") : r);
+  const costs = priced(ledger);
+  const spent = costs.reduce((n, e) => n + (e.usd ?? 0), 0);
+  if (r.status !== "done" || !applied) {
+    const message = r.status === "failed" ? r.message : "the patch could not be applied";
+    return NextResponse.json(failed(`${message} (${costs.length} call${costs.length === 1 ? "" : "s"}, $${spent.toFixed(4)})`, r.status === "failed" ? r.retryable : false));
+  }
 
   const before = new Set(lintProgram(program, spec));
   for (const p of lintProgram(applied.program, spec)) if (!before.has(p)) warnings.push(`the patched program: ${p}`);
-  const costs = priced(ledger);
   const value: NotePatch = {
     program: applied.program,
     set: applied.set,
@@ -113,7 +117,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
     thinking: why !== null,
     escalation: why,
     tokens: costs.reduce((n, e) => n + e.prompt_tokens + e.completion_tokens, 0),
-    cost_usd: costs.reduce((n, e) => n + (e.usd ?? 0), 0),
+    cost_usd: spent,
   };
   return NextResponse.json(done(value, warnings, costs));
 }

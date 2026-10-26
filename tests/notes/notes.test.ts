@@ -3,7 +3,7 @@ import recordings from "@/tests/fixtures/notes.json";
 import { applyPatch, knobsOf } from "@/lib/notes/knobs";
 import { failureNote, outcomeLine } from "@/lib/notes/note";
 import { escalation, MAX_PATCHES, patchPrompt, type Attempt } from "@/lib/notes/patch";
-import type { Program, TaskSpec } from "@/lib/spec/schema";
+import { Program, TaskSpec } from "@/lib/spec/schema";
 import { issSample, loadSim, patchLoop, rehearse } from "./harness";
 
 let spec: TaskSpec;
@@ -36,6 +36,41 @@ describe("the knobs", () => {
     expect(a.program.steps[0]).toEqual(program.steps[0]);
     expect(a.program.steps[1].ops[1]).toMatchObject({ op: "move_to", offset_mm: [0, 0, 13] });
     expect(program.steps[1].ops[1]).toMatchObject({ offset_mm: [0, 0, 36] }); // the input is not mutated
+  });
+
+  it("leave out the aperture, which the interpreter does not read", () => {
+    expect(knobsOf(spec, program).some((k) => k.name.endsWith("aperture_mm"))).toBe(false);
+  });
+
+  it("keep a held object above the table in the world frame, and use the pocket when a later step inserts", () => {
+    const small = TaskSpec.parse({
+      version: 1,
+      title: "t",
+      summary: "",
+      objects: [
+        { id: "a", name: "a", shape: "box", size_mm: [10, 10, 40], symmetry: "none", role: "manipulated", pose: { xyz_mm: [200, -100, 20] } },
+        { id: "b", name: "b", shape: "box", size_mm: [100, 100, 30], symmetry: "none", role: "fixture", pocket_clearance_mm: 5, pose: { xyz_mm: [175, 100, 15] } },
+      ],
+      steps: [
+        { id: "s1", verb: "place", object: "a", target: { fixture: "zone", frame: "b" }, t_start_s: 0, t_end_s: 1 },
+        { id: "s-1", verb: "insert", object: "a", target: { fixture: "pocket", frame: "b" }, t_start_s: 1, t_end_s: 2 },
+      ],
+    });
+    const prog = Program.parse({
+      spec_title: "t",
+      steps: [
+        { step_id: "s1", ops: [{ op: "grasp", object: "a", aperture_mm: 10 }, { op: "move_to", frame: "world", offset_mm: [200, 0, 60] }] },
+        { step_id: "s-1", ops: [{ op: "move_to", frame: "b", offset_mm: [0, 0, 60] }, { op: "move_to", frame: "b", offset_mm: [0, 0, 40] }] },
+      ],
+    });
+    const k = new Map(knobsOf(small, prog).map((x) => [x.name, x]));
+    expect(k.get("s1.op1.z_mm")?.min).toBe(20); // half the held 40 mm object above the table
+    expect(k.get("s-1.op1.z_mm")?.min).toBe(13); // the pocket floor (-15 + 8) plus 20, not the zone's top
+    // s-1 and s1 share a loose spelling: exact names patch their own step, the loose one patches nothing
+    expect(applyPatch(small, prog, { "s-1.op1.z_mm": 30 }).set).toEqual({ "s-1.op1.z_mm": 30 });
+    expect(applyPatch(small, prog, { "s1.op1.z_mm": 70 }).set).toEqual({ "s1.op1.z_mm": 70 });
+    expect(applyPatch(small, prog, { s1op1zmm: 30 }).rejected).toEqual(["s1op1zmm"]);
+    expect(applyPatch(small, prog, { "s-1.op0_z_mm": 70 }).set).toEqual({ "s-1.op0.z_mm": 70 });
   });
 
   it("call a patch that changes no value a no-op", () => {

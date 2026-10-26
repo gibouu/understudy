@@ -29,11 +29,13 @@ export type CallOptions<T> = {
   check?: (value: T) => string[];
   /** reason before answering (the model's default); maxTokens then covers reasoning and answer */
   thinking?: boolean;
+  /** every billed call is pushed here as well, failed ones included (a failed result carries no ledger) */
+  ledger?: LedgerEntry[];
 };
 
 export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<StageResult<T>> {
   const model = MODELS[o.role];
-  const ledger: LedgerEntry[] = [];
+  const ledger: LedgerEntry[] = o.ledger ?? [];
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     ...(o.system === undefined ? [] : [{ role: "system" as const, content: o.system }]),
     { role: "user", content: o.user as OpenAI.ChatCompletionUserMessageParam["content"] },

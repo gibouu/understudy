@@ -65,6 +65,25 @@ describe("POST /api/notes", () => {
     expect(result).toMatchObject({ status: "done", value: { thinking: true, escalation: "two_failed", set: { "s2.op1.z_mm": 13 }, clamps: [{ name: "s2.op1.z_mm", requested: 0, applied: 13 }] } });
   });
 
+  it("counts every billed call, the unusable answers too", async () => {
+    tf.sent.length = 0;
+    tf.replies.push("not json", "still not json", '{"set":{"s2.op1.z_mm":13},"why":"b"}');
+    const { result } = await post({ spec, program, runs, first: outcomeLine(runs), history: [] });
+    expect(tf.sent).toHaveLength(3);
+    expect(result).toMatchObject({ status: "done", value: { thinking: true, escalation: "noop", tokens: 3300 } });
+    const ledger = (result as Extract<StageResult<NotePatch>, { status: "done" }>).ledger;
+    expect(ledger).toHaveLength(3);
+  });
+
+  it("says what a failed patch cost", async () => {
+    tf.sent.length = 0;
+    tf.replies.push("x", "y", "z", "w");
+    const { result } = await post({ spec, program, runs, first: outcomeLine(runs), history: [] });
+    expect(tf.sent).toHaveLength(4);
+    expect(result).toMatchObject({ status: "failed" });
+    expect((result as { message: string }).message).toMatch(/\(4 calls, \$0\.\d{4}\)$/);
+  });
+
   it("refuses a bad body, a program that passed everywhere, and a sixth patch", async () => {
     expect((await post({ spec })).status).toBe(400);
     const passing = runs.map((r) => ({ ...r, rollout: { ...r.rollout, pass: true } }));

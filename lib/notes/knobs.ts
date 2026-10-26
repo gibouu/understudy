@@ -4,10 +4,12 @@
  * measured (Super fixes 69% of solvable failures alone, 94% escalating, with
  * 2 to 4 knobs a probe). Frames, objects, the order of ops, the approach and
  * the checks stay fixed: a patch tunes where the arm goes and how long it
- * waits, never what counts as done.
+ * waits, never what counts as done. A grasp's aperture is no knob: the
+ * interpreter closes the jaws until they hold, whatever the program says.
  *
  * A knob is named <step id>.op<index>.<field>, e.g. s2.op1.z_mm, and matched
- * ignoring separators (s2.op1_z_mm is the same knob). Values are validated and
+ * exactly, else ignoring separators when that names one knob only
+ * (s2.op1_z_mm is s2.op1.z_mm). Values are validated and
  * clamped to their bounds, which are physical: a held object stops on the
  * surface it would rest on (a pocket's floor, a zone's or a stacked object's
  * top, else the table). Whatever was clamped or rejected is reported back to
@@ -18,11 +20,9 @@ import { Program, type ProgramOp, type TaskSpec } from "@/lib/spec/schema";
 
 /** The arm reaches about 300 mm from its base; no offset needs more. */
 const REACH_MM = 300;
-/** The jaws open from 0 to 60 mm. */
-const APERTURE_MM: [number, number] = [0, 60];
 const TIMEOUT_S: [number, number] = [0.1, 10];
 
-type Field = "x_mm" | "y_mm" | "z_mm" | "aperture_mm" | "timeout_s";
+type Field = "x_mm" | "y_mm" | "z_mm" | "timeout_s";
 
 export type Knob = {
   name: string;
@@ -60,9 +60,10 @@ export function restingSurface(spec: TaskSpec, frame: string): { z: number; what
   const o = spec.objects.find((x) => x.id === frame);
   if (!o) return { z: 0, what: "the table" };
   const top = o.size_mm[2] / 2;
-  const fixture = spec.steps.find((s) => s.target?.frame === frame)?.target?.fixture;
-  if (fixture === "pocket") return { z: r1(-top + Math.min(WALL_M / MM, top)), what: `${frame}'s pocket floor`, rim: top };
-  if (fixture) return { z: top, what: `${frame}'s top` };
+  // the scene builder cuts a pocket when any step inserts into the object, whatever the other steps do
+  const uses = spec.steps.filter((s) => s.target?.frame === frame).map((s) => s.target!.fixture);
+  if (uses.includes("pocket")) return { z: r1(-top + Math.min(WALL_M / MM, top)), what: `${frame}'s pocket floor`, rim: top };
+  if (uses.length) return { z: top, what: `${frame}'s top` };
   return { z: -top, what: "the table" };
 }
 
@@ -114,7 +115,7 @@ export function knobsOf(spec: TaskSpec, program: Program, steps?: ReadonlySet<st
           const meaning = `${s.step_id} op ${oi}: move ${what} to (${op.offset_mm.join(", ")}) mm from ${from}${travel}${where}`;
           // the pads stop at the table; a held object on the surface it would rest on
           const half = (spec.objects.find((o) => o.id === held)?.size_mm[2] ?? 0) / 2;
-          const floor = op.frame === "world" ? 0 : held ? restingSurface(spec, op.frame).z + half : -(spec.objects.find((o) => o.id === op.frame)?.size_mm[2] ?? 0) / 2;
+          const floor = held ? restingSurface(spec, op.frame).z + half : op.frame === "world" ? 0 : -(spec.objects.find((o) => o.id === op.frame)?.size_mm[2] ?? 0) / 2;
           k("x_mm", op.offset_mm[0], meaning, -REACH_MM, REACH_MM);
           k("y_mm", op.offset_mm[1], meaning, -REACH_MM, REACH_MM);
           k("z_mm", op.offset_mm[2], meaning, r1(floor), REACH_MM);
@@ -122,7 +123,6 @@ export function knobsOf(spec: TaskSpec, program: Program, steps?: ReadonlySet<st
           break;
         }
         case "grasp":
-          k("aperture_mm", op.aperture_mm, `${s.step_id} op ${oi}: close the gripper to this aperture on the ${name(op.object)}`, ...APERTURE_MM);
           held = op.object;
           break;
         case "release":
@@ -141,11 +141,17 @@ const canonical = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, "")
 
 /** Validate, clamp and apply a patch's `set` to the knobs of `steps`; the result always parses as a Program. */
 export function applyPatch(spec: TaskSpec, program: Program, set: Record<string, unknown> | null | undefined, steps?: ReadonlySet<string>): Applied {
-  const knobs = new Map(knobsOf(spec, program, steps).map((k) => [canonical(k.name), k]));
+  const all = knobsOf(spec, program, steps);
+  const exact = new Map(all.map((k) => [k.name, k]));
+  /** a loose spelling counts only when it names one knob: s-1 and s1 must not patch each other */
+  const loose = (asked: string) => {
+    const hits = all.filter((k) => canonical(k.name) === canonical(asked));
+    return hits.length === 1 ? hits[0] : undefined;
+  };
   const next: Program = structuredClone(program);
   const out: Applied = { program: next, set: {}, changes: [], clamps: [], rejected: [], noop: true };
   for (const [asked, raw] of Object.entries(set ?? {})) {
-    const k = knobs.get(canonical(asked));
+    const k = exact.get(asked) ?? loose(asked);
     const n = typeof raw === "number" ? raw : typeof raw === "string" && raw.trim() !== "" ? Number(raw) : NaN;
     if (!k || !Number.isFinite(n)) {
       out.rejected.push(asked);
@@ -156,7 +162,6 @@ export function applyPatch(spec: TaskSpec, program: Program, set: Record<string,
     if (value === k.value) continue;
     const op = next.steps[k.step].ops[k.op];
     if (op.op === "move_to") op.offset_mm[["x_mm", "y_mm", "z_mm"].indexOf(k.field)] = value;
-    else if (op.op === "grasp") op.aperture_mm = value;
     else if (op.op === "wait_until") op.timeout_s = value;
     out.set[k.name] = value;
     out.changes.push({ name: k.name, from: k.value, to: value });
