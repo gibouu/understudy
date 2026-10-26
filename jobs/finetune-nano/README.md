@@ -13,7 +13,7 @@ Checked before any spend: `prepare.py` on the committed dataset and the model's 
 
 ## Spend
 
-H100 US$4.50 per GPU-hour, no separate CPU or RAM line for that platform ([compute pricing](https://docs.nebius.com/compute/resources/pricing.md)); disks and the bucket cost cents. Every step has a hard stop: jobs a `--timeout` (1 hour at least), endpoints a watchdog on this Mac that deletes them at a deadline.
+H100 US$4.50 per GPU-hour, no separate CPU or RAM line for that platform ([compute pricing](https://docs.nebius.com/compute/resources/pricing.md)); disks and the bucket cost cents. Every step has a stop: jobs a `--timeout` that Nebius enforces (1 hour at least); endpoints have no timeout in Nebius, so a watchdog on this Mac deletes them at a wall-clock deadline, keeps the Mac from idle sleep meanwhile (`caffeinate -i`) and retries the deletion until the endpoint is gone. A closed lid still suspends the watchdog, and the endpoint bills until the Mac wakes: keep the Mac open and awake while an endpoint lives, and run the evaluation in the same sitting.
 
 | Step | Hard stop | Expected |
 |---|---|---|
@@ -22,7 +22,7 @@ H100 US$4.50 per GPU-hour, no separate CPU or RAM line for that platform ([compu
 | 3. Full job, 3 epochs | `--timeout 2h`: US$9.00 | about 1 hour |
 | 4. Evaluation endpoint | watchdog 2 h: US$9.00 | about 1.5 hours |
 
-Worst case with every stop reached: US$25.50, under the US$30 approved. The full job starts only after steps 1 and 2 pass, so a recipe or serving problem costs at most US$7.50.
+Worst case with every stop reached, the Mac awake: US$25.50, under the US$30 approved. The full job starts only after steps 1 and 2 pass, so a recipe or serving problem costs at most US$7.50.
 
 ## Commands
 
@@ -44,8 +44,15 @@ ENDPOINT=(nebius ai endpoint create --parent-id "$PROJECT_ID" --subnet-id "$SUBN
   --image vllm/vllm-openai:v0.18.0-cu130 --platform gpu-h100-sxm --preset 1gpu-16vcpu-200gb --disk-size 250Gi --shm-size 16Gi
   --volume "$BUCKET_ID:/mnt/data:ro" --container-port 8000 --public --auth token --container-command bash
   --args "-c \"$FETCH $RAW/serve.sh /tmp/serve.sh && bash /tmp/serve.sh\"" --format json)
-# a watchdog on this Mac: delete the endpoint at the deadline, whatever happens to the session
-watchdog() { nohup sh -c "sleep $(($2 * 60)); nebius ai endpoint delete $1" >/dev/null 2>&1 & }
+# a watchdog on this Mac: at a wall-clock deadline, delete the endpoint and retry until Nebius says it is
+# gone; caffeinate keeps the Mac from idle sleep until then (a closed lid still suspends it)
+watchdog() {
+  local deadline=$(( $(date +%s) + $2 * 60 ))
+  nohup caffeinate -i sh -c "
+    while [ \$(date +%s) -lt $deadline ]; do sleep 20; done
+    until out=\$(nebius ai endpoint delete $1 2>&1) || echo \"\$out\" | grep -qiE 'not.?found'; do echo \"\$out\"; sleep 30; done
+    echo \"\$(date -u +%FT%TZ) $1 deleted\"" >> "${TMPDIR:-/tmp}/understudy-ft-watchdog.log" 2>&1 &
+}
 
 # 1. smoke job: 10 steps; checks memory, the entry point, the --args quoting and the adapter's tensor names
 "${JOB[@]}" --name nano-lora-smoke --env RUN=smoke --env MAX_STEPS=10 --timeout 1h
