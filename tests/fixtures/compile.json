@@ -628,5 +628,1207 @@
     }
    ]
   }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "ISS Veggie seed film placement into plant pillows: Packet starts in pillow",
+   "summary": "The arm takes the packet out of the plant pillow and puts it back in the same spot.",
+   "objects": [
+    {
+     "id": "obj1",
+     "name": "seed film packet",
+     "shape": "box",
+     "size_mm": [
+      40,
+      10,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       0,
+       0,
+       13
+      ],
+      "yaw_deg": 0,
+      "frame": "obj2"
+     },
+     "confidence": 0.7,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "variant#1",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "obj2",
+     "name": "Veggie plant pillow tray",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       15
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "pocket_clearance_mm": 10,
+     "confidence": 0.8,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit",
+      "pocket_clearance_mm": "interview#1"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "obj1",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 5,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "obj1",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj2"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "inside_zone",
+       "object": "obj1",
+       "target": "obj2"
+      },
+      {
+       "kind": "object_still",
+       "object": "obj1"
+      }
+     ],
+     "tolerances": {},
+     "t_start_s": 20,
+     "t_end_s": 30,
+     "source": "vl#seg2",
+     "sources": {
+      "success": "interview#1"
+     }
+    }
+   ],
+   "warnings": [
+    "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+   ],
+   "open_questions": [],
+   "sources": {
+    "title": "variant#1",
+    "summary": "variant#1"
+   },
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "c8cb52201a93974a4237431bdc262a72c307d15218895bde6dfbabe0f692798f",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "ISS Veggie seed film placement into plant pillows: Packet starts in pillow",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj1",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj1"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         13
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj1"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj1",
+         "target": "obj2"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": []
+   },
+   "warnings": [
+    "dropped an ask for steps[s2].success: the spec already sets it"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 2198,
+     "completion_tokens": 388,
+     "seconds": 1.715
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "ISS Veggie seed film placement into plant pillows: Pillow tray shifted right",
+   "summary": "The plant pillow tray moves 30 mm to the right, requiring the arm to reach farther.",
+   "objects": [
+    {
+     "id": "obj1",
+     "name": "seed film packet",
+     "shape": "box",
+     "size_mm": [
+      40,
+      10,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.7,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "obj2",
+     "name": "Veggie plant pillow tray",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       205,
+       100,
+       15
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "pocket_clearance_mm": 10,
+     "confidence": 0.8,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "variant#2",
+      "size_mm": "fit",
+      "pocket_clearance_mm": "interview#1"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "obj1",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 5,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "obj1",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj2"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "inside_zone",
+       "object": "obj1",
+       "target": "obj2"
+      },
+      {
+       "kind": "object_still",
+       "object": "obj1"
+      }
+     ],
+     "tolerances": {},
+     "t_start_s": 20,
+     "t_end_s": 30,
+     "source": "vl#seg2",
+     "sources": {
+      "success": "interview#1"
+     }
+    }
+   ],
+   "warnings": [
+    "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+   ],
+   "open_questions": [],
+   "sources": {
+    "title": "variant#2",
+    "summary": "variant#2"
+   },
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "c8cb52201a93974a4237431bdc262a72c307d15218895bde6dfbabe0f692798f",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "ISS Veggie seed film placement into plant pillows: Pillow tray shifted right",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj1",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj1"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         13
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj1"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj1",
+         "target": "obj2"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": []
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 2203,
+     "completion_tokens": 318,
+     "seconds": 1.243
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "ISS Veggie seed film placement into plant pillows: Tighter pillow fit",
+   "summary": "The pocket clearance reduces to 2 mm, demanding precise placement of the seed film packet.",
+   "objects": [
+    {
+     "id": "obj1",
+     "name": "seed film packet",
+     "shape": "box",
+     "size_mm": [
+      40,
+      10,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.7,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "obj2",
+     "name": "Veggie plant pillow tray",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       15
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "pocket_clearance_mm": 2,
+     "confidence": 0.8,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit",
+      "pocket_clearance_mm": "variant#3"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "obj1",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 5,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "obj1",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj2"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "inside_zone",
+       "object": "obj1",
+       "target": "obj2"
+      },
+      {
+       "kind": "object_still",
+       "object": "obj1"
+      }
+     ],
+     "tolerances": {},
+     "t_start_s": 20,
+     "t_end_s": 30,
+     "source": "vl#seg2",
+     "sources": {
+      "success": "interview#1"
+     }
+    }
+   ],
+   "warnings": [
+    "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+   ],
+   "open_questions": [],
+   "sources": {
+    "title": "variant#3",
+    "summary": "variant#3"
+   },
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "c8cb52201a93974a4237431bdc262a72c307d15218895bde6dfbabe0f692798f",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "ISS Veggie seed film placement into plant pillows: Tighter pillow fit",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj1",
+        "aperture_mm": 10
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "steps[s2].tolerances.x_mm",
+        "question": "What is the maximum lateral shift allowed for the packet before it is considered out of zone?",
+        "why": "missing tolerance band for x_mm"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj1"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj1",
+         "target": "obj2"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+    ]
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 2196,
+     "completion_tokens": 325,
+     "seconds": 1.598
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "ISS Veggie seed film placement into plant pillows: Flatter packet",
+   "summary": "The seed film packet becomes thinner in height while length and width stay the same.",
+   "objects": [
+    {
+     "id": "obj1",
+     "name": "seed film packet",
+     "shape": "box",
+     "size_mm": [
+      20,
+      10,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.7,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "obj2",
+     "name": "Veggie plant pillow tray",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       15
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "pocket_clearance_mm": 10,
+     "confidence": 0.8,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit",
+      "pocket_clearance_mm": "interview#1"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "obj1",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 5,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "obj1",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj2"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "inside_zone",
+       "object": "obj1",
+       "target": "obj2"
+      },
+      {
+       "kind": "object_still",
+       "object": "obj1"
+      }
+     ],
+     "tolerances": {},
+     "t_start_s": 20,
+     "t_end_s": 30,
+     "source": "vl#seg2",
+     "sources": {
+      "success": "interview#1"
+     }
+    }
+   ],
+   "warnings": [
+    "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+   ],
+   "open_questions": [],
+   "sources": {
+    "title": "variant#4",
+    "summary": "variant#4"
+   },
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "c8cb52201a93974a4237431bdc262a72c307d15218895bde6dfbabe0f692798f",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "ISS Veggie seed film placement into plant pillows: Flatter packet",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj1",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj1"
+        },
+        "timeout_s": 1
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         13
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj1"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj1",
+         "target": "obj2"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "Schedule result being estimated due to lack of scale reference"
+    ]
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 2195,
+     "completion_tokens": 300,
+     "seconds": 1.359
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "ISS Veggie seed film placement into plant pillows: Higher shelf",
+   "summary": "The plant pillow tray is placed on a higher shelf, raising its position so the arm inserts the seed film packet into it at an elevated location.",
+   "objects": [
+    {
+     "id": "obj1",
+     "name": "seed film packet",
+     "shape": "box",
+     "size_mm": [
+      40,
+      10,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.7,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "obj2",
+     "name": "Veggie plant pillow tray",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       28
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "pocket_clearance_mm": 10,
+     "confidence": 0.8,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "variant#5",
+      "size_mm": "fit",
+      "pocket_clearance_mm": "interview#1"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "obj1",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 5,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "obj1",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj2"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "inside_zone",
+       "object": "obj1",
+       "target": "obj2"
+      },
+      {
+       "kind": "object_still",
+       "object": "obj1"
+      }
+     ],
+     "tolerances": {},
+     "t_start_s": 20,
+     "t_end_s": 30,
+     "source": "vl#seg2",
+     "sources": {
+      "success": "interview#1"
+     }
+    }
+   ],
+   "warnings": [
+    "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+   ],
+   "open_questions": [],
+   "sources": {
+    "title": "variant#5",
+    "summary": "variant#5"
+   },
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "c8cb52201a93974a4237431bdc262a72c307d15218895bde6dfbabe0f692798f",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "ISS Veggie seed film placement into plant pillows: Higher shelf",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj1",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj1"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "steps[s2].tolerances.yaw_deg",
+        "question": "What yaw_deg tolerance does the sensor report for steady placement?",
+        "why": "tolerance on yaw_deg missing"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         13
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj1"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj1",
+         "target": "obj2"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "Assumes tray pocket clearance mm is sufficient; cannot confirm fit without exact value for contact."
+    ]
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+     "prompt_tokens": 2209,
+     "completion_tokens": 378,
+     "seconds": 1.868
+    }
+   ]
+  }
  }
 ]
