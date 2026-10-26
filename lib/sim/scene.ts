@@ -267,9 +267,10 @@ const usedAsPocket = (spec: TaskSpec, id: string) => spec.steps.some((s) => s.ta
 export function containerIds(spec: TaskSpec): Set<string> {
   const ids = new Set(spec.objects.filter((o) => o.liquid_ml !== undefined).map((o) => o.id));
   for (const s of spec.steps) {
-    if (s.verb !== "pour") continue;
+    // only a whole pour (its verb and its block) opens containers; validateSpec reports the halves
+    if (s.verb !== "pour" || !s.pour) continue;
     ids.add(s.object);
-    if (s.pour) ids.add(s.pour.into);
+    ids.add(s.pour.into);
   }
   return ids;
 }

@@ -23,7 +23,11 @@ export type IssueCode =
   | "duplicate_program_step"
   | "missing_program_step"
   | "program_step_order"
-  | "unknown_grasp_object";
+  | "unknown_grasp_object"
+  | "pour_without_block"
+  | "pour_block_on_other_verb"
+  | "pour_into_itself"
+  | "liquid_share_as_fraction";
 
 export type SpecIssue = { code: IssueCode; path: string; message: string; severity: "error" | "warning" };
 
@@ -104,7 +108,16 @@ export function validateSpec(spec: TaskSpec): SpecIssue[] {
     stepIds.add(s.id);
     if (!reg.ids.has(s.object)) issues.push({ code: "unknown_object", path: `${at}.object`, message: `step "${s.id}" manipulates unknown object "${s.object}"`, severity: "error" });
     if (s.target && !reg.frames.has(s.target.frame)) issues.push({ code: "unknown_frame", path: `${at}.target.frame`, message: `step "${s.id}" targets unknown frame "${s.target.frame}"`, severity: "error" });
+    // a pour needs both its verb and its block: either alone makes the object an open container with no check on the liquid
+    if (s.verb === "pour" && !s.pour) issues.push({ code: "pour_without_block", path: `${at}.pour`, message: `step "${s.id}" pours but says neither into what nor how far it tilts`, severity: "error" });
+    if (s.pour && s.verb !== "pour") issues.push({ code: "pour_block_on_other_verb", path: `${at}.pour`, message: `step "${s.id}" is a ${s.verb} step with a pour block; only a pour step pours`, severity: "error" });
     if (s.pour && !reg.ids.has(s.pour.into)) issues.push({ code: "unknown_frame", path: `${at}.pour.into`, message: `step "${s.id}" pours into unknown object "${s.pour.into}"`, severity: "error" });
+    if (s.pour && s.pour.into === s.object) issues.push({ code: "pour_into_itself", path: `${at}.pour.into`, message: `step "${s.id}" pours the ${s.object} into itself`, severity: "error" });
+    for (const [k, p] of s.success.entries()) {
+      if (p.kind === "liquid_inside" && p.value !== undefined && p.value <= 1) {
+        issues.push({ code: "liquid_share_as_fraction", path: `${at}.success[${k}].value`, message: `liquid_inside ${p.value} reads as ${p.value}% of the liquid; a share is a percent (90 for 90%)`, severity: "warning" });
+      }
+    }
     s.via_points.forEach((v, k) => {
       if (!reg.frames.has(v.frame)) issues.push({ code: "unknown_frame", path: `${at}.via_points[${k}].frame`, message: `via-point in unknown frame "${v.frame}"`, severity: "error" });
     });
@@ -156,7 +169,7 @@ const REACH_MM = [50, 300] as const;
  * step: a world-frame move outside the reach ring (an object offset written
  * in the wrong frame), a check of an object against itself, an insert or
  * place step that never lets go, a pour that never tilts toward where it
- * pours or leaves the container tipped.
+ * pours or leaves the container tipped, a liquid share written as a fraction.
  */
 export function lintProgram(program: Program, spec: TaskSpec): string[] {
   const out = validateProgram(program, spec)
@@ -168,6 +181,9 @@ export function lintProgram(program: Program, spec: TaskSpec): string[] {
       if (op.op === "move_to" && op.frame === "world") {
         const r = Math.round(Math.hypot(op.offset_mm[0], op.offset_mm[1]));
         if (r < REACH_MM[0] || r > REACH_MM[1]) out.push(`${at}: move_to in "world" is ${r} mm from the robot base, outside its reach (${REACH_MM[0]} to ${REACH_MM[1]} mm); a point near an object uses that object's id as the frame`);
+      }
+      if ((op.op === "assert" || op.op === "wait_until") && op.predicate.kind === "liquid_inside" && op.predicate.value !== undefined && op.predicate.value <= 1) {
+        out.push(`${at}: liquid_inside ${op.predicate.value} reads as ${op.predicate.value}% of the liquid; a share is a percent, so 0.9 is written 90`);
       }
       // liquid_inside of a container's own liquid in itself is a retention check, not a mix-up
       if ((op.op === "assert" || op.op === "wait_until") && op.predicate.kind !== "liquid_inside" && op.predicate.object && op.predicate.object === op.predicate.target) {

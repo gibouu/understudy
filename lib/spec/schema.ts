@@ -109,6 +109,8 @@ export const Predicate = z
     if (need.target && !p.target) ctx.addIssue({ code: "custom", path: ["target"], message: `${p.kind} needs a target` });
     if (need.value && p.value === undefined) ctx.addIssue({ code: "custom", path: ["value"], message: `${p.kind} needs a value (${need.unit})` });
     if (need.value && p.value !== undefined && p.value < 0) ctx.addIssue({ code: "custom", path: ["value"], message: `${p.kind} value must be >= 0` });
+    // a share of the liquid, in percent: 0 always holds and above 100 never can
+    if (p.kind === "liquid_inside" && p.value !== undefined && !(p.value > 0 && p.value <= 100)) ctx.addIssue({ code: "custom", path: ["value"], message: "liquid_inside value is a percent: more than 0, at most 100" });
   });
 export type Predicate = z.infer<typeof Predicate>;
 

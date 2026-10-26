@@ -27,7 +27,7 @@ export function formFor(spec: TaskSpec, slot: string): AskForm {
   const name = (id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
   const still: Predicate = { kind: "object_still", object: step.object };
   const options: { label: string; predicates: Predicate[] }[] = [];
-  if (step.pour) {
+  if (step.verb === "pour" && step.pour) {
     // a pour succeeds by where the container's liquid goes, not by where the container ends up
     const into = step.pour.into;
     for (const [value, label] of [[90, "nearly all of it"], [75, "most of it"], [50, "at least half of it"]] as const) {
@@ -71,7 +71,7 @@ export function withRequiredAsks(spec: TaskSpec, program: Program): { program: P
   const added: string[] = [];
   const steps = program.steps.map((ps) => {
     const step = spec.steps.find((s) => s.id === ps.step_id);
-    if (step?.pour) {
+    if (step?.verb === "pour" && step.pour) {
       const success = `steps[${step.id}].success`;
       if (step.success.length > 0 || asked.has(success)) return ps;
       added.push(success);

@@ -29,8 +29,9 @@ export const LIQUID_STEP_S = 1 / 60;
 export const LIQUID_SPACING_M = 0.004;
 /**
  * Particles that keep the stage at 60 fps on an M4 while the arm pours: a liquid step took 11 to 13 ms
- * (median) at 594 particles and 17 to 22 ms at 1,000, against a 16.7 ms frame (tests/sim/pour.test.ts
- * notes how it was measured).
+ * (median) at 594 particles and 17 to 22 ms at 1,000 in Node through the demo's Earth pour, against a
+ * 16.7 ms frame; on /stage, 600 particles held 58 to 63 frames/s. The M4 was shared with other jobs at the
+ * time (its dam-break baseline ran 5.6 to 9.3 ms against 7.5 idle); PR #107 has the table.
  */
 export const MAX_PARTICLES = 600;
 /** a container a pour step pours from without saying how much it holds is filled this far up */
@@ -84,7 +85,7 @@ export function planLiquid(spec: TaskSpec, scene: Pick<SceneBuild, "names" | "co
   };
   const wanted = spec.objects.filter((o) => o.liquid_ml !== undefined && has(o.id)).map((o) => ({ id: o.id, ml: o.liquid_ml! }));
   // the first pour pours from something: when the spec does not say how much that holds, it is half full
-  const source = spec.steps.find((s) => s.verb === "pour")?.object;
+  const source = spec.steps.find((s) => s.verb === "pour" && s.pour)?.object;
   if (source !== undefined && has(source) && !wanted.some((w) => w.id === source)) {
     const ml = Math.floor(DEFAULT_FILL * room(source)) * perParticleMl;
     warnings.push(`the spec does not say how much liquid "${source}" holds; it was filled half way (${Math.round(ml)} mL)`);

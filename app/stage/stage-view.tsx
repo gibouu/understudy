@@ -305,7 +305,8 @@ export function StageView() {
           {(Object.keys(GRAVITIES) as GravityName[]).map((name) => (
             <button
               key={name}
-              className={`rounded border px-3 py-1 ${gravity === name ? "bg-neutral-900 text-white" : ""}`}
+              className={`rounded border px-3 py-1 disabled:opacity-40 ${gravity === name ? "bg-neutral-900 text-white" : ""}`}
+              disabled={busy} // a switch mid-pour would leave the result labelled with the gravity it started in
               onClick={() => { setGravity(name); gravityRef.current = name; clientRef.current?.setGravity(GRAVITIES[name]); }}
             >
               {name} {GRAVITIES[name]} g
@@ -345,7 +346,7 @@ export function StageView() {
               </p>
             ))}
             <p className="text-neutral-500">
-              Pick the gravity first. The seed jitters the particles at the start. Measured with a cup on a hinge (docs/MEASUREMENTS.md section 5): in orbit a slow pour leaves the water in the cup, and turning it over in one second lands it in the target in 3 of 6 seeds.
+              Pick the gravity first. The seed jitters the particles at the start. Measured with a cup on a hinge: in orbit a slow pour leaves the water in the cup (docs/MEASUREMENTS.md section 5), and turning it over in one second lands 90% of it in the target in 3 of 6 seeds (section 8). This arm, gripping the cup, lands 85 to 93% and reaches 90% in 1 of 6 seeds (run in Node; a run here can differ).
             </p>
           </div>
         )}

@@ -70,6 +70,20 @@ describe("the pour step in the spec", () => {
     expect(TaskSpec.safeParse({ ...POUR_SPEC, objects: [{ ...POUR_SPEC.objects[1], liquid_ml: 0 }] }).success).toBe(false);
   });
 
+  it("refuses half a pour: the verb without its block, the block on another verb, a pour into itself", () => {
+    const step = POUR_SPEC.steps[0];
+    const errors = (steps: unknown[]) => validateSpec(TaskSpec.parse({ ...POUR_SPEC, steps })).filter((i) => i.severity === "error").map((i) => i.code);
+    const { pour: _, ...bare } = step;
+    void _;
+    expect(errors([bare])).toEqual(["pour_without_block"]);
+    expect(errors([{ ...step, verb: "place" }])).toEqual(["pour_block_on_other_verb"]);
+    expect(errors([{ ...step, pour: { into: "cup", tilt_deg: 90 } }])).toEqual(["pour_into_itself"]);
+    // and neither half opens a container or fills one: the run cannot pass on a liquid nobody checks
+    const half = TaskSpec.parse({ ...POUR_SPEC, objects: POUR_SPEC.objects.map(({ liquid_ml, ...o }) => (void liquid_ml, o)), steps: [bare] });
+    expect(Object.keys(buildScene(half).containers)).toEqual([]);
+    expect(planLiquid(half, buildScene(half))).toBeNull();
+  });
+
   it("reports a pour into an object the spec does not have", () => {
     const bad = TaskSpec.parse({ ...POUR_SPEC, steps: [{ ...POUR_SPEC.steps[0], pour: { into: "vat", tilt_deg: 90 } }] });
     expect(validateSpec(bad).find((i) => i.path === "steps[0].pour.into")?.severity).toBe("error");
@@ -88,6 +102,17 @@ describe("the tilt op and the liquid check", () => {
     expect(PREDICATE_OPERANDS.liquid_inside).toMatchObject({ object: false, target: true, value: true });
     expect(Predicate.safeParse({ kind: "liquid_inside", target: "bowl" }).success).toBe(false);
     expect(Predicate.safeParse({ kind: "liquid_inside", target: "bowl", value: 90 }).success).toBe(true);
+  });
+
+  it("takes a liquid share as a percent: more than 0, at most 100, and flags one written as a fraction", () => {
+    const share = (value: number) => Predicate.safeParse({ kind: "liquid_inside", target: "bowl", value }).success;
+    expect([0, 0.9, 1, 100, 150].map(share)).toEqual([false, true, true, true, false]);
+    const fraction = { kind: "liquid_inside", object: "cup", target: "bowl", value: 0.9 } as const;
+    expect(lintProgram(ops(...grip, { op: "tilt", deg: 120, toward: "bowl" }, { op: "wait_until", predicate: fraction }, { op: "tilt", deg: 0 }), POUR_SPEC)).toEqual([
+      "steps[0].ops[4]: liquid_inside 0.9 reads as 0.9% of the liquid; a share is a percent, so 0.9 is written 90",
+    ]);
+    const spec = TaskSpec.parse({ ...POUR_SPEC, steps: [{ ...POUR_SPEC.steps[0], success: [fraction] }] });
+    expect(validateSpec(spec).find((i) => i.code === "liquid_share_as_fraction")?.severity).toBe("warning");
   });
 
   it("asks what counts as a pour, in shares of the liquid, when the spec does not say", () => {
@@ -395,8 +420,8 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
   }, 60_000);
 
   it("in orbit, turning the cup over in one second throws the water into the bowl", () => {
-    // Measured with the arm, seeds 1 to 6: 81 to 96% lands in the bowl, so the 90% bar of the hinge-mounted
-    // measurement (3 of 6 seeds) is met in 1 or 2 of 6; three seeds here keep the test short.
+    // Measured with the arm, seeds 1 to 6: 85 to 93% lands in the bowl, so the 90% bar of the hinge-mounted
+    // measurement (3 of 6 seeds, docs/MEASUREMENTS.md section 8) is met in 1 of 6; three seeds keep the test short.
     for (const seed of [1, 2, 3]) {
       const { r, where } = pour(POUR_PROGRAMS.flip_in_1_s, 0, { seed, after_s: 2 });
       expect(where!.containers.bowl, `seed ${seed}: ${r.log.join("\n")}`).toBeGreaterThanOrEqual(0.75);
