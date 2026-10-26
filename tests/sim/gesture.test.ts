@@ -118,15 +118,15 @@ describe("reachCheck", () => {
   }
 
   it("reaches every point of a trace that goes through them a little behind, and says how far behind", () => {
-    const r = reachCheck(path, through(path.map((p) => p.xyz_mm), 0.3), 1);
+    const r = reachCheck(path, through(path.map((p) => p.xyz_mm), 0.2), 1);
     expect(r).toMatchObject({ points: 4, reached: 4, missed: [], reach_mm: 1 });
     expect(r.worst_mm).toBeLessThan(1);
-    expect(r.late_s).toBeCloseTo(0.3, 1);
+    expect(r.late_s).toBeCloseTo(0.2, 1);
   });
 
   it("misses the points a trace reaches more than MAX_LAG_S late", () => {
-    expect(MAX_LAG_S).toBe(0.5);
-    const r = reachCheck(path, through(path.map((p) => p.xyz_mm), 0.8), 1);
+    expect(MAX_LAG_S).toBe(0.25);
+    const r = reachCheck(path, through(path.map((p) => p.xyz_mm), 0.4), 1);
     expect(r.missed).toContain(1);
     expect(r.reached).toBeLessThan(4);
   });
@@ -141,10 +141,11 @@ describe("reachCheck", () => {
   });
 
   it("checks the order: a point passed only before the time of the point before it does not count", () => {
-    // the trace visits the last point first, then the others: point 4 comes after point 3 only at the very start
-    const order: [number, number, number][] = [[220, -60, 240], [220, 0, 240], [220, 60, 240], [220, 0, 240]];
-    const r = reachCheck(path, through(order), 15);
+    // the trace is at the last point's place before the path starts (t = 1 s), then traces the first three on time and stays
+    const trace = through([[220, -60, 240], [220, -60, 240], [220, 0, 240], [220, 60, 240], [220, 0, 240], [220, 0, 240]]);
+    const r = reachCheck(path, trace, 5, 1);
     expect(r.missed).toEqual([3]);
+    expect(r.worst_mm).toBeCloseTo(60, 0);
   });
 
   it("an empty trace reaches nothing", () => {

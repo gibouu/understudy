@@ -68,7 +68,7 @@ function task(spec: TaskSpec): string {
     const pocket = s.rim === undefined ? "" : `; a pocket ${o.pocket_clearance_mm ?? DEFAULT_CLEARANCE_MM} mm wider than what goes in, its floor at z = ${s.z} mm and its rim at z = ${s.rim} mm in its frame`;
     return `${o.id} (${o.name}): ${o.role} ${o.shape}, ${o.size_mm.join(" x ")} mm${pocket}`;
   });
-  const steps = spec.steps.map((s) => `${s.id}: ${s.verb} ${s.object}${s.target ? ` into the ${s.target.fixture} of ${s.target.frame} (${name(s.target.frame)})` : ""}`);
+  const steps = spec.steps.map((s) => `${s.id}: ${s.verb}${s.object === undefined ? "" : ` ${s.object}`}${s.target ? ` into the ${s.target.fixture} of ${s.target.frame} (${name(s.target.frame)})` : ""}`);
   return [`${spec.title}. ${spec.summary}`.trim(), `Objects (sizes along x, y, z; frames at their centres; z up):\n${objects.join("\n")}`, `Steps:\n${steps.join("\n")}`].join("\n");
 }
 

@@ -225,7 +225,7 @@ Objects obj1 "test tube", obj2 "centrifuge rotor"; steps s2 insert obj1 into the
 export function groundUser(spec: TaskSpec, candidates: Candidate[], slots: string[]): string {
   const objects = spec.objects.map((o) => `${o.id} "${o.name}"`).join(", ");
   const steps = spec.steps
-    .map((s) => `${s.id} ${s.verb} ${s.object}${s.target ? ` into the ${s.target.fixture} of ${s.target.frame}` : ""}`)
+    .map((s) => `${s.id} ${s.verb}${s.object === undefined ? "" : ` ${s.object}`}${s.target ? ` into the ${s.target.fixture} of ${s.target.frame}` : ""}`)
     .join(", ");
   const units = slots.map((s) => `${s} (${unitOf(s)})`).join(", ");
   return [`Task: ${spec.title}. ${spec.summary}`, `Objects ${objects}; steps ${steps}; slots ${units || "none"}.`, ...candidates.map((c, i) => `${i}. ${c.text}`)].join("\n");

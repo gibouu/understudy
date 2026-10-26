@@ -182,7 +182,7 @@ export const Step = z
     /**
      * verb "gesture": no object; the point between the pads follows `path`, the person's hand (MediaPipe on the
      * clip, in the browser) scaled into the arm's reach. Empty until it is traced. A point counts as reached
-     * when that point passes within `reach_mm` of it, in order; a gesture has no other success.
+     * when that point passes within `reach_mm` of it, in order (lib/sim/gesture.ts); a gesture has no other success.
      */
     gesture: z
       .object({

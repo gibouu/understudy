@@ -120,7 +120,7 @@ export function Rehearsal({ spec, program, onFail, notes = true }: { spec: TaskS
       </div>
       {gesture && (
         <p className="text-sm text-neutral-600">
-          This clip is a gesture: the arm handles nothing, so there is no task to succeed at. The only check is that the point between the gripper&apos;s pads comes within {gesture.gesture!.reach_mm} mm of each point of the hand&apos;s path, in order, at most half a second behind it. When the clip is faster than the arm&apos;s joints turn, the arm follows it slower and says by how much.
+          This clip is a gesture: the arm handles nothing, so there is no task to succeed at. The only check is that the point between the gripper&apos;s pads comes within {gesture.gesture!.reach_mm} mm of each point of the hand&apos;s path, in order, at most a quarter of a second behind it. When the clip is faster than the arm&apos;s joints turn, the arm follows it slower and says by how much.
         </p>
       )}
       <div className="flex flex-wrap gap-2 text-sm">

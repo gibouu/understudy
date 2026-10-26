@@ -243,7 +243,7 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 
 - The wave turns back about three times a second. Sampled at 10 fps it aliases into jitter (the first trace drew a path 24 mm across); the trace samples at the clip's 30 fps. A three-sample average weighted 1, 2, 1 takes off frame-to-frame jitter and keeps 90% of a 3 Hz swing.
 - In a palm wave the hand turns about the wrist, so the hand's centre (the mean of the pose model's wrist, index and pinky landmarks) moves a little more than the wrist: 44 mm across and 56 mm high on the robot's scale, against 36 and 60 for the wrist alone. The path follows the hand's centre, which is what the gripper stands for, and averages three landmarks instead of one.
-- MuJoCo (5 ms step, the SO-101's position actuators), point between the pads against the 240 points, reach 5 mm, each point within 0.5 s after its own time:
+- MuJoCo (5 ms step, the SO-101's position actuators), point between the pads against the 240 points, reach 5 mm, each point within 0.25 s after its own time:
 
 | Played | Fastest joint | Reached within 5 mm | Farthest | First within reach, latest |
 |---|---|---|---|---|
@@ -251,7 +251,7 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 | At 0.70x (joints held to 2 rad/s), Earth | 2.0 rad/s | 240 of 240 | 1.1 mm | 0.01 s |
 | At 0.70x, orbit (0 g) | 2.0 rad/s | 240 of 240 | 1.0 mm | 0.01 s |
 
-So the interpreter plays a gesture slower than the clip whenever a joint would turn faster than 2 rad/s, and the page says by how much. The unaveraged landmarks would ask a joint for 6.2 rad/s. Live spend for this section: six Super VL labels of the clip while the label prompt and clean-up were tuned, under US$0.03; a program made only of gestures needs no model.
+So the interpreter plays a gesture slower than the clip whenever a joint would turn faster than 2 rad/s, and the page says by how much. The unaveraged landmarks would ask a joint for 6.2 rad/s. Live spend for this section, about US$0.03: Super VL labelled the sample six times and two camera takes of it (Film yourself, with the clip as a fake camera) while the label prompt and clean-up were tuned, and Nano compiled three of those specs before a program made only of gestures stopped needing a model.
 
 ## Reproduce
 

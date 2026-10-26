@@ -117,8 +117,12 @@ export type Reach = {
   late_s: number;
 };
 
-/** A point may be reached this long after the path's own time for it: a position servo trails a moving target. */
-export const MAX_LAG_S = 0.5;
+/**
+ * A point may be reached this long after the path's own time for it: a position servo trails a moving target (by
+ * 0.01 to 0.03 s at the joint-speed cap, docs/MEASUREMENTS.md section 11). Shorter than a wave's swing, so an arm
+ * half a swing behind does not pass.
+ */
+export const MAX_LAG_S = 0.25;
 
 const dist = (a: Vec3, b: Vec3) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
