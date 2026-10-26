@@ -94,6 +94,9 @@ describe("scalePath", () => {
     const samples: HandSample[] = [0, 0.5, 0.5, 0.3, 1, 1.5].map((t_s, k) => ({ t_s, x_m: 0.1 * Math.sin(k), y_m: -0.1 * k }));
     const times = scalePath(samples, 0.6).path.map((p) => p.t_s);
     expect(times).toEqual([0, 0.5, 1, 1.5]);
+    // two frames a fifth of a millisecond apart would round onto one time: the second is dropped
+    const close: HandSample[] = [0.0166, 0.0168, 1.0166].map((t_s, k) => ({ t_s, x_m: 0.05 * k, y_m: -0.4 }));
+    expect(scalePath(close, 0.6).path.map((p) => p.t_s)).toEqual([0, 1]);
   });
 
   it("cuts a path longer than MAX_POINTS and says so", () => {

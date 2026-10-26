@@ -63,10 +63,14 @@ const r1 = (x: number) => Math.round(x * 10) / 10 || 0;
 export function scalePath(samples: HandSample[], armM: number | null): Scaled {
   const warnings: string[] = [];
   const empty = (why: string): Scaled => ({ path: [], mm_per_m: 0, fit: 1, warnings: [...warnings, why] });
-  // time must move forward: a repeated or earlier sample is not a measurement of where the hand went next
+  // times from the first sample, to the millisecond, and moving forward: a repeated or earlier sample (or one that
+  // rounds onto the one before) is not a measurement of where the hand went next
   let s: HandSample[] = [];
+  const t0 = samples.find((p) => Number.isFinite(p.t_s) && Number.isFinite(p.x_m) && Number.isFinite(p.y_m))?.t_s ?? 0;
   for (const p of samples) {
-    if (Number.isFinite(p.t_s) && Number.isFinite(p.x_m) && Number.isFinite(p.y_m) && (s.length === 0 || p.t_s > s.at(-1)!.t_s)) s.push(p);
+    if (!(Number.isFinite(p.t_s) && Number.isFinite(p.x_m) && Number.isFinite(p.y_m))) continue;
+    const t_s = Math.round((p.t_s - t0) * 1000) / 1000;
+    if (s.length === 0 || t_s > s.at(-1)!.t_s) s.push({ ...p, t_s });
   }
   if (s.length < 2 || s.at(-1)!.t_s - s[0].t_s < MIN_SPAN_S) return empty(`the hand was seen for under ${MIN_SPAN_S} s: no path to follow`);
   if (s.length > MAX_POINTS) {
@@ -98,9 +102,8 @@ export function scalePath(samples: HandSample[], armM: number | null): Scaled {
   const k = mm_per_m * fit;
   const [cx, cy] = [(x0 + x1) / 2, (y0 + y1) / 2];
   const [cY, cZ] = [(BOX_Y_MM[0] + BOX_Y_MM[1]) / 2, (BOX_Z_MM[0] + BOX_Z_MM[1]) / 2];
-  const t0 = smooth[0].t_s;
   const path = smooth.map((p) => ({
-    t_s: r1((p.t_s - t0) * 100) / 100,
+    t_s: p.t_s,
     xyz_mm: [PLANE_X_MM, r1(cY - (p.x_m - cx) * k), r1(cZ - (p.y_m - cy) * k)] as Vec3,
   }));
   return { path, mm_per_m: r1(k), fit: Math.round(fit * 1000) / 1000, warnings };

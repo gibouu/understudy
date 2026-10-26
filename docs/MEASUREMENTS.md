@@ -251,7 +251,7 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 | At 0.70x (joints held to 2 rad/s), Earth | 2.0 rad/s | 240 of 240 | 1.1 mm | 0.01 s |
 | At 0.70x, orbit (0 g) | 2.0 rad/s | 240 of 240 | 1.0 mm | 0.01 s |
 
-In the browser's simulator worker, which paces the run in real time, the same path read 1.2 mm on Earth and 1.6 mm in orbit. So the interpreter plays a gesture slower than the clip whenever a joint would turn faster than 2 rad/s, and the page says by how much. The unaveraged landmarks would ask a joint for 6.2 rad/s. Live spend for this section, about US$0.03: Super VL labelled the sample six times and two camera takes of it (Film yourself, with the clip as a fake camera) while the label prompt and clean-up were tuned, and Nano compiled three of those specs before a program made only of gestures stopped needing a model.
+In the browser's simulator worker, which paces the run in real time, the same path read 1.2 and 1.5 mm on Earth and 1.6 mm in orbit over two runs. So the interpreter plays a gesture slower than the clip whenever a joint would turn faster than 2 rad/s, and the page says by how much. The unaveraged landmarks would ask a joint for 6.2 rad/s. Live spend for this section, about US$0.03: Super VL labelled the sample six times and two camera takes of it (Film yourself, with the clip as a fake camera) while the label prompt and clean-up were tuned, and Nano compiled three of those specs before a program made only of gestures stopped needing a model.
 
 ## Reproduce
 

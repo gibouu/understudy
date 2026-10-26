@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { POSE } from "@/lib/vision/select";
 import type { Point3, TokenFrame } from "@/lib/vision/types";
-import { armLength, busierHand, handGaps, handSamples, MIN_VISIBILITY, sampleTimes, travel } from "@/lib/vision/hand";
+import { armLength, busierHand, clipOrigin, handGaps, handSamples, MIN_VISIBILITY, sampleTimes, travel } from "@/lib/vision/hand";
 
 const P = (x: number, y: number, z = 0): Point3 => ({ x, y, z });
 
@@ -70,6 +70,14 @@ describe("the hand's path in a gesture", () => {
     const s = handSamples(frames.filter((f) => f.t_s < 0.85 || f.t_s > 1.65), "right", 0, 3);
     expect(handGaps(s, 0, 3)).toEqual([{ start_s: expect.closeTo(0.8, 6), end_s: expect.closeTo(1.7, 6) }]);
     expect(handGaps(s.slice(0, 3), 0, 3)).toEqual([{ start_s: expect.closeTo(0.2, 6), end_s: 3 }]);
+  });
+});
+
+describe("clipOrigin", () => {
+  it("is the track's first timestamp, where the label's proxy starts, or 0 for preroll before it", () => {
+    expect(clipOrigin(2)).toBe(2);
+    expect(clipOrigin(0.033)).toBe(0.033);
+    expect(clipOrigin(-1)).toBe(0);
   });
 });
 

@@ -99,6 +99,15 @@ describe("follow: a gesture path traced by the arm", () => {
     expect(rollout(gestureSpec(swing()), elsewhere, 1).why).toMatch(/not a gesture with a path/);
   }, 120_000);
 
+  it("holds the joints to the cap even when points are under a physics step apart", () => {
+    // 20 points a millisecond apart, 5 mm each: no MuJoCo step is that short, and the arm still turns at most 2 rad/s
+    const path: PathPoint[] = Array.from({ length: 20 }, (_, k) => ({ t_s: k / 1000, xyz_mm: [220, -50 + 5 * k, 240] }));
+    const r = rollout(gestureSpec(path), FOLLOW, 1);
+    expect(r.pass, r.log.join("\n")).toBe(true);
+    expect(r.followed![0].speed).toBeLessThan(0.1);
+    expect(r.log.join("\n")).toMatch(/the arm is held to 2/);
+  }, 120_000);
+
   it("draws the path on the stage as markers that touch nothing", () => {
     const env = environment(gestureSpec(swing()));
     expect(env.worldbody.match(/<geom name="gesture_0_/g)).toHaveLength(41);

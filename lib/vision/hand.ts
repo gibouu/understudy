@@ -72,6 +72,12 @@ export function busierHand(frames: TokenFrame[], t0: number, t1: number): HandSi
 }
 
 /**
+ * The track timestamp the label's clip time 0 stands for: the label watched a proxy whose conversion starts at the
+ * track's first timestamp, or at 0 when that is negative (mediabunny drops what comes before 0, which is never shown).
+ */
+export const clipOrigin = (firstTimestamp: number) => Math.max(firstTimestamp, 0);
+
+/**
  * The clip times to decode for some windows (clip seconds, which are the track's own timestamps): the centres of a
  * 1/fps grid from 0, (k + 0.5) / fps, that fall in a window and before `end`. A frame is found by its start time,
  * so asking at a start rounded down would return the frame before it; one grid for every window means overlapping

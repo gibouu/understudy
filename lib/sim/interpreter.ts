@@ -494,7 +494,8 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             if (off.mm > Math.max(g.reach_mm, IK_PRECISION_MM)) {
               return fail({ failed_step_id: s.step_id, failure_class: "embodiment_limit", why: `follow: point ${off.i + 1} of ${path.length} is out of the arm's reach by ${off.mm.toFixed(1)} mm (the limit is ${g.reach_mm} mm)` });
             }
-            const peak = Math.max(0, ...keys.slice(1).map((q, k) => Math.max(...q.map((v, j) => Math.abs(v - keys[k][j]))) / Math.max(path[k + 1].t_s - path[k].t_s, dt)));
+            // the speed each step between two points asks for, however short the step (time moves forward, checked above)
+            const peak = Math.max(0, ...keys.slice(1).map((q, k) => Math.max(...q.map((v, j) => Math.abs(v - keys[k][j]))) / (path[k + 1].t_s - path[k].t_s)));
             const stretch = Math.max(1, peak / FOLLOW_JOINT_RAD_S);
             const timed = path.map((p) => ({ ...p, t_s: p.t_s * stretch }));
             log.push(`${t.toFixed(2)} follow ${path.length} points over ${timed.at(-1)!.t_s.toFixed(1)} s, ${stretch > 1 ? `at ${(1 / stretch).toFixed(2)}x the clip's speed: at its own a joint would turn at ${peak.toFixed(1)} rad/s, and the arm is held to ${FOLLOW_JOINT_RAD_S}` : `joints up to ${peak.toFixed(1)} rad/s`}`);

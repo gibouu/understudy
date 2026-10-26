@@ -14,7 +14,7 @@ import { done, type StageResult } from "@/lib/spec/stage-result";
 import { startDetector } from "./detector";
 import { assembleFrame } from "./select";
 import type { TokenFrame } from "./types";
-import { armLength, busierHand, handGaps, handSamples, sampleTimes } from "./hand";
+import { armLength, busierHand, clipOrigin, handGaps, handSamples, sampleTimes } from "./hand";
 
 /** a clip's own rate: a wave turns back three times a second, which 10 fps would alias */
 export const TRACE_FPS = 30;
@@ -69,22 +69,23 @@ export async function traceGestures(spec: TaskSpec, clip: Blob, onProgress?: (do
 async function sample(input: Input, todo: Step[], frames: TokenFrame[], onProgress?: (done: number, total: number) => void) {
   const track = await input.getPrimaryVideoTrack();
   if (!track) throw new Error("the clip has no video track to trace the hand on");
-  // clip seconds are the track's own timestamps: the label's proxy keeps them (mediabunny's conversion does not shift
-  // them), and a sample before 0 is preroll that is never shown
+  // the label's clip seconds count from the proxy's start, which mediabunny's conversion puts at the track's first
+  // timestamp, or 0 when that is negative (preroll is never shown)
+  const origin = clipOrigin(await track.getFirstTimestamp());
   const end = await track.computeDuration();
-  const times = sampleTimes(todo.map((s) => [s.t_start_s, s.t_end_s]), end, TRACE_FPS);
+  const times = sampleTimes(todo.map((s) => [s.t_start_s, s.t_end_s]), end - origin, TRACE_FPS);
   const detector = await startDetector();
   try {
     detector.newRun();
     const sink = new CanvasSink(track, { width: TRACE_WIDTH });
     let k = 0;
     let last = -Infinity;
-    for await (const c of sink.canvasesAtTimestamps(times)) {
+    for await (const c of sink.canvasesAtTimestamps(times.map((t) => origin + t))) {
       onProgress?.(++k, times.length);
       // a clip slower than TRACE_FPS returns a frame twice: once is a measurement, twice is not
-      if (!c || c.timestamp < 0 || c.timestamp <= last) continue;
+      if (!c || c.timestamp < origin || c.timestamp <= last) continue;
       last = c.timestamp;
-      const t = Math.round(c.timestamp * 10000) / 10000;
+      const t = Math.round((c.timestamp - origin) * 10000) / 10000;
       const bitmap = await createImageBitmap(c.canvas);
       const aspect = bitmap.width / bitmap.height;
       const d = await detector.detect(bitmap, t);
