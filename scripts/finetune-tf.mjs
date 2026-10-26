@@ -14,6 +14,10 @@
 //        one new job on the uploaded training file and charges the estimate
 //   node scripts/finetune-tf.mjs release --confirm-no-job     after a create that started nothing (checked in
 //        the console): gives the reservation back and clears the pending mark
+//   node scripts/finetune-tf.mjs try-serve                    once the job succeeded: asks the tuned model for one
+//        tiny answer by two routes that need no dedicated endpoint (the checkpoint id on the serverless API, and
+//        the adapter registered as a LoRA model through /v0/models, the route of Token Factory's cookbook
+//        AddLora.ipynb) and keeps what each one said
 //
 // A create that fails leaves the job "pending": no other create runs until adopt or release says what
 // happened, so a lost answer can never lead to a second paid job, and nothing is released by guesswork.
@@ -23,6 +27,7 @@ import { closeSync, existsSync, openSync, readFileSync, unlinkSync, writeFileSyn
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { zipSync } from "fflate";
 import OpenAI, { toFile } from "openai";
 import { charge, entries, guard, release } from "./bench-ledger.mjs";
 
@@ -170,6 +175,50 @@ async function main() {
       save(s);
       console.log("released");
     });
+  } else if (cmd === "try-serve") {
+    const s = state();
+    if (s.job?.status !== "succeeded") throw new Error("the job has not succeeded");
+    const tf = client();
+    const last = [...(s.checkpoints ?? [])].sort((a, b) => b.step - a.step)[0];
+    if (!last) throw new Error("no checkpoint listed: run status");
+    const ask = async (model) => {
+      try {
+        const r = await tf.chat.completions.create({ model, messages: [{ role: "user", content: 'Answer with {"ok":true} only.' }], max_tokens: 10 });
+        return { ok: true, model, content: r.choices?.[0]?.message?.content ?? "", usage: r.usage ?? null };
+      } catch (e) {
+        return { ok: false, model, error: String(e?.message ?? e).slice(0, 300) };
+      }
+    };
+    s.serve = { checkpoint: last.model, tried_at: new Date().toISOString() };
+    // 1. the checkpoint id as a serverless model
+    s.serve.checkpoint_id = await ask(last.model);
+    // 2. the adapter as a LoRA model: download the checkpoint's files, zip them, upload, register
+    try {
+      const files = {};
+      for (const id of (await tf.fineTuning.jobs.checkpoints.list(s.job.id)).data.find((c) => c.id === last.id)?.result_files ?? []) {
+        const meta = await tf.files.retrieve(id);
+        files[path.basename(meta.filename)] = new Uint8Array(await (await tf.files.content(id)).arrayBuffer());
+      }
+      if (!files["adapter_config.json"]) throw new Error(`no adapter_config.json among ${Object.keys(files).join(", ")}`);
+      const zip = zipSync(files);
+      const form = new FormData();
+      form.append("file", new Blob([zip]), "adapter.zip");
+      const auth = { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` };
+      const root = BASE_URL.replace(/\/v1\/?$/, "");
+      const up = await fetch(`${root}/v0/models/upload`, { method: "POST", headers: auth, body: form });
+      const upBody = await up.json().catch(() => ({}));
+      s.serve.lora_upload = { status: up.status, id: upBody.id ?? null, detail: upBody.detail ? String(JSON.stringify(upBody.detail)).slice(0, 300) : null };
+      if (up.ok && upBody.id) {
+        const mk = await fetch(`${root}/v0/models`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ source: upBody.id, base_model: BASE_MODEL, name: "understudy-patcher", description: "LoRA of the patch-loop repairs (issue #97)" }) });
+        const mkBody = await mk.json().catch(() => ({}));
+        s.serve.lora_model = { status: mk.status, name: mkBody.name ?? null, detail: mkBody.detail ? String(JSON.stringify(mkBody.detail)).slice(0, 300) : null };
+        if (mk.ok && mkBody.name) s.serve.lora_answer = await ask(mkBody.name);
+      }
+    } catch (e) {
+      s.serve.lora_error = String(e?.message ?? e).slice(0, 300);
+    }
+    save(s);
+    console.log(JSON.stringify(s.serve, null, 2));
   } else if (cmd === "status") {
     const s = state();
     if (!s.job) throw new Error(s.pending ? "a create is pending: adopt or release first" : "no job yet");
