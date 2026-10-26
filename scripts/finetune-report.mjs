@@ -40,8 +40,10 @@ const rate = (k, n) => {
   const [lo, hi] = wilson(k, n);
   return `${pct(k / n)} [${Math.round(100 * lo)} to ${Math.round(100 * hi)}] (${k} of ${n})`;
 };
+// a run that stopped (budget, a model no longer served) never got its patches: it is left out of the
+// rates and counted apart, and no comparison is printed while any remain
 const stats = (runs) => {
-  const need = runs.filter((r) => r.expert_pass && !r.iterations[0].pass);
+  const need = runs.filter((r) => r.expert_pass && !r.iterations[0].pass && !r.stopped);
   return { need, fixed: need.filter((r) => r.passed_at !== null), first: need.filter((r) => r.passed_at === 1), calls: runs.reduce((n, r) => n + r.calls, 0), usd: runs.reduce((n, r) => n + r.cost_usd, 0), stopped: runs.filter((r) => r.stopped).length };
 };
 
@@ -56,7 +58,9 @@ for (const [id, a] of arms) {
   const per = x.fixed.length && Number.isFinite(usd) ? `US$${(usd / x.fixed.length).toFixed(4)}` : "-";
   console.log(`| ${a.config.label ?? id} | ${rate(x.fixed.length, x.need.length)} | ${pct(x.first.length / x.need.length)} | ${per} |${x.stopped ? ` ${x.stopped} runs stopped` : ""}`);
 }
-if (s["ft-nano-ft"] && s["ft-nano-base"]) {
+const anyStopped = Object.values(s).some((x) => x.stopped);
+if (anyStopped) console.log("\nSome runs stopped before their patches: rerun them before comparing; the rates above leave them out.");
+if (s["ft-nano-ft"] && s["ft-nano-base"] && !anyStopped) {
   const [ft, base] = [s["ft-nano-ft"], s["ft-nano-base"]];
   const [d, lo, hi] = newcombe(ft.fixed.length, ft.need.length, base.fixed.length, base.need.length);
   const [d1, lo1, hi1] = newcombe(ft.first.length, ft.need.length, base.first.length, base.need.length);
