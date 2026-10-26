@@ -136,6 +136,13 @@ describe("POST /api/ground live, with the network faked", () => {
     expect(net.calls.some((c) => c.url.includes("/chat/completions"))).toBe(false);
   });
 
+  it("never puts a key in the answer, even when fetch quotes it", async () => {
+    vi.stubEnv("TAVILY_API_KEY", "tvly-dev-abcdefgh\nijklmnop");
+    const r = (await post({ spec })).json as Done;
+    expect(r.warnings.at(-1)).toBe("grounding failed: tavily search: network error");
+    expect(JSON.stringify(r)).not.toMatch(/abcdefgh|ijklmnop/);
+  });
+
   it("answers no chips, never a failure, when Tavily refuses", async () => {
     const net = fakeNetwork({});
     net.fetch.mockImplementation(async () => net.json({ detail: { error: "Unauthorized" } }, 401));
@@ -155,6 +162,9 @@ describe("POST /api/ground live, with the network faked", () => {
     expect(r).toMatchObject({ status: "done", value: { chips: [] } });
     expect(r.warnings.at(-1)).toBe("grounding took over 6 s");
     expect(r.ledger?.map((e) => e.model)).toEqual(["tavily/search", "tavily/extract"]);
+    // Nano's request is aborted with the answer, not left running
+    const nano = net.fetch.mock.calls.find(([u]) => String(u instanceof Request ? u.url : u).includes("/chat/completions"));
+    expect(nano?.[1]?.signal?.aborted).toBe(true);
   });
 
   it("answers at the 6 s budget when Tavily hangs", async () => {

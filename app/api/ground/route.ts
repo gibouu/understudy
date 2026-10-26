@@ -13,7 +13,7 @@
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/ground.json";
 import { callModel } from "@/lib/providers/call";
-import { extract, hasTavilyKey, search, type Page } from "@/lib/providers/tavily";
+import { extract, hasTavilyKey, search, TavilyError, type Page } from "@/lib/providers/tavily";
 import { tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { candidatesOf, chipsFrom, GROUND_SYSTEM, groundQuery, groundSlots, groundUser, GroundFilter, type Grounding } from "@/lib/spec/ground";
 import { TaskSpec } from "@/lib/spec/schema";
@@ -29,6 +29,18 @@ const EXTRACT_MARGIN_MS = 400;
 const TOP_PAGES = 2;
 /** Video and social pages: what extract reads there is comments and navigation, not prose about the task. */
 const NO_PROSE = ["instagram.com", "facebook.com", "tiktok.com", "x.com", "twitter.com", "youtube.com", "pinterest.com", "reddit.com"];
+
+/** An error's message only when it is ours: fetch and SDK errors can quote a header value. */
+const why = (err: unknown) => (err instanceof TavilyError ? err.message : "internal error");
+
+/** Every warning leaves with any fragment of either key cut out, whatever path it took. */
+function redact(text: string): string {
+  let out = text;
+  for (const key of [process.env.TAVILY_API_KEY, process.env.NEBIUS_API_KEY]) {
+    for (const part of (key ?? "").split(/\s+/)) if (part.length >= 8) out = out.split(part).join("[redacted]");
+  }
+  return out;
+}
 
 type Recording = { spec_title: string; recorded: string; result: StageResult<Grounding> };
 
@@ -67,7 +79,7 @@ async function ground(spec: TaskSpec, ledger: LedgerEntry[], warnings: string[],
     } catch (err) {
       if (signal.aborted) throw err;
       // an aborted extract is missing from the ledger: Tavily never answered with its credits
-      warnings.push(`tavily: extract failed (${(err as Error).message.slice(0, 120)}); only the search snippets were read`);
+      warnings.push(`tavily: extract failed (${why(err)}); only the search snippets were read`);
     }
   } else warnings.push("tavily: no time left to extract; only the search snippets were read");
 
@@ -76,8 +88,10 @@ async function ground(spec: TaskSpec, ledger: LedgerEntry[], warnings: string[],
     warnings.push("no sentence on the pages found both names this task and gives advice: Nano was not asked");
     return { query, pages: sources, chips: [] };
   }
-  const client = tokenFactory({ timeout: Math.max(1_000, deadline - Date.now()), maxRetries: 0 });
-  if (!client) throw new Error("no NEBIUS_API_KEY");
+  const base = tokenFactory({ timeout: Math.max(1_000, deadline - Date.now()), maxRetries: 0 });
+  if (!base) throw new TavilyError("no NEBIUS_API_KEY");
+  // the stage's deadline aborts Nano too, a second attempt included, so nothing runs on after the answer
+  const client = base.withOptions({ fetch: (url, init) => fetch(url, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, signal]) : signal }) });
   const slots = groundSlots(spec);
   const r = await callModel(client, {
     role: "nano",
@@ -121,9 +135,9 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Groun
   try {
     const r = await Promise.race([work, overrun]);
     // a snapshot: a call still in flight at the deadline is missing from this ledger
-    if ("over" in r) return NextResponse.json(done(empty, [...warnings, `grounding took over ${BUDGET_MS / 1000} s`], [...ledger]));
-    if ("err" in r) return NextResponse.json(done(empty, [...warnings, `grounding failed: ${String((r.err as Error)?.message ?? r.err).slice(0, 200)}`], [...ledger]));
-    return NextResponse.json(done(r.value, warnings, ledger));
+    if ("over" in r) return NextResponse.json(done(empty, [...warnings, `grounding took over ${BUDGET_MS / 1000} s`].map(redact), [...ledger]));
+    if ("err" in r) return NextResponse.json(done(empty, [...warnings, `grounding failed: ${why(r.err)}`].map(redact), [...ledger]));
+    return NextResponse.json(done(r.value, warnings.map(redact), ledger));
   } finally {
     clearTimeout(timer);
   }

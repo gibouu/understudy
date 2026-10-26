@@ -6,11 +6,15 @@ import { chipChange, chipEffect, type Chip, type Grounding } from "@/lib/spec/gr
 import type { TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 
-/** app/globals.css defines these with the landing page (#90); until then the page's own colours stand in. */
+/**
+ * app/globals.css defines these with the landing page (#90). Until then the
+ * page's own colours stand in, mixed toward the text colour so small text
+ * keeps 4.5:1 contrast in light and dark mode.
+ */
 const PAPER = "var(--paper, var(--background))";
 const INK = "var(--ink, var(--foreground))";
-const ACCENT = "var(--accent, #c2410c)";
-const MUTED = "var(--muted, #737373)";
+const ACCENT = "var(--accent, color-mix(in srgb, #c2410c 75%, var(--foreground)))";
+const MUTED = "var(--muted, color-mix(in srgb, var(--foreground) 62%, var(--background)))";
 
 const host = (url: string) => {
   try {

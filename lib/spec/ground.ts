@@ -71,12 +71,20 @@ export function groundSlots(spec: TaskSpec): string[] {
 /** The header lines some extracts start with. */
 const METADATA = /^(?:Title|URL Source|Published Time|Markdown Content):/;
 
-/** Markdown from an extract (or a search snippet) as plain statements of a useful length. */
+/** Past this a page is cut: a few sentences are all a chip needs, and parsing stays fast on hostile input. */
+const MAX_PAGE_CHARS = 20_000;
+
+/**
+ * Markdown from an extract (or a search snippet) as plain statements of a
+ * useful length. Every pattern is bounded, so the work is linear in the text.
+ */
 export function sentencesOf(markdown: string): string[] {
   const plain = markdown
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/<[^>]+>/g, " ")
+    .slice(0, MAX_PAGE_CHARS)
+    .replace(/!\[[^\]\n]{0,300}\]\([^)\s]{0,500}\)/g, " ")
+    .replace(/\[([^\]\n]{0,300})\]\([^)\s]{0,500}\)/g, "$1")
+    // a tag starts with a letter: "< 2 mm ... > 3 mm" is a comparison, not a tag
+    .replace(/<\/?[a-zA-Z][^<>]{0,300}>/g, " ")
     .replace(/https?:\/\/\S+/g, " ")
     .replace(/\[\.\.\.\]/g, "\n\n");
   // a blank line ends a block; a heading or a metadata line is a block of its own; a list item or table row starts one
@@ -87,7 +95,7 @@ export function sentencesOf(markdown: string): string[] {
     lines = [];
   };
   for (const raw of plain.split("\n")) {
-    const line = raw.trim();
+    const line = raw.trim().replace(/^(?:>\s*)+/, ""); // a blockquote marker, only at the start of a line
     const alone = /^#/.test(line) || METADATA.test(line);
     if (!line || alone || /^(?:[-*+]\s|\d+[.)]\s|\|)/.test(line)) flush();
     if (line) lines.push(line);
@@ -98,7 +106,8 @@ export function sentencesOf(markdown: string): string[] {
   for (const block of blocks) {
     const flat = block
       .replace(/^(?:#+|[-*+]|\d+[.)])\s+/, "")
-      .replace(/[*_`|>#]+/g, " ")
+      // emphasis and table pipes; ">" and "#" inside a sentence are text ("> 3 mm", "#2 pencil")
+      .replace(/[*_`|]+/g, " ")
       .replace(/\s+/g, " ")
       .trim();
     for (const s of flat.split(/(?<=[.!?])\s+(?=["“‘(]?[A-Z0-9])/)) {
@@ -122,7 +131,10 @@ const ADVICE =
   /\b(?:must|should|never|avoid|ensure|make sure|be sure|careful(?:ly)?|caution|warning|do not|don't|cannot|can't|before|until|only if|otherwise|so that|risk|damag\w*|tear\w*|break\w*|crack\w*|leak\w*|spill\w*|slip\w*|jam\w*|bend\w*|crush\w*|contaminat\w*|within|at least|at most|no more than|up to|maximum|minimum|toleran\w*|clearance|gap|required?|need(?:s|ed)? to|important|gently|firmly|align\w*|orient\w*)\b|\d\s?(?:(?:mm|cm|m|inch(?:es)?|deg(?:rees)?)\b|°)/i;
 
 /** Words in object names that say nothing about which object it is. */
-const NOT_A_NAME = new Set(["with", "from", "into", "onto", "small", "large", "black", "white", "blue", "green", "yellow", "grey", "gray", "clear", "plastic", "metal", "round", "square"]);
+const NOT_A_NAME = new Set([
+  "the", "and", "for", "with", "from", "into", "onto", "one", "two", "top", "end", "set", "big", "new", "old",
+  "small", "large", "red", "tan", "black", "white", "blue", "green", "yellow", "grey", "gray", "clear", "plastic", "metal", "round", "square",
+]);
 
 /**
  * The spec's names as patterns: each word of the names of the objects the task
@@ -130,12 +142,16 @@ const NOT_A_NAME = new Set(["with", "from", "into", "onto", "small", "large", "b
  * "insertion"). An object name counts twice a verb.
  */
 export function specTerms(spec: TaskSpec): { re: RegExp; weight: number }[] {
-  // names are split into [a-z] words and verbs come from an enum, so nothing needs escaping
-  const stem = (w: string) => w.replace(/(?:es|s|e)$/, "");
+  // names are split into [a-z] words and verbs come from an enum, so nothing needs escaping;
+  // a stem keeps three letters at least, so "cups" and "move" stem to "cup" and "mov", "use" stays "use"
+  const stem = (w: string) => {
+    const s = w.replace(/(?:es|s|e)$/, "");
+    return s.length >= 3 ? s : w;
+  };
   const words = spec.objects
     .filter((o) => o.role === "manipulated" || o.role === "fixture")
     .flatMap((o) => o.name.toLowerCase().split(/[^a-z]+/))
-    .filter((w) => w.length >= 4 && !NOT_A_NAME.has(w));
+    .filter((w) => w.length >= 3 && !NOT_A_NAME.has(w));
   const terms = [...new Set(words.map(stem))].map((w) => ({ re: new RegExp(`\\b${w}\\w*`, "i"), weight: 2 }));
   const verbs = [...new Set(spec.steps.map((s) => stem(s.verb)))].map((v) => ({ re: new RegExp(`\\b${v}\\w*`, "i"), weight: 1 }));
   return [...terms, ...verbs];
@@ -214,19 +230,36 @@ export const GroundFilter = z.object({
 });
 export type GroundFilter = z.infer<typeof GroundFilter>;
 
-/** Whether `value` is one of the numbers written in `text`, as is or converted from cm, m or inches. */
-function states(text: string, value: number): boolean {
-  const written = [...text.matchAll(/\d+(?:[.,]\d+)?/g)].map((m) => Number(m[0].replace(",", ".")));
-  return written.some((n) => [1, 10, 1000, 25.4].some((k) => Math.abs(n * k - value) <= 0.01 * Math.max(1, value)));
+const QUANTITY = /(\d+(?:[.,]\d+)?)\s?(millimet(?:er|re)s?|mm|centimet(?:er|re)s?|cm|met(?:er|re)s?|m|inch(?:es)?|degrees?|deg|°)(?![a-z])/gi;
+
+/** Factor to the slot's unit for a unit written in a sentence, or undefined when they measure different things. */
+function factor(written: string, unit: string): number | undefined {
+  const u = written.toLowerCase();
+  if (unit === "°") return u === "°" || u.startsWith("deg") ? 1 : undefined;
+  if (unit !== "mm") return undefined;
+  if (u === "mm" || u.startsWith("milli")) return 1;
+  if (u === "cm" || u.startsWith("centi")) return 10;
+  if (u === "m" || u.startsWith("met")) return 1000;
+  if (u.startsWith("inch")) return 25.4;
+  return undefined;
+}
+
+/** Whether `text` writes `value` in the slot's unit, as a number with a unit of the same kind ("2 mm", "0.2 cm", "5 degrees"). */
+function states(text: string, value: number, unit: string): boolean {
+  for (const m of text.matchAll(QUANTITY)) {
+    const k = factor(m[2], unit);
+    if (k !== undefined && Math.abs(Number(m[1].replace(",", ".")) * k - value) <= 0.01 * Math.max(1, value)) return true;
+  }
+  return false;
 }
 
 /**
  * Nano's labels as chips, in the order Nano read the sentences, at most
  * MAX_CHIPS; a sentence with no label is none. A tolerance with no number
- * written in it is left out. A number
- * fills a slot only when the slot was offered, the sentence is one of the
- * tolerance chips, the sentence itself states that number, and the value is
- * plausible for the unit; otherwise the chip stays a note.
+ * written in it is left out. A number fills a slot only when the slot was
+ * offered, the sentence is one of the tolerance chips, the sentence writes
+ * that number with a unit of the same kind, and the value is plausible for
+ * the unit; otherwise the chip stays a note.
  */
 export function chipsFrom(candidates: Candidate[], filter: GroundFilter, slots: string[]): { chips: Chip[]; warnings: string[] } {
   const warnings: string[] = [];
@@ -249,7 +282,7 @@ export function chipsFrom(candidates: Candidate[], filter: GroundFilter, slots: 
   for (const n of filter.numbers) {
     const chip = at.get(n.i);
     const max = MAX_VALUE[unitOf(n.slot)];
-    if (chip?.kind === "tolerance" && chip.slot === undefined && offered.has(n.slot) && n.value >= 0 && max !== undefined && n.value <= max && states(chip.text, n.value)) {
+    if (chip?.kind === "tolerance" && chip.slot === undefined && offered.has(n.slot) && n.value >= 0 && max !== undefined && n.value <= max && states(chip.text, n.value, unitOf(n.slot))) {
       Object.assign(chip, { slot: n.slot, value: n.value });
     } else warnings.push(`nano: ${n.slot} = ${n.value} from sentence ${n.i} left out`);
   }

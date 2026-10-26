@@ -3,7 +3,8 @@
  * `extract` at basic depth (1 credit per 5 URLs that succeed). Both send
  * `include_usage`, so every call returns the credits it cost and a request id,
  * and each becomes one ledger entry next to the Nemotron calls. The key never
- * leaves the Authorization header; errors carry the HTTP status only.
+ * leaves the Authorization header; errors carry the HTTP status only, never a
+ * message from fetch, which quotes a header value it refuses.
  */
 import type { LedgerEntry } from "@/lib/spec/stage-result";
 
@@ -29,17 +30,25 @@ export type Page = { url: string; content: string };
 type Reply = Record<string, unknown> & { usage?: { credits?: unknown }; request_id?: unknown };
 
 async function call(endpoint: "search" | "extract", body: Record<string, unknown>, signal?: AbortSignal): Promise<{ data: Reply; entry: LedgerEntry }> {
-  const key = process.env.TAVILY_API_KEY;
+  const key = process.env.TAVILY_API_KEY?.trim();
   if (!key) throw new TavilyError("no TAVILY_API_KEY");
   const started = Date.now();
-  const res = await fetch(`${TAVILY_BASE_URL}/${endpoint}`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-    body: JSON.stringify({ ...body, include_usage: true }),
-    signal,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${TAVILY_BASE_URL}/${endpoint}`, {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({ ...body, include_usage: true }),
+      signal,
+    });
+  } catch (err) {
+    const name = err instanceof Error ? err.name : "";
+    throw new TavilyError(`tavily ${endpoint}: ${name === "AbortError" || name === "TimeoutError" ? "aborted" : "network error"}`);
+  }
   if (!res.ok) throw new TavilyError(`tavily ${endpoint}: HTTP ${res.status}`, res.status);
-  const data = (await res.json()) as Reply;
+  const data = (await res.json().catch(() => {
+    throw new TavilyError(`tavily ${endpoint}: the answer is not JSON`);
+  })) as Reply;
   const credits = data.usage?.credits;
   return {
     data,

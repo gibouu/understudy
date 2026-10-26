@@ -55,7 +55,33 @@ describe("sentencesOf", () => {
   });
 });
 
+describe("sentencesOf on awkward input", () => {
+  it("keeps a comparison written with < and >, which is not a tag", () => {
+    expect(sentencesOf("When the clearance is < 2 mm the cap sticks; once it is > 3 mm the marker <b>wobbles</b> in the rack.")).toEqual([
+      "When the clearance is < 2 mm the cap sticks; once it is > 3 mm the marker wobbles in the rack.",
+    ]);
+  });
+
+  it("stays linear on 120,000 unmatched brackets", () => {
+    const started = performance.now();
+    sentencesOf("[".repeat(120_000) + "](" + "(".repeat(120_000));
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+});
+
 describe("candidatesOf", () => {
+  it("matches short object names", () => {
+    const cup = TaskSpec.parse({
+      ...spec,
+      objects: [
+        { id: "cup", name: "cup", shape: "cylinder", size_mm: [80, 80, 95], symmetry: "axial", role: "manipulated" },
+        { id: "saucer", name: "saucer", shape: "cylinder", size_mm: [150, 150, 15], symmetry: "axial", role: "fixture" },
+      ],
+      steps: [{ id: "s2", verb: "place", object: "cup", target: { fixture: "zone", frame: "saucer" }, t_start_s: 0, t_end_s: 1 }],
+    });
+    expect(candidatesOf(cup, [page("Never tilt the cup when it is full of hot liquid.")]).map((c) => c.text)).toEqual(["Never tilt the cup when it is full of hot liquid."]);
+  });
+
   it("keeps only sentences that name the task and read as advice, the ones naming more first", () => {
     const got = candidatesOf(spec, [
       page(
@@ -125,6 +151,19 @@ describe("chipsFrom", () => {
       "nano: objects[marker].size_mm = 2 from sentence 1 left out",
       "nano: steps[s2].tolerances.x_mm = 2 from sentence 0 left out",
     ]);
+  });
+
+  it("fills a slot only from a number written with a unit of the same kind", () => {
+    const sentences: Candidate[] = [
+      { text: "Make sure the rack slot is at least 2 mm wider than the marker.", url: "https://a.org", title: "A" },
+      { text: "Leave a gap of 0.3 cm and keep the marker within 5 degrees of upright.", url: "https://b.org", title: "B" },
+    ];
+    const run = (numbers: { i: number; slot: string; value: number }[]) =>
+      chipsFrom(sentences, parse({ labels: { "0": "tolerance", "1": "tolerance" }, numbers }), slots).chips.map((c) => c.slot && `${c.slot}=${c.value}`);
+    expect(run([{ i: 0, slot: "objects[rack].pocket_clearance_mm", value: 20 }])).toEqual([undefined, undefined]);
+    expect(run([{ i: 0, slot: "steps[s2].tolerances.yaw_deg", value: 2 }])).toEqual([undefined, undefined]);
+    expect(run([{ i: 1, slot: "objects[rack].pocket_clearance_mm", value: 3 }])).toEqual([undefined, "objects[rack].pocket_clearance_mm=3"]);
+    expect(run([{ i: 1, slot: "steps[s2].tolerances.tilt_deg", value: 5 }])).toEqual([undefined, "steps[s2].tolerances.tilt_deg=5"]);
   });
 
   it("reads an unknown label as none and keeps the labels when a number is malformed", () => {
