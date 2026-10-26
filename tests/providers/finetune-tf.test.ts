@@ -109,20 +109,21 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     unlinkSync(env.FINETUNE_TF_STATE);
     await tf("upload");
     failCreate = "lost-answer";
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/adopt, or release --confirm-no-job/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60", "--allow-another-job")).toMatch(/adopt, or release --confirm-no-job/);
     expect(state().pending).toBeDefined();
     failCreate = "no";
     const before = jobs.length;
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/a create is pending/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60", "--allow-another-job")).toMatch(/a create is pending/);
     expect(jobs).toHaveLength(before);
     await tf("adopt");
     expect(state().job.id).toBe(`ftjob-${before}`);
     expect(state().pending).toBeUndefined();
-    // a create that started nothing: released only on explicit confirmation
+    // a create that started nothing: released only on explicit confirmation (the adopted job has ended by then)
+    jobs[before - 1].status = "succeeded";
     unlinkSync(env.FINETUNE_TF_STATE);
     await tf("upload");
     failCreate = "rejected";
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/adopt, or release/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60", "--allow-another-job")).toMatch(/adopt, or release/);
     expect(jobs).toHaveLength(before);
     expect(await fails("adopt")).toMatch(/0 new jobs/);
     expect(await fails("release")).toMatch(/--confirm-no-job/);
@@ -133,12 +134,25 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     failCreate = "no";
   }, 60_000);
 
+  it("refuses a create while the account already has a live job on the model, from any checkout", async () => {
+    unlinkSync(env.FINETUNE_TF_STATE);
+    await tf("upload");
+    jobs.push({ id: "ftjob-elsewhere", object: "fine_tuning.job", model: "Qwen/Qwen3-30B-A3B-Instruct-2507", training_file: "file-other", created_at: 1, status: "running", trained_tokens: null });
+    const before = jobs.length;
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/already has a job .*ftjob-elsewhere running/);
+    // a job that succeeded counts too: a second run is a deliberate choice
+    jobs.at(-1)!.status = "succeeded";
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/--allow-another-job/);
+    expect(jobs).toHaveLength(before);
+    jobs.pop();
+  }, 60_000);
+
   it("refuses an upload that is not the manifest's", async () => {
     unlinkSync(env.FINETUNE_TF_STATE);
     await tf("upload");
     const s = state();
     s["train.jsonl"].sha256 = "0".repeat(64);
     writeFileSync(env.FINETUNE_TF_STATE, JSON.stringify(s));
-    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60")).toMatch(/run upload again/);
+    expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60", "--allow-another-job")).toMatch(/run upload again/);
   }, 60_000);
 });

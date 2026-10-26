@@ -1,0 +1,31 @@
+{
+  "base_model": "Qwen/Qwen3-30B-A3B-Instruct-2507",
+  "train.jsonl": {
+    "id": "file-01a17853-3b34-75da-af34-34e134e541ee",
+    "sha256": "7d74ebe22ceefe76eac48a47aa877a426cd33642a71758f3f5a2699575cdd1ff",
+    "lines": 881
+  },
+  "val.jsonl": {
+    "id": "file-01a17853-3f3a-7cad-b542-df317cb0c947",
+    "sha256": "86d0f104468399ea0e8f46ec40fd899866e8d127b31111de7890834afab70050",
+    "lines": 55
+  },
+  "job": {
+    "id": "ftjob-5c66a1b7020e4bd493d808e9a104853e",
+    "created_at": 1793020175,
+    "status": "running",
+    "usd_per_mtok": 2.8,
+    "epochs": 5,
+    "reservation": "39492-mvp9x1ju-0-6xhmwg",
+    "tokens_per_epoch": 899601,
+    "trained_tokens_est": 4947806,
+    "usd_est": 13.853856799999999,
+    "trained_tokens": 0,
+    "trained_steps": 0,
+    "total_steps": null,
+    "estimated_finish": null,
+    "finished_at": null,
+    "error": null
+  },
+  "checkpoints": []
+}

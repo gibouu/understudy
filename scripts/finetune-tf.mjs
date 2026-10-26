@@ -4,7 +4,7 @@
 // Token Factory publishes no fine-tuning price and the API key cannot read the balance.
 //
 //   node scripts/finetune-tf.mjs upload                       checks the files against manifest.json, uploads them
-//   node scripts/finetune-tf.mjs create --usd-per-mtok P --balance-usd B [--epochs 3] [--dry-run]
+//   node scripts/finetune-tf.mjs create --usd-per-mtok P --balance-usd B [--epochs 5] [--dry-run] [--allow-another-job]
 //        estimates the cost (training tokens x epochs x P), refuses when B minus it would fall under
 //        US$15 (the live demo's floor), marks the job pending, reserves the estimate, creates the job and
 //        charges the estimate at once (so no long-open reservation is left for --settle-stale)
@@ -141,7 +141,12 @@ async function main() {
       if (dry) return;
       // everything that can fail without spending comes first: the key, the job list
       const tf = client();
-      const before = [...new Set(((await tf.fineTuning.jobs.list({ limit: 100 })).data ?? []).map((j) => j.id))];
+      const listed = (await tf.fineTuning.jobs.list({ limit: 100 })).data ?? [];
+      // the job list is shared by every checkout and shell using this key: a job on this model that did not fail
+      // (queued, running or succeeded) is enough, unless a second training run is meant (--allow-another-job)
+      const live = listed.filter((j) => j.model === BASE_MODEL && !["failed", "cancelled"].includes(j.status));
+      if (live.length && !args.includes("--allow-another-job")) throw new Error(`Token Factory already has a job on ${BASE_MODEL} (${live.map((j) => `${j.id} ${j.status}`).join(", ")}): track that one, or pass --allow-another-job for a second run`);
+      const before = listed.map((j) => j.id);
       const reservation = guard(est.usd_est, { script: SCRIPT, capUsd: 100, meta: { model: BASE_MODEL, stage: "fine-tune", ...est } });
       // the mark is on disk before the paid request: a crash or a lost answer leaves it, and it blocks another create
       s.pending = { reservation: reservation.id, training_file: request.training_file, before, usd_per_mtok: usdPerMtok, epochs, ...est, at: new Date().toISOString() };
