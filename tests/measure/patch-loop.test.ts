@@ -229,7 +229,8 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
             rec.cost_usd += worst;
             rec.ms = Math.round(performance.now() - t0);
             rec.error = `${e?.status ?? "?"} ${redact(e?.message ?? err)}`.slice(0, 300);
-            calls.logCall(SCRIPT, { stage, params, error: rec.error, cost_usd: worst, meta: { ...meta, attempt, estimated: true }, ...trace });
+            // a failed call keeps its record's id: the next rollout's verdict and the next call's parent point to it
+            rec.log_id = calls.logCall(SCRIPT, { stage, params, error: rec.error, cost_usd: worst, meta: { ...meta, attempt, estimated: true }, ...trace }) ?? rec.log_id;
             const retriable = e?.status === undefined || e.status === 429 || e.status >= 500;
             if (!retriable || attempt === 3) return { rec, parsed: null };
             await new Promise((r) => setTimeout(r, 2000 * attempt));

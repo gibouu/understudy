@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
@@ -53,9 +53,27 @@ describe("call log (scripts/call-log.mjs)", () => {
     expect(verdict).toMatchObject({ type: "verdict", id, pass: true, score_after: 1 });
     expect(fail).toMatchObject({ type: "call", parent: id, output: null, error: "500 boom" });
     expect(scrub("plain text with data: inside")).toBe("plain text with data: inside");
+    // media inside text, in answers and in errors is scrubbed too
+    const b64 = Buffer.alloc(600, 9).toString("base64");
+    expect(scrub(`see data:image/png;base64,${b64} and more`)).toMatch(/^see <data URI image\/png, 600 bytes, sha256 [0-9a-f]{16}> and more$/);
+    const echo = logCall("unit", { stage: "patch", params, res: { choices: [{ message: { content: `echo data:video/mp4;base64,${b64}` } }] }, error: `400 bad data:;base64,${b64}` });
+    const echoed = readFileSync(path.join(dir, files[0]), "utf8").trim().split("\n").map((l) => JSON.parse(l)).find((r) => r.id === echo);
+    expect(JSON.stringify(echoed)).not.toContain(b64.slice(0, 40));
+    expect(echoed.error).toMatch(/^400 bad <data URI \?, 600 bytes/);
+    const after = readFileSync(path.join(dir, files[0]), "utf8");
 
     process.env.UNDERSTUDY_CALL_LOG = "0";
     expect(logCall("unit", { stage: "patch", params, res })).toBeNull();
-    expect(readFileSync(path.join(dir, files[0]), "utf8")).toBe(body);
+    expect(readFileSync(path.join(dir, files[0]), "utf8")).toBe(after);
+  });
+
+  it("never stops a run when a record cannot be written", async () => {
+    const { logCall } = (await import("../../scripts/call-log.mjs")) as unknown as { logCall: (script: string, o: Record<string, unknown>) => string | null };
+    delete process.env.UNDERSTUDY_CALL_LOG;
+    // a regular file where the log directory should be: mkdir fails
+    const blocker = path.join(dir, "not-a-dir");
+    writeFileSync(blocker, "x");
+    process.env.UNDERSTUDY_CALL_LOG_DIR = blocker;
+    expect(() => logCall("unwritable", { stage: "patch", params: { model: "m", messages: [] } })).not.toThrow();
   });
 });

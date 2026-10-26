@@ -9,7 +9,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadMujoco } from "./gravity-harness";
-import { armIncluded, buildDataset, chat, fnv1a, heldOutCases, metaLine, pairLine, replayRun, type SavedResults, SPLIT_SALT } from "./finetune-data";
+import { armIncluded, buildDataset, chat, fnv1a, heldOutCases, mayBeRounded, metaLine, pairLine, replayRun, type SavedResults, SPLIT_SALT } from "./finetune-data";
 import { caseGrid } from "./patch-probes";
 import { PATCH_SYSTEM } from "./patch-prompts";
 
@@ -30,6 +30,11 @@ describe("fine-tune dataset (no network)", () => {
       expect(new Set(mine.map((id) => id.split("/")[1])).size).toBe(mine.length);
     }
     expect(fnv1a("")).toBe(0x811c9dc5);
+  });
+
+  it("flags saved numbers that may have been rounded on save, and only those", () => {
+    for (const v of [12.346, -4.125, 0.1235, 0.0001235]) expect(mayBeRounded(v)).toBe(true);
+    for (const v of [56, -4, 4.1, 12.35, 0.05, 0.123, true, "4.125"]) expect(mayBeRounded(v)).toBe(false);
     expect(fnv1a(`${SPLIT_SALT}:a`)).not.toBe(fnv1a(`${SPLIT_SALT}:b`));
   });
 
@@ -67,6 +72,7 @@ describe("fine-tune dataset (no network)", () => {
     expect(armIncluded({ config: cfg, runs: [] })).toBeNull();
     expect(armIncluded({ config: { ...cfg, model: "Qwen/Qwen3-32B" }, runs: [] })).toMatch(/Nemotron/);
     expect(armIncluded({ config: { ...cfg, escalate_model: "deepseek-ai/DeepSeek-V4-Pro" }, runs: [] })).toMatch(/Nemotron/);
+    expect(armIncluded({ config: { ...cfg, model: "nvidia/Llama-3.1-405B-Instruct-FP8" }, runs: [] })).toMatch(/Nemotron/);
     expect(armIncluded(results.arms["r2-liquid-super-off"])).toMatch(/liquid/);
     expect(armIncluded(results.arms["r2-playbook3"])).toMatch(/rules/);
     expect(armIncluded(results.arms["r2-ctrl3"])).toBeNull();

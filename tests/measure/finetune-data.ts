@@ -7,7 +7,9 @@
  * rebuilt: each saved run is replayed in MuJoCo from its seed and knobs, which regenerates the
  * failure notes, and the same prompt builders as the live loop (patch-prompts.ts) assemble them.
  * A run joins the dataset only if the replay reproduces every saved iteration (knobs, pass,
- * score, failure class, metrics at their saved precision); the others are counted and left out.
+ * score, failure class, metrics at their saved precision) and no number in its patches sits at
+ * the saved precision (such a number may have been rounded on save, and the prompts that quote
+ * it would then differ from what the model saw); the others are counted and left out.
  *
  * The split is by case (probe x gravity x disturbance), every seed of a case on one side, so no
  * held-out failure has a twin in training. Per task, about a third of the cases with solvable
@@ -16,7 +18,7 @@
  */
 import type { MainModule } from "@mujoco/mujoco";
 import { createHash } from "node:crypto";
-import { applyPatch, type CaseDef, caseGrid, type GravityId, type Knobs, type Metrics, PROBES, type ProbeId, type World } from "./patch-probes";
+import { applyPatch, type CaseDef, caseGrid, type GravityId, type Knobs, type Metrics, type ProbeResult, PROBES, type ProbeId, type World } from "./patch-probes";
 import { type Book, historyLine, PATCH_SYSTEM, patchCheckLine, patchPrompt, retryPrompt, type Rule } from "./patch-prompts";
 
 // --- the parts of the results file the builder reads (written by patch-loop.test.ts) ---
@@ -120,14 +122,35 @@ export function bookOf(results: SavedResults, armId: string): Book {
 }
 
 const answer = (p: SavedPatch) => JSON.stringify({ set: p.set, why: p.why, expect: p.expect });
-/** a call that produced a usable answer: it returned, parsed, and had a set */
-const usable = (p: SavedPatch) => p.call.ok && p.call.json_ok && p.set !== null;
+/** the results file keeps why and expect up to 400 characters: an answer that long was probably cut */
+const CUT = 400;
+/** a call that produced a usable answer: it returned, parsed, had a set, and was saved whole */
+const usable = (p: SavedPatch) => p.call.ok && p.call.json_ok && p.set !== null && (p.why ?? "").length < CUT && (p.expect ?? "").length < CUT;
+
+/**
+ * True when a saved number has as many digits as the save keeps (3 decimals at 1 and above, 4
+ * significant digits below), so it may be a longer number rounded on save.
+ */
+export function mayBeRounded(v: unknown): boolean {
+  if (typeof v !== "number" || !Number.isFinite(v) || Number.isInteger(v)) return false;
+  return Math.abs(v) >= 1 ? Number(v.toFixed(2)) !== v : Number(v.toPrecision(3)) !== v;
+}
+const patchesOf = (run: SavedRun) =>
+  [run.preflight, ...run.iterations.map((it) => it.patch_before)].flatMap((p) => (p ? [p, ...(p.escalated_after_noop ? [p.escalated_after_noop] : []), ...(p.retried_after_noop ? [p.retried_after_noop] : [])] : []));
+const roundedOnSave = (run: SavedRun) => patchesOf(run).some((p) => Object.values(p.set ?? {}).some(mayBeRounded) || (p.clamps ?? []).some((c) => mayBeRounded(c.requested)));
+
+/**
+ * Rollouts are deterministic in (case, seed, knobs, note options), and the arms share many of them
+ * (every arm starts each case and seed from the same naive program): a cache saves most of the
+ * replay time, which is mostly the bead pours at under a second each.
+ */
+export type RolloutCache = Map<string, ProbeResult>;
 
 /**
  * Replay one saved run and rebuild the prompt and answer of every patch call in it. Returns the
  * examples, or the first point where the replay departs from the saved run (then no examples).
  */
-export function replayRun(mj: MainModule, results: SavedResults, run: SavedRun, maxPatches = MAX_PATCHES): { examples: Example[]; mismatch: string | null } {
+export function replayRun(mj: MainModule, results: SavedResults, run: SavedRun, maxPatches = MAX_PATCHES, cache: RolloutCache = new Map()): { examples: Example[]; mismatch: string | null } {
   const arm = results.arms[run.arm];
   const cfg = arm.config;
   const c = caseGrid().find((x) => x.id === run.case_id);
@@ -137,6 +160,7 @@ export function replayRun(mj: MainModule, results: SavedResults, run: SavedRun, 
   const book = bookOf(results, run.arm);
   const modelOf = (patcher: string | undefined) => (cfg.escalate && patcher === `${cfg.escalate.role}-${cfg.escalate.thinking}` ? (cfg.escalate_model ?? cfg.model) : cfg.model);
   const base = `${cfg.role}-${cfg.thinking}`;
+  if (roundedOnSave(run)) return { examples: [], mismatch: "a patch number at the saved precision" };
   const examples: Example[] = [];
   let knobs: Knobs = { ...probe.naive };
   if (run.preflight) knobs = applyPatch(probe, knobs, run.preflight.set).knobs;
@@ -144,7 +168,9 @@ export function replayRun(mj: MainModule, results: SavedResults, run: SavedRun, 
   for (let i = 0; i < run.iterations.length; i++) {
     const it = run.iterations[i];
     if (asSaved(knobs) !== asSaved(it.knobs)) return { examples: [], mismatch: `iteration ${i}: knobs` };
-    const r = probe.run(mj, knobs, world, { derived: cfg.derived });
+    const key = `${run.case_id}|${run.seed}|${cfg.derived ? 1 : 0}|${JSON.stringify(knobs)}`;
+    const r = cache.get(key) ?? probe.run(mj, knobs, world, { derived: cfg.derived });
+    cache.set(key, r);
     if (r.pass !== it.pass || round(r.score) !== it.score || r.failure_class !== it.failure_class) return { examples: [], mismatch: `iteration ${i}: verdict` };
     if (asSaved(r.metrics) !== asSaved(it.metrics)) return { examples: [], mismatch: `iteration ${i}: metrics` };
     if (r.pass) break;
@@ -190,7 +216,8 @@ export function replayRun(mj: MainModule, results: SavedResults, run: SavedRun, 
  */
 export function armIncluded(arm: SavedArm): string | null {
   const c = arm.config;
-  if (!c.model.startsWith("nvidia/") || (c.escalate_model && !c.escalate_model.startsWith("nvidia/"))) return "not a Nemotron patcher";
+  const nemotron = (m: string) => /^nvidia\/.*nemotron/i.test(m);
+  if (!nemotron(c.model) || (c.escalate_model && !nemotron(c.escalate_model))) return "not a Nemotron patcher";
   if (c.liquid) return "liquid pour (the solver changed after these runs)";
   if (c.rules && !c.emptyRules) return "prompt carries distilled rules";
   return null;
@@ -230,14 +257,18 @@ export function buildDataset(mj: MainModule, results: SavedResults, opts: { onRu
   const testSet = new Set(test);
   const arms: Record<string, { included: boolean; reason: string | null; runs: number; replayed: number; mismatched: Record<string, number> }> = {};
   const all: Example[] = [];
+  const repaired = new Set<string>();
+  for (const arm of Object.values(results.arms)) if (!armIncluded(arm)) for (const r of arm.runs) if (r.passed_at) repaired.add(`${r.case_id}|${r.seed}`);
+  const cache: RolloutCache = new Map();
   const todo = Object.entries(results.arms).flatMap(([id, arm]) => {
     const reason = armIncluded(arm);
     arms[id] = { included: !reason, reason, runs: arm.runs.length, replayed: 0, mismatched: {} };
-    return reason ? [] : arm.runs.filter((r) => !testSet.has(r.case_id) && !r.stopped);
+    // a run with no patch has nothing to rebuild; a case and seed that no run repaired gives neither a repair nor a pair
+    return reason ? [] : arm.runs.filter((r) => !testSet.has(r.case_id) && !r.stopped && r.iterations.length > 1 && repaired.has(`${r.case_id}|${r.seed}`));
   });
   let done = 0;
   for (const run of todo) {
-    const { examples, mismatch } = replayRun(mj, results, run);
+    const { examples, mismatch } = replayRun(mj, results, run, MAX_PATCHES, cache);
     const a = arms[run.arm];
     if (mismatch) {
       const key = mismatch.replace(/^iteration \d+: /, "");
@@ -285,6 +316,7 @@ export function buildDataset(mj: MainModule, results: SavedResults, opts: { onRu
     pairs,
     stats: {
       arms,
+      runs_to_replay: todo.length,
       runs_replayed: Object.values(arms).reduce((n, a) => n + a.replayed, 0),
       runs_mismatched: Object.values(arms).reduce((n, a) => n + Object.values(a.mismatched).reduce((x, y) => x + y, 0), 0),
       calls_rebuilt: all.length,

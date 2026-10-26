@@ -9,8 +9,10 @@
 //
 // Files: bench/calls/<script>-<start time>-<pid>.jsonl, one per process (UNDERSTUDY_CALL_LOG_DIR
 // moves them; UNDERSTUDY_CALL_LOG=0 turns the log off). Never in a record: a key (NEBIUS_API_KEY
-// and TAVILY_API_KEY are redacted from every line) or media (a data: URI becomes its type, size and
-// hash, so a clip or a frame never lands in the log, only the tokens and text derived from it).
+// and TAVILY_API_KEY are redacted from every line) or media (every base64 data: URI, anywhere in
+// the record, becomes its type, size and hash, so a clip or a frame never lands in the log, only
+// the tokens and text derived from it). The log never stops a run: a write that fails is reported
+// once on stderr and the run goes on.
 import { appendFileSync, mkdirSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import path from "node:path";
@@ -28,23 +30,27 @@ function fileFor(script) {
   return files.get(script);
 }
 
-/** a data: URI anywhere in the value becomes a short description of it */
+const DATA_URI = /data:([\w.+-]+\/[\w.+-]+)?((?:;[\w.+-]+=[^;,\s]*)*);base64,([A-Za-z0-9+/]*={0,2})/g;
+/** every base64 data: URI anywhere in the value becomes a short description of it */
 export function scrub(v) {
   if (typeof v === "string") {
-    const m = /^data:([^;,]*)(?:;[^,]*)?;base64,/.exec(v);
-    if (!m) return v;
-    const body = v.slice(m[0].length);
-    return `<data URI ${m[1] || "?"}, ${Math.floor((body.length * 3) / 4)} bytes, sha256 ${createHash("sha256").update(body).digest("hex").slice(0, 16)}>`;
+    return v.replace(DATA_URI, (_m, mime, _params, body) => `<data URI ${mime || "?"}, ${Math.floor((body.length * 3) / 4)} bytes, sha256 ${createHash("sha256").update(body).digest("hex").slice(0, 16)}>`);
   }
   if (Array.isArray(v)) return v.map(scrub);
   if (v && typeof v === "object") return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, scrub(x)]));
   return v;
 }
 
+let warned = false;
 function append(script, rec) {
-  let line = JSON.stringify(rec);
-  for (const s of [process.env.NEBIUS_API_KEY, process.env.TAVILY_API_KEY]) if (s && s.length >= 8) line = line.split(s).join("<redacted>");
-  appendFileSync(fileFor(script), `${line}\n`);
+  try {
+    let line = JSON.stringify(scrub(rec));
+    for (const s of [process.env.NEBIUS_API_KEY, process.env.TAVILY_API_KEY]) if (s && s.length >= 8) line = line.split(s).join("<redacted>");
+    appendFileSync(fileFor(script), `${line}\n`);
+  } catch (e) {
+    if (!warned) console.error(`call log: could not write a record (${e?.code ?? e?.message ?? e}); the run goes on without it`);
+    warned = true;
+  }
 }
 
 /**
@@ -57,7 +63,7 @@ export function logCall(script, { stage, params, res = null, usage = null, cost_
   const { model, messages, ...settings } = params;
   const msg = res?.choices?.[0]?.message ?? {};
   const output = res ? { content: msg.content ?? "", reasoning: msg.reasoning_content ?? msg.reasoning ?? null, finish: res.choices?.[0]?.finish_reason ?? null } : null;
-  append(script, { type: "call", id, t: new Date().toISOString(), script, stage, session, parent, model, settings: scrub(settings), input: scrub(messages), output, error, usage, cost_usd, meta });
+  append(script, { type: "call", id, t: new Date().toISOString(), script, stage, session, parent, model, settings, input: messages, output, error, usage, cost_usd, meta });
   return id;
 }
 
