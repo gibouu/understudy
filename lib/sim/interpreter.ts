@@ -206,6 +206,11 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
 
   const beliefs = env.beliefs[mode];
   for (const s of program.steps) {
+    // half a pour (its verb without its block, its block on another verb, or into itself) has no liquid to check:
+    // validateSpec calls it an error, and a rehearsal must not pass it either
+    const half = halfPour(env.spec.steps.find((x) => x.id === s.step_id));
+    opIndex = undefined;
+    if (half) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: half });
     for (const [i, op] of s.ops.entries()) {
       opIndex = i;
       // a compiled program may name an object the scene lacks: predicates throw, and that is a spec gap, not a crash
@@ -488,6 +493,15 @@ function snapshot(sim: Sim, env: Environment, w: Parameters<typeof evaluate>[0],
         return [];
       }
     });
+}
+
+/** What is wrong with a step that is half a pour, or null: the run refuses it as validateSpec does. */
+function halfPour(step: TaskSpec["steps"][number] | undefined): string | null {
+  if (!step) return null;
+  if (step.verb === "pour" && !step.pour) return `step ${step.id} pours but says neither into what nor how far it tilts`;
+  if (step.pour && step.verb !== "pour") return `step ${step.id} is a ${step.verb} step with a pour block; only a pour step pours`;
+  if (step.pour && step.pour.into === step.object) return `step ${step.id} pours the ${step.object} into itself`;
+  return null;
 }
 
 /** Drain a run at full speed: what a test or a batch of rollouts does. */

@@ -10,6 +10,7 @@ import { park, SO101_XML, stageXml } from "@/lib/sim/so101";
 import { PREDICATE_OPERANDS, Predicate, Program, ProgramOp, TaskSpec } from "@/lib/spec/schema";
 import { lintProgram, validateSpec } from "@/lib/spec/validate";
 import { formFor, withRequiredAsks } from "@/lib/spec/answer";
+import { rehearse } from "@/lib/showcase/rehearse";
 
 let mujoco: MainModule;
 let vfs: MjVFS;
@@ -397,6 +398,25 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     const { r, where } = pour(carry, 1);
     expect(r.pass, r.log.join("\n")).toBe(true);
     expect(where!.containers.cup).toBeGreaterThanOrEqual(0.95);
+  }, 60_000);
+
+  it("refuses to rehearse half a pour, which validateSpec calls an error", () => {
+    const step = POUR_SPEC.steps[0];
+    const { pour: _, ...bare } = step;
+    void _;
+    const moving = TaskSpec.parse({ ...POUR_SPEC, steps: [{ ...step, verb: "move", success: [] }] });
+    const a = pour(ops(...grip, { op: "tilt", deg: 120, toward: "bowl" }, { op: "tilt", deg: 0 }), 1, { spec: moving }).r;
+    expect(a.failure_class).toBe("spec_gap");
+    expect(a.why).toContain("a move step with a pour block");
+    const unsaid = TaskSpec.parse({ ...POUR_SPEC, steps: [bare] });
+    const b = pour(ops(...grip), 1, { spec: unsaid }).r;
+    expect(b.failure_class).toBe("spec_gap");
+    expect(b.why).toContain("neither into what nor how far");
+  }, 60_000);
+
+  it("rehearses with the liquid in the showcase's node rehearsal too, as on the page", () => {
+    const run = rehearse({ mujoco, vfs }, POUR_SPEC, POUR_PROGRAMS.pour, "earth");
+    expect(run.pass, run.why).toBe(true);
   }, 60_000);
 
   it("pours on Earth: grasp, tilt toward the bowl about the rim, wait for the water, turn back, let go", () => {
