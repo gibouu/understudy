@@ -24,7 +24,7 @@ const PREDICATES = Object.entries(PREDICATE_OPERANDS)
   .join("; ");
 
 // Measured in scripts/bench-session.mjs (PR #71); the Geometry paragraph states what the interpreter does.
-export const COMPILE_SYSTEM = `You play the robot: a 5-DoF SO-101 arm with a parallel gripper (aperture 0 to 60 mm), top or side approach, no force sensing, reach 300 mm from its base. Compile the task spec you are given into a program for it. Return one compact JSON object only, no indentation:
+const COMPILE_SYSTEM = `You play the robot: a 5-DoF SO-101 arm with a parallel gripper (aperture 0 to 60 mm), top or side approach, no force sensing, reach 300 mm from its base. Compile the task spec you are given into a program for it. Return one compact JSON object only, no indentation:
 {"spec_title":string,"steps":[{"step_id":<spec step id>,"ops":[op, ...]}],"warnings":[string]}
 Ops:
 - {"op":"move_to","frame":"world"|<object id>,"offset_mm":[x,y,z],"approach":"top"|"side"|"front"}
@@ -50,7 +50,7 @@ Example. A jar (cylinder, size_mm [40,40,80]) is picked in s1 and placed on a tr
 const r1 = (x: number) => Math.round(x * 10) / 10;
 
 /** The heights a program needs, worked out here: a 3B-active model copies numbers better than it adds them. */
-export function geometry(spec: TaskSpec): string {
+function geometry(spec: TaskSpec): string {
   const lines: string[] = [];
   for (const o of spec.objects.filter((o) => o.role === "manipulated")) {
     const grip = r1(Math.max(0, o.size_mm[2] / 2 - 8));
@@ -80,8 +80,11 @@ type Recording = { spec: unknown; result: StageResult<Program> };
 function replay(spec: TaskSpec): StageResult<Program> {
   const all = recordings as Recording[];
   const key = JSON.stringify(spec);
-  const hit = all.find((r) => JSON.stringify(TaskSpec.parse(r.spec)) === key) ?? all.findLast((r) => TaskSpec.parse(r.spec).title === spec.title);
-  return hit ? hit.result : failed(`no recorded compile for "${spec.title}"`, false);
+  const exact = all.find((r) => JSON.stringify(TaskSpec.parse(r.spec)) === key);
+  if (exact) return exact.result;
+  const near = all.findLast((r) => TaskSpec.parse(r.spec).title === spec.title)?.result;
+  if (near?.status === "done") return done(near.value, [...near.warnings, "replay: recorded for an earlier version of this spec"], near.ledger);
+  return failed(`no recorded compile for "${spec.title}"`, false);
 }
 
 export async function POST(req: Request): Promise<NextResponse<StageResult<Program>>> {
