@@ -12,7 +12,8 @@
  *              world and not on a spec gap, up to MAX_PATCHES; each patch rehearsed again
  *
  * Every call is priced at list prices, and the run stops before any call
- * whose worst case (worstUsd) would take the clip over `capUsd`.
+ * whose worst case (worstUsd), added to the worst cases of the calls before
+ * it, would take the clip over `capUsd`.
  * lib/showcase/record.test.ts runs it.
  */
 import { createHash } from "node:crypto";
@@ -44,8 +45,10 @@ export const MAX_ROUNDS = 6;
  * route lets the SDK retry once (compile, notes). Notes is #28's route: a
  * cheap patch (800 tokens) and, once stuck, a thinking one (4,096). A request
  * the SDK retries after a timeout may have been billed without its usage ever
- * arriving: the ledger counts the answers that came back, the reservation
- * every request.
+ * arriving, so the cap holds the sum of these reservations, not the ledger's.
+ * Not reserved: a retry answered 400 (callModel then sends once more without
+ * its optional parameters), and prompts over 8,000 tokens (a fitted spec and
+ * its program are about 3,000 characters).
  */
 export const WORST_CALLS = {
   label: { role: "vl", calls: [[12_000, 3_000], [12_000, 3_000]] },
@@ -184,10 +187,12 @@ export async function recordClip({ root, sample, engine, capUsd, notes, log = ()
   if (!process.env.NEBIUS_API_KEY) throw new Error("NEBIUS_API_KEY is not set: the routes would answer from their replay fixtures");
   if (!(capUsd > 0)) throw new Error(`the cap must be a positive number of US dollars, not ${capUsd}`);
   const ledger: Call[] = [];
+  /** what the calls so far could have billed, seen or not */
+  let reserved = 0;
   /** stop before a call whose worst case would take the clip over its cap */
   const guard = (next: string, worst: number) => {
-    const spent = sum(ledger.map((c) => c.usd));
-    if (spent + worst > capUsd) throw new Error(`US$${spent.toFixed(4)} spent; ${next} could cost up to US$${worst.toFixed(4)}, over the US$${capUsd} cap`);
+    if (reserved + worst > capUsd) throw new Error(`US$${reserved.toFixed(4)} reserved so far; ${next} could cost up to US$${worst.toFixed(4)}, over the US$${capUsd} cap`);
+    reserved += worst;
   };
 
   guard("label", worstUsd("label"));

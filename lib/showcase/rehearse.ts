@@ -13,7 +13,8 @@ import { SO101_XML, stageXml } from "@/lib/sim/so101";
 import { GRAVITIES, type GravityName, type Program, type TaskSpec } from "@/lib/spec/schema";
 import type { Run } from "./session";
 
-export const WORLDS: GravityName[] = ["earth", "orbit"];
+export const WORLDS = ["earth", "orbit"] as const satisfies readonly GravityName[];
+export type World = (typeof WORLDS)[number];
 
 export type Engine = { mujoco: MainModule; vfs: MjVFS };
 
@@ -45,9 +46,9 @@ export const summary = (r: Rollout): Run => ({ pass: r.pass, failed_step_id: r.f
 
 export const rehearse = (engine: Engine, spec: TaskSpec, program: Program, world: GravityName): Run => summary(rollout(engine, spec, program, world));
 
-export function rehearseAll(engine: Engine, spec: TaskSpec, program: Program): Record<"earth" | "orbit", Run> {
+export function rehearseAll(engine: Engine, spec: TaskSpec, program: Program): Record<World, Run> {
   return { earth: rehearse(engine, spec, program, "earth"), orbit: rehearse(engine, spec, program, "orbit") };
 }
 
 /** Every world's full rollout, as the page hands them to the patch loop. */
-export const rollouts = (engine: Engine, spec: TaskSpec, program: Program): WorldRun[] => WORLDS.map((world) => ({ world, rollout: rollout(engine, spec, program, world) }));
+export const rollouts = (engine: Engine, spec: TaskSpec, program: Program): (WorldRun & { world: World })[] => WORLDS.map((world) => ({ world, rollout: rollout(engine, spec, program, world) }));

@@ -3,7 +3,8 @@
  *
  * Without SHOWCASE_RECORD (CI, `pnpm test`): every public/showcase/<clip>.json
  * parses, belongs to a clip in lib/samples.ts, and each iteration's program,
- * rehearsed again in node, passes and fails where the recording says. The
+ * rehearsed again in node, passes and fails where the recording says, with
+ * every pass leaving its objects seated where their steps put them. The
  * browser runs the same deterministic physics, so this is what /space shows.
  * No network.
  *
@@ -20,7 +21,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { SAMPLES } from "@/lib/samples";
 import { TaskSpec } from "@/lib/spec/schema";
 import { answerFor, DEFAULT_ANSWERS } from "./answers";
-import { loadEngine, rehearseAll, type Engine } from "./rehearse";
+import { loadEngine, rollouts, type Engine } from "./rehearse";
 import { Session } from "./session";
 
 const ROOT = process.cwd();
@@ -59,10 +60,12 @@ describe("the showcase recordings", () => {
     const compiled = session.iterations.filter((it) => it.source === "compile" || it.source === "interview");
     expect(compiled.map((it) => it.program)).toEqual(session.turns.map((t) => t.program));
     for (const [i, it] of session.iterations.entries()) {
-      const again = rehearseAll(engine, it.spec, it.program);
-      for (const world of ["earth", "orbit"] as const) {
+      for (const { world, rollout: again } of rollouts(engine, it.spec, it.program)) {
         const { pass, failed_step_id, failed_op } = it.results[world];
-        expect({ iteration: i, world, pass: again[world].pass, failed_step_id: again[world].failed_step_id, failed_op: again[world].failed_op }).toEqual({ iteration: i, world, pass, failed_step_id, failed_op });
+        expect({ iteration: i, world, pass: again.pass, failed_step_id: again.failed_step_id, failed_op: again.failed_op }).toEqual({ iteration: i, world, pass, failed_step_id, failed_op });
+        // a pass is only shown when the simulator also finds every object where its step puts it, checked or not by the program
+        const unseated = pass ? (again.end ?? []).flatMap((e) => (e.seated && !e.seated.ok ? [e.seated.why] : [])) : [];
+        expect({ iteration: i, world, unseated }).toEqual({ iteration: i, world, unseated: [] });
       }
     }
   }, 60_000);

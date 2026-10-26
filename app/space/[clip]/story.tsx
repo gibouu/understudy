@@ -131,7 +131,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         </Link>
         <h1 className="display text-4xl font-semibold text-ink-deep sm:text-5xl">{label.title}</h1>
         <p className="text-lg text-neutral-700">
-          {sample.label}. Recorded on {new Date(session.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })} in one run through Understudy; its {session.ledger.length} model calls cost {usd(session.total_usd)} in all. The last version of its program {verdict(session)}.
+          {sample.label}. Recorded on {new Date(session.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })} as one run through Understudy (labels vary run to run); its {session.ledger.length} model calls cost {usd(session.total_usd)} in all. The last version of its program {verdict(session)}.
         </p>
       </header>
 
