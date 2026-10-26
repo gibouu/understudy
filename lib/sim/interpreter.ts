@@ -154,9 +154,19 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
               (scratch.qpos as Float64Array).set(data.qpos as Float64Array);
               const site = held ? SO101_HELD_SITE : SO101_GRASP_SITE;
               ik = solveIk(mujoco, model, scratch, target, op.approach, undefined, site);
-              const o = env.spec.objects.find((x) => x.id === op.frame);
-              // shortcut: only top-down onto a box is squared; side and front approaches keep the solver's roll
-              if (ik.ok && !held && op.approach === "top" && o?.shape === "box") ik = squareTo({ mujoco, model, data: scratch }, ik, target, f.yaw_rad, site);
+              // shortcut: only top-down boxes are squared; side and front approaches keep the solver's roll
+              if (ik.ok && op.approach === "top") {
+                const sq = { mujoco, model, data: scratch };
+                if (held) {
+                  // turn the held box to the target frame's yaw: the jaws keep the angle they gripped it at
+                  const o = env.spec.objects.find((x) => env.names[x.id] === held!.body);
+                  if (o?.shape === "box") ik = squareTo(sq, ik, target, f.yaw_rad - (yawOf(data.xmat, held.bodyId) - closingYaw(sim, site)), quarterTurns(o.size_mm), site);
+                } else {
+                  const o = env.spec.objects.find((x) => x.id === op.frame);
+                  // the jaws close across a box's narrower side, so a strip is pinched on its faces, not its edges
+                  if (o?.shape === "box") ik = squareTo(sq, ik, target, f.yaw_rad + (quarterTurns(o.size_mm) || o.size_mm[0] < o.size_mm[1] ? 0 : Math.PI / 2), quarterTurns(o.size_mm), site);
+                }
+              }
             } finally {
               scratch.delete();
             }
@@ -236,28 +246,39 @@ export function runToEnd(sim: Sim, env: Environment, program: Program, mode: Mod
   }
 }
 
+/** yaw of a body or site from a row-major xmat array */
+const yawOf = (xmat: unknown, i: number) => {
+  const m = toNumbers(xmat);
+  return Math.atan2(m[9 * i + 3], m[9 * i]);
+};
+
+/** the direction the jaws close in, about z: the site's z axis, column 2 of its xmat */
+function closingYaw(sim: Sim, site: string): number {
+  const m = toNumbers(sim.data.site_xmat);
+  const s = sim.mujoco.mj_name2id(sim.model, sim.mujoco.mjtObj.mjOBJ_SITE.value, site);
+  return Math.atan2(m[9 * s + 5], m[9 * s + 2]);
+}
+
+/** a square footprint looks the same every quarter turn; any other box every half turn */
+const quarterTurns = (size_mm: number[]) => size_mm[0] === size_mm[1];
+
 /**
- * Top-down onto a box: turn the wrist so the jaws close square to its faces, or they meet its corners and tip it.
- * Roll about a vertical tool axis is free, so IK re-solved from the turned seed keeps it.
+ * Top-down onto a box: turn the wrist until the jaws close along `aim` (mod a quarter or half turn),
+ * or they meet its corners and tip it. Roll about a vertical tool axis is free, so IK re-solved from
+ * the turned seed keeps it.
  */
-function squareTo(sim: Sim, ik: IkResult, target: [number, number, number], yaw: number, site: string): IkResult {
+function squareTo(sim: Sim, ik: IkResult, target: [number, number, number], aim: number, quarter: boolean, site: string): IkResult {
   const { mujoco, model, data } = sim;
-  const s = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, site);
-  // the jaws close along the site's z axis: column 2 of its row-major xmat
-  const closing = () => {
-    const m = toNumbers(data.site_xmat);
-    return Math.atan2(m[9 * s + 5], m[9 * s + 2]);
-  };
   const off = (a: number) => {
-    const q = Math.PI / 2;
-    return ((((yaw - a) % q) + q + q / 2) % q) - q / 2;
+    const q = quarter ? Math.PI / 2 : Math.PI;
+    return ((((aim - a) % q) + q + q / 2) % q) - q / 2;
   };
-  const d = off(closing());
+  const d = off(closingYaw(sim, site));
   for (const sign of [1, -1]) {
     const seed = [...ik.q];
     seed[ARM - 1] += sign * d;
     const r = solveIk(mujoco, model, data, target, "top", seed, site);
-    if (r.ok && Math.abs(off(closing())) < SQUARE_RAD) return r;
+    if (r.ok && Math.abs(off(closingYaw(sim, site))) < SQUARE_RAD) return r;
   }
   return ik;
 }

@@ -2,13 +2,13 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DEMO_PROGRAMS, DEMO_SPEC } from "@/lib/sim/demo-spec";
+import { TUBE_SPEC } from "./tube-spec";
 import { environment, runToEnd } from "@/lib/sim/interpreter";
 import { evaluate } from "@/lib/sim/predicates";
 import { SO101_HOME, SO101_XML, stageXml } from "@/lib/sim/so101";
 import { Predicate, Program } from "@/lib/spec/schema";
 
-const env = environment(DEMO_SPEC);
+const env = environment(TUBE_SPEC);
 let mujoco: MainModule;
 let model: MjModel;
 let data: MjData;
@@ -99,7 +99,11 @@ describe("predicates on hand-made states", () => {
     pose([0.2, -0.1, 0.03]);
     expect(check({ kind: "contact_both_pads", ...tube }).ok).toBe(false);
     expect(check({ kind: "gripper_within", ...tube, value: 5 }).ok).toBe(false);
-    const pick = Program.parse({ spec_title: "", steps: [{ step_id: "s1", ops: DEMO_PROGRAMS.hold_until_seated.steps[0].ops.slice(0, 3) }] });
+    const pick = Program.parse({ spec_title: "", steps: [{ step_id: "s1", ops: [
+      { op: "move_to", frame: "tube", offset_mm: [0, 0, 48] },
+      { op: "move_to", frame: "tube", offset_mm: [0, 0, 13] },
+      { op: "grasp", object: "tube", aperture_mm: 17 },
+    ] }] });
     mujoco.mj_resetData(model, data);
     expect(runToEnd({ mujoco, model, data }, env, pick, "sensed").pass).toBe(true);
     expect(check({ kind: "contact_both_pads", ...tube }).ok).toBe(true);
