@@ -8,10 +8,12 @@
  *   compile    POST /api/compile; Nano's asks get the recorded answers
  *              (lib/showcase/answers.ts) and it recompiles, up to MAX_ROUNDS
  *   rehearse   every program on Earth and in orbit in node (lib/showcase/rehearse.ts)
- *   notes      the `notes` hook, while the last program fails somewhere (#28)
+ *   notes      POST /api/notes through notesHook(), while the last program fails in a
+ *              world and not on a spec gap, up to MAX_PATCHES; each patch rehearsed again
  *
  * Every call is priced at list prices, and the run stops before any call
- * whose worst case (worstUsd) would take the clip over `capUsd`.
+ * whose worst case (worstUsd), added to the worst cases of the calls before
+ * it, would take the clip over `capUsd`.
  * lib/showcase/record.test.ts runs it.
  */
 import { createHash } from "node:crypto";
@@ -26,26 +28,32 @@ import { MODELS, type ModelRole } from "@/lib/providers/tokenfactory";
 import { applyChanges } from "@/lib/spec/apply";
 import type { Program, ProgramOp, TaskSpec } from "@/lib/spec/schema";
 import type { LedgerEntry, StageResult } from "@/lib/spec/stage-result";
+import { knobsOf, type Applied } from "@/lib/notes/knobs";
+import { outcomeLine } from "@/lib/notes/note";
+import { MAX_PATCHES, type Attempt, type NotePatch } from "@/lib/notes/patch";
 import { answerFor, CLIP_ANSWERS, DEFAULT_ANSWERS, slotWords } from "./answers";
-import { rehearseAll, type Engine } from "./rehearse";
+import { rehearseAll, rollouts, summary, type Engine } from "./rehearse";
 import { Session, type Answer, type Call, type Iteration, type Turn } from "./session";
 
 /** The guided flow stops asking after this many rounds (app/flow.tsx). */
 export const MAX_ROUNDS = 6;
-/** Notes patches per clip, as the patch loop allows (#28). */
-export const MAX_PATCHES = 5;
 
 /**
  * The calls one route can bill, as (prompt tokens, max_tokens) per call: a
  * generous prompt, and every attempt callModel can make (a second answer when
- * the first does not parse or fails its check; compile also allows one SDK
- * retry). Notes is #28's route: a cheap patch (800 tokens) and, once stuck, a
- * thinking one (4,096), each of which may be asked again.
+ * the first does not parse or fails its check), each sent twice where the
+ * route lets the SDK retry once (compile, notes). Notes is #28's route: a
+ * cheap patch (800 tokens) and, once stuck, a thinking one (4,096). A request
+ * the SDK retries after a timeout may have been billed without its usage ever
+ * arriving, so the cap holds the sum of these reservations, not the ledger's.
+ * Not reserved: a retry answered 400 (callModel then sends once more without
+ * its optional parameters), and prompts over 8,000 tokens (a fitted spec and
+ * its program are about 3,000 characters).
  */
 export const WORST_CALLS = {
   label: { role: "vl", calls: [[12_000, 3_000], [12_000, 3_000]] },
-  compile: { role: "nano", calls: [[8_000, 3_000], [8_000, 3_000], [8_000, 3_000]] },
-  notes: { role: "super", calls: [[8_000, 800], [8_000, 800], [8_000, 4_096], [8_000, 4_096]] },
+  compile: { role: "nano", calls: Array<[number, number]>(4).fill([8_000, 3_000]) },
+  notes: { role: "super", calls: [...Array<[number, number]>(4).fill([8_000, 800]), ...Array<[number, number]>(4).fill([8_000, 4_096])] },
 } as const satisfies Record<string, { role: ModelRole; calls: readonly (readonly [number, number])[] }>;
 
 /** The most a route call can cost, reserved before it is made, at the list price of the model it will use (env overrides included). */
@@ -57,12 +65,8 @@ export function worstUsd(stage: keyof typeof WORST_CALLS, model: string = MODELS
  * The Notes stage's hook (#28). Called while the last iteration fails in a
  * world and not on a spec gap; returns the next iteration with the model
  * calls it made (they join the ledger and the cap), or null to stop.
- * Once /api/notes is on main, wire it here: post { spec, program, runs,
- * first, history } to app/api/notes/route.ts as app/patch-loop.tsx does,
- * rehearse the patched program with rehearseAll, and return
- * { source: "notes", changes: each knob's from -> to in words, why: the
- * patch's why, cost_usd: its cost }. Until then recordings stop after the
- * interview and say so in `pending`.
+ * notesHook() makes the one that calls /api/notes; without a hook the
+ * recording stops after the interview and says so in `pending`.
  */
 export type NotesHook = (last: Iteration, iterations: Iteration[], engine: Engine) => Promise<{ iteration: Iteration; calls: Call[] } | null>;
 
@@ -125,6 +129,58 @@ export function poster(root: string, sample: Sample, session: Session, out: stri
   execFileSync("ffmpeg", ["-v", "error", "-y", "-ss", t.toFixed(2), "-i", path.join(root, "samples", `${sample.name}.mp4`), "-frames:v", "1", "-vf", "scale=960:-2", "-q:v", "5", out]);
 }
 
+const AXIS = { x_mm: "x offset", y_mm: "y offset", z_mm: "height", timeout_s: "wait" } as const;
+
+/** A knob's change in words: "the height of the move to the plant pillow (s2 op 2): 50 → 10 mm". */
+function knobWords(spec: TaskSpec, program: Program, c: Applied["changes"][number], clamps: Applied["clamps"]): string {
+  const k = knobsOf(spec, program).find((x) => x.name === c.name);
+  const op = k && program.steps[k.step].ops[k.op];
+  const name = (id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
+  const where = k ? ` (${program.steps[k.step].step_id} op ${k.op})` : "";
+  const clamp = clamps.find((x) => x.name === c.name);
+  const asked = clamp ? `, asked for ${clamp.requested} and held to its bound` : "";
+  if (op?.op === "move_to") return `the ${AXIS[k!.field]} of the move to ${op.frame === "world" ? "a point from the robot base" : `the ${name(op.frame)}`}${where}: ${c.from} → ${c.to} mm${asked}`;
+  if (op?.op === "wait_until") return `how long to wait for ${op.predicate.kind.replace(/_/g, " ")}${op.predicate.object ? ` of the ${name(op.predicate.object)}` : ""}${where}: ${c.from} → ${c.to} s${asked}`;
+  return `${c.name}: ${c.from} → ${c.to}${asked}`;
+}
+
+/**
+ * The Notes stage through /api/notes, as app/patch-loop.tsx drives it: the
+ * last version's rollouts in every world, the outcome of the version the
+ * patches start from, and every patch tried so far with what it showed; the
+ * patched program is rehearsed again in node. It keeps that history, so it
+ * is one hook per recording.
+ */
+export function notesHook(): NotesHook {
+  const history: Attempt[] = [];
+  let first: string | undefined;
+  return async (last, iterations, engine) => {
+    if (iterations.filter((x) => x.source === "notes").length !== history.length) throw new Error("a notesHook() records one clip's patches: make a new one per recording");
+    const { POST: notesRoute } = await import("@/app/api/notes/route");
+    const { spec, program } = last;
+    const runs = rollouts(engine, spec, program);
+    const start = first ?? outcomeLine(runs);
+    const r = live(await post<NotePatch>(notesRoute as Handler, "/api/notes", { spec, program, runs, first: start, history }), `notes patch ${history.length + 1}`);
+    first = start;
+    const patch = r.value;
+    const cost = calls("notes", r.ledger);
+    const after = patch.noop ? runs : rollouts(engine, spec, patch.program);
+    history.push({ set: patch.set, thinking: patch.thinking, clamps: patch.clamps, rejected: patch.rejected, outcome: outcomeLine(after) });
+    const results = Object.fromEntries(after.map(({ world, rollout }) => [world, summary(rollout)])) as Iteration["results"];
+    const iteration: Iteration = {
+      source: "notes",
+      program: patch.program,
+      spec,
+      changes: patch.changes.map((c) => knobWords(spec, program, c, patch.clamps)),
+      why: patch.why || (patch.noop ? "Super changed nothing" : "Super gave no reason"),
+      cost_usd: round(sum(cost.map((c) => c.usd))),
+      seconds: round(sum(cost.map((c) => c.seconds)), 2),
+      results,
+    };
+    return { iteration, calls: cost };
+  };
+}
+
 export async function recordClip({ root, sample, engine, capUsd, notes, log = () => {} }: RecordOptions): Promise<Session> {
   const { POST: labelRoute } = await import("@/app/api/label/route");
   const { POST: compileRoute } = await import("@/app/api/compile/route");
@@ -132,10 +188,12 @@ export async function recordClip({ root, sample, engine, capUsd, notes, log = ()
   if (!process.env.NEBIUS_API_KEY) throw new Error("NEBIUS_API_KEY is not set: the routes would answer from their replay fixtures");
   if (!(capUsd > 0)) throw new Error(`the cap must be a positive number of US dollars, not ${capUsd}`);
   const ledger: Call[] = [];
+  /** what the calls so far could have billed, seen or not */
+  let reserved = 0;
   /** stop before a call whose worst case would take the clip over its cap */
   const guard = (next: string, worst: number) => {
-    const spent = sum(ledger.map((c) => c.usd));
-    if (spent + worst > capUsd) throw new Error(`US$${spent.toFixed(4)} spent; ${next} could cost up to US$${worst.toFixed(4)}, over the US$${capUsd} cap`);
+    if (reserved + worst > capUsd) throw new Error(`US$${reserved.toFixed(4)} reserved so far; ${next} could cost up to US$${worst.toFixed(4)}, over the US$${capUsd} cap`);
+    reserved += worst;
   };
 
   guard("label", worstUsd("label"));
@@ -198,6 +256,8 @@ export async function recordClip({ root, sample, engine, capUsd, notes, log = ()
     if (!patched) break;
     ledger.push(...patched.calls);
     iterations.push(patched.iteration);
+    const { earth, orbit } = patched.iteration.results;
+    log(`notes ${n + 1}: ${patched.iteration.changes.join("; ") || "no change"}; earth ${earth.pass ? "pass" : "fail"}, orbit ${orbit.pass ? "pass" : "fail"}`);
   }
 
   return Session.parse({
@@ -209,7 +269,7 @@ export async function recordClip({ root, sample, engine, capUsd, notes, log = ()
     fit,
     turns,
     iterations,
-    pending: notes ? [] : ["Notes patches (#28): until /api/notes is on main, this recording stops after the interview."],
+    pending: notes ? [] : ["Notes patches (#28): recorded without notesHook(), this recording stops after the interview."],
     ledger,
     total_usd: round(sum(ledger.map((c) => c.usd))),
   });
