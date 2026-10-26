@@ -106,6 +106,9 @@ describe("the tilt op and the liquid check", () => {
     expect(lintProgram(ops(...grip, { op: "tilt", deg: 120, toward: "block" }, { op: "tilt", deg: 0 }), POUR_SPEC)).toEqual(['steps[0] (pour): never tilts the cup toward "bowl"']);
     expect(lintProgram(ops(...grip, { op: "tilt", deg: 120, toward: "bowl" }), POUR_SPEC)[0]).toContain("leaves the cup tipped");
     expect(lintProgram(ops(...grip, { op: "tilt", deg: 120, toward: "vat" }, { op: "tilt", deg: 0 }), POUR_SPEC)).toContain('steps[0].ops[3].toward: tilt toward unknown frame "vat"');
+    // what stays in the cup is a fair check of the cup against itself
+    const keep = ops(...grip, { op: "tilt", deg: 30, toward: "bowl" }, { op: "assert", predicate: { kind: "liquid_inside", object: "cup", target: "cup", value: 90 } }, { op: "tilt", deg: 0 });
+    expect(lintProgram(keep, POUR_SPEC)).toEqual([]);
   });
 });
 
@@ -220,32 +223,62 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     expect(back.log.some((l) => l.includes("already upright"))).toBe(true);
   }, 120_000);
 
-  it("turns back a cup a program left tipped past 90°, in a later run, to where an unbroken return puts it", () => {
+  /**
+   * Tip the cup `deg` in one run, then turn it back in a second run from here, on the same state (`fresh` false)
+   * or on a copy of it, which keeps the weld but not the tilt's record. Returns the runs and where the cup ends.
+   */
+  function splitReturn(deg: number, mode: "whole" | "split" | "copy") {
     const env = environment(POUR_SPEC);
-    const cupAt = (split: boolean) => {
-      const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
-      const data = new mujoco.MjData(model);
-      try {
-        park(mujoco, model, data);
-        const sim = { mujoco, model, data };
-        const tip = { op: "tilt", deg: 120, toward: "bowl", seconds: 1 };
-        const back = { op: "tilt", deg: 0, seconds: 1 };
-        const upright = { op: "assert", predicate: { kind: "tilt_under", object: "cup", value: 8 } };
-        const runs = split ? [ops(...grip, tip), ops(back, upright)] : [ops(...grip, tip, back, upright)];
-        const logs = runs.map((program, k) => runToEnd(sim, env, program, "sensed", { from: k ? "here" : "home" }));
-        for (const r of logs) expect(r.pass, r.log.join("\n")).toBe(true);
-        if (split) expect(logs[1].log.some((l) => l.includes("already tipped 12"))).toBe(true);
-        const b = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, env.names.cup);
-        return Array.from(data.xpos as Float64Array).slice(3 * b, 3 * b + 3);
-      } finally {
-        data.delete();
-        model.delete();
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
+    const datas = [new mujoco.MjData(model)];
+    try {
+      park(mujoco, model, datas[0]);
+      const tip = { op: "tilt", deg, toward: "bowl", seconds: 1 };
+      const back = [{ op: "tilt", deg: 0, seconds: 1 }, { op: "assert", predicate: { kind: "tilt_under", object: "cup", value: 8 } }];
+      if (mode === "whole") {
+        const r = runToEnd({ mujoco, model, data: datas[0] }, env, ops(...grip, tip, ...back), "sensed");
+        return { runs: [r], at: cupPos(model, datas[0], env) };
       }
-    };
-    const whole = cupAt(false);
-    const split = cupAt(true);
-    expect(Math.hypot(...whole.map((v, k) => v - split[k])) * 1000).toBeLessThan(5);
-  }, 120_000);
+      const first = runToEnd({ mujoco, model, data: datas[0] }, env, ops(...grip, tip), "sensed");
+      if (mode === "copy") {
+        const copy = new mujoco.MjData(model);
+        datas.push(copy);
+        for (const f of ["qpos", "qvel", "ctrl"] as const) (copy[f] as Float64Array).set(datas[0][f] as Float64Array);
+        (copy.eq_active as Uint8Array).set(datas[0].eq_active as Uint8Array);
+        mujoco.mj_forward(model, copy);
+      }
+      const data = datas.at(-1)!;
+      const second = runToEnd({ mujoco, model, data }, env, ops(...back), "sensed", { from: "here" });
+      return { runs: [first, second], at: cupPos(model, data, env) };
+    } finally {
+      for (const d of datas) d.delete();
+      model.delete();
+    }
+  }
+  const cupPos = (model: InstanceType<MainModule["MjModel"]>, data: InstanceType<MainModule["MjData"]>, env: Environment) => {
+    const b = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, env.names.cup);
+    return Array.from(data.xpos as Float64Array).slice(3 * b, 3 * b + 3);
+  };
+  const apart = (a: number[], b: number[]) => Math.hypot(...a.map((v, k) => v - b[k])) * 1000;
+
+  it("turns back a cup a program left nearly upside down, in a later run, to where an unbroken return puts it", () => {
+    const whole = splitReturn(175, "whole");
+    expect(whole.runs[0].pass, whole.runs[0].log.join("\n")).toBe(true);
+    const split = splitReturn(175, "split");
+    for (const r of split.runs) expect(r.pass, r.log.join("\n")).toBe(true);
+    expect(apart(whole.at, split.at)).toBeLessThan(5);
+  }, 180_000);
+
+  it("without the tilt's record, turns back a cup it finds tipped past 90° about its lower rim, and refuses one upside down", () => {
+    const whole = splitReturn(120, "whole");
+    const copy = splitReturn(120, "copy");
+    for (const r of copy.runs) expect(r.pass, r.log.join("\n")).toBe(true);
+    expect(copy.runs[1].log.some((l) => l.includes("already tipped 12"))).toBe(true);
+    expect(apart(whole.at, copy.at)).toBeLessThan(5);
+    const over = splitReturn(175, "copy").runs[1];
+    expect(over.pass).toBe(false);
+    expect(over.why).toContain("upside down");
+  }, 240_000);
 
   it("refuses to tip a tipped cup toward somewhere else, and carries on toward the same place", () => {
     const other = pour(ops(...grip, { op: "tilt", deg: 60, toward: "bowl" }, { op: "tilt", deg: 90, toward: "block" }), 0).r;

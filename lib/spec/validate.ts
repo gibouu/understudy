@@ -169,7 +169,8 @@ export function lintProgram(program: Program, spec: TaskSpec): string[] {
         const r = Math.round(Math.hypot(op.offset_mm[0], op.offset_mm[1]));
         if (r < REACH_MM[0] || r > REACH_MM[1]) out.push(`${at}: move_to in "world" is ${r} mm from the robot base, outside its reach (${REACH_MM[0]} to ${REACH_MM[1]} mm); a point near an object uses that object's id as the frame`);
       }
-      if ((op.op === "assert" || op.op === "wait_until") && op.predicate.object && op.predicate.object === op.predicate.target) {
+      // liquid_inside of a container's own liquid in itself is a retention check, not a mix-up
+      if ((op.op === "assert" || op.op === "wait_until") && op.predicate.kind !== "liquid_inside" && op.predicate.object && op.predicate.object === op.predicate.target) {
         out.push(`${at}: ${op.predicate.kind} compares "${op.predicate.object}" with itself; the object is the one moved, the target the one it goes into`);
       }
     });

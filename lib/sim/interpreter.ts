@@ -99,6 +99,8 @@ const TILT_DEG = 3;
 const TILT_TURN_DEG = 30;
 /** a held object tilted less than this counts as upright when a tilt starts */
 const TILT_UPRIGHT_DEG = 3;
+/** past this, a tilt found without a record cannot tell which rim the object turned over */
+const TILT_GUESS_MAX_DEG = 150;
 /** the cosine ease of a tilt, as the measured pours used (docs/MEASUREMENTS.md section 5) */
 const ease = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : (1 - Math.cos(Math.PI * u)) / 2);
 
@@ -183,11 +185,18 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
     }
   }
 
-  let tilted: Tilt | null = null;
+  // a tilt lasts as long as the grasp, across runs (a program continued from here), like the weld itself
+  let tilted: Tilt | null = held && kept.get(data)?.body === held.body ? kept.get(data)! : null;
+  const setTilted = (v: Tilt | null) => {
+    tilted = v;
+    if (v) kept.set(data, v);
+    else kept.delete(data);
+  };
   if (from === "home") {
     // start from home, open, and let the scene settle; nothing stays welded from an earlier run
     if (held) detach(data, held);
     held = null;
+    setTilted(null);
     ctrl.set([...SO101_HOME.slice(0, ARM), GRIPPER_OPEN]);
     yield* moveArm(SO101_HOME.slice(0, ARM));
   }
@@ -249,7 +258,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             const at = `${op.frame} + (${op.offset_mm.join(", ")}) mm from ${op.approach}`;
             if (!ik.ok) return fail({ failed_step_id: s.step_id, failure_class: "embodiment_limit", why: `move_to ${at}: out of reach by ${ik.pos_err_mm.toFixed(1)} mm` });
             log.push(`${t.toFixed(2)} move_to ${at}${tilted ? `, turning the ${held?.body ?? "object"} back to the approach` : ""}`);
-            tilted = null; // the approach sets the gripper's orientation again
+            setTilted(null); // the approach sets the gripper's orientation again
             yield* moveArm(ik.q);
             break;
           }
@@ -269,7 +278,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             if (ok) {
               ctrl[GRIPPER] = attach(model, data, g); // hold, don't squeeze against the weld
               held = g;
-              tilted = null;
+              setTilted(null);
             } else ctrl[GRIPPER] = Math.max(open, GRIPPER_OPEN); // reopen, so a retry can close again
             // a miss is not a failure by itself: the object stays free, and the program's checks find out
             log.push(`${t.toFixed(2)} grasp ${op.object}: ${ok ? "held" : "missed"}`);
@@ -283,7 +292,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
               detach(data, held);
             }
             held = null;
-            tilted = null;
+            setTilted(null);
             ctrl[GRIPPER] = GRIPPER_OPEN;
             log.push(`${t.toFixed(2)} release${at}`);
             for (let w = 0; w < RELEASE_S; w += dt) yield* step();
@@ -309,12 +318,16 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
                 if (!o) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `tilt: ${h.body} is not in the spec` });
                 const c0 = vec(scratch.xpos, h.bodyId, 3);
                 const R0 = vec(scratch.xmat, h.bodyId, 9);
-                // tipped already (a program continued from here after one that tilted it): start from where it is,
-                // about its rim on the side it leans to; upright: toward the frame's origin, with none (or right
-                // above it) away from the robot
+                // tipped with no tilt of this grasp to say how (knocked, or turned in another world): start from
+                // where it is, about its rim on the side it leans to; upright: toward the frame's origin, with none
+                // (or right above it) away from the robot
                 const up: Vec3 = [R0[2], R0[5], R0[8]];
                 const tipped = (Math.acos(Math.max(-1, Math.min(1, up[2]))) * 180) / Math.PI;
                 const leaning = tipped > TILT_UPRIGHT_DEG;
+                if (tipped > TILT_GUESS_MAX_DEG) {
+                  // turned over about one rim looks the same as about another plus a turn: there is no rim to undo it about
+                  return fail({ failed_step_id: s.step_id, why: `tilt: the ${h.body} is upside down (${tipped.toFixed(0)}°) and no tilt of this grasp says which rim it turned over` });
+                }
                 if (!leaning && op.deg === 0) {
                   log.push(`${t.toFixed(2)} tilt 0°: ${h.body} is already upright`);
                   break;
@@ -338,7 +351,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
                 // the held site's pose upright: undone about the pivot
                 const now = vec(scratch.site_xpos, site, 3).map((v, r) => v - pivot[r]) as Vec3;
                 const site0 = [0, 1, 2].map((r) => pivot[r] + back[3 * r] * now[0] + back[3 * r + 1] * now[1] + back[3 * r + 2] * now[2]) as Vec3;
-                tl = { site0, rot0: matmul(back, vec(scratch.site_xmat, site, 9)), pivot, axis, deg: leaning ? tipped : 0, toward: leaning ? "the side it leans to" : (op.toward ?? "away from the robot"), frame: leaning ? undefined : op.toward };
+                tl = { body: h.body, site0, rot0: matmul(back, vec(scratch.site_xmat, site, 9)), pivot, axis, deg: leaning ? tipped : 0, toward: leaning ? "the side it leans to" : (op.toward ?? "away from the robot"), frame: leaning ? undefined : op.toward };
                 if (leaning) log.push(`${t.toFixed(2)} tilt: ${h.body} is already tipped ${tipped.toFixed(0)}°; carrying on from there, about its lower rim`);
               }
               // a tilt turns about the rim it started from: tipping toward somewhere else needs the object upright first
@@ -393,7 +406,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             yield* settle();
             const R = vec(data.xmat, h.bodyId, 9);
             log.push(`${t.toFixed(2)} tilt ${h.body} to ${op.deg}° toward ${tl!.toward} over ${op.seconds} s: ${((Math.acos(Math.max(-1, Math.min(1, R[8]))) * 180) / Math.PI).toFixed(0)}° from upright, turned up to ${turned.toFixed(0)}° aside`);
-            tilted = op.deg === 0 ? null : { ...tl!, deg: op.deg };
+            setTilted(op.deg === 0 ? null : { ...tl!, deg: op.deg });
             break;
           }
           case "wait_until": {
@@ -468,7 +481,9 @@ type Vec3 = [number, number, number];
  * toward) and the horizontal axis it turns about; `deg` is how far it is turned now, `frame` the frame it was
  * tipped toward (none when it was found tipped), `toward` that in words.
  */
-type Tilt = { site0: Vec3; rot0: number[]; pivot: Vec3; axis: Vec3; deg: number; toward: string; frame?: string };
+type Tilt = { body: string; site0: Vec3; rot0: number[]; pivot: Vec3; axis: Vec3; deg: number; toward: string; frame?: string };
+/** the tilt under way per simulation state, kept between runs that continue from here; reset with the grasp */
+const kept = new WeakMap<MjData, Tilt>();
 const vec = (field: unknown, i: number, n: number) => Array.from(toNumbers(field)).slice(n * i, n * i + n);
 const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const unit = (a: Vec3): Vec3 => {
