@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SimClient } from "@/lib/sim/client";
 import { DEMO_PROGRAMS, DEMO_SPEC, POUR_PROGRAMS, POUR_SPEC } from "@/lib/sim/demo-spec";
@@ -11,6 +12,8 @@ import { SETTINGS } from "@/lib/sim/settings";
 import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE } from "@/lib/sim/so101";
 import { APPROACHES, GRAVITIES, type GravityName, type Program, type TaskSpec } from "@/lib/spec/schema";
 import { SettingNote, SettingSwitch, type Shown } from "../setting-switch";
+
+const Variants = dynamic(() => import("../variants").then((m) => m.Variants), { ssr: false });
 
 const SCENE = buildScene(DEMO_SPEC);
 /** the spec's moved object and the fixture it goes into: the page names neither */
@@ -36,6 +39,12 @@ function fromUrl(): { scene: Scene; ml?: number; setting: Shown } {
 const pourSpec = (ml?: number): TaskSpec =>
   ml ? { ...POUR_SPEC, objects: POUR_SPEC.objects.map((o) => (o.liquid_ml !== undefined ? { ...o, liquid_ml: ml } : o)) } : POUR_SPEC;
 const nameOf = (spec: TaskSpec, id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
+/** The pour spec as `program` tilts it (how far, how fast), so similar tasks start from the pour that ran. */
+const asRun = (spec: TaskSpec, program: Program): TaskSpec => {
+  const tilt = program.steps.flatMap((s) => s.ops).find((op) => op.op === "tilt" && op.deg > 0);
+  if (tilt?.op !== "tilt") return spec;
+  return { ...spec, steps: spec.steps.map((s) => (s.verb === "pour" && s.pour ? { ...s, pour: { ...s.pour, tilt_deg: tilt.deg, tilt_s: tilt.seconds } } : s)) };
+};
 
 /** Known targets: the first four reachable, the last three not. */
 const PRESETS: [[number, number, number], Approach, string][] = [
@@ -76,6 +85,10 @@ export function StageView() {
   const [setting, setSetting] = useState<Shown>(() => fromUrl().setting);
   const [seed, setSeed] = useState(1);
   const [busy, setBusy] = useState(false);
+  /** the pour program last run from the start: similar tasks start from it */
+  const [poured, setPoured] = useState<keyof typeof POUR_PROGRAMS | null>(null);
+  /** one object per pour run, so the similar tasks below start afresh only when the pour changes */
+  const ran = useMemo(() => (poured ? asRun(spec, POUR_PROGRAMS[poured]) : null), [spec, poured]);
   const frames = useRef<{ n: number; since: number; rate: number }>({ n: 0, since: 0, rate: 0 });
   const lastCtrl = useRef<number[]>(SO101_HOME);
   const lastUi = useRef(0);
@@ -249,6 +262,7 @@ export function StageView() {
       const r = await client.run(POUR_PROGRAMS[name], "sensed", "home");
       const where = r.log.findLast((l) => l.includes(" liquid: "))?.split(" liquid: ")[1];
       setRunNote(`${label}: ${r.pass ? "pass" : `fail${r.failed_step_id ? ` at ${r.failed_step_id}` : ""}, ${r.why}`} (${r.t.toFixed(1)} s)${where ? `. Liquid: ${where}.` : ""}`);
+      setPoured(name);
     } catch (err) {
       setRunNote(`${label}: ${(err as Error).message}`);
     }
@@ -502,6 +516,13 @@ export function StageView() {
             : "The cup and the bowl are open boxes; the water is a position-based liquid (lib/sim/fluid.ts) stepped next to MuJoCo, its walls the cup's and the bowl's geoms, one way: the water does not load the arm."}
         </p>
       </div>
+
+      {scene === "pour" && poured && ran && (
+        <section className="flex flex-col gap-2 lg:col-span-2" aria-label="similar tasks">
+          <h2 className="text-lg font-semibold tracking-tight">Try a similar task</h2>
+          <Variants spec={ran} program={POUR_PROGRAMS[poured]} />
+        </section>
+      )}
     </div>
   );
 }

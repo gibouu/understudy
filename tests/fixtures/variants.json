@@ -169,5 +169,185 @@
     }
    ]
   }
+ },
+ {
+  "request": null,
+  "spec_title": "cup into bowl",
+  "result": {
+   "status": "done",
+   "value": {
+    "variants": [
+     {
+      "title": "Bowl deeper",
+      "summary": "The bowl is taller so the arm pours into a deeper target.",
+      "changes": [
+       {
+        "path": "objects[bowl].size_mm",
+        "value": [
+         68,
+         68,
+         60
+        ]
+       }
+      ]
+     },
+     {
+      "title": "Cup lifted higher",
+      "summary": "The cup starts higher above the block so the arm picks it up from a greater height before pouring.",
+      "changes": [
+       {
+        "path": "objects[cup].pose",
+        "value": {
+         "xyz_mm": [
+          300,
+          0,
+          90
+         ],
+         "yaw_deg": 0,
+         "frame": "world"
+        }
+       }
+      ]
+     },
+     {
+      "title": "Bowl shifted right",
+      "summary": "The bowl sits further right so the arm carries the cup farther to pour.",
+      "changes": [
+       {
+        "path": "objects[bowl].pose",
+        "value": {
+         "xyz_mm": [
+          300,
+          120,
+          20
+         ],
+         "yaw_deg": 0,
+         "frame": "world"
+        }
+       }
+      ]
+     },
+     {
+      "title": "Pour it back",
+      "summary": "The water starts in the bowl and the arm pours it back into the cup.",
+      "changes": [
+       {
+        "path": "steps[s1].object",
+        "value": "bowl"
+       }
+      ]
+     },
+     {
+      "title": "Faster pour",
+      "summary": "The cup tilts all the way over in one second for a quicker transfer.",
+      "changes": [
+       {
+        "path": "steps[s1].pour",
+        "value": {
+         "into": "bowl",
+         "tilt_deg": 180,
+         "tilt_s": 1
+        }
+       }
+      ]
+     }
+    ],
+    "not_yet": []
+   },
+   "warnings": [
+    "super: variant \"Cup lifted higher\": cup would start in mid-air, 17 mm above the surface under it"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 2622,
+     "completion_tokens": 356,
+     "cached_tokens": 0,
+     "seconds": 2.509
+    },
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 3028,
+     "completion_tokens": 358,
+     "cached_tokens": 2592,
+     "seconds": 1.945
+    }
+   ]
+  }
+ },
+ {
+  "request": "pour it into a bigger bowl",
+  "spec_title": "cup into bowl",
+  "result": {
+   "status": "done",
+   "value": {
+    "variants": [
+     {
+      "title": "Bigger bowl",
+      "summary": "The bowl is larger while keeping the same gap to the cup’s rim.",
+      "changes": [
+       {
+        "path": "objects[bowl].size_mm",
+        "value": [
+         80,
+         80,
+         40
+        ]
+       }
+      ]
+     }
+    ],
+    "not_yet": []
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 2639,
+     "completion_tokens": 112,
+     "cached_tokens": 0,
+     "seconds": 1.068
+    },
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 2813,
+     "completion_tokens": 66,
+     "cached_tokens": 0,
+     "seconds": 1.033
+    }
+   ]
+  }
+ },
+ {
+  "request": "pour it back",
+  "spec_title": "cup into bowl",
+  "result": {
+   "status": "done",
+   "value": {
+    "variants": [
+     {
+      "title": "Pour it back",
+      "summary": "The water starts in the bowl and the arm pours it back into the cup.",
+      "changes": [
+       {
+        "path": "steps[s1].object",
+        "value": "bowl"
+       }
+      ]
+     }
+    ],
+    "not_yet": []
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/nemotron-3-super-120b-a12b",
+     "prompt_tokens": 2636,
+     "completion_tokens": 65,
+     "cached_tokens": 0,
+     "seconds": 0.82
+    }
+   ]
+  }
  }
 ]
