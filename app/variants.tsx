@@ -434,7 +434,7 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
           {cost && (
             <p className="mt-1 text-xs text-[color:var(--muted,#737373)]">
               Its program: {cost.calls} Nano call{cost.calls === 1 ? "" : "s"}, {usd(cost.usd)}
-              {replayed(run.compile) && " (recorded)"}
+              {run.compile.status === "done" && replayed(run.compile) && ` (${gateNote(run.compile.warnings) ?? "recorded"})`}
             </p>
           )}
           {patch}
