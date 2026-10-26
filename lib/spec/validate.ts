@@ -27,7 +27,11 @@ export type IssueCode =
   | "pour_without_block"
   | "pour_block_on_other_verb"
   | "pour_into_itself"
-  | "liquid_share_as_fraction";
+  | "liquid_share_as_fraction"
+  | "gesture_without_block"
+  | "gesture_block_on_other_verb"
+  | "gesture_without_path"
+  | "gesture_path_order";
 
 export type SpecIssue = { code: IssueCode; path: string; message: string; severity: "error" | "warning" };
 
@@ -97,7 +101,8 @@ export function validateSpec(spec: TaskSpec): SpecIssue[] {
       issues.push({ code: "pocket_without_clearance", path: `objects[${i}].pocket_clearance_mm`, message: `fixture "${o.id}" is used as a pocket but has no clearance`, severity: "warning" });
     }
   });
-  if (!spec.objects.some((o) => o.role === "manipulated")) {
+  // a spec of gestures alone handles nothing
+  if (spec.steps.some((s) => s.verb !== "gesture") && !spec.objects.some((o) => o.role === "manipulated")) {
     issues.push({ code: "no_manipulated_object", path: "objects", message: "no object is marked manipulated", severity: "error" });
   }
 
@@ -106,7 +111,12 @@ export function validateSpec(spec: TaskSpec): SpecIssue[] {
     const at = `steps[${i}]`;
     if (stepIds.has(s.id)) issues.push({ code: "duplicate_step_id", path: `${at}.id`, message: `step id "${s.id}" appears twice`, severity: "error" });
     stepIds.add(s.id);
-    if (!reg.ids.has(s.object)) issues.push({ code: "unknown_object", path: `${at}.object`, message: `step "${s.id}" manipulates unknown object "${s.object}"`, severity: "error" });
+    if (s.object !== undefined && !reg.ids.has(s.object)) issues.push({ code: "unknown_object", path: `${at}.object`, message: `step "${s.id}" manipulates unknown object "${s.object}"`, severity: "error" });
+    // a gesture needs its block, and a path in it before the arm can follow it; the path is traced from the clip
+    if (s.verb === "gesture" && !s.gesture) issues.push({ code: "gesture_without_block", path: `${at}.gesture`, message: `step "${s.id}" is a gesture with no gesture block`, severity: "error" });
+    if (s.gesture && s.verb !== "gesture") issues.push({ code: "gesture_block_on_other_verb", path: `${at}.gesture`, message: `step "${s.id}" is a ${s.verb} step with a gesture block; only a gesture step follows a path`, severity: "error" });
+    if (s.verb === "gesture" && s.gesture && s.gesture.path.length < 2) issues.push({ code: "gesture_without_path", path: `${at}.gesture.path`, message: `step "${s.id}" is a gesture with no path yet: the hand's path is traced from the clip`, severity: "error" });
+    if (s.gesture?.path.some((p, k) => k > 0 && p.t_s <= s.gesture!.path[k - 1].t_s)) issues.push({ code: "gesture_path_order", path: `${at}.gesture.path`, message: `the path of step "${s.id}" does not move forward in time: each point needs a later time than the one before`, severity: "error" });
     if (s.target && !reg.frames.has(s.target.frame)) issues.push({ code: "unknown_frame", path: `${at}.target.frame`, message: `step "${s.id}" targets unknown frame "${s.target.frame}"`, severity: "error" });
     // a pour needs both its verb and its block: either alone makes the object an open container with no check on the liquid
     if (s.verb === "pour" && !s.pour) issues.push({ code: "pour_without_block", path: `${at}.pour`, message: `step "${s.id}" pours but says neither into what nor how far it tilts`, severity: "error" });
@@ -124,7 +134,7 @@ export function validateSpec(spec: TaskSpec): SpecIssue[] {
     checkPredicates(s.preconditions, `${at}.preconditions`, reg, issues);
     checkPredicates(s.success, `${at}.success`, reg, issues);
     const prev = spec.steps[i - 1];
-    if (prev && s.t_start_s < prev.t_end_s) issues.push({ code: "steps_overlap", path: `${at}.t_start_s`, message: `step "${s.id}" starts before "${prev.id}" ends`, severity: "warning" });
+    if (prev && s.verb !== "gesture" && prev.verb !== "gesture" && s.t_start_s < prev.t_end_s) issues.push({ code: "steps_overlap", path: `${at}.t_start_s`, message: `step "${s.id}" starts before "${prev.id}" ends`, severity: "warning" });
   });
   return issues;
 }
@@ -169,7 +179,8 @@ const REACH_MM = [50, 300] as const;
  * step: a world-frame move outside the reach ring (an object offset written
  * in the wrong frame), a check of an object against itself, an insert or
  * place step that never lets go, a pour that never tilts toward where it
- * pours or leaves the container tipped, a liquid share written as a fraction.
+ * pours or leaves the container tipped, a liquid share written as a fraction,
+ * a gesture step that never follows its path or a follow anywhere else.
  */
 export function lintProgram(program: Program, spec: TaskSpec): string[] {
   const out = validateProgram(program, spec)
@@ -191,6 +202,8 @@ export function lintProgram(program: Program, spec: TaskSpec): string[] {
       }
     });
     const step = spec.steps.find((s) => s.id === ps.step_id);
+    if (step?.verb === "gesture" && !ps.ops.some((op) => op.op === "follow")) out.push(`steps[${i}] (gesture): never follows its path; its ops are {"op":"follow"}`);
+    if (step && step.verb !== "gesture" && ps.ops.some((op) => op.op === "follow")) out.push(`steps[${i}] (${step.verb}): follow traces a gesture's path, and this step is not a gesture`);
     if (step && (step.verb === "insert" || step.verb === "place") && !ps.ops.some((op) => op.op === "release")) {
       out.push(`steps[${i}] (${step.verb}): never releases the ${step.object}`);
     }

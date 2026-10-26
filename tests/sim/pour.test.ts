@@ -204,7 +204,7 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     const spec = TaskSpec.parse({
       ...POUR_SPEC,
       objects: POUR_SPEC.objects.map((o) => ({ ...o, id: rename(o.id) })),
-      steps: POUR_SPEC.steps.map((st) => ({ ...st, object: rename(st.object) })),
+      steps: POUR_SPEC.steps.map((st) => ({ ...st, object: rename(st.object!) })),
     });
     const { where, particles } = pour(Program.parse({ spec_title: "", steps: [{ step_id: "s1", ops: [] }] }), 1, { spec });
     expect(particles).toBe(594);

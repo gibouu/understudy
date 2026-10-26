@@ -7,6 +7,10 @@
  * they use, laid out where the arm is known to reach and sized to what its
  * jaws hold. Everything else is reported, never silently dropped. A missing
  * pocket clearance stays missing: the compiler asks for it.
+ *
+ * A clip with no such step but gestures keeps its gesture steps that have a
+ * hand path (traced in the browser, already scaled into the arm's reach by
+ * lib/sim/gesture.ts) and no objects: a gesture handles nothing.
  */
 import type { Predicate, SpecObject, Step, TaskSpec } from "@/lib/spec/schema";
 
@@ -28,6 +32,7 @@ const clamp = (x: number, [lo, hi]: readonly [number, number]) => Math.min(Math.
 export function fitToBench(spec: TaskSpec): Fit {
   const warnings: string[] = [];
   const act = spec.steps.find((s) => (s.verb === "insert" || s.verb === "place") && s.target);
+  if (!act && spec.steps.some((s) => s.verb === "gesture")) return fitGestures(spec);
   const held = act && spec.objects.find((o) => o.id === act.object);
   const fixture = act && spec.objects.find((o) => o.id === act.target!.frame);
   if (!act || !held || !fixture || held === fixture) {
@@ -104,6 +109,35 @@ export function fitToBench(spec: TaskSpec): Fit {
       // questions about dropped objects or poses no longer apply; size questions are answered by the fit
       open_questions: spec.open_questions.filter((q) => !dropped.some((o) => mentions(q, o.id)) && !/size_mm|pose|position|dimension/i.test(q)),
     },
+    warnings,
+  };
+}
+
+const r0 = (x: number) => Math.round(x);
+
+/** The gesture steps that have a path, renumbered, with no objects; the rest reported. */
+function fitGestures(spec: TaskSpec): Fit {
+  const warnings: string[] = [];
+  const steps: Step[] = [];
+  for (const s of spec.steps) {
+    if (s.verb !== "gesture") continue;
+    const path = s.gesture?.path ?? [];
+    if (path.length < 2) {
+      warnings.push(`step ${s.id}: no hand path was traced from the clip; left out`);
+      continue;
+    }
+    const span = (k: 1 | 2) => r0(Math.max(...path.map((p) => p.xyz_mm[k])) - Math.min(...path.map((p) => p.xyz_mm[k])));
+    const hand = s.gesture?.hand ? `the ${s.gesture.hand} hand's` : "the hand's";
+    warnings.push(`step ${s.id}: ${hand} path, ${path.length} points over ${path.at(-1)!.t_s.toFixed(1)} s, ${span(1)} mm across and ${span(2)} mm high in front of the arm`);
+    // the objects go, so nothing in the step may name one
+    steps.push({ ...s, id: `s${steps.length + 1}`, object: undefined, target: undefined, via_points: [], preconditions: [], success: [] });
+  }
+  if (steps.length === 0) return { spec, warnings: [...warnings, "no gesture with a hand path: nothing to rehearse"] };
+  const others = spec.steps.length - steps.length;
+  if (others > 0) warnings.push(`rehearsing ${steps.length} gesture step${steps.length > 1 ? "s" : ""} of ${spec.steps.length}`);
+  if (spec.objects.length) warnings.push(`left out of the rehearsal: ${spec.objects.map((o) => o.name).join(", ")} (a gesture handles nothing)`);
+  return {
+    spec: { ...spec, objects: [], steps, anchor: undefined, open_questions: spec.open_questions.filter((q) => !/size_mm|pose|position|dimension/i.test(q) && !spec.objects.some((o) => q.includes(o.id))) },
     warnings,
   };
 }

@@ -237,6 +237,24 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 
 **Limits and spend.** Two days (the Nemotron rows for patching and labelling were measured on 25 October, everything else on 26 October), one host, list prices; the "off" switch differs by model family, and each row says which one it used. Section 10's ledger scripts (`compare-*`) charged US$15.97 under their own cap of US$25. Of that, US$8.82 are worst-case estimates for calls made while Token Factory had withdrawn Qwen3.5 397B: 571 refused with HTTP 404 and 3 in flight when we stopped that run. A refused call does no work, so the bill for this section should be nearer US$7.15, including the US$0.68 of the stopped second Qwen3.5 attempt.
 
+## 11. Following a gesture
+
+`samples/iss-wave.mp4` (6 s at 30 fps, an astronaut waving to the camera) traced in the browser by `lib/vision/trace.ts` on 26 October. In the recorded label, Super VL calls 1 to 3.2 s one gesture of the right hand, the first wave; another run on the same clip called it 1 to 4 s and added a microphone grasp beside it, so the window varies from run to run. MediaPipe pose sees the hand in 66 of 66 frames of that window, on an arm of 481 mm. The landmarks are kept in `tests/fixtures/vision/wave.json`, and `tests/sim/wave-fixture.test.ts` replays them through the scaling and the arm.
+
+- A wave turns back several times a second: sampled at 10 fps it aliases into jitter (on the first sample clip the path came out half as wide), so the trace samples at the clip's 30 fps. A three-sample average weighted 1, 2, 1 takes off frame-to-frame jitter and keeps 90% of a 3 Hz swing.
+- In a palm wave the hand turns about the wrist, so the hand's centre (the mean of the pose model's wrist, index and pinky landmarks) travels further than the wrist across: 226 mm against 173 mm here (280 and 288 mm high). The path follows the hand's centre, which is what the gripper stands for, and averages three landmarks instead of one.
+- Scaled at 520 mm per metre (the SO-101's 250 mm arm over the person's 481 mm), the path was 112% of the box's height, as the hand comes down at the end, so it is shrunk a further 11% (464 mm per metre in all, the figure the trace prints): 105 mm across and 130 mm high in front of the arm.
+- MuJoCo (5 ms step, the SO-101's position actuators), point between the pads against the 66 points, reach 5 mm, each point within 0.25 s of its own time. At the clip's own pace a joint would have to turn at 6.7 rad/s; the arm is held to 2 rad/s, so it follows at 0.30x:
+
+| World | Reached within 5 mm | Farthest | First within reach, latest |
+|---|---|---|---|
+| Earth, Node (`tests/sim/wave-fixture.test.ts`) | 66 of 66 | 0.3 mm | 0 s |
+| Orbit (0 g), Node | 66 of 66 | 0.3 mm | 0 s |
+| Earth, browser worker, three runs | 66 of 66 | 0.5 to 0.8 mm | |
+| Orbit, browser worker, three runs | 66 of 66 | 0.4 to 0.6 mm | |
+
+On the first sample clip (a slower palm wave, replaced because an agency placard and flags were in view, so these numbers are no longer reproducible from the repository), at the clip's own pace the joints turned at up to 2.9 rad/s and the arm reached 238 of 240 points within 5 mm, the farthest 5.2 mm off; held to 2 rad/s it reached all 240 within 1.1 mm. That is where the cap comes from; it was chosen in the simulator, not from a real servo. The reach box, 240 mm across and z 200 to 330 mm in the plane x = 220 mm, is checked corner by corner and with a circle that fills it, at 1 g and 0 g (`tests/sim/follow.test.ts`). Live spend for this section, about US$0.04: Super VL labels of the two sample clips and of two camera takes while the label prompt and clean-up were tuned, and three Nano compiles before a program made only of gestures stopped needing a model.
+
 ## Reproduce
 
 Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend.

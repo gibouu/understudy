@@ -5,7 +5,9 @@
  * recompile comes back unusable; `unlock` or `sample_token` lets it go live
  * (lib/unlock/check.ts). Replay (no key, ?replay=1, or no way past the spend
  * guard) answers from tests/fixtures/compile.json: the recording of the same
- * spec, else the latest one with the same title.
+ * spec, else the latest one with the same title. A spec of gestures alone has
+ * nothing to guess: its program, a follow op per step, is written here with no
+ * model, live or replayed alike.
  */
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/compile.json";
@@ -17,6 +19,7 @@ import { done, failed, type StageResult } from "@/lib/spec/stage-result";
 import { lintProgram, validateProgram } from "@/lib/spec/validate";
 import { canonicalSlot, valueAt } from "@/lib/spec/apply";
 import { askable, withRequiredAsks } from "@/lib/spec/answer";
+import { gestureProgram } from "@/lib/sim/gesture";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
 import { explain, liveGate } from "@/lib/unlock/check";
 
@@ -34,11 +37,13 @@ Ops:
 - {"op":"grasp","object":<object id>,"aperture_mm":number}
 - {"op":"release"}
 - {"op":"tilt","deg":number,"toward":<object id>,"seconds":number}
+- {"op":"follow"}
 - {"op":"wait_until","predicate":P,"timeout_s":number}
 - {"op":"assert","predicate":P}
 - {"op":"ask","slot":<spec path>,"question":string,"why":string}
 A predicate P is {"kind":K,"object":<id>,"target":<id>,"value":number} with only the operands its kind needs. K is exactly one of these names: ${PREDICATES}.
 tilt turns the held object about its rim on the side of "toward", deg from upright (a pour), over seconds; deg 0 turns it back upright.
+follow moves the point between the pads along the gesture path of the step it is in, on the clip's timing, and checks it reached every point.
 Geometry: millimetres. The world frame sits at the robot base on the table: x away from the robot, y to its left, z up. An object's frame is its centre, turned by its yaw; size_mm is its extent along x, y, z, so its top face is at z = +size_mm[2]/2 and the table at z = -size_mm[2]/2 in its frame. Until a grasp, move_to puts the point between the gripper pads at the offset, and grasp closes the pads there. While an object is held, move_to puts the held object's centre at the offset instead. The user message lists the moves worked out for this spec as ready move_to ops: copy them exactly rather than computing your own.
 Rules:
 - One entry in steps per spec step, in the spec's order, with step_id the spec step's id.
@@ -48,7 +53,8 @@ Rules:
 - A field already set in the spec is settled, whatever its source (vl#, interview#, notes#, user#edit): never ask about it again.
 - End each insert or place step with an assert of its success predicate when the spec gives one.
 - A pour step (verb "pour", with pour.into, pour.tilt_deg and pour.tilt_s) copies the ops listed for it in the user message, in order: grip the container from the front, tilt toward pour.into, wait until the liquid is inside it, tilt back to 0, release, back off, assert.
-- Only the seven ops above exist; anything else (descend, insert, place, lift, pour) is written with move_to, grasp, release and tilt.
+- A gesture step (verb "gesture": a hand moving through the air, such as a wave, a signal to a crane driver or a sign traced in the air) has no object: its ops are exactly the ones listed for it in the user message, and it asks nothing, since the path it follows is its only check.
+- Only the eight ops above exist; anything else (descend, insert, place, lift, pour, wave) is written with move_to, grasp, release, tilt and follow.
 - The examples' numbers belong to their objects: for this spec copy only the moves listed in the user message, frame and numbers unchanged.
 - Keep the program short: no comments, no prose.
 Example. A jar (cylinder, size_mm [40,40,80]) is picked in s1 and placed on a tray (box, size_mm [200,150,20], zone fixture) in s2; s2 has a success predicate but no tolerance. The jar is gripped 8 mm below its top (z = 40 - 8 = 32 in its frame) from 50 mm above (32 + 50 = 82); once held, offsets place its centre: lifted 50 mm, carried with its bottom 20 mm above the tray (10 + 40 + 20 = 70), then set down with its bottom 1 mm above the tray's top (10 + 40 + 1 = 51).
@@ -70,6 +76,10 @@ function geometry(spec: TaskSpec): string {
     lines.push(`- ${o.id}, before it is held: approach ${move(o.id, grip + 50)}; grip point (8 mm below its top) ${move(o.id, grip)}; then {"op":"grasp","object":"${o.id}","aperture_mm":${Math.min(...footprintMm(o))}}; once held, lift ${move(o.id, 50)}`);
   }
   for (const s of spec.steps) {
+    if (s.verb === "gesture") {
+      lines.push(`- step ${s.id} is a gesture of ${s.gesture?.path.length ?? 0} points: {"step_id":"${s.id}","ops":[{"op":"follow"}]}`);
+      continue;
+    }
     const o = spec.objects.find((x) => x.id === s.object);
     if (o && s.verb === "pour" && s.pour) {
       // gripped from the front at its centre, so the wrist can roll it over (lib/sim/interpreter.ts, tilt)
@@ -125,6 +135,8 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   const spec = TaskSpec.safeParse(body?.spec);
   if (!spec.success) return NextResponse.json(failed(`invalid spec: ${spec.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`, false), { status: 400 });
   const previous = body?.previous === undefined ? undefined : Program.safeParse(body.previous).data;
+  const gestures = gestureProgram(spec.data);
+  if (gestures) return NextResponse.json(done(gestures, ["every step is a gesture: the program follows each path and needs no model"]));
 
   const gate = wantsReplay(req) ? null : await liveGate("compile", body);
   const client = gate?.live ? tokenFactory({ timeout: 25_000, maxRetries: 1 }) : null;

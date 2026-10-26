@@ -23,6 +23,7 @@ function named(spec: TaskSpec, text: string): string {
 
 /** A labelled step in words; only a move, an insert or a place says where to. */
 function stepWords(spec: TaskSpec, s: TaskSpec["steps"][number]): string {
+  if (s.object === undefined) return s.verb;
   const name = (id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
   const where = s.target && s.target.frame !== s.object ? name(s.target.frame) : null;
   if (where && (s.verb === "insert" || s.verb === "place")) return `${s.verb} the ${name(s.object)} ${s.target!.fixture === "pocket" ? "into" : "onto"} the ${where}`;
@@ -181,7 +182,10 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
           <div className="flex flex-col gap-3 self-start rounded-lg bg-paper-deep p-5">
             <h3 className="display text-xl font-semibold">Fitted to the robot’s bench</h3>
             <p className="text-neutral-700">
-              The SO-101 rehearses one manipulation: the {name(fit, fit.steps[0].object)} goes {fit.steps[1].target?.fixture === "pocket" ? "into" : "onto"} the {name(fit, fit.steps[1].target?.frame ?? "")}, laid out within its reach and sized for its gripper. Everything the fit changed or left out:
+              {fit.steps.length >= 2 && fit.steps[0].object !== undefined
+                ? <>The SO-101 rehearses one manipulation: the {name(fit, fit.steps[0].object)} goes {fit.steps[1].target?.fixture === "pocket" ? "into" : "onto"} the {name(fit, fit.steps[1].target?.frame ?? "")}, laid out within its reach and sized for its gripper.</>
+                : <>The SO-101 rehearses a gesture: the hand&apos;s path, scaled into its reach.</>}{" "}
+              Everything the fit changed or left out:
             </p>
             <ul className="list-disc pl-5 text-neutral-700">
               {session.fit.warnings.map((w) => (
