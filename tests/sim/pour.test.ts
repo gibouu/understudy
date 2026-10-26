@@ -280,28 +280,54 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     expect(over.why).toContain("upside down");
   }, 240_000);
 
-  it("drops a kept tilt the cup no longer matches, after a run stopped halfway through a tilt", () => {
+  it("turns a cup back from wherever a stopped tilt left it, never tipping it further first", () => {
     const env = environment(POUR_SPEC);
-    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
-    const data = new mujoco.MjData(model);
-    try {
-      park(mujoco, model, data);
-      const sim = { mujoco, model, data };
-      expect(runToEnd(sim, env, ops(...grip, { op: "tilt", deg: 60, toward: "bowl", seconds: 1 }), "sensed").pass).toBe(true);
-      // the next tilt is stopped half way, as the stage's Stop does: the record still says 60°
-      const it2 = run(sim, env, ops({ op: "tilt", deg: 120, toward: "bowl", seconds: 1 }), "sensed", { from: "here" });
-      for (let k = 0; k < 100; k++) {
-        it2.next();
-        mujoco.mj_step(model, data);
+    const tiltOf = (model: InstanceType<MainModule["MjModel"]>, data: InstanceType<MainModule["MjData"]>) => {
+      const b = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, env.names.cup);
+      return (Math.acos(Math.max(-1, Math.min(1, (data.xmat as Float64Array)[9 * b + 8]))) * 180) / Math.PI;
+    };
+    /** run `before` to the end, `stopped` for `steps` physics steps only (the stage's Stop), then turn it back */
+    const scenario = (before: unknown[], stopped: unknown, steps: number) => {
+      const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
+      const data = new mujoco.MjData(model);
+      try {
+        park(mujoco, model, data);
+        const sim = { mujoco, model, data };
+        expect(runToEnd(sim, env, ops(...grip, ...before), "sensed").pass).toBe(true);
+        const it2 = run(sim, env, ops(stopped), "sensed", { from: "here" });
+        for (let k = 0; k < steps; k++) {
+          it2.next();
+          mujoco.mj_step(model, data);
+        }
+        const at = tiltOf(model, data);
+        let most = at;
+        const back = run(sim, env, ops({ op: "tilt", deg: 0, seconds: 1 }, { op: "assert", predicate: { kind: "tilt_under", object: "cup", value: 8 } }), "sensed", { from: "here" });
+        let r = back.next();
+        for (; !r.done; r = back.next()) {
+          mujoco.mj_step(model, data);
+          most = Math.max(most, tiltOf(model, data));
+        }
+        return { at, most, r: r.value };
+      } finally {
+        data.delete();
+        model.delete();
       }
-      const back = runToEnd(sim, env, ops({ op: "tilt", deg: 0, seconds: 1 }, { op: "assert", predicate: { kind: "tilt_under", object: "cup", value: 8 } }), "sensed", { from: "here" });
-      expect(back.pass, back.log.join("\n")).toBe(true);
-      expect(back.log.some((l) => l.includes("not the 60° its last tilt left it at"))).toBe(true);
-    } finally {
-      data.delete();
-      model.delete();
+    };
+    // tipped 60°, a tilt to 120° stopped half way
+    const a = scenario([{ op: "tilt", deg: 60, toward: "bowl", seconds: 1 }], { op: "tilt", deg: 120, toward: "bowl", seconds: 1 }, 100);
+    // tipped 175°, the 3 s return stopped half way (the case that tipped it back up to 154° first)
+    const b = scenario([{ op: "tilt", deg: 175, toward: "bowl", seconds: 1 }], { op: "tilt", deg: 0, seconds: 3 }, 274);
+    // the first tilt to 175° stopped near the end: no tilt had finished, the started one still says how
+    const c = scenario([], { op: "tilt", deg: 175, toward: "bowl", seconds: 1 }, 165);
+    for (const [name, x] of Object.entries({ a, b, c })) {
+      expect(x.r.pass, `${name}: ${x.r.log.join("\n")}`).toBe(true);
+      expect(x.r.log.some((l) => l.includes("stopped at")), name).toBe(true);
+      // a stop leaves the arm a little behind its last command, so it carries on a few degrees; never a re-tip
+      expect(x.most, `${name}: from ${x.at.toFixed(0)}°`).toBeLessThan(x.at + 6);
     }
-  }, 120_000);
+    expect(b.at).toBeGreaterThan(90);
+    expect(c.at).toBeGreaterThan(150);
+  }, 240_000);
 
   it("refuses to tip a tipped cup toward somewhere else, and carries on toward the same place", () => {
     const other = pour(ops(...grip, { op: "tilt", deg: 60, toward: "bowl" }, { op: "tilt", deg: 90, toward: "block" }), 0).r;

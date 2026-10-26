@@ -101,8 +101,8 @@ const TILT_TURN_DEG = 30;
 const TILT_UPRIGHT_DEG = 3;
 /** past this, a tilt found without a record cannot tell which rim the object turned over */
 const TILT_GUESS_MAX_DEG = 150;
-/** a kept tilt the object is further than this from no longer describes it (a tilt ends within about 3°) */
-const TILT_RECORD_DEG = 8;
+/** a held site further than this from the path of the kept tilt is no longer on it */
+const TILT_PATH_MM = 15;
 /** the cosine ease of a tilt, as the measured pours used (docs/MEASUREMENTS.md section 5) */
 const ease = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : (1 - Math.cos(Math.PI * u)) / 2);
 
@@ -315,11 +315,22 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             try {
               (scratch.qpos as Float64Array).set(data.qpos as Float64Array);
               mujoco.mj_kinematics(model, scratch);
-              // a record the object no longer matches (a run stopped halfway through a tilt) is dropped
-              const tippedNow = (Math.acos(Math.max(-1, Math.min(1, vec(scratch.xmat, h.bodyId, 9)[8]))) * 180) / Math.PI;
-              if (tl && Math.abs(tippedNow - tl.deg) > TILT_RECORD_DEG) {
-                log.push(`${t.toFixed(2)} tilt: ${h.body} is at ${tippedNow.toFixed(0)}°, not the ${tl.deg}° its last tilt left it at; starting from where it is`);
-                tl = null;
+              // the record is written as a tilt starts, so a run stopped half way leaves the right path and the
+              // wrong angle: the angle is read off the object, the path kept if the held site still lies on it
+              if (tl) {
+                const now = (Math.acos(Math.max(-1, Math.min(1, vec(scratch.xmat, h.bodyId, 9)[8]))) * 180) / Math.PI;
+                const R = rotation(tl.axis, (now * Math.PI) / 180);
+                const rel = tl.site0.map((v, r) => v - tl!.pivot[r]);
+                const on = [0, 1, 2].map((r) => tl!.pivot[r] + R[3 * r] * rel[0] + R[3 * r + 1] * rel[1] + R[3 * r + 2] * rel[2]);
+                const off = Math.hypot(...on.map((v, r) => v - vec(scratch.site_xpos, site, 3)[r])) / MM;
+                if (off > TILT_PATH_MM) {
+                  log.push(`${t.toFixed(2)} tilt: ${h.body} is ${off.toFixed(0)} mm off the path of its last tilt; starting from where it is`);
+                  tl = null;
+                } else {
+                  // from where it is: a tilt ends a degree or two off, and one stopped half way much further
+                  if (Math.abs(now - tl.deg) > TILT_UPRIGHT_DEG) log.push(`${t.toFixed(2)} tilt: ${h.body} stopped at ${now.toFixed(0)}° of a tilt to ${tl.deg}°; carrying on from there`);
+                  tl = { ...tl, deg: now };
+                }
               }
               if (!tl) {
                 const o = env.spec.objects.find((x) => env.names[x.id] === h.body);
@@ -404,6 +415,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             } finally {
               scratch.delete();
             }
+            setTilted({ ...tl!, deg: op.deg }); // the path, should the run stop on the way
             for (let w = 0; w < op.seconds; w += dt) {
               const f = (w / op.seconds) * n;
               const j = Math.min(n - 1, Math.floor(f));
