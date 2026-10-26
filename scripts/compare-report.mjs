@@ -18,6 +18,11 @@ const argv = process.argv.slice(2);
 const JSON_OUT = argv.includes("--json") ? path.resolve(ROOT, argv[argv.indexOf("--json") + 1]) : null;
 /** the compile route's own client timeout */
 const ROUTE_TIMEOUT_S = 25;
+/**
+ * What a complete source holds, so a table never sits under a heading it does not fill: a patch arm runs the 36
+ * bead cases with 6 seeds, a compiler the 20 specs 3 times, a labeller the ISS clip in 7 conditions 5 times.
+ */
+const FULL = { patch: 36 * 6, compile: 20 * 3, label: 7 * 5 };
 
 function wilson(k, n, z = 1.96) {
   if (!n) return [NaN, NaN];
@@ -104,7 +109,7 @@ function patchRow(armId, arm) {
 const patchRows = [];
 /** every arm compared: Nemotron's round-2 arms, then the others; an arm stopped by a cap or a withdrawn model is incomplete: listed, never compared */
 const arms = [...(nemo ? ["r2-super-off", "r2-super-on", "r2-esc-on", "r2-esc-ultra"].filter((a) => nemo.arms[a]).map((a) => [a, nemo.arms[a]]) : []), ...(other ? Object.entries(other.arms) : [])];
-const stoppedArms = arms.filter(([, arm]) => arm.runs.some((r) => r.stopped));
+const stoppedArms = arms.filter(([, arm]) => arm.runs.some((r) => r.stopped) || arm.runs.filter((r) => r.probe !== "pour-liquid").length !== FULL.patch);
 for (const [a, arm] of arms) if (!stoppedArms.some(([s]) => s === a)) patchRows.push(patchRow(a, arm));
 if (patchRows.length) {
   lines.push("\n### Patching: the self-improvement loop of section 8 (round 2), the same 180 solvable failures, 6 seeds, at most 5 patches\n");
@@ -114,15 +119,16 @@ if (patchRows.length) {
   lines.push(`\nSpend on the loop: ${patchRows.map((r) => `${r.arm} ${usd(r.cost_usd, 2)}`).join(", ")}.`);
 }
 
-for (const [a, arm] of stoppedArms) lines.push(`\nLeft out of the patch tables, stopped before the end: ${a} (${arm.runs.filter((r) => r.stopped).length} of ${arm.runs.length} runs stopped: ${arm.runs.find((r) => r.stopped).stopped}).`);
+for (const [a, arm] of stoppedArms) lines.push(`\nLeft out of the patch tables, incomplete: ${a} (${arm.runs.length} of ${FULL.patch} runs${arm.runs.some((r) => r.stopped) ? `; stopped: ${arm.runs.find((r) => r.stopped).stopped}` : ""}).`);
 
 // --- compiling ---------------------------------------------------------------------------------
 const comp = read("bench/results/compare-compile.json");
 if (comp) {
   // Nemotron first, then the others in the order they ran
   // a model stopped by the cap or a withdrawn model is incomplete: listed under the table, never compared
-  const stoppedModels = [...Object.values(comp.models).filter((x) => x.stopped), ...Object.values(comp.stopped ?? {})];
-  const rows = Object.values(comp.models).filter((m) => !m.stopped).sort((a, b) => Number(b.model.startsWith("nvidia/")) - Number(a.model.startsWith("nvidia/"))).map((m) => {
+  const incomplete = (m) => m.stopped || m.runs.length !== FULL.compile;
+  const stoppedModels = [...Object.values(comp.models).filter(incomplete), ...Object.values(comp.stopped ?? {})];
+  const rows = Object.values(comp.models).filter((m) => !incomplete(m)).sort((a, b) => Number(b.model.startsWith("nvidia/")) - Number(a.model.startsWith("nvidia/"))).map((m) => {
     const runs = m.runs;
     const done = runs.filter((r) => r.status === "done");
     const deg = done.filter((r) => r.variant === "degraded");
@@ -163,7 +169,7 @@ if (comp) {
     ["Compiler", "Program back", "First answer clean", "Problems left after the repair round", "Asked for the missing fit itself", "Asked for the missing success check itself", "Asks written for a complete spec (mean)", "Rehearsal passes at 1 g (complete spec)", "Cost per compile", "Model time per compile (median)", `Calls over the route's ${ROUTE_TIMEOUT_S} s`],
     rows.map((r) => [nameOf(r.model), pct(r.done, r.compiles), pctCI(r.first_clean, r.compiles), `${r.problems_left} of ${r.done}`, pctCI(r.asked_fit, r.degraded), pctCI(r.asked_success, r.degraded), r.truth_asks_written.toFixed(1), `${r.rehearsal_pass} of ${r.truth_n}`, usd(r.cost_per_compile, 5), `${r.seconds_per_compile.toFixed(1)} s`, `${r.calls_over_route_timeout} of ${r.calls}`]),
   ));
-  for (const m of stoppedModels) lines.push(`\nLeft out of the compile table, stopped before the end: ${m.model} (${m.stopped}).`);
+  for (const m of stoppedModels) lines.push(`\nLeft out of the compile table, incomplete: ${m.model} (${m.runs.length} of ${FULL.compile} compiles${m.stopped ? `; stopped: ${m.stopped}` : ""}).`);
 }
 
 // --- labelling ---------------------------------------------------------------------------------
@@ -197,8 +203,10 @@ const labelRows = [];
 const nv = read("bench/results/label.json");
 const cl = read("bench/results/compare-label.json");
 // a labelling run stopped by the cap or a withdrawn model is incomplete: listed, never compared
-const labelStopped = [nv, cl].filter((f) => f?.stopped);
-for (const f of [nv, cl]) if (f && !f.stopped) labelRows.push(labelRow(f, f.conditions.model));
+const issLabels = (f) => f.runs.filter((r) => r.clip === "iss" && "abcdefg".includes(r.condition)).length;
+const labelIncomplete = (f) => f.stopped || issLabels(f) !== FULL.label;
+const labelStopped = [nv, cl].filter((f) => f && labelIncomplete(f));
+for (const f of [nv, cl]) if (f && !labelIncomplete(f)) labelRows.push(labelRow(f, f.conditions.model));
 if (labelRows.length) {
   lines.push("\n### Labelling: the ISS seed-film clip, seven input conditions, 5 runs each (35 labels), scored with the rubric of section 6\n");
   lines.push(table(
@@ -208,7 +216,7 @@ if (labelRows.length) {
   lines.push("\nRubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e hint, f thinking on, g 960 px):\n");
   lines.push(table(["Labeller", ..."abcdefg"], labelRows.map((r) => [nameOf(r.model), ...[..."abcdefg"].map((c) => `${Math.round(100 * r.by_condition[c])}%`)])));
 }
-for (const f of labelStopped) lines.push(`\nLeft out of the label tables, stopped before the end: ${f.conditions.model} (${f.stopped}).`);
+for (const f of labelStopped) lines.push(`\nLeft out of the label tables, incomplete: ${f.conditions.model} (${issLabels(f)} of ${FULL.label} labels${f.stopped ? `; stopped: ${f.stopped}` : ""}).`);
 
 console.log(lines.join("\n"));
 if (JSON_OUT) writeFileSync(JSON_OUT, JSON.stringify(out, null, 2) + "\n");
