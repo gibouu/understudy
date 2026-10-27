@@ -39,4 +39,14 @@ describe("tidyLabel", () => {
     expect(warnings).toContain("object a: size_mm [400, 300, 2] is outside 5 to 300 mm");
     expect((data as { open_questions: string[] }).open_questions[0]).toMatch(/^objects\[a\]\.size_mm/);
   });
+
+  it("keeps what fits one arm when it is well formed, and drops it rather than re-ask when it is not (#158)", () => {
+    const kept = tidyLabel({ ...raw([]), hands: "2", on_body: true, one_arm: "  toss it up and catch it  " }, 36);
+    expect(kept.data).toMatchObject({ hands: 2, on_body: true, one_arm: "toss it up and catch it" });
+    const dropped = tidyLabel({ ...raw([]), hands: 3, on_body: "yes", one_arm: "" }, 36);
+    expect(dropped.data).not.toHaveProperty("hands");
+    expect(dropped.data).not.toHaveProperty("on_body");
+    expect(dropped.data).not.toHaveProperty("one_arm");
+    expect(dropped.warnings).toEqual(expect.arrayContaining(["hands 3 is not 1 or 2; left out", 'on_body "yes" is not true or false; left out']));
+  });
 });

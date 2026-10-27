@@ -210,6 +210,12 @@ export const TaskSpec = z.object({
   anchor: z.object({ t_s: z.number().nonnegative(), confidence: z.number().min(0).max(1) }).optional(),
   warnings: z.array(z.string()).default([]),
   open_questions: z.array(z.string()).default([]),
+  /** 2 when the person's two hands work together (one passes, holds or catches for the other); one arm has only one */
+  hands: z.union([z.literal(1), z.literal(2)]).optional(),
+  /** done on the person's own body (face, mouth, hair, skin, clothes worn): an arm would do it to someone else */
+  on_body: z.boolean().optional(),
+  /** when hands is 2 or on_body: the same task as one robot arm could do it, in one line, offered as a rewrite (#158) */
+  one_arm: z.string().optional(),
   /** provenance of top-level fields (title, summary, anchor) changed after labelling */
   sources: Sources,
   provenance: z
