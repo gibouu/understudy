@@ -29,6 +29,11 @@ const clock = (s: number) =>
 const speed = (v: number | null) => (v === null ? "–" : `${v.toFixed(2)} m/s`);
 
 /** Index of the last frame at or before `t`. */
+/** The skeleton's colour beside a label in ink: the colours themselves are too light to read as text (#121). */
+function Swatch({ colour }: { colour: string }) {
+  return <span aria-hidden="true" className="mr-1.5 inline-block size-2 rounded-full align-middle" style={{ background: colour }} />;
+}
+
 function frameAt(frames: TokenFrame[], t: number): number {
   let lo = 0;
   let hi = frames.length - 1;
@@ -321,9 +326,15 @@ export default function WatchPage() {
         </dd>
         <dt className="text-neutral-500">time</dt>
         <dd>{readout ? clock(readout.t_s) : "–"}</dd>
-        <dt style={{ color: COLOURS.left }}>left wrist</dt>
+        <dt className="text-neutral-500">
+          <Swatch colour={COLOURS.left} />
+          left wrist
+        </dt>
         <dd>{speed(readout?.left ?? null)}</dd>
-        <dt style={{ color: COLOURS.right }}>right wrist</dt>
+        <dt className="text-neutral-500">
+          <Swatch colour={COLOURS.right} />
+          right wrist
+        </dt>
         <dd>{speed(readout?.right ?? null)}</dd>
         <dt className="text-neutral-500">samples</dt>
         <dd>
