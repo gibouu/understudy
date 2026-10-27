@@ -1363,6 +1363,137 @@
      "why": "obj1 is 21.4 mm from obj2's centre, not inside it",
      "t": 10.895
     }
+   },
+   "patch": {
+    "program": {
+     "spec_title": "Astronaut places seed film into Veggie plant pillows aboard ISS",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "obj1",
+         "aperture_mm": 6
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "obj1"
+         },
+         "timeout_s": 1
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          55
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          36
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          13
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "obj1"
+         },
+         "timeout_s": 5
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "obj1",
+          "target": "obj2"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": []
+    },
+    "set": {
+     "s2.op4.timeout_s": 5
+    },
+    "changes": [
+     {
+      "name": "s2.op4.timeout_s",
+      "from": 2,
+      "to": 5
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "In orbit, the seed film packet continued moving at 10.2 mm/s after release due to lack of damping, requiring more time to settle than the 2-second timeout allowed.",
+    "expect": "",
+    "note": "",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": false,
+    "escalation": null,
+    "tokens": 1319,
+    "cost_usd": 0.00045
    }
   },
   {
@@ -1609,6 +1740,137 @@
      "pass": true,
      "t": 9.56
     }
+   },
+   "patch": {
+    "program": {
+     "spec_title": "Astronaut places seed film into Veggie plant pillows aboard ISS",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "obj1",
+         "aperture_mm": 6
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "obj1"
+         },
+         "timeout_s": 1
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          55
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          36
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          15
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "obj1"
+         },
+         "timeout_s": 5
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "obj1",
+          "target": "obj2"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": []
+    },
+    "set": {
+     "s2.op2.z_mm": 15
+    },
+    "changes": [
+     {
+      "name": "s2.op2.z_mm",
+      "from": 13,
+      "to": 15
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "In orbit, the seed film packet was released too high (bottom 1.0 mm above pocket floor) and drifted away due to lack of gravity; lowering the insertion depth ensures it seats fully within the pillow.",
+    "expect": "",
+    "note": "",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": false,
+    "escalation": null,
+    "tokens": 1380,
+    "cost_usd": 0.000472
    }
   }
  ],

@@ -10,7 +10,9 @@
  * docs/MEASUREMENTS.md section 8. `unlock` or `sample_token` lets it go live
  * (lib/unlock/check.ts). Replay (no key, ?replay=1, or no way past the spend
  * guard) answers from tests/fixtures/notes.json: the recording for the same
- * program and attempt.
+ * program and attempt. A patch in a sample's showcase recording
+ * (lib/showcase/lookup.ts) for the same spec, program and attempt answers
+ * first, live or not: /try plays it at once.
  */
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -19,6 +21,7 @@ import { callModel } from "@/lib/providers/call";
 import { priced } from "@/lib/providers/price";
 import { MODELS, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { applyPatch, knobsOf } from "@/lib/notes/knobs";
+import { recordedPatch } from "@/lib/showcase/lookup";
 import { failureNote, type WorldRun } from "@/lib/notes/note";
 import { Attempt, escalation, MAX_PATCHES, MAX_TOKENS_OFF, MAX_TOKENS_ON, PATCH_SYSTEM, PatchReply, patchPrompt, type NotePatch } from "@/lib/notes/patch";
 import { GRAVITIES, Predicate, Program, TaskSpec, Vec3mm } from "@/lib/spec/schema";
@@ -69,6 +72,8 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
   const runs = parsed.data.runs as WorldRun[];
   if (runs.every((r) => r.rollout.pass)) return NextResponse.json(failed("every world passed: nothing to patch", false), { status: 400 });
   if (history.length >= MAX_PATCHES) return NextResponse.json(failed(`${MAX_PATCHES} patches already tried`, false), { status: 400 });
+  const recorded = await recordedPatch(spec, program, history.length);
+  if (recorded) return NextResponse.json(recorded);
   if (wantsReplay(req)) return NextResponse.json(replay(program, history.length));
   const gate = await liveGate("notes", body);
   if (!gate.live) return NextResponse.json(explain(replay(program, history.length), gate));

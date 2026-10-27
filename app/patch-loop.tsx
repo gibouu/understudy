@@ -5,11 +5,13 @@ import { outcomeLine, type WorldRun } from "@/lib/notes/note";
 import { MAX_PATCHES, type Attempt, type NotePatch } from "@/lib/notes/patch";
 import { GRAVITIES, type Program, type TaskSpec } from "@/lib/spec/schema";
 import { failed, type StageResult } from "@/lib/spec/stage-result";
+import { usual } from "@/lib/estimate";
 import { gateNote } from "@/lib/unlock/messages";
 import { liveAuth } from "./capture";
+import { Working } from "./working";
 
 /** `replayed`: what the patch line says when it came from a recording, the spend guard's reason when that is why */
-type Iteration = { n: number; state: "asking" | "rehearsing" | "done" | "failed"; patch?: NotePatch; replayed?: string; runs?: WorldRun[]; message?: string };
+type Iteration = { n: number; state: "asking" | "rehearsing" | "done" | "failed"; at: number; patch?: NotePatch; replayed?: string; runs?: WorldRun[]; message?: string };
 
 const WHY_THINKING = { noop: "thinking on: the cheap patch changed nothing", two_failed: "thinking on: two patches failed" } as const;
 
@@ -43,7 +45,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
     let current = program;
     let last = first;
     for (let n = 1; n <= MAX_PATCHES; n++) {
-      setIts((xs) => [...xs, { n, state: "asking" }]);
+      setIts((xs) => [...xs, { n, state: "asking", at: Date.now() }]);
       const r = await post<NotePatch>("/api/notes", { spec, program: current, runs: last, first: outcomeLine(first), history });
       if (id !== gen.current) return;
       onPatch?.(r);
@@ -52,7 +54,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
         break;
       }
       const p = r.value;
-      update(n, { state: "rehearsing", patch: p, replayed: r.warnings.some((w) => w.startsWith("replay")) ? (gateNote(r.warnings) ?? "replayed from a recording") : undefined });
+      update(n, { state: "rehearsing", at: Date.now(), patch: p, replayed: r.warnings.some((w) => w.startsWith("replay")) ? (gateNote(r.warnings) ?? "replayed from a recording") : undefined });
       let runs: WorldRun[];
       try {
         runs = p.noop ? last : await rehearse(p.program);
@@ -100,7 +102,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
                   </span>
                 )}
               </div>
-              {x.state === "asking" && <p className="animate-pulse text-neutral-600">Super is reading the failure note…</p>}
+              {x.state === "asking" && <Working note="Nemotron 3 Super is reading what the simulator measured, to change the numbers of the step that failed" since={x.at} usual={usual("notes", null)} />}
               {x.state === "failed" && <p className="text-red-700">{x.message}</p>}
               {x.patch && (
                 <div className="mt-1 flex flex-col gap-1">
@@ -112,7 +114,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
                   {x.patch.why && <p className="text-neutral-600">{x.patch.why}</p>}
                 </div>
               )}
-              {x.state === "rehearsing" && <p className="animate-pulse text-neutral-600">rehearsing on Earth, then in orbit…</p>}
+              {x.state === "rehearsing" && <Working note="Rehearsing the patch on Earth, then in orbit, in your browser" since={x.at} />}
               {x.runs && (
                 <ul className="mt-1 flex flex-col gap-0.5 text-xs">
                   {x.runs.map(({ world, rollout: r }) => (

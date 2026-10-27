@@ -2,18 +2,22 @@
 
 import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
+import { estimate, usual, type Stage } from "@/lib/estimate";
 import { SAMPLES, type Sample } from "@/lib/samples";
+import { formAnswers, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
+import { Session } from "@/lib/showcase/session";
 import { fitToBench, type Fit } from "@/lib/sim/fit";
 import { formFor } from "@/lib/spec/answer";
 import { applyChanges } from "@/lib/spec/apply";
 import type { Predicate, Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
-import { failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
+import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { gateNote } from "@/lib/unlock/messages";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
 import { withGesturePaths } from "@/lib/vision/trace";
 import { FilmYourself, keepSampleToken, liveAuth, UnlockPrompt } from "./capture";
 import { GroundChips } from "./ground-chips";
 import { ProgramView, type Failure } from "./program-view";
+import { Working } from "./working";
 
 const Rehearsal = dynamic(() => import("./rehearsal").then((m) => m.Rehearsal), {
   ssr: false,
@@ -23,6 +27,20 @@ const Variants = dynamic(() => import("./variants").then((m) => m.Variants), { s
 
 /** Nano asks about one gap per compile; past this many rounds the page stops asking. */
 const MAX_ROUNDS = 6;
+
+/** What each stage is doing and why, one line each. */
+const LINES: Record<Exclude<Stage, "notes">, string> = {
+  recorded: "Opening the recording of this clip",
+  proxy: "Making a small copy of the clip in your browser, 480 px wide at 4 frames a second, so it uploads quickly",
+  watch: "Nemotron 3.5 Super VL is watching the clip on Token Factory, to name the objects and the steps",
+  trace: "MediaPipe is tracing the hand in your browser, so the arm can follow the same path",
+  compile: "Nemotron 3 Nano is writing the robot's program, with a question for each number it would have to guess",
+};
+
+/** The clip being worked on: a sample (with its showcase recording, when it has one) or a clip of your own. */
+type Clip = { blob: Blob; url: string; sample?: Sample; rec?: Session | null };
+type Box = "label" | "program";
+type Clock = { stage: Stage; at: number };
 
 type Ask = Extract<ProgramOp, { op: "ask" }>;
 const asksOf = (p: Program): Ask[] => p.steps.flatMap((s) => s.ops).filter((op): op is Ask => op.op === "ask");
@@ -37,7 +55,10 @@ async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
 }
 
 export function Flow() {
-  const [clip, setClip] = useState<{ blob: Blob; url: string } | null>(null);
+  const [clip, setClip] = useState<Clip | null>(null);
+  const [duration, setDuration] = useState<number | null>(null);
+  /** the stage running in each box, and Date.now() when it began */
+  const [clock, setClock] = useState<Record<Box, Clock>>({ label: { stage: "proxy", at: 0 }, program: { stage: "compile", at: 0 } });
   const [hint, setHint] = useState("");
   const [label, setLabel] = useState<StageResult<TaskSpec>>(idle());
   const [fit, setFit] = useState<Fit | null>(null);
@@ -53,6 +74,7 @@ export function Flow() {
 
   function reset() {
     gen.current++;
+    setClock((x) => ({ label: { ...x.label, at: 0 }, program: { ...x.program, at: 0 } }));
     setLabel(idle());
     setFit(null);
     setSpec(null);
@@ -63,12 +85,13 @@ export function Flow() {
     setFailure(null);
   }
 
-  function choose(blob: Blob, nextHint: string) {
+  function choose(blob: Blob, nextHint: string, sample?: Sample, rec?: Session | null) {
     pick.current++; // a sample still loading must not replace this clip
     setClip((prev) => {
       if (prev) URL.revokeObjectURL(prev.url);
-      return { blob, url: URL.createObjectURL(blob) };
+      return { blob, url: URL.createObjectURL(blob), sample, rec };
     });
+    setDuration(null);
     setHint(nextHint);
     reset();
   }
@@ -76,43 +99,84 @@ export function Flow() {
   async function loadSample(s: Sample) {
     const id = ++pick.current;
     try {
-      const r = await fetch(`/samples/${s.name}.mp4`);
+      // the recording /space plays, when this sample has one: the compiles and answers below come from it
+      const [r, rec] = await Promise.all([
+        fetch(`/samples/${s.name}.mp4`),
+        fetch(`/showcase/${s.name}.json`)
+          .then((x) => (x.ok ? x.json() : null))
+          .then((raw) => Session.safeParse(raw).data ?? null)
+          .catch(() => null),
+      ]);
       if (!r.ok) throw new Error(`the sample did not load (HTTP ${r.status})`);
       const blob = await r.blob();
-      if (id === pick.current) choose(blob, s.hint);
+      if (id === pick.current) choose(blob, s.hint, s, rec);
     } catch (err) {
       if (id === pick.current) setLabel(failed((err as Error).message));
     }
   }
 
-  async function compile(next: TaskSpec, previous?: Program) {
+  /** A stage starts in a box: its line shows and its clock restarts; tracing's frame counts keep its clock running. */
+  function step(box: Box, stage: Exclude<Stage, "notes">, note: string = LINES[stage]) {
+    setClock((x) => (stage === "trace" && x[box].stage === "trace" && x[box].at > 0 ? x : { ...x, [box]: { stage, at: Date.now() } }));
+    if (box === "label") setLabel(running(note));
+    else setProgram(running(note));
+  }
+
+  /** `fresh`: ask Nano even when the recording has this spec ("Ask Nano again"). */
+  async function compile(next: TaskSpec, previous?: Program, fresh = false) {
     const id = gen.current;
-    setProgram(running("Nano is writing the robot's program"));
     setFailure(null);
+    const turn = !fresh && clip?.rec ? turnFor(clip.rec, next) : null;
+    if (turn && clip?.rec) {
+      // the recording compiled exactly this spec: its program, and the answers given to its asks
+      setProgram(done(turn.program, [recordedNote(clip.rec, "compile"), ...turn.warnings]));
+      setAnswers(formAnswers(next, turn));
+      return;
+    }
+    step("program", "compile");
     const r = await post<Program>("/api/compile", { spec: next, previous });
     if (id !== gen.current) return;
     setProgram(r);
     setAnswers({});
   }
 
+  /** The label from the sample's recording, when the line typed is still the one it was recorded with; null to label live. */
+  async function recordedLabel(c: Clip): Promise<StageResult<TaskSpec> | null> {
+    if (!c.sample || hint.trim() !== c.sample.hint) return null;
+    step("label", "recorded");
+    const r = await post<TaskSpec>("/api/label", { clip_sha256: await clipSha256(c.blob), recorded: true });
+    return r.status === "done" ? r : null;
+  }
+
   async function watch() {
     if (!clip) return;
     reset();
     const id = gen.current;
-    setLabel(running("making a small copy of the clip in your browser"));
-    // without a proxy the route can still answer from its recording of this clip
-    const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: await clipSha256(clip.blob) }));
+    let labelled = await recordedLabel(clip);
     if (id !== gen.current) return;
-    setLabel(running("Super VL is watching the clip"));
-    const labelled = await post<TaskSpec>("/api/label", { ...body, hint });
-    if (id !== gen.current) return;
+    if (!labelled) {
+      step("label", "proxy");
+      // without a proxy the route can still answer from its recording of this clip
+      const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: await clipSha256(clip.blob) }));
+      if (id !== gen.current) return;
+      step("label", "watch");
+      labelled = await post<TaskSpec>("/api/label", { ...body, hint });
+      if (id !== gen.current) return;
+    }
     keepSampleToken((labelled as { sample_token?: string }).sample_token);
+    // the recording's own label keeps its recorded fit, so the recorded compiles match it exactly
+    const rec = clip.rec && labelled.status === "done" && same(clip.rec.label.spec, labelled.value) ? clip.rec : null;
     // a gesture's hand path is measured here, in the browser, before the fit
-    const { result: r, notes: traced } = await withGesturePaths(labelled, clip.blob, (note) => id === gen.current && setLabel(running(note)));
+    const { result: r, notes: traced } = rec
+      ? { result: labelled, notes: [] }
+      : await withGesturePaths(labelled, clip.blob, (note) => {
+          const frame = /frame \d+ of \d+/.exec(note)?.[0];
+          if (id === gen.current) step("label", "trace", frame ? `${LINES.trace}: ${frame}` : LINES.trace);
+        });
     if (id !== gen.current) return;
     setLabel(r);
     if (r.status !== "done") return;
-    const f = fitToBench(r.value);
+    const f = rec ? { spec: rec.fit.spec, warnings: [...rec.fit.warnings] } : fitToBench(r.value);
     f.warnings.unshift(...traced);
     setFit(f);
     setSpec(f.spec);
@@ -166,15 +230,18 @@ export function Flow() {
         </div>
         {clip && (
           <div className="mt-3 flex flex-col gap-3">
-            <video src={clip.url} controls muted playsInline className="max-h-72 w-full rounded-lg bg-black object-contain" />
+            <video src={clip.url} controls muted playsInline onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)} className="max-h-72 w-full rounded-lg bg-black object-contain" />
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-neutral-600">What is the person doing? One line helps the model name the objects.</span>
               <input value={hint} onChange={(e) => setHint(e.target.value)} maxLength={200} className="rounded border px-3 py-1.5" placeholder="e.g. putting a capped marker into a pen holder" />
             </label>
-            <div>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <button className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40" disabled={label.status === "running"} onClick={watch}>
                 Watch the clip
               </button>
+              <span className="text-sm text-neutral-600">
+                {clip.sample && hint.trim() === clip.sample.hint ? "Recorded, so it plays at once; the rehearsal runs live in your browser." : duration ? `This takes about ${estimate(duration)} for your own video, and a few seconds for each answer.` : null}
+              </span>
             </div>
           </div>
         )}
@@ -182,7 +249,7 @@ export function Flow() {
 
       {label.status !== "idle" && (
         <Section n={2} title="What the model saw" model="Nemotron 3.5 Super VL">
-          <Status result={label} />
+          <Status result={label} clock={clock.label} duration={duration} />
           {label.status === "failed" && <UnlockPrompt message={label.message} onUnlock={watch} />}
           {label.status === "done" && <SpecSummary spec={label.value} />}
         </Section>
@@ -214,7 +281,7 @@ export function Flow() {
 
       {program.status !== "idle" && spec && (
         <Section n={4} title="Questions from the robot" model="Nemotron 3 Nano">
-          <Status result={program} />
+          <Status result={program} clock={clock.program} duration={duration} />
           {program.status === "done" && asks.length === 0 && <p className="text-sm text-emerald-700">No open questions: the program has everything it needs.</p>}
           {program.status === "done" && asks.length > 0 && turn < MAX_ROUNDS && (
             <form
@@ -224,6 +291,7 @@ export function Flow() {
                 answer(asks);
               }}
             >
+              {recordedLine(program.warnings) && Object.keys(answers).length > 0 && <p className="text-xs text-neutral-500">The answers given when this clip was recorded are filled in. Change one and Nano answers live.</p>}
               {asks.map((a) => (
                 <AskField key={a.slot} ask={a} spec={spec} value={answers[a.slot] ?? ""} onChange={(v) => setAnswers({ ...answers, [a.slot]: v })} />
               ))}
@@ -243,7 +311,7 @@ export function Flow() {
             </div>
           )}
           {program.status !== "running" && (
-            <button className="self-start text-xs text-neutral-500 underline" onClick={() => compile(spec, program.status === "done" ? program.value : undefined)}>
+            <button className="self-start text-xs text-neutral-500 underline" onClick={() => compile(spec, program.status === "done" ? program.value : undefined, true)}>
               Ask Nano again
             </button>
           )}
@@ -282,9 +350,11 @@ function Section({ n, title, model, children }: { n: number; title: string; mode
   );
 }
 
-function Status<T>({ result }: { result: StageResult<T> }) {
-  if (result.status === "running") return <p className="animate-pulse text-sm text-neutral-600">{result.note}…</p>;
+function Status<T>({ result, clock, duration }: { result: StageResult<T>; clock: Clock; duration: number | null }) {
+  if (result.status === "running") return <Working note={result.note ?? "working"} since={clock.at} usual={usual(clock.stage, duration)} />;
   if (result.status === "failed") return <p className="text-sm text-red-700">{result.message}</p>;
+  const recorded = result.status === "done" ? recordedLine(result.warnings) : undefined;
+  if (recorded) return <p className="mb-2 text-xs text-neutral-500">{recorded}</p>;
   if (result.status === "done" && result.warnings.some((w) => w.startsWith("replay"))) return <p className="mb-2 text-xs text-amber-700">{gateNote(result.warnings) ?? "replayed from a recording"}</p>;
   return null;
 }

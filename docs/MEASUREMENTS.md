@@ -255,6 +255,26 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 
 On the first sample clip (a slower palm wave, replaced because an agency placard and flags were in view, so these numbers are no longer reproducible from the repository), at the clip's own pace the joints turned at up to 2.9 rad/s and the arm reached 238 of 240 points within 5 mm, the farthest 5.2 mm off; held to 2 rad/s it reached all 240 within 1.1 mm. That is where the cap comes from; it was chosen in the simulator, not from a real servo. The reach box, 240 mm across and z 200 to 330 mm in the plane x = 220 mm, is checked corner by corner and with a circle that fills it, at 1 g and 0 g (`tests/sim/follow.test.ts`). Live spend for this section, about US$0.04: Super VL labels of the two sample clips and of two camera takes while the label prompt and clean-up were tuned, and three Nano compiles before a program made only of gestures stopped needing a model.
 
+## 12. How long /try takes
+
+Measured on 27 October 2026 in the app's browser (Chrome 152, Electron) on an Apple M4, from the moment "Watch the clip" is pressed: the stage lines' changes timed every 100 ms in the page. The sample rows are the deployed site, https://understudy-rose.vercel.app/try, live (a sample clip needs no code); each sample ran once or twice. The deployed page cannot open a file from this Mac without a file picker, so the 8 s 1080p phone-style clip (H.264 High, 30 fps, 12 Mbit/s, with sound, made from `samples/iss-glovebox-pipette.mp4` scaled up) ran on a local server of the same branch, still calling Token Factory live: the proxy runs in the browser either way, and Super VL sees the same 480 px, 4 fps copy whatever the phone filmed.
+
+| Clip | Where | Proxy in the browser | Super VL (upload and watch) | Tracing the hand (MediaPipe) | Nano's first program | To the program |
+|---|---|---|---|---|---|---|
+| 36 s ISS, 720p (`iss-veggie-seed-film`) | deployed | 0.7 s | 17.4 s | | 4.6 s | 22.7 s |
+| 36 s ISS, 720p (`iss-veggie-seed-film-2`), two runs | deployed | 0.6 to 1.4 s | 9.0 to 18.7 s | | 1.5 to 4.3 s | 11.2 to 24.5 s |
+| 10.8 s ISS, 720p (`iss-glovebox-pipette`), two runs | deployed | 0.1 to 0.3 s | 6.7 to 8.5 s | | 1.7 to 3.0 s | 10.0 to 10.9 s |
+| 10.2 s ISS, 720p (`iss-fluid-bag-foam`) | deployed | 0.3 s | 5.9 s | | 2.0 s | 8.3 s |
+| 8 s phone-style, 1080p, three runs | local server, live models | 0.4 to 0.5 s | 3.7 to 12.7 s | | 1.8 to 3.0 s | 6.1 to 16.0 s |
+| 6 s ISS wave, 720p (`iss-wave`) | deployed | 0.1 s | 5.2 s | 12.1 s (3.8 s to load MediaPipe, then 180 frames) | 0.2 s (no model) | 17.7 s |
+| 30 s ISS chess, 720p (`dev-clip`), labelled as a gesture that run | deployed | 0.8 s | 8.4 s | 50.2 s | 0.2 s (no model) | 60.3 s |
+
+Each model call in today's recordings (`public/showcase/*.json`, from node on the same Mac): Super VL 1.7 to 7.0 s (median 5.7 s, 8 calls); Nano 1.2 to 4.6 s but for one call of 35.7 s (13 calls); Super's patches 0.7 to 1.1 s with thinking off and 7.7 to 16.7 s with it on (13 calls). Each interview answer is one more Nano call.
+
+What the page says comes from these rows (`lib/estimate.ts`): beside each stage's clock, "usually" a range that grows with the clip for the proxy (0.1 + 0.01 s to 1 + 0.04 s per clip second), Super VL (3 + 0.15 s to 10 + 0.3 s per clip second) and the trace (3 + 1.2 s to 5 + 1.8 s per clip second), and 1.5 to 10 s for Nano and 1 to 17 s for a patch; before "Watch the clip", for a clip of your own, the proxy, Super VL and Nano's first program added up: "This takes about 5 to 25 seconds for your own video" for 8 s, 10 to 35 seconds for 36 s, 20 to 65 seconds for the longest the page takes (120 s). On this Mac the proxy was the shortest stage; on a slower one its clock now shows how long it takes.
+
+A sample with a recording skips all of this: on a local server each of the six reached its program 0.05 to 0.10 s after "Watch the clip", and veggie's two Notes patches came back in 0.4 s each; the rehearsals still run in the browser. The five new recordings were made on 27 October with Nemotron 3.5 Super VL, Nemotron 3 Nano and Nemotron 3 Super, which leave Token Factory serverless on 9 November: US$0.031 for the five kept, about US$0.04 with three runs that stopped (Nano's first answer did not parse once, Super VL's label failed its schema twice). The wave's hand path was traced once in the browser against its recorded label and handed to the recorder, which cannot run MediaPipe. Where they end: the drink bag passes after the interview, chess and the first seed film pass after Notes, the wave's path is followed on Earth and in orbit; the pipette and the second seed film still fail after five patches, and are kept as they came out.
+
 ## Reproduce
 
 Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend.

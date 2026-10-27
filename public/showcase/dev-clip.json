@@ -1,0 +1,1488 @@
+{
+ "version": 1,
+ "clip": {
+  "name": "dev-clip",
+  "duration_s": 30.033,
+  "sha256": "003ac4964bb5ef9e3d7a2c92140e16d2e2eec8ca599f0098dc734f9c5aa482bf"
+ },
+ "hint": "aboard the ISS, chess match",
+ "recorded_at": "2026-10-27T06:22:17.590Z",
+ "models": {
+  "vl": "nvidia/Nemotron-3.5-Super-VL",
+  "nano": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+  "super": "nvidia/nemotron-3-super-120b-a12b"
+ },
+ "label": {
+  "spec": {
+   "version": 1,
+   "title": "Astronaut presents chess set aboard ISS",
+   "summary": "An astronaut aboard the International Space Station holds a magnetic chess board with pieces arranged, talks to camera, gestures with both hands, moves a chess piece by hand, and lets it float away.",
+   "objects": [
+    {
+     "id": "obj1",
+     "name": "chess board",
+     "shape": "box",
+     "size_mm": [
+      400,
+      300,
+      20
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       600,
+       0,
+       900
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.5,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "obj2",
+     "name": "chess pieces",
+     "shape": "cylinder",
+     "size_mm": [
+      40,
+      40,
+      60
+     ],
+     "symmetry": "axial",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       700,
+       0,
+       950
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.5,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "obj3",
+     "name": "ISS wall panel",
+     "shape": "box",
+     "size_mm": [
+      2000,
+      2000,
+      200
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       1000,
+       0,
+       1000
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.6,
+     "source": "vl#seg1",
+     "sources": {}
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "gesture",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "gesture": {
+      "hand": "right",
+      "path": [],
+      "reach_mm": 5
+     },
+     "t_start_s": 0,
+     "t_end_s": 4,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "grasp",
+     "object": "obj2",
+     "target": {
+      "fixture": "zone",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 4,
+     "t_end_s": 5.5,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "s3",
+     "verb": "place",
+     "object": "obj2",
+     "target": {
+      "fixture": "zone",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 5.5,
+     "t_end_s": 6,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "s4",
+     "verb": "retract",
+     "object": "obj2",
+     "target": {
+      "fixture": "zone",
+      "frame": "obj3"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 6,
+     "t_end_s": 7,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "s5",
+     "verb": "gesture",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "gesture": {
+      "hand": "left",
+      "path": [],
+      "reach_mm": 5
+     },
+     "t_start_s": 7,
+     "t_end_s": 12,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "s6",
+     "verb": "gesture",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "gesture": {
+      "hand": "right",
+      "path": [],
+      "reach_mm": 5
+     },
+     "t_start_s": 12,
+     "t_end_s": 16,
+     "source": "vl#seg1",
+     "sources": {}
+    }
+   ],
+   "anchor": {
+    "t_s": 4,
+    "confidence": 0.5
+   },
+   "warnings": [
+    "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+   ],
+   "open_questions": [
+    "What are the exact poses and sizes of the chess board and pieces in mm? What is the world origin relative to the scene? Are there any pockets or holders on the chess board?",
+    "objects[obj1].size_mm: is chess board really [400, 300, 20] mm?",
+    "objects[obj3].size_mm: is ISS wall panel really [2000, 2000, 200] mm?"
+   ],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "003ac4964bb5ef9e3d7a2c92140e16d2e2eec8ca599f0098dc734f9c5aa482bf",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "warnings": [
+   "step s1: a gesture has no target; {\"fixture\":\"zone\",\"frame\":\"obj3\"} dropped",
+   "step s2: a \"grasp\" step has no gesture block; dropped",
+   "step s3: a \"place\" step has no gesture block; dropped",
+   "step s4: a \"retract\" step has no gesture block; dropped",
+   "step s5: a gesture has no target; {\"fixture\":\"zone\",\"frame\":\"obj3\"} dropped",
+   "step s6: a gesture has no target; {\"fixture\":\"zone\",\"frame\":\"obj3\"} dropped",
+   "object obj1: size_mm [400, 300, 20] is outside 5 to 300 mm",
+   "object obj3: size_mm [2000, 2000, 200] is outside 5 to 300 mm",
+   "steps[0].gesture.path: step \"s1\" is a gesture with no path yet: the hand's path is traced from the clip",
+   "steps[4].gesture.path: step \"s5\" is a gesture with no path yet: the hand's path is traced from the clip",
+   "steps[5].gesture.path: step \"s6\" is a gesture with no path yet: the hand's path is traced from the clip"
+  ],
+  "cost_usd": 0.004907,
+  "seconds": 8.73
+ },
+ "fit": {
+  "spec": {
+   "version": 1,
+   "title": "Astronaut presents chess set aboard ISS",
+   "summary": "An astronaut aboard the International Space Station holds a magnetic chess board with pieces arranged, talks to camera, gestures with both hands, moves a chess piece by hand, and lets it float away.",
+   "objects": [
+    {
+     "id": "obj2",
+     "name": "chess pieces",
+     "shape": "cylinder",
+     "size_mm": [
+      40,
+      40,
+      40
+     ],
+     "symmetry": "axial",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.5,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "obj1",
+     "name": "chess board",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      20
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       10
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.5,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "obj2",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 4,
+     "t_end_s": 5.5,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "place",
+     "object": "obj2",
+     "target": {
+      "fixture": "zone",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 5.5,
+     "t_end_s": 6,
+     "source": "vl#seg1",
+     "sources": {}
+    }
+   ],
+   "warnings": [
+    "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+   ],
+   "open_questions": [],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "003ac4964bb5ef9e3d7a2c92140e16d2e2eec8ca599f0098dc734f9c5aa482bf",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "warnings": [
+   "obj2: size [40, 40, 60] mm scaled to [40, 40, 40] mm for the robot's jaws and reach",
+   "obj1: size [400, 300, 20] mm scaled to [150, 150, 20] mm for the robot's jaws and reach",
+   "left out of the rehearsal: ISS wall panel",
+   "rehearsing step s2 and step s3 of 6"
+  ]
+ },
+ "turns": [
+  {
+   "program": {
+    "spec_title": "Astronaut presents chess set aboard ISS",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj2",
+        "aperture_mm": 40
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "steps[s2].success",
+        "question": "When does putting the chess pieces in the chess board count as done?",
+        "why": "the step has no success check"
+       },
+       {
+        "op": "ask",
+        "slot": "steps[s2].tolerances.x_mm",
+        "question": "What tolerance should be allowed on the placement offset to consider the piece correctly placed on the chess board?",
+        "why": "No tolerance band defined for placement accuracy."
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         31
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj2"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj2",
+         "target": "obj1"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+    ]
+   },
+   "warnings": [
+    "step s2: check target \"zone\" read as obj1",
+    "added an ask for steps[s2].success: the rehearsal needs it"
+   ],
+   "asks": [
+    {
+     "slot": "steps[s2].success",
+     "question": "When does putting the chess pieces in the chess board count as done?",
+     "why": "the step has no success check"
+    },
+    {
+     "slot": "steps[s2].tolerances.x_mm",
+     "question": "What tolerance should be allowed on the placement offset to consider the piece correctly placed on the chess board?",
+     "why": "No tolerance band defined for placement accuracy."
+    }
+   ],
+   "answers": [
+    {
+     "slot": "steps[s2].success",
+     "text": "the chess pieces ends up in the chess board and stays there",
+     "change": {
+      "path": "steps[s2].success",
+      "value": [
+       {
+        "kind": "inside_zone",
+        "object": "obj2",
+        "target": "obj1"
+       },
+       {
+        "kind": "object_still",
+        "object": "obj2"
+       }
+      ],
+      "source": "interview#1"
+     }
+    },
+    {
+     "slot": "steps[s2].tolerances.x_mm",
+     "text": "5 mm",
+     "change": {
+      "path": "steps[s2].tolerances.x_mm",
+      "value": 5,
+      "source": "interview#1"
+     }
+    }
+   ]
+  },
+  {
+   "program": {
+    "spec_title": "Astronaut presents chess set aboard ISS",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj2",
+        "aperture_mm": 40
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj2"
+        }
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         31
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj2"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj2",
+         "target": "obj1"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+    ]
+   },
+   "warnings": [
+    "dropped an ask for steps[s2].tolerances.x_mm: the spec already sets it"
+   ],
+   "asks": [],
+   "answers": []
+  }
+ ],
+ "iterations": [
+  {
+   "source": "compile",
+   "program": {
+    "spec_title": "Astronaut presents chess set aboard ISS",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj2",
+        "aperture_mm": 40
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "steps[s2].success",
+        "question": "When does putting the chess pieces in the chess board count as done?",
+        "why": "the step has no success check"
+       },
+       {
+        "op": "ask",
+        "slot": "steps[s2].tolerances.x_mm",
+        "question": "What tolerance should be allowed on the placement offset to consider the piece correctly placed on the chess board?",
+        "why": "No tolerance band defined for placement accuracy."
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         31
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj2"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj2",
+         "target": "obj1"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "Astronaut presents chess set aboard ISS",
+    "summary": "An astronaut aboard the International Space Station holds a magnetic chess board with pieces arranged, talks to camera, gestures with both hands, moves a chess piece by hand, and lets it float away.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "chess pieces",
+      "shape": "cylinder",
+      "size_mm": [
+       40,
+       40,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj1",
+      "name": "chess board",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       20
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 4,
+      "t_end_s": 5.5,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj2",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 5.5,
+      "t_end_s": 6,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "003ac4964bb5ef9e3d7a2c92140e16d2e2eec8ca599f0098dc734f9c5aa482bf",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [],
+   "why": "Nano's first program for the fitted spec, with 2 open questions",
+   "cost_usd": 0.000302,
+   "seconds": 3.15,
+   "results": {
+    "earth": {
+     "pass": false,
+     "failed_step_id": "s1",
+     "failed_op": 3,
+     "failure_class": "embodiment_limit",
+     "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+     "t": 3.49
+    },
+    "orbit": {
+     "pass": false,
+     "failed_step_id": "s1",
+     "failed_op": 3,
+     "failure_class": "embodiment_limit",
+     "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.2 mm",
+     "t": 3.49
+    }
+   }
+  },
+  {
+   "source": "interview",
+   "program": {
+    "spec_title": "Astronaut presents chess set aboard ISS",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj2",
+        "aperture_mm": 40
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj2"
+        }
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         31
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj2"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj2",
+         "target": "obj1"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "Astronaut presents chess set aboard ISS",
+    "summary": "An astronaut aboard the International Space Station holds a magnetic chess board with pieces arranged, talks to camera, gestures with both hands, moves a chess piece by hand, and lets it float away.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "chess pieces",
+      "shape": "cylinder",
+      "size_mm": [
+       40,
+       40,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj1",
+      "name": "chess board",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       20
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 4,
+      "t_end_s": 5.5,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj2",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+       {
+        "kind": "inside_zone",
+        "object": "obj2",
+        "target": "obj1"
+       },
+       {
+        "kind": "object_still",
+        "object": "obj2"
+       }
+      ],
+      "tolerances": {
+       "x_mm": 5
+      },
+      "t_start_s": 5.5,
+      "t_end_s": 6,
+      "source": "vl#seg1",
+      "sources": {
+       "success": "interview#1",
+       "tolerances.x_mm": "interview#1"
+      }
+     }
+    ],
+    "warnings": [
+     "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "003ac4964bb5ef9e3d7a2c92140e16d2e2eec8ca599f0098dc734f9c5aa482bf",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [
+    "when \"place the chess pieces\" counts as done: the chess pieces ends up in the chess board and stays there",
+    "how far off \"place the chess pieces\" may land (x): 5 mm"
+   ],
+   "why": "answers to: When does putting the chess pieces in the chess board count as done? What tolerance should be allowed on the placement offset to consider the piece correctly placed on the chess board?",
+   "cost_usd": 0.000264,
+   "seconds": 1.98,
+   "results": {
+    "earth": {
+     "pass": false,
+     "failed_step_id": "s1",
+     "failed_op": 3,
+     "failure_class": "embodiment_limit",
+     "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+     "t": 3.49
+    },
+    "orbit": {
+     "pass": false,
+     "failed_step_id": "s1",
+     "failed_op": 3,
+     "failure_class": "embodiment_limit",
+     "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.2 mm",
+     "t": 3.49
+    }
+   }
+  },
+  {
+   "source": "notes",
+   "program": {
+    "spec_title": "Astronaut presents chess set aboard ISS",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj2",
+        "aperture_mm": 40
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         38.9
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj2"
+        }
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         31
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj2"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj2",
+         "target": "obj1"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "Astronaut presents chess set aboard ISS",
+    "summary": "An astronaut aboard the International Space Station holds a magnetic chess board with pieces arranged, talks to camera, gestures with both hands, moves a chess piece by hand, and lets it float away.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "chess pieces",
+      "shape": "cylinder",
+      "size_mm": [
+       40,
+       40,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj1",
+      "name": "chess board",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       20
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 4,
+      "t_end_s": 5.5,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj2",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+       {
+        "kind": "inside_zone",
+        "object": "obj2",
+        "target": "obj1"
+       },
+       {
+        "kind": "object_still",
+        "object": "obj2"
+       }
+      ],
+      "tolerances": {
+       "x_mm": 5
+      },
+      "t_start_s": 5.5,
+      "t_end_s": 6,
+      "source": "vl#seg1",
+      "sources": {
+       "success": "interview#1",
+       "tolerances.x_mm": "interview#1"
+      }
+     }
+    ],
+    "warnings": [
+     "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "003ac4964bb5ef9e3d7a2c92140e16d2e2eec8ca599f0098dc734f9c5aa482bf",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [
+    "the height of the move to the chess pieces (s1 op 3): 50 → 38.9 mm"
+   ],
+   "why": "The system is out of reach by ~11.1–11.2 mm when trying to lift the piece to 50 mm above its center, indicating the target height is too high for the arm’s range.",
+   "cost_usd": 0.000434,
+   "seconds": 1.01,
+   "results": {
+    "earth": {
+     "pass": true,
+     "t": 5.97
+    },
+    "orbit": {
+     "pass": true,
+     "t": 5.97
+    }
+   },
+   "patch": {
+    "program": {
+     "spec_title": "Astronaut presents chess set aboard ISS",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "obj2",
+         "aperture_mm": 40
+        },
+        {
+         "op": "move_to",
+         "frame": "obj2",
+         "offset_mm": [
+          0,
+          0,
+          38.9
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "obj2"
+         }
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "obj1",
+         "offset_mm": [
+          0,
+          0,
+          31
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "obj2"
+         },
+         "timeout_s": 2
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "obj2",
+          "target": "obj1"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": [
+      "No objects are actually manipulated or moved during the clip; poses and sizes are estimated from video without scale reference and may be inaccurate."
+     ]
+    },
+    "set": {
+     "s1.op3.z_mm": 38.9
+    },
+    "changes": [
+     {
+      "name": "s1.op3.z_mm",
+      "from": 50,
+      "to": 38.9
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "The system is out of reach by ~11.1–11.2 mm when trying to lift the piece to 50 mm above its center, indicating the target height is too high for the arm’s range.",
+    "expect": "Reducing the target height to 38.9 mm will bring the piece within reach, allowing successful placement on the board in both Earth and orbit conditions.",
+    "note": "earth (1 g): FAIL after 3.5 s at s1 op 3 (move_to obj2 (0, 0, 50) mm from the top), embodiment limit.\n  Measured: move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm.\n  At the end: obj2's centre at (28.3, -202.2, 6.7) mm from obj1's centre, its bottom 23.3 mm below obj1's top, moving at 0.5 mm/s, still held, not seated: obj2 is 204.2 mm from obj1's centre, not inside it.\norbit (0 g): FAIL after 3.5 s at s1 op 3 (move_to obj2 (0, 0, 50) mm from the top), embodiment limit.\n  Measured: move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.2 mm.\n  At the end: obj2's centre at (28.5, -202.4, 7.2) mm from obj1's centre, its bottom 22.8 mm below obj1's top, moving at 0.5 mm/s, still held, not seated: obj2 is 204.4 mm from obj1's centre, not inside it.",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": false,
+    "escalation": null,
+    "tokens": 1237,
+    "cost_usd": 0.0004341
+   }
+  }
+ ],
+ "pending": [],
+ "ledger": [
+  {
+   "stage": "label",
+   "model": "nvidia/Nemotron-3.5-Super-VL",
+   "prompt_tokens": 5554,
+   "completion_tokens": 907,
+   "cached_tokens": 0,
+   "seconds": 4.88,
+   "usd": 0.0024825
+  },
+  {
+   "stage": "label",
+   "model": "nvidia/Nemotron-3.5-Super-VL",
+   "prompt_tokens": 6581,
+   "completion_tokens": 1080,
+   "cached_tokens": 2176,
+   "seconds": 3.85,
+   "usd": 0.00242406
+  },
+  {
+   "stage": "compile",
+   "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+   "prompt_tokens": 2991,
+   "completion_tokens": 510,
+   "seconds": 3.15,
+   "usd": 0.00030186
+  },
+  {
+   "stage": "compile",
+   "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+   "prompt_tokens": 3039,
+   "completion_tokens": 339,
+   "seconds": 1.98,
+   "usd": 0.0002637
+  },
+  {
+   "stage": "notes",
+   "model": "nvidia/nemotron-3-super-120b-a12b",
+   "prompt_tokens": 1132,
+   "completion_tokens": 105,
+   "cached_tokens": 0,
+   "seconds": 1.01,
+   "usd": 0.0004341
+  }
+ ],
+ "total_usd": 0.005906
+}
