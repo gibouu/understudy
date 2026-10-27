@@ -147,12 +147,28 @@ export function normalizeSpec(raw: unknown): Normalized {
     // fit drops retract steps anyway, so a bare one is left out rather than asked again. One while the hand
     // may still hold something, or with a destination, a path or checks of its own, stays for the schema to reject.
     const letGo = (s: unknown) => isRec(s) && (s.verb === "release" || s.verb === "place" || s.verb === "insert");
-    const handEmpty = (before: unknown[]) => letGo(before.findLast((s) => isRec(s) && (s.verb === "grasp" || letGo(s))));
+    const time = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
+    /**
+     * In clip time, not answer order (the label is sorted by time later): the grasp or let-go that ended last
+     * before this step starts is a let-go. Missing times, or none ended before, count as the hand not empty.
+     */
+    const handEmpty = (r: Rec, all: unknown[]) => {
+      const start = time(r.t_start_s);
+      let last: Rec | undefined;
+      let lastEnd = -Infinity;
+      for (const s of all) {
+        if (s === r || !isRec(s) || !(s.verb === "grasp" || letGo(s))) continue;
+        const end = time(s.t_end_s);
+        if (!(end <= start)) continue;
+        if (end >= lastEnd) [last, lastEnd] = [s, end];
+      }
+      return letGo(last);
+    };
     const bare = (s: Rec) => (["target", "via_points", "success", "preconditions", "tolerances"] as const).every((k) => s[k] == null || (Array.isArray(s[k]) ? s[k].length === 0 : isRec(s[k]) && Object.keys(s[k]).length === 0));
     const raw = spec.steps;
     const steps = raw.filter((s: unknown, i: number) => {
       if (!isRec(s) || s.verb !== "retract" || (s.object !== undefined && s.object !== null && s.object !== "")) return true;
-      if (!handEmpty(raw.slice(0, i)) || !bare(s)) return true;
+      if (!handEmpty(s, raw) || !bare(s)) return true;
       warnings.push(`step ${typeof s.id === "string" ? s.id : i}: a retract with no object, after the hand let go, left out`);
       return false;
     });

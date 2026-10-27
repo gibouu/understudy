@@ -223,6 +223,9 @@ describe("answers from own clips", () => {
   it("a retract while the hand may hold something, or with a destination or checks, is still asked about", () => {
     const regrasp = [{ ...minimalSpec.steps[0], id: "s3", t_start_s: 3.1, t_end_s: 3.3 }, { id: "s4", verb: "retract", object: null, t_start_s: 3.3, t_end_s: 3.6 }];
     expect(() => parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, ...regrasp] }), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
+    // listed after the insert but timed before it: in the clip the marker is still held
+    const listedLate = { id: "s3", verb: "retract", object: null, t_start_s: 1.0, t_end_s: 1.4 };
+    expect(() => parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, listedLate] }), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
     const away = { id: "s3", verb: "retract", object: null, target: { fixture: "zone", frame: "rack" }, t_start_s: 3.1, t_end_s: 3.5 };
     expect(() => parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, away] }), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
     const early = { id: "s0", verb: "retract", object: null, t_start_s: 0, t_end_s: 0.5 };
