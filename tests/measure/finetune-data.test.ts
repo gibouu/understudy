@@ -131,6 +131,8 @@ describe.skipIf(process.env.FINETUNE_BUILD !== "1")("fine-tune dataset (build)",
       // no held-out case reaches training, validation or the pairs
       const test = new Set(built.test_cases);
       for (const e of [...built.train, ...built.val, ...built.pairs.map((p) => p.prompt)]) expect(test.has(e.case_id)).toBe(false);
+      // and the held-out prompts come from those cases only
+      for (const e of built.heldout) expect(test.has(e.case_id)).toBe(true);
       const trainPrompts = new Set(built.train.map((e) => e.user));
       for (const e of built.val) expect(trainPrompts.has(e.user)).toBe(false);
 
@@ -140,6 +142,8 @@ describe.skipIf(process.env.FINETUNE_BUILD !== "1")("fine-tune dataset (build)",
         "train.meta.jsonl": built.train.map((e) => JSON.stringify(metaLine(e))).join("\n") + "\n",
         "val.jsonl": built.val.map((e) => JSON.stringify(chat(e))).join("\n") + "\n",
         "val.meta.jsonl": built.val.map((e) => JSON.stringify(metaLine(e))).join("\n") + "\n",
+        "heldout.jsonl": built.heldout.map((e) => JSON.stringify(chat(e))).join("\n") + "\n",
+        "heldout.meta.jsonl": built.heldout.map((e) => JSON.stringify(metaLine(e))).join("\n") + "\n",
         "pairs.jsonl": built.pairs.map((p) => JSON.stringify(pairLine(p))).join("\n") + "\n",
       };
       for (const [name, body] of Object.entries(files)) writeFileSync(path.join(OUT, name), body);
@@ -148,7 +152,7 @@ describe.skipIf(process.env.FINETUNE_BUILD !== "1")("fine-tune dataset (build)",
         dataset: "patch-loop repairs, chat format",
         built_from: { file: "bench/results/patch-loop.json", sha256: createHash("sha256").update(readFileSync(RESULTS)).digest("hex") },
         builder: "tests/measure/finetune-data.ts (FINETUNE_BUILD=1 node_modules/.bin/vitest run tests/measure/finetune-data.test.ts)",
-        split: { by: "case (probe/gravity/disturbance), every seed on one side", salt: SPLIT_SALT, test_cases: testCases, validation: "about 1 prompt in 20 of the training cases, by a hash of the prompt" },
+        split: { by: "case (probe/gravity/disturbance), every seed on one side", salt: SPLIT_SALT, test_cases: testCases, validation: "about 1 prompt in 20 of the training cases, by a hash of the prompt", heldout: "repairs on the held-out cases, one per prompt, at most 150 by a hash of the prompt: for the one-patch check only, never uploaded for training" },
         files: Object.fromEntries(Object.entries(files).map(([name, body]) => [name, { lines: body.split("\n").length - 1, bytes: Buffer.byteLength(body), sha256: createHash("sha256").update(body).digest("hex") }])),
         ...built.stats,
         build_s: Math.round((performance.now() - t0) / 1000),

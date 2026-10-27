@@ -2,7 +2,7 @@
 
 Goal (gib, 26 October 2026, issue #97): by the end of the week, a first small fine-tune of one Nemotron model on our own repairs, measured against the same model with our prompts on the same failures.
 
-**Status, 26 October:** the dataset is built from the saved patch-loop runs and the call log now keeps every request and answer in full. gib approved up to US$30 of AI Cloud (one H100, eu-north1) for the Nano LoRA and its evaluation endpoint. The job is ready in `jobs/finetune-nano/` and waits for the AI Cloud account, billing and CLI login, which are gib's. No training has run and nothing has been spent.
+**Status, 27 October, 02:35 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`, up to US$30 approved by gib) waits for gib's AI Cloud account and moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), is trained: job `ftjob-5c66a1b7020e4bd493d808e9a104853e` waited 11 hours in a queue, trained 40 steps in 49 minutes and cost US$12.20. It cannot be measured: Token Factory serves a tuned model only on a dedicated endpoint with custom weights, and the endpoint request was refused because a custom-weights id comes only from the beta Support enables (section 5). No tuned result exists; the baselines are in section 5.
 
 ## 1. Where to fine-tune on Nebius
 
@@ -102,7 +102,68 @@ The job, its config and the endpoint script are in `jobs/finetune-nano/` with th
 
 ## 4. Result
 
-None yet: no training has run.
+No tuned model yet. The baselines are in section 5.
+
+## 5. A stand-in on Token Factory
+
+gib asked on 26 October for a fine-tune on Token Factory itself while Nemotron cannot be tuned there; the Nemotron Nano LoRA moves to issue #122, to be paid with the AI Builders credit he applied for.
+
+**Why not Nemotron there.** Token Factory's fine-tuning list still has no NVIDIA model (checked again on 26 October, section 1).
+
+**The model: `Qwen/Qwen3-30B-A3B-Instruct-2507`.** It is on the list with LoRA and full fine-tuning ([models](https://docs.tokenfactory.nebius.com/post-training/models.md)), it has Nano's shape (30B total, 3B active, US$0.10 and US$0.30 per 1M tokens), and #96 measured it on our harness as Nano's stand-in: a clean first program in 98% of compiles against Nano's 55 to 70%. `openai/gpt-oss-120b` (LoRA too) is the fallback.
+
+**Cost.** No public page or API gives the supervised fine-tuning price (the docs, the public catalog and the API were searched; the API lists only speculative-draft training, 5.0 with no unit). The signed-in console does, under Billing, Prices, eu-north1, as read by the lead for gib on 26 October: LoRA or full fine-tuning of this model US$2.8 per 1M tokens up to 32K context (US$5 at 65K and 131K); a dedicated endpoint US$4.7 per GPU-hour on an H100 and US$5.6 on an H200; balance US$588.12, gib's cap for this work US$100. Token Factory wants at least 131,072 tokens a batch (a first create was refused with a 422 saying so), so at the shortest context, 8,192, the batch is 16 packed sequences, about 7 steps an epoch for our 0.90 million tokens: the job runs 5 epochs (about 35 steps) at a LoRA learning rate of 2e-4, rank 16. Estimate with a 10% margin for Qwen's tokenizer: 4.95 million tokens, US$13.85.
+
+**Serving.** Serverless serves base models only and a tuned model needs custom weights on a dedicated endpoint, a beta Support enables on request ([custom weights](https://docs.tokenfactory.nebius.com/ai-models-inference/dedicated-endpoints/custom-weights.md)); gib asked Support on 26 October at 13:55. Two routes that need no endpoint are tried first by `scripts/finetune-tf.mjs try-serve`: the checkpoint id on the serverless API, and the adapter registered as a LoRA model through `/v0/models`, the route of Token Factory's cookbook `AddLora.ipynb` (the console lists serverless LoRA prices for some models, not seen for this one). For an endpoint, `endpoint-create` reserves its lifetime on the ledger and starts a watchdog that deletes it at the deadline, as on the AI Cloud route.
+
+**Guards.** `scripts/finetune-tf.mjs` refuses to create the job without the console's price and the current balance, and when the estimate would take the balance under the US$15 the live demo needs. It marks the job pending before the paid request, charges the estimate on the bench ledger as soon as the job starts and anything it trained beyond that once at the end; a create whose answer is lost blocks any other create until `adopt` takes the new job or `release --confirm-no-job` gives the reservation back, so a second paid job cannot start by accident (tested against a local stand-in for Token Factory, `tests/providers/finetune-tf.test.ts`).
+
+**The baselines, measured before any training (US$0.22 on the ledger).** The closed loop on the 11 held-out cases, seeds 1 to 12, 5 patches, thinking off (`bench/results/finetune-eval.json`):
+
+| Patcher, held-out cases | Fixed within 5 patches | Fixed on the first patch | Cost per fixed case |
+|---|---|---|---|
+| Nemotron 3 Nano, Token Factory | 29% [22 to 37] (38 of 132) | 8% | US$0.0014 |
+| Qwen3 30B-A3B, Token Factory | 73% [65 to 80] (97 of 132) | 19% | US$0.0005 |
+| Nemotron 3 Super, thinking off (seeds 1 to 6, section 3) | 70% [58 to 79] (46 of 66) | 26% | US$0.0014 |
+| Nemotron 3 Super, thinking on (seeds 1 to 6, section 3) | 95% [87 to 98] (63 of 66) | 48% | US$0.0029 |
+
+One patch: the model's patch is applied to the same program and rolled out (`tests/measure/finetune-single.test.ts`, `bench/results/finetune-single.json`); every recorded repair passes again first, so a fix is within reach of each prompt. On held-out repair prompts, the repairs recorded on the 11 held-out cases (`bench/finetune/heldout.jsonl`, 150 of the 318 such prompts, picked by a hash; never trained on):
+
+| Model, thinking off | Pass with one patch | Spend |
+|---|---|---|
+| Nemotron 3 Nano | 9% [6 to 15] (14 of 150) | US$0.0133 |
+| Nemotron 3 Super | 47% [39 to 55] (70 of 150) | US$0.0567 |
+| Qwen3 30B-A3B | 35% [28 to 43] (53 of 150) | US$0.0192 |
+
+On the 55 in-distribution validation prompts (`val.jsonl`): their cases and seeds are in training and the fine-tune job reports its validation loss on them, so they are no ground for a tuned-against-base claim:
+
+| Model, thinking off | Pass with one patch | Spend |
+|---|---|---|
+| Nemotron 3 Nano | 20% [12 to 32] (11 of 55) | US$0.0044 |
+| Nemotron 3 Super | 47% [35 to 60] (26 of 55) | US$0.0190 |
+| Qwen3 30B-A3B | 60% [47 to 72] (33 of 55) | US$0.0066 |
+
+What this says before any training. On the held-out cases plain Qwen3 30B-A3B repairs about as many failures as Super with thinking off within five patches (73% against 70%), at a third of its cost per fix, but its single patches are worse (35% against 47% held out, 19% against 26% first patches in the loop): it gets there by trying more. Nano is far behind both (the case for tuning Nano in #122). The in-distribution prompts flatter Qwen (60% against Super's 47%), which is why they are kept out of any claim. The headline comparison is the closed loop on the 11 held-out cases: a tuned Qwen has to beat 73% within 5 patches and 19% on the first patch, and 35% on the held-out single patches.
+
+**The training.** Job `ftjob-5c66a1b7020e4bd493d808e9a104853e` was submitted on 26 October at 13:09 UTC; its training and validation files were processed by 13:12, and it then waited in a queue (no step, no error, no estimate) until training started at 00:24 UTC on 27 October; it completed at 01:13 UTC, 40 steps, and succeeded at 01:15. It trained 4,357,240 tokens: US$12.20 at US$2.8 per 1M (the ledger keeps the US$13.85 estimate charged at the start, which errs high). One checkpoint an epoch:
+
+| Checkpoint | Train loss | Validation loss (the 55 in-distribution prompts) |
+|---|---|---|
+| step 8 | 1.381 | 0.789 |
+| step 16 | 0.965 | 0.698 |
+| step 24 | 0.718 | 0.654 |
+| step 32 | 0.571 | 0.635 |
+| step 40 | 0.494 | 0.631 |
+
+The validation loss still falls, barely, at the last epoch: no sign of over-fitting on those prompts, which says nothing about the held-out cases.
+
+**Serving.** `try-serve` on 27 October at 01:15 UTC: the checkpoint id on the serverless API answers 404 ("does not exist"), and the cookbook's `/v0/models/upload` route answers 404 too, so neither serves a LoRA of this model without an endpoint. A dedicated endpoint was then asked for directly, without waiting for Support (the lead's call for gib, 27 October): `endpoint-create --custom-weights-id ftckpt_6120136c-631d-41c6-ae65-10d6303a4dc8 --minutes 90` (the step-40 checkpoint, one H200, at most US$8.40) at 01:29 UTC. Token Factory refused it before creating anything, word for word:
+
+> HTTP 422: {"detail":[{"type":"value_error","loc":["body","custom_weights_id"],"msg":"Value error, custom_weights_id must start with 'model-artifact_'","input":"ftckpt_6120136c-631d-41c6-ae65-10d6303a4dc8","ctx":{"error":{}}}]}
+
+The checkpoint's other id (`ft:...`) has the same problem, and nothing in the public API makes a `model-artifact_` id (the live `openapi.json`, version 20261022, has no such route; the docs name only the custom-weights beta that Support enables on request). So the tuned model cannot be served on Token Factory until Support answers (asked on 26 October at 13:55 and 17:35 Paris), and it is not measured. The reservation was released: the attempt cost nothing. When an artifact id exists, the rest is ready: `endpoint-create` with it, the arm `ft-qwen-ft` on the 11 held-out cases (seeds 1 to 12) and the held-out one-patch check, then `endpoint-delete`.
+
+**Spend on the stand-in:** US$12.20 for the training (US$13.85 on the ledger, its estimate), US$0.22 for the baselines, US$0 for serving.
 
 ## Reproduce
 
