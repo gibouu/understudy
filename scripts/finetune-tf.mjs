@@ -32,7 +32,7 @@
 // State (file ids, job id, price, checkpoints, losses; no key) is kept in bench/results/finetune-tf.json.
 // The key comes from UNDERSTUDY_ENV_FILE (default .env.local), as in every bench script.
 import { spawn } from "node:child_process";
-import { closeSync, existsSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { createHash } from "node:crypto";
 import path from "node:path";
@@ -67,7 +67,12 @@ const opt = (name) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const state = () => (existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : { base_model: BASE_MODEL });
-const save = (s) => writeFileSync(STATE, JSON.stringify(s, null, 2) + "\n");
+/** write a temporary file and rename it over: a reader sees the old state or the new one, never a half-written file */
+const save = (s) => {
+  const tmp = `${STATE}.${process.pid}.tmp`;
+  writeFileSync(tmp, JSON.stringify(s, null, 2) + "\n");
+  renameSync(tmp, STATE);
+};
 const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
 
 /**
@@ -328,9 +333,15 @@ async function main() {
     // everything it needs comes in its arguments: it acts on its own endpoint only, whatever the state file says later
     const [id, reservation, created, deadline, perHour] = args.slice(1);
     while (Date.now() < Number(deadline)) await new Promise((r) => setTimeout(r, Math.min(20_000, Math.max(50, Number(deadline) - Date.now()))));
-    // deleted by hand already: nothing to do (the state still names it, marked deleted, and its charge is settled)
-    const now = state();
-    if (now.endpoint?.id === id && now.endpoint.deleted && settled(reservation)) return console.log(`${new Date().toISOString()} endpoint ${id} was deleted by hand; the watchdog stops`);
+    // deleted by hand already: nothing to do (the state still names it, marked deleted, and its charge is settled);
+    // a state it cannot read is no reason to skip the delete
+    let now = null;
+    try {
+      now = state();
+    } catch {
+      now = null;
+    }
+    if (now?.endpoint?.id === id && now.endpoint.deleted && settled(reservation)) return console.log(`${new Date().toISOString()} endpoint ${id} was deleted by hand; the watchdog stops`);
     client();
     if (!(await deleteEndpoint(id))) {
       process.exitCode = 1;
@@ -349,11 +360,14 @@ async function main() {
     const tf = client();
     const job = await tf.fineTuning.jobs.retrieve(s.job.id);
     const checkpoints = ((await tf.fineTuning.jobs.checkpoints.list(job.id)).data ?? []).map((c) => ({ id: c.id, step: c.step_number, model: c.fine_tuned_model_checkpoint, metrics: c.metrics }));
+    // the job's own events (submitted, datasets processed, training started and completed), kept as the record
+    const events = ((await tf.fineTuning.jobs.listEvents(job.id, { limit: 100 }).catch(() => ({ data: [] }))).data ?? []).map((e) => ({ at: new Date(e.created_at * 1000).toISOString(), level: e.level, message: e.message }));
     // re-read under the lock: what other commands wrote meanwhile (an endpoint, try-serve) stays
     const now = await lockedWait(async () => {
       const cur = state();
       Object.assign(cur.job, { status: job.status, trained_tokens: job.trained_tokens ?? null, trained_steps: job.trained_steps ?? null, total_steps: job.total_steps ?? null, estimated_finish: job.estimated_finish ?? null, finished_at: job.finished_at ?? null, error: job.error ?? null });
       cur.checkpoints = checkpoints;
+      if (events.length) cur.events = events.sort((a, b) => a.at.localeCompare(b.at));
       if (["succeeded", "failed", "cancelled"].includes(job.status)) {
         // the estimate was charged at the start; what the job trained beyond it is charged once, under its own id
         const usd = ((job.trained_tokens ?? 0) / 1e6) * cur.job.usd_per_mtok;
@@ -404,7 +418,7 @@ async function startEndpoint(s, ep) {
     child = null;
   }
   if (!child) {
-    await deleteEndpoint(ep.id);
+    if (!(await deleteEndpoint(ep.id))) throw new Error(`the watchdog could not start and endpoint ${ep.id} could not be deleted: delete it in the console now (its reservation stays open)`);
     await settleEndpoint(s.endpoint, true);
     throw new Error(`the watchdog could not start, so endpoint ${ep.id} was deleted at once`);
   }

@@ -88,5 +88,32 @@
       "id": null,
       "detail": "\"Not Found\""
     }
-  }
+  },
+  "events": [
+    {
+      "at": "2026-10-26T13:09:39.000Z",
+      "level": "info",
+      "message": "Job is submitted"
+    },
+    {
+      "at": "2026-10-26T13:11:36.000Z",
+      "level": "info",
+      "message": "Dataset 'training' processed successfully"
+    },
+    {
+      "at": "2026-10-26T13:12:19.000Z",
+      "level": "info",
+      "message": "Dataset 'validation' processed successfully"
+    },
+    {
+      "at": "2026-10-27T00:24:50.000Z",
+      "level": "info",
+      "message": "Training started"
+    },
+    {
+      "at": "2026-10-27T01:13:42.000Z",
+      "level": "info",
+      "message": "Training completed successfully"
+    }
+  ]
 }
