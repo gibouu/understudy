@@ -21249,3 +21249,5 @@
 {"t":"2026-10-26T16:18:09.926Z","script":"finetune-eval","usd":0.0001127,"meta":{"model":"Qwen/Qwen3-30B-A3B-Instruct-2507","stage":"single","set":"heldout","item":149,"prompt_tokens":863,"completion_tokens":88},"settles":"74109-mvpgnjmp-ch-36shay"}
 {"t":"2026-10-27T01:15:46.345Z","type":"reserve","id":"27811-mvpzuxbd-0-mt15o5","script":"finetune-tf","usd":0.00013,"meta":{"model":"ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40","stage":"try-serve"}}
 {"t":"2026-10-27T01:15:46.400Z","script":"finetune-tf","usd":0,"meta":{"model":"ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40","stage":"try-serve","failed":true,"status":404},"settles":"27811-mvpzuxbd-0-mt15o5"}
+{"t":"2026-10-27T01:29:06.965Z","type":"reserve","id":"39503-mvq0c32t-0-c7xmcd","script":"finetune-tf","usd":8.4,"meta":{"stage":"endpoint","minutes":90,"usd_per_gpu_hour":5.6}}
+{"t":"2026-10-27T01:29:07.191Z","type":"release","id":"39503-mvq0c32t-0-c7xmcd"}

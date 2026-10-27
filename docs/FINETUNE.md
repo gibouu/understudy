@@ -2,7 +2,7 @@
 
 Goal (gib, 26 October 2026, issue #97): by the end of the week, a first small fine-tune of one Nemotron model on our own repairs, measured against the same model with our prompts on the same failures.
 
-**Status, 27 October, 02:20 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`, up to US$30 approved by gib) waits for gib's AI Cloud account and moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), is trained: job `ftjob-5c66a1b7020e4bd493d808e9a104853e` waited 11 hours in a queue, trained 40 steps in 49 minutes and cost US$12.20. It cannot be served yet: Token Factory serves a tuned model only on a dedicated endpoint with custom weights, which waits for Support. Nothing tuned has been measured yet; the baselines are in section 5.
+**Status, 27 October, 02:35 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`, up to US$30 approved by gib) waits for gib's AI Cloud account and moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), is trained: job `ftjob-5c66a1b7020e4bd493d808e9a104853e` waited 11 hours in a queue, trained 40 steps in 49 minutes and cost US$12.20. It cannot be measured: Token Factory serves a tuned model only on a dedicated endpoint with custom weights, and the endpoint request was refused because a custom-weights id comes only from the beta Support enables (section 5). No tuned result exists; the baselines are in section 5.
 
 ## 1. Where to fine-tune on Nebius
 
@@ -157,7 +157,13 @@ What this says before any training. On the held-out cases plain Qwen3 30B-A3B re
 
 The validation loss still falls, barely, at the last epoch: no sign of over-fitting on those prompts, which says nothing about the held-out cases.
 
-**Serving.** `try-serve` on 27 October at 01:15 UTC: the checkpoint id on the serverless API answers 404 ("does not exist"), and the cookbook's `/v0/models/upload` route answers 404 too, so neither serves a LoRA of this model without an endpoint. The tuned model is measured once Support switches custom weights on (asked on 26 October at 13:55 and 17:35 Paris): `endpoint-create` with the checkpoint, the arms `ft-qwen-ft` (closed loop, 11 held-out cases, seeds 1 to 12) and the held-out one-patch check, then `endpoint-delete`.
+**Serving.** `try-serve` on 27 October at 01:15 UTC: the checkpoint id on the serverless API answers 404 ("does not exist"), and the cookbook's `/v0/models/upload` route answers 404 too, so neither serves a LoRA of this model without an endpoint. A dedicated endpoint was then asked for directly, without waiting for Support (the lead's call for gib, 27 October): `endpoint-create --custom-weights-id ftckpt_6120136c-631d-41c6-ae65-10d6303a4dc8 --minutes 90` (the step-40 checkpoint, one H200, at most US$8.40) at 01:29 UTC. Token Factory refused it before creating anything, word for word:
+
+> HTTP 422: {"detail":[{"type":"value_error","loc":["body","custom_weights_id"],"msg":"Value error, custom_weights_id must start with 'model-artifact_'","input":"ftckpt_6120136c-631d-41c6-ae65-10d6303a4dc8","ctx":{"error":{}}}]}
+
+The checkpoint's other id (`ft:...`) has the same problem, and nothing in the public API makes a `model-artifact_` id (the live `openapi.json`, version 20261022, has no such route; the docs name only the custom-weights beta that Support enables on request). So the tuned model cannot be served on Token Factory until Support answers (asked on 26 October at 13:55 and 17:35 Paris), and it is not measured. The reservation was released: the attempt cost nothing. When an artifact id exists, the rest is ready: `endpoint-create` with it, the arm `ft-qwen-ft` on the 11 held-out cases (seeds 1 to 12) and the held-out one-patch check, then `endpoint-delete`.
+
+**Spend on the stand-in:** US$12.20 for the training (US$13.85 on the ledger, its estimate), US$0.22 for the baselines, US$0 for serving.
 
 ## Reproduce
 
