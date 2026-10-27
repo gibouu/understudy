@@ -64,6 +64,16 @@ describe("callModel", () => {
     expect((sent[1].messages as unknown[]).length).toBe(4);
   });
 
+  it("repeats the answer's shape when it asks again (#149)", async () => {
+    const { client, sent } = fake(["no json", '{"n":3}']);
+    await callModel(client, { ...opts, shape: '{"n":number}' });
+    const again = (sent[1].messages as { content: string }[]).at(-1)!.content;
+    expect(again).toContain('The shape is {"n":number}.');
+    const { client: c2, sent: s2 } = fake(["no json", '{"n":3}']);
+    await callModel(c2, opts);
+    expect((s2[1].messages as { content: string }[]).at(-1)!.content).not.toContain("The shape is");
+  });
+
   it("keeps the previous value after a second unusable answer, else fails", async () => {
     const kept = await callModel(fake(["no", '{"n":"x"}']).client, { ...opts, previous: { n: 0 } });
     expect(kept).toMatchObject({ status: "done", value: { n: 0 } });

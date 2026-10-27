@@ -147,6 +147,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
         user: `Task spec:\n${JSON.stringify(spec.data)}\n\nMoves for this spec:\n${geometry(spec.data)}`,
         maxTokens: 3000,
         schema: Program,
+        shape: `{"spec_title":string,"steps":[{"step_id":string,"ops":[op, ...]}, ...],"warnings":[string]}: every entry of steps is an object with step_id and ops, and warnings is a key of the answer, after the closing bracket of steps`,
         normalize: normalizeProgram,
         check: (p) => lintProgram(resolveFixtureNames(p, spec.data).program, spec.data),
         previous,

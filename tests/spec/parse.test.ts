@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { extractJson, jsonCandidates, ModelOutputError, parseModelJson, stripLeadingThink } from "@/lib/spec/parse";
+import { tidyLabel } from "@/lib/spec/label";
 import { normalizeProgram, normalizeSpec } from "@/lib/spec/normalize";
 import { Envelope, InterviewTurn, Program, TaskSpec } from "@/lib/spec/schema";
 
@@ -173,5 +174,70 @@ describe("parseModelJson", () => {
   });
   it("works with a plain zod schema too", () => {
     expect(parseModelJson("[1,2,3]", z.array(z.number())).value).toEqual([1, 2, 3]);
+  });
+});
+
+/** What live models wrote for clips of people's own (#149, docs/MEASUREMENTS.md section 14). */
+describe("answers from own clips", () => {
+  const step = (id: string) => ({ step_id: id, ops: [{ op: "release" }] });
+
+  it("a key of the program closed inside steps is put back, in either form", () => {
+    // Nemotron 3.5 Lightning: ..."steps": [{s1}, {s2}, "warnings"]}
+    const slip = JSON.stringify({ spec_title: "t", steps: [step("s1"), step("s2"), "warnings"] });
+    const a = parseModelJson(slip, Program, { normalize: normalizeProgram });
+    expect(a.value.steps.map((s) => s.step_id)).toEqual(["s1", "s2"]);
+    expect(a.value.warnings).toEqual([]);
+    expect(a.warnings.join(" ")).toMatch(/closed one place late/);
+    const held = JSON.stringify({ spec_title: "t", steps: [step("s1"), { warnings: ["scale unknown"] }] });
+    expect(parseModelJson(held, Program, { normalize: normalizeProgram }).value).toMatchObject({ steps: [{ step_id: "s1" }], warnings: ["scale unknown"] });
+  });
+
+  it("a step written as a JSON string is read; any other string still fails", () => {
+    const asText = JSON.stringify({ spec_title: "t", steps: [JSON.stringify(step("s1"))] });
+    expect(parseModelJson(asText, Program, { normalize: normalizeProgram }).value.steps[0].step_id).toBe("s1");
+    expect(() => parseModelJson(JSON.stringify({ spec_title: "t", steps: ["s1"] }), Program, { normalize: normalizeProgram })).toThrow(ModelOutputError);
+  });
+
+  it("null reads as unset in a label, a pose without coordinates is left out", () => {
+    // Nemotron 3.5 Super VL: "target": null on a grasp, "pocket_clearance_mm": null, "pose": {"yaw_deg": 0}
+    const raw = {
+      ...minimalSpec,
+      anchor: null,
+      objects: [{ ...minimalSpec.objects[0], pose: { yaw_deg: 0 }, pocket_clearance_mm: null }, { ...minimalSpec.objects[1], pose: null }],
+      steps: [{ ...minimalSpec.steps[0], target: null }, minimalSpec.steps[1]],
+    };
+    const r = parseModelJson(JSON.stringify(raw), TaskSpec, { normalize: normalizeSpec });
+    expect(r.value.steps[0].target).toBeUndefined();
+    expect(r.value.objects.map((o) => o.pose)).toEqual([undefined, undefined]);
+    expect(r.warnings).toEqual(expect.arrayContaining(["spec: null anchor read as unset", "step s1: null target read as unset", 'object "rack": null pose read as unset', 'object "marker": a pose without xyz_mm left out', 'object "marker": null pocket_clearance_mm read as unset']));
+  });
+
+  // the retract rule reads the label's cleaned timeline, so it is tidyLabel's (lib/spec/label.ts)
+  const label = (steps: unknown[]) => parseModelJson(JSON.stringify({ ...minimalSpec, steps }), TaskSpec, { normalize: (raw) => tidyLabel(raw, 10) });
+  const retract = (id: string, t0: number, t1: number, extra: object = {}) => ({ id, verb: "retract", object: null, t_start_s: t0, t_end_s: t1, ...extra });
+  const NO_OBJECT = /only a gesture step has no object/;
+
+  it("a retract that names no object, after the hand let go, is left out; a grasp with none still fails", () => {
+    const r = label([...minimalSpec.steps, retract("s3", 3.1, 3.5)]);
+    expect(r.value.steps.map((s) => s.id)).toEqual(["s1", "s2"]);
+    expect(r.warnings).toContain("step s3: a retract with no object, after the hand let go, left out");
+    expect(() => label([{ ...minimalSpec.steps[0], object: null }, minimalSpec.steps[1]])).toThrow(NO_OBJECT);
+  });
+
+  it("a retract while the hand may hold something, or with a destination or checks, is still asked about", () => {
+    expect(() => label([retract("s0", 0, 0.5), ...minimalSpec.steps])).toThrow(NO_OBJECT);
+    // listed after the insert but timed before it: in the clip the marker is still held
+    expect(() => label([...minimalSpec.steps, retract("s3", 1.0, 1.4)])).toThrow(NO_OBJECT);
+    // a grasp that overlaps the release is moved after it by the clean-up: the hand holds something again
+    const grasp = { id: "g2", verb: "grasp", object: "marker", t_start_s: 2, t_end_s: 3 };
+    const release = { id: "r1", verb: "release", object: "marker", t_start_s: 1, t_end_s: 4 };
+    expect(() => label([minimalSpec.steps[0], release, grasp, retract("s4", 4, 5)])).toThrow(NO_OBJECT);
+    expect(() => label([...minimalSpec.steps, retract("s3", 3.1, 3.5, { target: { fixture: "zone", frame: "rack" } })])).toThrow(NO_OBJECT);
+    expect(() => label([...minimalSpec.steps, retract("s3", 3.1, 3.5, { success: [{ kind: "object_still", object: "marker" }] })])).toThrow(NO_OBJECT);
+  });
+
+  it("an insert or a place with a null target is still asked about", () => {
+    const raw = { ...minimalSpec, steps: [minimalSpec.steps[0], { ...minimalSpec.steps[1], target: null }] };
+    expect(() => parseModelJson(JSON.stringify(raw), TaskSpec, { normalize: normalizeSpec })).toThrow(/steps\.1\.target/);
   });
 });

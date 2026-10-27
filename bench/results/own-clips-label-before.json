@@ -1,0 +1,1304 @@
+{
+ "when": "2026-10-27T08:00:32.204Z",
+ "results": [
+  {
+   "clip": "foam-portrait-8s",
+   "sha256": "639993fc542cb36d52bb8407a55a85c7262a12bef900b6a9cace0466158842aa",
+   "run": 0,
+   "hint": "squeezing a drink bag so juice flows into a foam block",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "object work_surface: size_mm [600, 400, 3] is outside 5 to 300 mm",
+     "object delivery_tube: size_mm [4, 4, 200] is outside 5 to 300 mm",
+     "objects[0].pose: object \"drink_bag\" has no nominal pose; the scene builder will lay it out",
+     "objects[1].pose: object \"foam_block\" has no nominal pose; the scene builder will lay it out",
+     "objects[2].pose: object \"work_surface\" has no nominal pose; the scene builder will lay it out",
+     "objects[3].pose: object \"delivery_tube\" has no nominal pose; the scene builder will lay it out"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2043,
+      "completion_tokens": 820,
+      "seconds": 3.051,
+      "content": "{\n  \"version\": 1,\n  \"title\": \"Squeezing a drink bag so juice flows into a foam block\",\n  \"summary\": \"A person squeezes a silver drink bag with both hands while a tube directs liquid into a large white foam block on a blue work surface. After squeezing, the bag is placed down on the surface.\",\n  \"objects\": [\n    {\n      \"id\": \"drink_bag\",\n      \"name\": \"drink bag\",\n      \"shape\": \"box\",\n      \"size_mm\": [120, 80, 15],\n      \"symmetry\": \"none\",\n      \"role\": \"manipulated\",\n      \"confidence\": 0.6,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"foam_block\",\n      \"name\": \"foam block\",\n      \"shape\": \"box\",\n      \"size_mm\": [220, 110, 40],\n      \"symmetry\": \"none\",\n      \"role\": \"fixture\",\n      \"confidence\": 0.8,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"work_surface\",\n      \"name\": \"work surface\",\n      \"shape\": \"box\",\n      \"size_mm\": [600, 400, 3],\n      \"symmetry\": \"none\",\n      \"role\": \"surface\",\n      \"confidence\": 0.9,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"delivery_tube\",\n      \"name\": \"delivery tube\",\n      \"shape\": \"cylinder\",\n      \"size_mm\": [4, 4, 200],\n      \"symmetry\": \"axial\",\n      \"role\": \"fixture\",\n      \"confidence\": 0.7,\n      \"source\": \"vl#seg1\"\n    }\n  ],\n  \"steps\": [\n    {\n      \"id\": \"s1\",\n      \"verb\": \"grasp\",\n      \"object\": \"drink_bag\",\n      \"target\": null,\n      \"t_start_s\": 0.0,\n      \"t_end_s\": 0.5,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"s2\",\n      \"verb\": \"move\",\n      \"object\": \"drink_bag\",\n      \"target\": {\"fixture\": \"zone\", \"frame\": \"foam_block\"},\n      \"t_start_s\": 0.5,\n      \"t_end_s\": 4.0,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"s3\",\n      \"verb\": \"place\",\n      \"object\": \"drink_bag\",\n      \"target\": {\"fixture\": \"zone\", \"frame\": \"work_surface\"},\n      \"t_start_s\": 4.0,\n      \"t_end_s\": 5.0,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"s4\",\n      \"verb\": \"retract\",\n      \"object\": null,\n      \"target\": null,\n      \"t_start_s\": 5.0,\n      \"t_end_s\": 6.0,\n      \"source\": \"vl#seg1\"\n    }\n  ],\n  \"anchor\": {\"t_s\": 0.2, \"confidence\": 0.9},\n  \"warnings\": [\n    \"No visible scale reference; object dimensions are estimates\",\n    \"Drink bag is very thin (15 mm) near lower bound of allowed size range\"\n  ],\n  \"open_questions\": [\n    \"Exact dimensions of drink bag, foam block, and work surface not measurable without scale\",\n    \"pocket_clearance_mm not applicable as no pocket/holder is visible\"\n  ]\n}"
+     },
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 3,
+      "finish_reason": "stop",
+      "prompt_tokens": 2938,
+      "completion_tokens": 866,
+      "seconds": 3.092,
+      "content": "{\n  \"version\": 1,\n  \"title\": \"Squeezing a drink bag so juice flows into a foam block\",\n  \"summary\": \"A person squeezes a silver drink bag with both hands while a tube directs liquid into a large white foam block on a blue work surface. After squeezing, the bag is placed down on the surface.\",\n  \"objects\": [\n    {\n      \"id\": \"drink_bag\",\n      \"name\": \"drink bag\",\n      \"shape\": \"box\",\n      \"size_mm\": [120, 80, 15],\n      \"symmetry\": \"none\",\n      \"role\": \"manipulated\",\n      \"confidence\": 0.6,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"foam_block\",\n      \"name\": \"foam block\",\n      \"shape\": \"box\",\n      \"size_mm\": [220, 110, 40],\n      \"symmetry\": \"none\",\n      \"role\": \"fixture\",\n      \"confidence\": 0.8,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"work_surface\",\n      \"name\": \"work surface\",\n      \"shape\": \"box\",\n      \"size_mm\": [600, 400, 3],\n      \"symmetry\": \"none\",\n      \"role\": \"surface\",\n      \"confidence\": 0.9,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"delivery_tube\",\n      \"name\": \"delivery tube\",\n      \"shape\": \"cylinder\",\n      \"size_mm\": [4, 4, 200],\n      \"symmetry\": \"axial\",\n      \"role\": \"fixture\",\n      \"confidence\": 0.7,\n      \"source\": \"vl#seg1\"\n    }\n  ],\n  \"steps\": [\n    {\n      \"id\": \"s1\",\n      \"verb\": \"grasp\",\n      \"object\": \"drink_bag\",\n      \"target\": {\"fixture\": \"zone\", \"frame\": \"drink_bag\"},\n      \"t_start_s\": 0.0,\n      \"t_end_s\": 0.5,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"s2\",\n      \"verb\": \"move\",\n      \"object\": \"drink_bag\",\n      \"target\": {\"fixture\": \"zone\", \"frame\": \"foam_block\"},\n      \"t_start_s\": 0.5,\n      \"t_end_s\": 4.0,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"s3\",\n      \"verb\": \"place\",\n      \"object\": \"drink_bag\",\n      \"target\": {\"fixture\": \"zone\", \"frame\": \"work_surface\"},\n      \"t_start_s\": 4.0,\n      \"t_end_s\": 5.0,\n      \"source\": \"vl#seg1\"\n    },\n    {\n      \"id\": \"s4\",\n      \"verb\": \"retract\",\n      \"object\": \"drink_bag\",\n      \"target\": {\"fixture\": \"zone\", \"frame\": \"work_surface\"},\n      \"t_start_s\": 5.0,\n      \"t_end_s\": 6.0,\n      \"source\": \"vl#seg1\"\n    }\n  ],\n  \"anchor\": {\"t_s\": 0.2, \"confidence\": 0.9},\n  \"warnings\": [\n    \"No visible scale reference; object dimensions are estimates\",\n    \"Drink bag is very thin (15 mm) near lower bound of allowed size range\",\n    \"Retract step references object as no null object allowed by schema\"\n  ],\n  \"open_questions\": [\n    \"Exact dimensions of drink bag, foam block, and work surface not measurable without scale\",\n    \"pocket_clearance_mm not applicable as no pocket/holder is visible\"\n  ]\n}"
+     }
+    ],
+    "title": "Squeezing a drink bag so juice flows into a foam block",
+    "steps": [
+     "grasp",
+     "move",
+     "place",
+     "retract"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "drink_bag: size [120, 80, 15] mm scaled to [50, 50, 15] mm for the robot's jaws and reach",
+     "work_surface: size [600, 400, 3] mm scaled to [150, 150, 10] mm for the robot's jaws and reach",
+     "left out of the rehearsal: foam block, delivery tube",
+     "rehearsing step s1 and step s3 of 4"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3049,
+      "completion_tokens": 403,
+      "seconds": 3.011,
+      "content": "{\"spec_title\": \"Squeezing a drink bag so juice flows into a foam block\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"drink_bag\", \"aperture_mm\": 50}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 32.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 13.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"drink_bag\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"drink_bag\", \"target\": \"work_surface\"}}], \"warnings\": []}], \"warnings\": [\"No visible scale reference; object dimensions are estimates\", \"Drink bag is very thin (15 mm) near lower bound of allowed size range\", \"Retract step references object as no null object allowed by schema\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "sha256": "639993fc542cb36d52bb8407a55a85c7262a12bef900b6a9cace0466158842aa",
+   "run": 1,
+   "hint": "",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "object work_surface: size_mm [500, 400, 5] is outside 5 to 300 mm"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2022,
+      "completion_tokens": 474,
+      "seconds": 2.137,
+      "content": "{\"version\":1,\"title\":\"Gloves and foil packet removed from workstation\",\"summary\":\"A person wearing blue nitrile gloves reaches for a crinkled foil packet lying on a blue work surface next to a large wrapped block, grasps it with both hands, lifts it away, and removes the gloves, leaving the surface clear.\",\"objects\":[{\"id\":\"foil_packet\",\"name\":\"foil packet\",\"shape\":\"box\",\"size_mm\":[80,60,5],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[80,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"work_surface\",\"name\":\"blue work surface\",\"shape\":\"box\",\"size_mm\":[500,400,5],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[250,200,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.9,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"grasp\",\"object\":\"foil_packet\",\"target\":{\"fixture\":\"zone\",\"frame\":\"work_surface\"},\"t_start_s\":0.0,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"move\",\"object\":\"foil_packet\",\"target\":{\"fixture\":\"zone\",\"frame\":\"work_surface\"},\"t_start_s\":4.0,\"t_end_s\":5.5,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"release\",\"object\":\"foil_packet\",\"target\":{\"fixture\":\"zone\",\"frame\":\"work_surface\"},\"t_start_s\":5.5,\"t_end_s\":6.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":0.0,\"confidence\":0.7},\"warnings\":[\"No visible scale reference in the clip; all object sizes and poses are estimated.\"],\"open_questions\":[\"What are the exact dimensions and world-frame pose of the foil packet?\",\"What is the exact pose and dimensions of the blue work surface?\"]}"
+     }
+    ],
+    "title": "Gloves and foil packet removed from workstation",
+    "steps": [
+     "grasp",
+     "move",
+     "release"
+    ]
+   },
+   "fit": {
+    "rehearsable": false,
+    "gestures": false,
+    "warnings": [
+     "no insert or place step onto a named object: nothing to rehearse"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3308,
+      "completion_tokens": 489,
+      "seconds": 2.565,
+      "content": "{\"spec_title\": \"Gloves and foil packet removed from workstation\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"foil_packet\", \"aperture_mm\": 60}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"foil_packet\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": []}], \"warnings\": [\"No visible scale reference in the clip; all object sizes and poses are estimated.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "sha256": "639993fc542cb36d52bb8407a55a85c7262a12bef900b6a9cace0466158842aa",
+   "run": 2,
+   "hint": "squeezing a drink bag so juice flows into a foam block",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "step s1: a \"grasp\" step has no gesture block; dropped",
+     "step s2: a \"move\" step has no gesture block; dropped",
+     "step s3: a \"release\" step has no gesture block; dropped",
+     "step s4: a \"retract\" step has no gesture block; dropped",
+     "object blue_workbench: size_mm [600, 400, 20] is outside 5 to 300 mm"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2043,
+      "completion_tokens": 577,
+      "seconds": 2.109,
+      "content": "{\"version\":1,\"title\":\"Squeezing a drink bag so juice flows into a foam block\",\"summary\":\"A person squeezes a silver drink bag connected by a tube into a white foam block on a blue workbench, then places the squeezed bag on the bench.\",\"objects\":[{\"id\":\"drink_bag\",\"name\":\"silver drink bag\",\"shape\":\"box\",\"size_mm\":[100,120,20],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[80,120,5],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg0\"},{\"id\":\"foam_block\",\"name\":\"white foam block\",\"shape\":\"box\",\"size_mm\":[200,150,80],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[300,50,10],\"yaw_deg\":0,\"frame\":\"world\"},\"pocket_clearance_mm\":null,\"confidence\":0.7,\"source\":\"vl#seg0\"},{\"id\":\"blue_workbench\",\"name\":\"blue workbench\",\"shape\":\"box\",\"size_mm\":[600,400,20],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[0,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.9,\"source\":\"vl#seg0\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"grasp\",\"object\":\"drink_bag\",\"target\":{\"fixture\":\"zone\",\"frame\":\"drink_bag\"},\"gesture\":null,\"t_start_s\":0.0,\"t_end_s\":1.0,\"source\":\"vl#seg0\"},{\"id\":\"s2\",\"verb\":\"move\",\"object\":\"drink_bag\",\"target\":{\"fixture\":\"zone\",\"frame\":\"foam_block\"},\"gesture\":null,\"t_start_s\":1.0,\"t_end_s\":4.0,\"source\":\"vl#seg0\"},{\"id\":\"s3\",\"verb\":\"release\",\"object\":\"drink_bag\",\"target\":{\"fixture\":\"zone\",\"frame\":\"blue_workbench\"},\"gesture\":null,\"t_start_s\":4.0,\"t_end_s\":5.0,\"source\":\"vl#seg0\"},{\"id\":\"s4\",\"verb\":\"retract\",\"object\":null,\"target\":null,\"gesture\":null,\"t_start_s\":5.0,\"t_end_s\":6.0,\"source\":\"vl#seg0\"}],\"anchor\":{\"t_s\":0.0,\"confidence\":0.6},\"warnings\":[],\"open_questions\":[]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 3,
+      "finish_reason": "stop",
+      "prompt_tokens": 2699,
+      "completion_tokens": 590,
+      "seconds": 2.077,
+      "content": "{\"version\":1,\"title\":\"Squeezing a drink bag so juice flows into a foam block\",\"summary\":\"A person squeezes a silver drink bag connected by a tube into a white foam block on a blue workbench, then places the squeezed bag on the bench.\",\"objects\":[{\"id\":\"drink_bag\",\"name\":\"silver drink bag\",\"shape\":\"box\",\"size_mm\":[100,120,20],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[80,120,5],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg0\"},{\"id\":\"foam_block\",\"name\":\"white foam block\",\"shape\":\"box\",\"size_mm\":[200,150,80],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[300,50,10],\"yaw_deg\":0,\"frame\":\"world\"},\"pocket_clearance_mm\":0,\"confidence\":0.7,\"source\":\"vl#seg0\"},{\"id\":\"blue_workbench\",\"name\":\"blue workbench\",\"shape\":\"box\",\"size_mm\":[600,400,20],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[0,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.9,\"source\":\"vl#seg0\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"grasp\",\"object\":\"drink_bag\",\"target\":{\"fixture\":\"zone\",\"frame\":\"drink_bag\"},\"gesture\":null,\"t_start_s\":0.0,\"t_end_s\":1.0,\"source\":\"vl#seg0\"},{\"id\":\"s2\",\"verb\":\"move\",\"object\":\"drink_bag\",\"target\":{\"fixture\":\"zone\",\"frame\":\"foam_block\"},\"gesture\":null,\"t_start_s\":1.0,\"t_end_s\":4.0,\"source\":\"vl#seg0\"},{\"id\":\"s3\",\"verb\":\"release\",\"object\":\"drink_bag\",\"target\":{\"fixture\":\"zone\",\"frame\":\"blue_workbench\"},\"gesture\":null,\"t_start_s\":4.0,\"t_end_s\":5.0,\"source\":\"vl#seg0\"},{\"id\":\"s4\",\"verb\":\"retract\",\"object\":\"drink_bag\",\"target\":{\"fixture\":\"zone\",\"frame\":\"blue_workbench\"},\"gesture\":null,\"t_start_s\":5.0,\"t_end_s\":6.0,\"source\":\"vl#seg0\"}],\"anchor\":{\"t_s\":0.0,\"confidence\":0.6},\"warnings\":[],\"open_questions\":[]}"
+     }
+    ],
+    "title": "Squeezing a drink bag so juice flows into a foam block",
+    "steps": [
+     "grasp",
+     "move",
+     "release",
+     "retract"
+    ]
+   },
+   "fit": {
+    "rehearsable": false,
+    "gestures": false,
+    "warnings": [
+     "no insert or place step onto a named object: nothing to rehearse"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "dropped an ask for objects[foam_block].pocket_clearance_mm: the spec already sets it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3525,
+      "completion_tokens": 743,
+      "seconds": 4.609,
+      "content": "{\"spec_title\": \"Squeezing a drink bag so juice flows into a foam block\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 52], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 2], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"drink_bag\", \"aperture_mm\": 100}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"drink_bag\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"foam_block\", \"offset_mm\": [0, 0, 70], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"foam_block\", \"offset_mm\": [0, 0, 51], \"approach\": \"top\"}, {\"op\": \"ask\", \"slot\": \"objects[foam_block].pocket_clearance_mm\", \"question\": \"What is the pocket clearance for the foam block?\", \"why\": \"pocket_clearance_mm missing\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"liquid_inside\", \"target\": \"foam_block\", \"value\": 80}, \"timeout_s\": 3}], \"warnings\": [\"incomplete pour control: tilt_deg and tilt_s not specified for pour into foam_block\"]}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": []}, {\"step_id\": \"s4\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"drink_bag\", \"aperture_mm\": 100}], \"warnings\": []}], \"warnings\": [\"open question about blue_workbench size_mm: is [600, 400, 20] mm correct?\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "sha256": "639993fc542cb36d52bb8407a55a85c7262a12bef900b6a9cace0466158842aa",
+   "run": 3,
+   "hint": "",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "object obj_blue_panel: size_mm [600, 400, 5] is outside 5 to 300 mm"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2022,
+      "completion_tokens": 631,
+      "seconds": 3.249,
+      "content": "{\"version\":1,\"title\":\"Fold and place a foil packet on a blue work surface next to a large white boxed component\",\"summary\":\"A person’s hands fold a silver foil packet on a blue panel, then set it down beside a large white component wrapped in clear packaging. No tool use, grasping of a distinct object, or assembly insertion is shown.\",\"objects\":[{\"id\":\"obj_foil_packet\",\"name\":\"foil packet\",\"shape\":\"box\",\"size_mm\":[90,60,5],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[80,140,5],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.4,\"source\":\"vl#seg1\"},{\"id\":\"obj_large_box\",\"name\":\"large white boxed component\",\"shape\":\"box\",\"size_mm\":[300,200,40],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[500,250,20],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"obj_blue_panel\",\"name\":\"blue work surface panel\",\"shape\":\"box\",\"size_mm\":[600,400,5],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[300,200,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"grasp\",\"object\":\"obj_foil_packet\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj_blue_panel\"},\"t_start_s\":0.0,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"place\",\"object\":\"obj_foil_packet\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj_blue_panel\"},\"t_start_s\":4.0,\"t_end_s\":6.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":4.0,\"confidence\":0.3},\"warnings\":[\"Object sizes are estimated without a visible scale reference and may be outside the 5–300 mm validity range.\",\"Foil packet dimensions exceed typical manipulated part size and are highly approximate.\",\"No pocket is visible, so pocket_clearance_mm is omitted.\",\"Pose is given despite uncertain scale because no calibration object is visible.\"],\"open_questions\":[\"What are the true dimensions of the foil packet and the large boxed component?\",\"What is the exact 6-DOF pose of each object in the world frame?\",\"Is the blue panel a fixture or just a tabletop surface?\",\"Is the task complete, or does the person intend to move the packet further?\"],\"anchor\":{\"t_s\":4.0,\"confidence\":0.3}}"
+     }
+    ],
+    "title": "Fold and place a foil packet on a blue work surface next to a large white boxed component",
+    "steps": [
+     "grasp",
+     "place"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "obj_foil_packet: size [90, 60, 5] mm scaled to [50, 50, 5] mm for the robot's jaws and reach",
+     "obj_blue_panel: size [600, 400, 5] mm scaled to [150, 150, 10] mm for the robot's jaws and reach",
+     "left out of the rehearsal: large white boxed component"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3116,
+      "completion_tokens": 508,
+      "seconds": 3.21,
+      "content": "{\"spec_title\": \"Fold and place a foil packet on a blue work surface next to a large white boxed component\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj_foil_packet\", \"aperture_mm\": 50}, {\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj_blue_panel\", \"offset_mm\": [0, 0, 27.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj_blue_panel\", \"offset_mm\": [0, 0, 8.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj_foil_packet\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj_foil_packet\", \"target\": \"obj_blue_panel\"}}], \"warnings\": [\"Object sizes are estimated without a visible scale reference and may be outside the 5–300 mm validity range.\", \"Foil packet dimensions exceed typical manipulated part size and are highly approximate.\", \"No pocket is visible, so pocket_clearance_mm is omitted.\", \"Pose is given despite uncertain scale because no calibration object is visible.\"]}], \"warnings\": [\"Object sizes are estimated without a visible scale reference and may be outside the 5–300 mm validity range.\", \"Foil packet dimensions exceed typical manipulated part size and are highly approximate.\", \"No pocket is visible, so pocket_clearance_mm is omitted.\", \"Pose is given despite uncertain scale because no calibration object is visible.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "sha256": "0747b821eaa087a0270bd8408298d936e147727884b8019aa6173d2b69624769",
+   "run": 0,
+   "hint": "pipetting liquid into a small cartridge",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "step s2: started at 0 s, before the previous step ended; moved to 0.3 s",
+     "step s5: times 3.8-8.8 s clamped to the 8 s clip",
+     "object obj3: size_mm [1000, 600, 30] is outside 5 to 300 mm"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2039,
+      "completion_tokens": 613,
+      "seconds": 2.4,
+      "content": "{\"version\":1,\"title\":\"pipetting liquid into a small cartridge\",\"summary\":\"A person in a cleanroom holds a small cartridge in the left hand and uses a pipette in the right hand to deposit liquid into it, then moves the cartridge slightly while continuing to pipette.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"cartridge\",\"shape\":\"box\",\"size_mm\":[45,25,12],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[550,300,25],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"pipette\",\"shape\":\"cylinder\",\"size_mm\":[12,12,220],\"symmetry\":\"axial\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[700,150,30],\"yaw_deg\":-20,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"workbench\",\"shape\":\"box\",\"size_mm\":[1000,600,30],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[500,300,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"grasp\",\"object\":\"obj2\",\"target\":null,\"t_start_s\":0.0,\"t_end_s\":0.3,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj1\",\"target\":null,\"t_start_s\":0.0,\"t_end_s\":0.4,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj2\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":0.4,\"t_end_s\":2.5,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"move\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":2.5,\"t_end_s\":3.8,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"move\",\"object\":\"obj2\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":3.8,\"t_end_s\":8.8,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":0.2,\"confidence\":0.8},\"warnings\":[],\"open_questions\":[\"Cartridge pocket location not clearly visible; pocket_clearance_mm omitted.\",\"World-scale pose estimates are approximate; no visible scale reference.\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 3,
+      "finish_reason": "stop",
+      "prompt_tokens": 2713,
+      "completion_tokens": 631,
+      "seconds": 2.199,
+      "content": "{\"version\":1,\"title\":\"pipetting liquid into a small cartridge\",\"summary\":\"A person in a cleanroom holds a small cartridge in the left hand and uses a pipette in the right hand to deposit liquid into it, then moves the cartridge slightly while continuing to pipette.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"cartridge\",\"shape\":\"box\",\"size_mm\":[45,25,12],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[550,300,25],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"pipette\",\"shape\":\"cylinder\",\"size_mm\":[12,12,220],\"symmetry\":\"axial\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[700,150,30],\"yaw_deg\":-20,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"workbench\",\"shape\":\"box\",\"size_mm\":[1000,600,30],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[500,300,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"grasp\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":0.0,\"t_end_s\":0.3,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":0.0,\"t_end_s\":0.4,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj2\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":0.4,\"t_end_s\":2.5,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"move\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":2.5,\"t_end_s\":3.8,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"move\",\"object\":\"obj2\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":3.8,\"t_end_s\":8.8,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":0.2,\"confidence\":0.8},\"warnings\":[],\"open_questions\":[\"Cartridge pocket location not clearly visible; pocket_clearance_mm omitted.\",\"World-scale pose estimates are approximate; no visible scale reference.\"]}"
+     }
+    ],
+    "title": "pipetting liquid into a small cartridge",
+    "steps": [
+     "grasp",
+     "grasp",
+     "move",
+     "move",
+     "move"
+    ]
+   },
+   "fit": {
+    "rehearsable": false,
+    "gestures": false,
+    "warnings": [
+     "no insert or place step onto a named object: nothing to rehearse"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3886,
+      "completion_tokens": 1121,
+      "seconds": 5.943,
+      "content": "{\"spec_title\": \"pipetting liquid into a small cartridge\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 152], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 102], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 12}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 145], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 126], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}]}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj1\", \"aperture_mm\": 25}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}]}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}]}, {\"step_id\": \"s4\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}]}, {\"step_id\": \"s5\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}]}], \"warnings\": [\"Cartridge pocket location not clearly visible; pocket_clearance_mm omitted.\", \"World-scale pose estimates are approximate; no visible scale reference.\", \"objects[obj3].size_mm: is workbench really [1000, 600, 30] mm?\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "sha256": "0747b821eaa087a0270bd8408298d936e147727884b8019aa6173d2b69624769",
+   "run": 1,
+   "hint": "",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "step s2: started at 0 s, before the previous step ended; moved to 0.5 s",
+     "object work_surface: size_mm [500, 500, 10] is outside 5 to 300 mm"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2022,
+      "completion_tokens": 748,
+      "seconds": 2.626,
+      "content": "{\"version\":1,\"title\":\"person pipetting liquid into a small well plate while holding a chip\",\"summary\":\"A gloved person holds a small rectangular chip in one hand and uses a pipette in the other hand to dispense liquid into a multi-well tray over several seconds.\",\"objects\":[{\"id\":\"chip\",\"name\":\"small rectangular sample chip\",\"shape\":\"box\",\"size_mm\":[50,25,5],\"symmetry\":\"axial\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[150,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"pipette\",\"name\":\"manual pipette\",\"shape\":\"cylinder\",\"size_mm\":[12,12,200],\"symmetry\":\"axial\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[220,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"well_plate\",\"name\":\"multi-well tray\",\"shape\":\"box\",\"size_mm\":[120,80,15],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[180,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"pocket_clearance_mm\":2,\"confidence\":0.4,\"source\":\"vl#seg1\"},{\"id\":\"work_surface\",\"name\":\"bench surface\",\"shape\":\"box\",\"size_mm\":[500,500,10],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[250,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.4,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"grasp\",\"object\":\"chip\",\"target\":null,\"t_start_s\":0.0,\"t_end_s\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"pipette\",\"target\":null,\"t_start_s\":0.0,\"t_end_s\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"pipette\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"well_plate\"},\"t_start_s\":0.5,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"insert\",\"object\":\"pipette\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"well_plate\"},\"t_start_s\":4.0,\"t_end_s\":5.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"retract\",\"object\":\"pipette\",\"target\":null,\"t_start_s\":5.0,\"t_end_s\":6.0,\"source\":\"vl#seg1\"},{\"id\":\"s6\",\"verb\":\"move\",\"object\":\"chip\",\"target\":{\"fixture\":\"zone\",\"frame\":\"work_surface\"},\"t_start_s\":6.0,\"t_end_s\":8.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":0.0,\"confidence\":0.5},\"warnings\":[\"no visible scale reference; poses estimated from typical bench size\",\"well plate pocket clearance not directly visible\"],\"open_questions\":[\"exact pose of chip and well plate in world coordinates\",\"identity of material inside chip\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 3,
+      "finish_reason": "stop",
+      "prompt_tokens": 2845,
+      "completion_tokens": 778,
+      "seconds": 2.402,
+      "content": "{\"version\":1,\"title\":\"person pipetting liquid into a small well plate while holding a chip\",\"summary\":\"A gloved person holds a small rectangular chip in one hand and uses a pipette in the other hand to dispense liquid into a multi-well tray over several seconds.\",\"objects\":[{\"id\":\"chip\",\"name\":\"small rectangular sample chip\",\"shape\":\"box\",\"size_mm\":[50,25,5],\"symmetry\":\"axial\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[150,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"pipette\",\"name\":\"manual pipette\",\"shape\":\"cylinder\",\"size_mm\":[12,12,200],\"symmetry\":\"axial\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[220,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"well_plate\",\"name\":\"multi-well tray\",\"shape\":\"box\",\"size_mm\":[120,80,15],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[180,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"pocket_clearance_mm\":2,\"confidence\":0.4,\"source\":\"vl#seg1\"},{\"id\":\"work_surface\",\"name\":\"bench surface\",\"shape\":\"box\",\"size_mm\":[500,500,10],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[250,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.4,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"grasp\",\"object\":\"chip\",\"target\":{\"fixture\":\"zone\",\"frame\":\"work_surface\"},\"t_start_s\":0.0,\"t_end_s\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"pipette\",\"target\":{\"fixture\":\"zone\",\"frame\":\"work_surface\"},\"t_start_s\":0.0,\"t_end_s\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"pipette\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"well_plate\"},\"t_start_s\":0.5,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"insert\",\"object\":\"pipette\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"well_plate\"},\"t_start_s\":4.0,\"t_end_s\":5.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"retract\",\"object\":\"pipette\",\"target\":{\"fixture\":\"zone\",\"frame\":\"work_surface\"},\"t_start_s\":5.0,\"t_end_s\":6.0,\"source\":\"vl#seg1\"},{\"id\":\"s6\",\"verb\":\"move\",\"object\":\"chip\",\"target\":{\"fixture\":\"zone\",\"frame\":\"work_surface\"},\"t_start_s\":6.0,\"t_end_s\":8.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":0.0,\"confidence\":0.5},\"warnings\":[\"no visible scale reference; poses estimated from typical bench size\",\"well plate pocket clearance not directly visible\"],\"open_questions\":[\"exact pose of chip and well plate in world coordinates\",\"identity of material inside chip\"]}"
+     }
+    ],
+    "title": "person pipetting liquid into a small well plate while holding a chip",
+    "steps": [
+     "grasp",
+     "grasp",
+     "move",
+     "insert",
+     "retract",
+     "move"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "pipette: size [12, 12, 200] mm scaled to [12, 12, 40] mm for the robot's jaws and reach",
+     "left out of the rehearsal: small rectangular sample chip, bench surface",
+     "rehearsing step s2 and step s4 of 6"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3042,
+      "completion_tokens": 484,
+      "seconds": 2.464,
+      "content": "{\"spec_title\": \"person pipetting liquid into a small well plate while holding a chip\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette\", \"aperture_mm\": 12}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"pipette\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"pipette\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"no_collision\"}}, {\"op\": \"ask\", \"slot\": \"steps[s2].success\", \"question\": \"How much liquid must end up in the well plate for the insert to count as successful?\", \"why\": \"no success predicate specified in step spec\"}], \"warnings\": [\"well plate pocket clearance not directly visible\"]}], \"warnings\": [\"no visible scale reference; poses estimated from typical bench size\", \"well plate pocket clearance not directly visible\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "sha256": "0747b821eaa087a0270bd8408298d936e147727884b8019aa6173d2b69624769",
+   "run": 2,
+   "hint": "pipetting liquid into a small cartridge",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "object obj3: size_mm [800, 600, 20] is outside 5 to 300 mm"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2039,
+      "completion_tokens": 683,
+      "seconds": 2.246,
+      "content": "{\"version\":1,\"title\":\"pipetting liquid into a small cartridge\",\"summary\":\"A person in blue gloves holds a small rectangular cartridge in the left hand and positions a pipette held in the right hand above it, appearing to dispense liquid into the cartridge.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"cartridge\",\"shape\":\"box\",\"size_mm\":[20,10,5],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[450,200,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg0\"},{\"id\":\"obj2\",\"name\":\"pipette\",\"shape\":\"cylinder\",\"size_mm\":[10,10,200],\"symmetry\":\"axial\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[750,250,0],\"yaw_deg\":45,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg0\"},{\"id\":\"obj3\",\"name\":\"work surface\",\"shape\":\"box\",\"size_mm\":[800,600,20],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[500,300,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg0\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":0.0,\"t_end_s\":0.5,\"source\":\"vl#seg0\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":0.5,\"t_end_s\":1.0,\"source\":\"vl#seg0\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":1.0,\"t_end_s\":2.0,\"source\":\"vl#seg0\"},{\"id\":\"s4\",\"verb\":\"insert\",\"object\":\"obj2\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":2.0,\"t_end_s\":3.0,\"source\":\"vl#seg0\"},{\"id\":\"s5\",\"verb\":\"retract\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":3.0,\"t_end_s\":4.0,\"source\":\"vl#seg0\"},{\"id\":\"s6\",\"verb\":\"release\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":4.0,\"t_end_s\":4.5,\"source\":\"vl#seg0\"}],\"anchor\":{\"t_s\":1.0,\"confidence\":0.6},\"warnings\":[\"No visible scale in the scene; object poses are estimates.\"],\"open_questions\":[\"What is the exact size of the cartridge?\",\"Is there a pocket in the cartridge and what is its clearance?\"]}"
+     }
+    ],
+    "title": "pipetting liquid into a small cartridge",
+    "steps": [
+     "reach",
+     "grasp",
+     "move",
+     "insert",
+     "retract",
+     "release"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "obj2: size [10, 10, 200] mm scaled to [10, 10, 40] mm for the robot's jaws and reach",
+     "obj1: size [20, 10, 5] mm scaled to [50, 50, 10] mm for the robot's jaws and reach",
+     "left out of the rehearsal: work surface",
+     "rehearsing a grasp and step s4 of 6"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3025,
+      "completion_tokens": 416,
+      "seconds": 1.479,
+      "content": "{\"spec_title\": \"pipetting liquid into a small cartridge\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 10}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 45], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 26], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj2\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj2\", \"target\": \"obj1\"}}], \"warnings\": []}], \"warnings\": [\"No visible scale in the scene; object poses are estimates.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "sha256": "0747b821eaa087a0270bd8408298d936e147727884b8019aa6173d2b69624769",
+   "run": 3,
+   "hint": "",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "step s5: times 6-9 s clamped to the 8 s clip",
+     "object card1: size_mm [30, 20, 3] is outside 5 to 300 mm",
+     "object workspace1: size_mm [400, 400, 20] is outside 5 to 300 mm",
+     "objects[2].pose: object \"workspace1\" has no nominal pose; the scene builder will lay it out"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2022,
+      "completion_tokens": 640,
+      "seconds": 2.395,
+      "content": "{\"version\":1,\"title\":\"Person pipetting over a small card in a cluttered workspace\",\"summary\":\"A person wearing blue nitrile gloves holds a small rectangular card in the left hand and uses a micropipette in the right hand to dispense liquid onto the card, then moves the pipette away while keeping the card steady.\",\"objects\":[{\"id\":\"card1\",\"name\":\"small card with yellow center\",\"shape\":\"box\",\"size_mm\":[30,20,3],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[220,100,10],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"pipette1\",\"name\":\"micropipette\",\"shape\":\"cylinder\",\"size_mm\":[15,15,180],\"symmetry\":\"axial\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[300,200,30],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"workspace1\",\"name\":\"work surface with cluttered items\",\"shape\":\"box\",\"size_mm\":[400,400,20],\"symmetry\":\"none\",\"role\":\"surface\",\"confidence\":0.8,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"pipette1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"workspace1\"},\"t_start_s\":0.0,\"t_end_s\":1.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"pipette1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"workspace1\"},\"t_start_s\":1.0,\"t_end_s\":1.5,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"pipette1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"card1\"},\"t_start_s\":1.5,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"insert\",\"object\":\"pipette1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"card1\"},\"t_start_s\":4.0,\"t_end_s\":6.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"retract\",\"object\":\"pipette1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"workspace1\"},\"t_start_s\":6.0,\"t_end_s\":9.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":1.5,\"confidence\":0.6},\"warnings\":[\"Object poses and sizes estimated without a visible scale reference.\"],\"open_questions\":[\"What is the exact size and pose of card1 and pipette1?\",\"Does the workspace have a defined pocket or holder for the card?\"]}"
+     }
+    ],
+    "title": "Person pipetting over a small card in a cluttered workspace",
+    "steps": [
+     "reach",
+     "grasp",
+     "move",
+     "insert",
+     "retract"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "pipette1: size [15, 15, 180] mm scaled to [15, 15, 40] mm for the robot's jaws and reach",
+     "card1: size [30, 20, 3] mm scaled to [55, 55, 10] mm for the robot's jaws and reach",
+     "left out of the rehearsal: work surface with cluttered items",
+     "rehearsing step s2 and step s4 of 5"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3048,
+      "completion_tokens": 475,
+      "seconds": 1.724,
+      "content": "{\"spec_title\": \"Person pipetting over a small card in a cluttered workspace\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette1\", \"aperture_mm\": 15}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"pipette1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 45], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 26], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"pipette1\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"no_collision\"}}, {\"op\": \"ask\", \"slot\": \"objects[card1].pocket_clearance_mm\", \"question\": \"What is the clearance for the pocket on the card?\", \"why\": \"missing pocket_clearance_mm on a pocket fixture\"}], \"warnings\": [\"Object poses and sizes estimated without a visible scale reference.\"]}], \"warnings\": [\"Object poses and sizes estimated without a visible scale reference.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "sha256": "670dd0871ae0f7d932ebcce5fb4a394200f23cb216d7e71993d37ae6212436ab",
+   "run": 0,
+   "hint": "putting seed film into plant pillows",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "step s6: times 11-13 s clamped to the 12 s clip",
+     "object obj3: size_mm [600, 400, 20] is outside 5 to 300 mm",
+     "object obj4: size_mm [350, 240, 25] is outside 5 to 300 mm"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2675,
+      "completion_tokens": 775,
+      "seconds": 2.694,
+      "content": "{\"version\":1,\"title\":\"putting seed film into plant pillows\",\"summary\":\"An astronaut wearing blue gloves opens a foil seed pack on a workbench, pulls out a seed film, and inserts it into a plant pillow while a laptop and other gear sit nearby.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"seed film packet\",\"shape\":\"box\",\"size_mm\":[80,60,5],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[450,250,20],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"plant pillow tray\",\"shape\":\"box\",\"size_mm\":[300,200,30],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[400,220,15],\"yaw_deg\":0,\"frame\":\"world\"},\"pocket_clearance_mm\":10,\"confidence\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"workbench surface\",\"shape\":\"box\",\"size_mm\":[600,400,20],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[350,200,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"},{\"id\":\"obj4\",\"name\":\"laptop\",\"shape\":\"box\",\"size_mm\":[350,240,25],\"symmetry\":\"none\",\"role\":\"obstacle\",\"pose\":{\"xyz_mm\":[80,260,40],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.9,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":0.0,\"t_end_s\":3.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":3.0,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj2\"},\"t_start_s\":4.0,\"t_end_s\":8.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"insert\",\"object\":\"obj1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj2\"},\"t_start_s\":8.0,\"t_end_s\":10.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"release\",\"object\":\"obj1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj2\"},\"t_start_s\":10.0,\"t_end_s\":11.0,\"source\":\"vl#seg1\"},{\"id\":\"s6\",\"verb\":\"retract\",\"object\":null,\"target\":null,\"t_start_s\":11.0,\"t_end_s\":13.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":3.0,\"confidence\":0.7},\"warnings\":[\"No calibrated scale available; object dimensions are estimated from video.\"],\"open_questions\":[\"Exact pocket_clearance_mm for plant pillow tray cannot be verified visually.\"],\"source\":\"vl#seg1\"}"
+     },
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 3,
+      "finish_reason": "stop",
+      "prompt_tokens": 3511,
+      "completion_tokens": 785,
+      "seconds": 2.338,
+      "content": "{\"version\":1,\"title\":\"putting seed film into plant pillows\",\"summary\":\"An astronaut wearing blue gloves opens a foil seed pack on a workbench, pulls out a seed film, and inserts it into a plant pillow while a laptop and other gear sit nearby.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"seed film packet\",\"shape\":\"box\",\"size_mm\":[80,60,5],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[450,250,20],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"plant pillow tray\",\"shape\":\"box\",\"size_mm\":[300,200,30],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[400,220,15],\"yaw_deg\":0,\"frame\":\"world\"},\"pocket_clearance_mm\":10,\"confidence\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"workbench surface\",\"shape\":\"box\",\"size_mm\":[600,400,20],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[350,200,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"},{\"id\":\"obj4\",\"name\":\"laptop\",\"shape\":\"box\",\"size_mm\":[350,240,25],\"symmetry\":\"none\",\"role\":\"obstacle\",\"pose\":{\"xyz_mm\":[80,260,40],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.9,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":0.0,\"t_end_s\":3.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":3.0,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj2\"},\"t_start_s\":4.0,\"t_end_s\":8.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"insert\",\"object\":\"obj1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj2\"},\"t_start_s\":8.0,\"t_end_s\":10.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"release\",\"object\":\"obj1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj2\"},\"t_start_s\":10.0,\"t_end_s\":11.0,\"source\":\"vl#seg1\"},{\"id\":\"s6\",\"verb\":\"retract\",\"object\":\"obj1\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":11.0,\"t_end_s\":13.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":3.0,\"confidence\":0.7},\"warnings\":[\"No calibrated scale available; object dimensions are estimated from video.\"],\"open_questions\":[\"Exact pocket_clearance_mm for plant pillow tray cannot be verified visually.\"],\"source\":\"vl#seg1\"}"
+     }
+    ],
+    "title": "putting seed film into plant pillows",
+    "steps": [
+     "reach",
+     "grasp",
+     "move",
+     "insert",
+     "release",
+     "retract"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "obj1: size [80, 60, 5] mm scaled to [50, 6, 40] mm for the robot's jaws and reach",
+     "obj2: size [300, 200, 30] mm scaled to [150, 150, 30] mm for the robot's jaws and reach",
+     "left out of the rehearsal: workbench surface, laptop",
+     "rehearsing step s2 and step s4 of 6"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3028,
+      "completion_tokens": 416,
+      "seconds": 1.68,
+      "content": "{\"spec_title\": \"putting seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj1\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj1\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj1\", \"target\": \"obj2\"}}], \"warnings\": [\"No calibrated scale available; object dimensions are estimated from video.\"]}], \"warnings\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "sha256": "670dd0871ae0f7d932ebcce5fb4a394200f23cb216d7e71993d37ae6212436ab",
+   "run": 1,
+   "hint": "",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "object obj1: size_mm [330, 240, 25] is outside 5 to 300 mm",
+     "object obj4: size_mm [600, 500, 30] is outside 5 to 300 mm",
+     "objects[1].pocket_clearance_mm: fixture \"obj2\" is used as a pocket but has no clearance"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2658,
+      "completion_tokens": 799,
+      "seconds": 2.917,
+      "content": "{\"version\":1,\"title\":\"ISS crew member unloads battery stowage pack\",\"summary\":\"An astronaut in a red shirt and blue gloves removes a battery pack from a stowage tray, then places it on the blue work surface to his right.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"laptop\",\"shape\":\"box\",\"size_mm\":[330,240,25],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[30,450,780],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"stowage tray\",\"shape\":\"box\",\"size_mm\":[220,170,30],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[560,480,790],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"battery pack\",\"shape\":\"box\",\"size_mm\":[160,80,25],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[760,490,800],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"},{\"id\":\"obj4\",\"name\":\"work surface\",\"shape\":\"box\",\"size_mm\":[600,500,30],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[500,600,800],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj2\"},\"t_start_s\":0.0,\"t_end_s\":1.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj3\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj2\"},\"t_start_s\":1.0,\"t_end_s\":2.0,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":2.0,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"place\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":4.0,\"t_end_s\":5.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"release\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":5.0,\"t_end_s\":6.0,\"source\":\"vl#seg1\"},{\"id\":\"s6\",\"verb\":\"retract\",\"object\":null,\"target\":null,\"t_start_s\":6.0,\"t_end_s\":7.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":1.5,\"confidence\":0.8},\"warnings\":[\"No scale reference visible; object poses and sizes are estimated from video proportions.\",\"Pocket clearance for stowage tray not visible.\",\"Task may be one repetition of a multi-battery transfer; only one battery pack clearly manipulated in this clip.\"],\"open_questions\":[\"Exact pocket_clearance_mm for obj2 stowage tray pocket\"],\"source\":\"vl#seg1\"}"
+     },
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 3,
+      "finish_reason": "stop",
+      "prompt_tokens": 3518,
+      "completion_tokens": 809,
+      "seconds": 2.595,
+      "content": "{\"version\":1,\"title\":\"ISS crew member unloads battery stowage pack\",\"summary\":\"An astronaut in a red shirt and blue gloves removes a battery pack from a stowage tray, then places it on the blue work surface to his right.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"laptop\",\"shape\":\"box\",\"size_mm\":[330,240,25],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[30,450,780],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"stowage tray\",\"shape\":\"box\",\"size_mm\":[220,170,30],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[560,480,790],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"battery pack\",\"shape\":\"box\",\"size_mm\":[160,80,25],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[760,490,800],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"},{\"id\":\"obj4\",\"name\":\"work surface\",\"shape\":\"box\",\"size_mm\":[600,500,30],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[500,600,800],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj2\"},\"t_start_s\":0.0,\"t_end_s\":1.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj3\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj2\"},\"t_start_s\":1.0,\"t_end_s\":2.0,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":2.0,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"place\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":4.0,\"t_end_s\":5.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"release\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":5.0,\"t_end_s\":6.0,\"source\":\"vl#seg1\"},{\"id\":\"s6\",\"verb\":\"retract\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":6.0,\"t_end_s\":7.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":1.5,\"confidence\":0.8},\"warnings\":[\"No scale reference visible; object poses and sizes are estimated from video proportions.\",\"Pocket clearance for stowage tray not visible.\",\"Task may be one repetition of a multi-battery transfer; only one battery pack clearly manipulated in this clip.\"],\"open_questions\":[\"Exact pocket_clearance_mm for obj2 stowage tray pocket\"],\"source\":\"vl#seg1\"}"
+     }
+    ],
+    "title": "ISS crew member unloads battery stowage pack",
+    "steps": [
+     "reach",
+     "grasp",
+     "move",
+     "place",
+     "release",
+     "retract"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "obj3: size [160, 80, 25] mm scaled to [50, 50, 25] mm for the robot's jaws and reach",
+     "obj4: size [600, 500, 30] mm scaled to [150, 150, 30] mm for the robot's jaws and reach",
+     "left out of the rehearsal: laptop, stowage tray",
+     "rehearsing step s2 and step s4 of 6"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3015,
+      "completion_tokens": 430,
+      "seconds": 1.65,
+      "content": "{\"spec_title\": \"ISS crew member unloads battery stowage pack\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 54.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 4.5], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj3\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj3\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj3\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj3\", \"target\": \"obj4\"}}], \"warnings\": [\"No scale reference visible; object poses and sizes are estimated from video proportions.\", \"Pocket clearance for stowage tray not visible.\", \"Task may be one repetition of a multi-battery transfer; only one battery pack clearly manipulated in this clip.\"]}], \"warnings\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "sha256": "670dd0871ae0f7d932ebcce5fb4a394200f23cb216d7e71993d37ae6212436ab",
+   "run": 2,
+   "hint": "putting seed film into plant pillows",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "object obj3: size_mm [50, 30, 2] is outside 5 to 300 mm",
+     "object obj4: size_mm [600, 400, 20] is outside 5 to 300 mm",
+     "objects[0].pocket_clearance_mm: fixture \"obj1\" is used as a pocket but has no clearance"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2675,
+      "completion_tokens": 835,
+      "seconds": 2.791,
+      "content": "{\"version\":1,\"title\":\"Putting seed film into plant pillows\",\"summary\":\"A crew member in a red shirt and blue gloves takes a small seed-film packet from a grid of plant pillows on a work table, opens it, removes the seed film, then places the empty wrapper on the blue surface beside the pillow tray.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"plant pillow tray\",\"shape\":\"box\",\"size_mm\":[300,200,30],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[400,0,30],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"seed film packet\",\"shape\":\"box\",\"size_mm\":[60,40,5],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[520,0,60],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"seed film\",\"shape\":\"box\",\"size_mm\":[50,30,2],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[530,0,60],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"obj4\",\"name\":\"work table\",\"shape\":\"box\",\"size_mm\":[600,400,20],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[500,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":0.0,\"t_end_s\":1.5,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":1.5,\"t_end_s\":2.5,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":2.5,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"insert\",\"object\":\"obj3\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":4.0,\"t_end_s\":6.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"place\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":6.0,\"t_end_s\":8.0,\"source\":\"vl#seg1\"},{\"id\":\"s6\",\"verb\":\"release\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":8.0,\"t_end_s\":10.0,\"source\":\"vl#seg1\"},{\"id\":\"s7\",\"verb\":\"retract\",\"object\":null,\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":10.0,\"t_end_s\":12.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":2.0,\"confidence\":0.8},\"warnings\":[],\"open_questions\":[\"Object poses are estimated from the camera view; world origin and scale are not provided.\",\"Exact pocket dimensions and clearance are not visible.\",\"The seed film is a small internal item and its pose is inferred rather than directly measured.\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 3,
+      "finish_reason": "stop",
+      "prompt_tokens": 3557,
+      "completion_tokens": 836,
+      "seconds": 2.617,
+      "content": "{\"version\":1,\"title\":\"Putting seed film into plant pillows\",\"summary\":\"A crew member in a red shirt and blue gloves takes a small seed-film packet from a grid of plant pillows on a work table, opens it, removes the seed film, then places the empty wrapper on the blue surface beside the pillow tray.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"plant pillow tray\",\"shape\":\"box\",\"size_mm\":[300,200,30],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[400,0,30],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"seed film packet\",\"shape\":\"box\",\"size_mm\":[60,40,5],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[520,0,60],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"seed film\",\"shape\":\"box\",\"size_mm\":[50,30,2],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[530,0,60],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"obj4\",\"name\":\"work table\",\"shape\":\"box\",\"size_mm\":[600,400,20],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[500,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":0.0,\"t_end_s\":1.5,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":1.5,\"t_end_s\":2.5,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":2.5,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"insert\",\"object\":\"obj3\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":4.0,\"t_end_s\":6.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"place\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":6.0,\"t_end_s\":8.0,\"source\":\"vl#seg1\"},{\"id\":\"s6\",\"verb\":\"release\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":8.0,\"t_end_s\":10.0,\"source\":\"vl#seg1\"},{\"id\":\"s7\",\"verb\":\"retract\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":10.0,\"t_end_s\":12.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":2.0,\"confidence\":0.8},\"warnings\":[],\"open_questions\":[\"Object poses are estimated from the camera view; world origin and scale are not provided.\",\"Exact pocket dimensions and clearance are not visible.\",\"The seed film is a small internal item and its pose is inferred rather than directly measured.\"]}"
+     }
+    ],
+    "title": "Putting seed film into plant pillows",
+    "steps": [
+     "reach",
+     "grasp",
+     "move",
+     "insert",
+     "place",
+     "release",
+     "retract"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "obj3: size [50, 30, 2] mm scaled to [30, 6, 40] mm for the robot's jaws and reach",
+     "obj1: size [300, 200, 30] mm scaled to [150, 150, 30] mm for the robot's jaws and reach",
+     "left out of the rehearsal: seed film packet, work table",
+     "rehearsing a grasp and step s4 of 7"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 2999,
+      "completion_tokens": 404,
+      "seconds": 1.812,
+      "content": "{\"spec_title\": \"Putting seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj3\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj3\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj3\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj3\", \"target\": \"obj1\"}}], \"warnings\": []}], \"warnings\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "sha256": "670dd0871ae0f7d932ebcce5fb4a394200f23cb216d7e71993d37ae6212436ab",
+   "run": 3,
+   "hint": "",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "step s6: times 10-13 s clamped to the 12 s clip",
+     "object obj1: size_mm [340, 240, 25] is outside 5 to 300 mm",
+     "object obj5: size_mm [130, 80, 3] is outside 5 to 300 mm"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2658,
+      "completion_tokens": 865,
+      "seconds": 3.001,
+      "content": "{\"version\":1,\"title\":\"Astronaut handles black rectangular packets on a work surface in a station module\",\"summary\":\"The person picks a black packet from a tray, then unwraps it and removes a smaller yellow-green object, appearing to prepare it for use.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"laptop\",\"shape\":\"box\",\"size_mm\":[340,240,25],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[20,400,760],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg0\"},{\"id\":\"obj2\",\"name\":\"tray\",\"shape\":\"box\",\"size_mm\":[300,220,12],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[450,500,800],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg0\"},{\"id\":\"obj3\",\"name\":\"black packet\",\"shape\":\"box\",\"size_mm\":[110,70,8],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[480,520,810],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg0\"},{\"id\":\"obj4\",\"name\":\"yellow-green object\",\"shape\":\"box\",\"size_mm\":[45,20,6],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[520,540,815],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.5,\"source\":\"vl#seg0\"},{\"id\":\"obj5\",\"name\":\"clear wrapper\",\"shape\":\"box\",\"size_mm\":[130,80,3],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[470,510,808],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.5,\"source\":\"vl#seg0\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"grasp\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj2\"},\"t_start_s\":0.0,\"t_end_s\":2.0,\"source\":\"vl#seg0\"},{\"id\":\"s2\",\"verb\":\"move\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj2\"},\"t_start_s\":2.0,\"t_end_s\":4.0,\"source\":\"vl#seg0\"},{\"id\":\"s3\",\"verb\":\"release\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj2\"},\"t_start_s\":4.0,\"t_end_s\":6.0,\"source\":\"vl#seg0\"},{\"id\":\"s4\",\"verb\":\"grasp\",\"object\":\"obj4\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj2\"},\"t_start_s\":6.0,\"t_end_s\":8.0,\"source\":\"vl#seg0\"},{\"id\":\"s5\",\"verb\":\"move\",\"object\":\"obj4\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj2\"},\"t_start_s\":8.0,\"t_end_s\":10.0,\"source\":\"vl#seg0\"},{\"id\":\"s6\",\"verb\":\"place\",\"object\":\"obj4\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj2\"},\"t_start_s\":10.0,\"t_end_s\":13.0,\"source\":\"vl#seg0\"}],\"anchor\":{\"t_s\":1.0,\"confidence\":0.6},\"warnings\":[\"Object dimensions are estimated from video without a visible scale reference\"],\"open_questions\":[\"Are the exact dimensions of obj3, obj4, and obj5 available?\",\"Is obj4 the intended manipulated object or is obj3 the main task item?\"]}"
+     }
+    ],
+    "title": "Astronaut handles black rectangular packets on a work surface in a station module",
+    "steps": [
+     "grasp",
+     "move",
+     "release",
+     "grasp",
+     "move",
+     "place"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "obj2: size [300, 220, 12] mm scaled to [150, 150, 12] mm for the robot's jaws and reach",
+     "left out of the rehearsal: laptop, black packet, clear wrapper",
+     "rehearsing step s4 and step s6 of 6"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 2967,
+      "completion_tokens": 388,
+      "seconds": 2.099,
+      "content": "{\"spec_title\": \"Astronaut handles black rectangular packets on a work surface in a station module\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj4\", \"aperture_mm\": 20}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj4\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 29], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 10], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj4\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj4\", \"target\": \"obj2\"}}], \"warnings\": []}], \"warnings\": [\"Object dimensions are estimated from video without a visible scale reference\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "sha256": "0f6edd04147c360400abe1680327800b079d227ee113a36b2baa60dc359b75fe",
+   "run": 0,
+   "hint": "pushing seed film into plant pillows",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "object seed_packet_1: size_mm [20, 40, 3] is outside 5 to 300 mm"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2039,
+      "completion_tokens": 744,
+      "seconds": 2.893,
+      "content": "{\"version\":1,\"title\":\"Pushing seed film into plant pillows aboard station\",\"summary\":\"A crew member wearing blue gloves reaches into a clear plastic bag, takes a small seed-film packet, and presses it onto a slot on a plant-pillow tray, repeating the action for multiple packets.\",\"objects\":[{\"id\":\"seed_packet_1\",\"name\":\"seed film packet\",\"shape\":\"box\",\"size_mm\":[20,40,3],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[250,250,20],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg0\"},{\"id\":\"plant_pillow_tray\",\"name\":\"plant pillow tray\",\"shape\":\"box\",\"size_mm\":[300,200,40],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[150,150,10],\"yaw_deg\":0,\"frame\":\"world\"},\"pocket_clearance_mm\":5,\"confidence\":0.5,\"source\":\"vl#seg0\"},{\"id\":\"plastic_bag\",\"name\":\"clear plastic bag holding packets\",\"shape\":\"box\",\"size_mm\":[150,150,80],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[300,100,40],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.4,\"source\":\"vl#seg0\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"seed_packet_1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"plant_pillow_tray\"},\"t_start_s\":0.0,\"t_end_s\":1.5,\"source\":\"vl#seg0\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"seed_packet_1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"plant_pillow_tray\"},\"t_start_s\":1.5,\"t_end_s\":2.0,\"source\":\"vl#seg0\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"seed_packet_1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"plant_pillow_tray\"},\"t_start_s\":2.0,\"t_end_s\":3.0,\"source\":\"vl#seg0\"},{\"id\":\"s4\",\"verb\":\"insert\",\"object\":\"seed_packet_1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"plant_pillow_tray\"},\"t_start_s\":3.0,\"t_end_s\":3.5,\"source\":\"vl#seg0\"},{\"id\":\"s5\",\"verb\":\"release\",\"object\":\"seed_packet_1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"plant_pillow_tray\"},\"t_start_s\":3.5,\"t_end_s\":4.0,\"source\":\"vl#seg0\"},{\"id\":\"s6\",\"verb\":\"retract\",\"object\":\"seed_packet_1\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"plant_pillow_tray\"},\"t_start_s\":4.0,\"t_end_s\":4.5,\"source\":\"vl#seg0\"}],\"anchor\":{\"t_s\":2.0,\"confidence\":0.7},\"warnings\":[\"Object sizes are estimated without a visible scale reference\"],\"open_questions\":[\"Exact dimensions of seed packet and tray pockets\",\"World-frame origin and scale for pose estimation\"]}"
+     }
+    ],
+    "title": "Pushing seed film into plant pillows aboard station",
+    "steps": [
+     "reach",
+     "grasp",
+     "move",
+     "insert",
+     "release",
+     "retract"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "seed_packet_1: size [20, 40, 3] mm scaled to [20, 6, 40] mm for the robot's jaws and reach",
+     "plant_pillow_tray: size [300, 200, 40] mm scaled to [150, 150, 30] mm for the robot's jaws and reach",
+     "left out of the rehearsal: clear plastic bag holding packets",
+     "rehearsing step s2 and step s4 of 6"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3060,
+      "completion_tokens": 446,
+      "seconds": 2.377,
+      "content": "{\"spec_title\": \"Pushing seed film into plant pillows aboard station\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"seed_packet_1\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"seed_packet_1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"seed_packet_1\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"seed_packet_1\", \"target\": \"plant_pillow_tray\"}}], \"warnings\": []}], \"warnings\": [\"Object sizes are estimated without a visible scale reference\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "sha256": "0f6edd04147c360400abe1680327800b079d227ee113a36b2baa60dc359b75fe",
+   "run": 1,
+   "hint": "",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "object obj1: size_mm [400, 250, 40] is outside 5 to 300 mm",
+     "object obj2: size_mm [380, 230, 25] is outside 5 to 300 mm",
+     "object obj4: size_mm [600, 400, 30] is outside 5 to 300 mm"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2022,
+      "completion_tokens": 960,
+      "seconds": 3.417,
+      "content": "{\"version\":1,\"title\":\"Astronaut opens a battery pack on a station workbench\",\"summary\":\"An astronaut wearing blue gloves reaches to a panel of six small battery cells, lifts the clear plastic cover off the panel, then lifts one battery cell out and sets it to the side on the blue work surface.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"battery panel\",\"shape\":\"box\",\"size_mm\":[400,250,40],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[500,100,20],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"plastic cover\",\"shape\":\"box\",\"size_mm\":[380,230,25],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[500,100,55],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"battery cell\",\"shape\":\"box\",\"size_mm\":[120,60,25],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[560,120,70],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"obj4\",\"name\":\"workbench\",\"shape\":\"box\",\"size_mm\":[600,400,30],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[500,100,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":0.0,\"t_end_s\":1.2,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":1.2,\"t_end_s\":2.0,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":2.0,\"t_end_s\":3.5,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"place\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":3.5,\"t_end_s\":4.2,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"grasp\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":4.2,\"t_end_s\":5.0,\"source\":\"vl#seg1\"},{\"id\":\"s6\",\"verb\":\"move\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":5.0,\"t_end_s\":5.8,\"source\":\"vl#seg1\"},{\"id\":\"s7\",\"verb\":\"place\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":5.8,\"t_end_s\":6.4,\"source\":\"vl#seg1\"},{\"id\":\"s8\",\"verb\":\"retract\",\"object\":null,\"target\":null,\"t_start_s\":6.4,\"t_end_s\":7.0,\"source\":\"vl#seg1\"},{\"id\":\"s9\",\"verb\":\"retract\",\"object\":null,\"target\":null,\"t_start_s\":7.0,\"t_end_s\":7.5,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":1.5,\"confidence\":0.6},\"warnings\":[\"Object sizes and poses are estimated from video without a visible scale reference; no ruler or known object size is present.\",\"All poses and clearances are approximate due to missing scale information.\"],\"open_questions\":[\"What are the exact dimensions of the battery panel, plastic cover, and battery cell in mm?\",\"What is the world-frame pose of each object?\",\"Is there a pocket clearance for the battery panel slot?\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 3,
+      "finish_reason": "stop",
+      "prompt_tokens": 3071,
+      "completion_tokens": 980,
+      "seconds": 5.479,
+      "content": "{\"version\":1,\"title\":\"Astronaut opens a battery pack on a station workbench\",\"summary\":\"An astronaut wearing blue gloves reaches to a panel of six small battery cells, lifts the clear plastic cover off the panel, then lifts one battery cell out and sets it to the side on the blue work surface.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"battery panel\",\"shape\":\"box\",\"size_mm\":[400,250,40],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[500,100,20],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"plastic cover\",\"shape\":\"box\",\"size_mm\":[380,230,25],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[500,100,55],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"battery cell\",\"shape\":\"box\",\"size_mm\":[120,60,25],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[560,120,70],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"obj4\",\"name\":\"workbench\",\"shape\":\"box\",\"size_mm\":[600,400,30],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[500,100,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.8,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":0.0,\"t_end_s\":1.2,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":1.2,\"t_end_s\":2.0,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":2.0,\"t_end_s\":3.5,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"place\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":3.5,\"t_end_s\":4.2,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"grasp\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj1\"},\"t_start_s\":4.2,\"t_end_s\":5.0,\"source\":\"vl#seg1\"},{\"id\":\"s6\",\"verb\":\"move\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":5.0,\"t_end_s\":5.8,\"source\":\"vl#seg1\"},{\"id\":\"s7\",\"verb\":\"place\",\"object\":\"obj3\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":5.8,\"t_end_s\":6.4,\"source\":\"vl#seg1\"},{\"id\":\"s8\",\"verb\":\"retract\",\"object\":\"obj4\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":6.4,\"t_end_s\":7.0,\"source\":\"vl#seg1\"},{\"id\":\"s9\",\"verb\":\"retract\",\"object\":\"obj4\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj4\"},\"t_start_s\":7.0,\"t_end_s\":7.5,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":1.5,\"confidence\":0.6},\"warnings\":[\"Object sizes and poses are estimated from video without a visible scale reference; no ruler or known object size is present.\",\"All poses and clearances are approximate due to missing scale information.\"],\"open_questions\":[\"What are the exact dimensions of the battery panel, plastic cover, and battery cell in mm?\",\"What is the world-frame pose of each object?\",\"Is there a pocket clearance for the battery panel slot?\"]}"
+     }
+    ],
+    "title": "Astronaut opens a battery pack on a station workbench",
+    "steps": [
+     "reach",
+     "grasp",
+     "move",
+     "place",
+     "grasp",
+     "move",
+     "place",
+     "retract",
+     "retract"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "obj2: size [380, 230, 25] mm scaled to [50, 50, 25] mm for the robot's jaws and reach",
+     "obj4: size [600, 400, 30] mm scaled to [150, 150, 30] mm for the robot's jaws and reach",
+     "left out of the rehearsal: battery panel, battery cell",
+     "rehearsing step s2 and step s4 of 9"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3030,
+      "completion_tokens": 418,
+      "seconds": 3.145,
+      "content": "{\"spec_title\": \"Astronaut opens a battery pack on a station workbench\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 54.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 4.5], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj2\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj2\", \"target\": \"obj4\"}}], \"warnings\": []}], \"warnings\": [\"Object sizes and poses are estimated from video without a visible scale reference; no ruler or known object size is present.\", \"All poses and clearances are approximate due to missing scale information.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "sha256": "0f6edd04147c360400abe1680327800b079d227ee113a36b2baa60dc359b75fe",
+   "run": 2,
+   "hint": "pushing seed film into plant pillows",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "object obj1: size_mm [350, 250, 40] is outside 5 to 300 mm",
+     "object obj3: size_mm [500, 400, 20] is outside 5 to 300 mm",
+     "objects[0].pocket_clearance_mm: fixture \"obj1\" is used as a pocket but has no clearance"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2039,
+      "completion_tokens": 539,
+      "seconds": 2.352,
+      "content": "{\"version\":1,\"title\":\"Astronaut pushing seed film into plant pillows\",\"summary\":\"A crew member wearing blue gloves reaches over a tray of plant pillows, inserts or pushes seed film into the pillows, then withdraws their hand.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"plant pillow tray\",\"shape\":\"box\",\"size_mm\":[350,250,40],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[400,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"seed film\",\"shape\":\"box\",\"size_mm\":[50,30,5],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":null,\"confidence\":0.4,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"work surface\",\"shape\":\"box\",\"size_mm\":[500,400,20],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[350,0,-20],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj2\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":0.0,\"t_end_s\":1.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"insert\",\"object\":\"obj2\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":1.0,\"t_end_s\":2.0,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"retract\",\"object\":null,\"target\":null,\"t_start_s\":2.0,\"t_end_s\":3.5,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":1.0,\"confidence\":0.6},\"warnings\":[\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\",\"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\",\"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"],\"open_questions\":[\"Exact dimensions of plant pillow tray and seed film needed for precise robot planning.\",\"Location of the seed film pocket on each pillow not visually confirmed.\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 3,
+      "finish_reason": "stop",
+      "prompt_tokens": 2654,
+      "completion_tokens": 573,
+      "seconds": 2.245,
+      "content": "{\"version\":1,\"title\":\"Astronaut pushing seed film into plant pillows\",\"summary\":\"A crew member wearing blue gloves reaches over a tray of plant pillows, inserts or pushes seed film into the pillows, then withdraws their hand.\",\"objects\":[{\"id\":\"obj1\",\"name\":\"plant pillow tray\",\"shape\":\"box\",\"size_mm\":[350,250,40],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[400,0,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.7,\"source\":\"vl#seg1\"},{\"id\":\"obj2\",\"name\":\"seed film\",\"shape\":\"box\",\"size_mm\":[50,30,5],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[420,10,10],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.4,\"source\":\"vl#seg1\"},{\"id\":\"obj3\",\"name\":\"work surface\",\"shape\":\"box\",\"size_mm\":[500,400,20],\"symmetry\":\"none\",\"role\":\"surface\",\"pose\":{\"xyz_mm\":[350,0,-20],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"obj2\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":0.0,\"t_end_s\":1.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"insert\",\"object\":\"obj2\",\"target\":{\"fixture\":\"pocket\",\"frame\":\"obj1\"},\"t_start_s\":1.0,\"t_end_s\":2.0,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"retract\",\"object\":\"obj2\",\"target\":{\"fixture\":\"zone\",\"frame\":\"obj3\"},\"t_start_s\":2.0,\"t_end_s\":3.5,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":1.0,\"confidence\":0.6},\"warnings\":[\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\",\"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\",\"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"],\"open_questions\":[\"Exact dimensions of plant pillow tray and seed film needed for precise robot planning.\",\"Location of the seed film pocket on each pillow not visually confirmed.\"]}"
+     }
+    ],
+    "title": "Astronaut pushing seed film into plant pillows",
+    "steps": [
+     "reach",
+     "insert",
+     "retract"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "obj2: size [50, 30, 5] mm scaled to [30, 6, 40] mm for the robot's jaws and reach",
+     "obj1: size [350, 250, 40] mm scaled to [150, 150, 30] mm for the robot's jaws and reach",
+     "left out of the rehearsal: work surface",
+     "rehearsing a grasp and step s2 of 3"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3053,
+      "completion_tokens": 411,
+      "seconds": 2.343,
+      "content": "{\"spec_title\": \"Astronaut pushing seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 6}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 3509,
+      "completion_tokens": 417,
+      "seconds": 2.486,
+      "content": "{\"spec_title\": \"Astronaut pushing seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 6}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "sha256": "0f6edd04147c360400abe1680327800b079d227ee113a36b2baa60dc359b75fe",
+   "run": 3,
+   "hint": "",
+   "models": {
+    "vl": "nvidia/Nemotron-3.5-Super-VL",
+    "nano": "nvidia/Nemotron-3_5-Lightning"
+   },
+   "label": {
+    "status": "done",
+    "warnings": [
+     "object panel: size_mm [400, 300, 50] is outside 5 to 300 mm"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 1,
+      "finish_reason": "stop",
+      "prompt_tokens": 2022,
+      "completion_tokens": 628,
+      "seconds": 2.616,
+      "content": "{\"version\":1,\"title\":\"Astronaut works with battery packs on a work panel aboard a station\",\"summary\":\"A gloved hand removes a small object from the left side of a panel holding six battery-like packs, then withdraws and leaves the panel untouched.\",\"objects\":[{\"id\":\"panel\",\"name\":\"work panel with battery packs\",\"shape\":\"box\",\"size_mm\":[400,300,50],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[500,200,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"battery_left\",\"name\":\"leftmost battery pack\",\"shape\":\"box\",\"size_mm\":[120,60,30],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[520,230,25],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"tool\",\"name\":\"small cylindrical object removed from left side\",\"shape\":\"cylinder\",\"size_mm\":[20,20,80],\"symmetry\":\"axial\",\"role\":\"manipulated\",\"pose\":{},\"confidence\":0.3,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"tool\",\"target\":null,\"t_start_s\":0.0,\"t_end_s\":1.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"tool\",\"target\":null,\"t_start_s\":1.0,\"t_end_s\":2.0,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"tool\",\"target\":{\"fixture\":\"zone\",\"frame\":\"panel\"},\"t_start_s\":2.0,\"t_end_s\":3.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"place\",\"object\":\"tool\",\"target\":{\"fixture\":\"zone\",\"frame\":\"panel\"},\"t_start_s\":3.0,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"retract\",\"object\":null,\"target\":null,\"t_start_s\":4.0,\"t_end_s\":5.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":1.5,\"confidence\":0.5},\"warnings\":[\"No visible scale or reference object for absolute pose; poses are estimates based on frame proportions.\",\"Tool object is small and partially occluded; its size and exact location are uncertain.\"],\"open_questions\":[\"What is the absolute size of the work panel and battery packs?\",\"What is the identity of the small object removed from the left side?\",\"Where exactly on the panel is the tool placed after removal?\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3.5-Super-VL",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 3,
+      "finish_reason": "stop",
+      "prompt_tokens": 2757,
+      "completion_tokens": 677,
+      "seconds": 2.473,
+      "content": "{\"version\":1,\"title\":\"Astronaut works with battery packs on a work panel aboard a station\",\"summary\":\"A gloved hand removes a small object from the left side of a panel holding six battery-like packs, then withdraws and leaves the panel untouched.\",\"objects\":[{\"id\":\"panel\",\"name\":\"work panel with battery packs\",\"shape\":\"box\",\"size_mm\":[400,300,50],\"symmetry\":\"none\",\"role\":\"fixture\",\"pose\":{\"xyz_mm\":[500,200,0],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.6,\"source\":\"vl#seg1\"},{\"id\":\"battery_left\",\"name\":\"leftmost battery pack\",\"shape\":\"box\",\"size_mm\":[120,60,30],\"symmetry\":\"none\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[520,230,25],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.5,\"source\":\"vl#seg1\"},{\"id\":\"tool\",\"name\":\"small cylindrical object removed from left side\",\"shape\":\"cylinder\",\"size_mm\":[20,20,80],\"symmetry\":\"axial\",\"role\":\"manipulated\",\"pose\":{\"xyz_mm\":[510,220,25],\"yaw_deg\":0,\"frame\":\"world\"},\"confidence\":0.3,\"source\":\"vl#seg1\"}],\"steps\":[{\"id\":\"s1\",\"verb\":\"reach\",\"object\":\"tool\",\"target\":{\"fixture\":\"zone\",\"frame\":\"panel\"},\"t_start_s\":0.0,\"t_end_s\":1.0,\"source\":\"vl#seg1\"},{\"id\":\"s2\",\"verb\":\"grasp\",\"object\":\"tool\",\"target\":{\"fixture\":\"zone\",\"frame\":\"panel\"},\"t_start_s\":1.0,\"t_end_s\":2.0,\"source\":\"vl#seg1\"},{\"id\":\"s3\",\"verb\":\"move\",\"object\":\"tool\",\"target\":{\"fixture\":\"zone\",\"frame\":\"panel\"},\"t_start_s\":2.0,\"t_end_s\":3.0,\"source\":\"vl#seg1\"},{\"id\":\"s4\",\"verb\":\"place\",\"object\":\"tool\",\"target\":{\"fixture\":\"zone\",\"frame\":\"panel\"},\"t_start_s\":3.0,\"t_end_s\":4.0,\"source\":\"vl#seg1\"},{\"id\":\"s5\",\"verb\":\"retract\",\"object\":\"panel\",\"target\":{\"fixture\":\"zone\",\"frame\":\"panel\"},\"t_start_s\":4.0,\"t_end_s\":5.0,\"source\":\"vl#seg1\"}],\"anchor\":{\"t_s\":1.5,\"confidence\":0.5},\"warnings\":[\"No visible scale or reference object for absolute pose; poses are estimates based on frame proportions.\",\"Tool object is small and partially occluded; its size and exact location are uncertain.\"],\"open_questions\":[\"What is the absolute size of the work panel and battery packs?\",\"What is the identity of the small object removed from the left side?\",\"Where exactly on the panel is the tool placed after removal?\"]}"
+     }
+    ],
+    "title": "Astronaut works with battery packs on a work panel aboard a station",
+    "steps": [
+     "reach",
+     "grasp",
+     "move",
+     "place",
+     "retract"
+    ]
+   },
+   "fit": {
+    "rehearsable": true,
+    "gestures": false,
+    "warnings": [
+     "tool: size [20, 20, 80] mm scaled to [20, 20, 40] mm for the robot's jaws and reach",
+     "panel: size [400, 300, 50] mm scaled to [150, 150, 30] mm for the robot's jaws and reach",
+     "left out of the rehearsal: leftmost battery pack",
+     "rehearsing step s2 and step s4 of 5"
+    ]
+   },
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3030,
+      "completion_tokens": 438,
+      "seconds": 5.631,
+      "content": "{\"spec_title\": \"Astronaut works with battery packs on a work panel aboard a station\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"tool\", \"aperture_mm\": 20}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"tool\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"panel\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"panel\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"tool\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"tool\", \"target\": \"panel\"}}], \"warnings\": [\"No visible scale or reference object for absolute pose; poses are estimates based on frame proportions.\", \"Tool object is small and partially occluded; its size and exact location are uncertain.\"]}], \"warnings\": [\"No visible scale or reference object for absolute pose; poses are estimates based on frame proportions.\", \"Tool object is small and partially occluded; its size and exact location are uncertain.\"]}"
+     }
+    ]
+   }
+  }
+ ]
+}
