@@ -6,7 +6,9 @@
  * stuck: from the start it runs with thinking off, and switches to thinking
  * on (4k tokens) for the rest of the loop after a patch that changes nothing
  * (re-asked at once) or after its second failed patch. That escalation fixed
- * 94% of solvable failures within five patches, at US$0.0024 per fix.
+ * 94% of solvable failures within five patches, at US$0.0024 per fix. Super
+ * VL, in Super's place since #137, cannot think within that budget, so with it
+ * the stuck loop asks Ultra with thinking off (docs/MEASUREMENTS.md section 12).
  */
 import { z } from "zod";
 import type { Program, TaskSpec } from "@/lib/spec/schema";
@@ -103,6 +105,7 @@ export type NotePatch = {
   /** what the simulator told the patcher */
   note: string;
   model: string;
+  /** the loop is stuck, so the deeper patcher answered: Super thinking, or Ultra with thinking off in place of Super VL (app/api/notes/route.ts) */
   thinking: boolean;
   escalation: Escalation | null;
   tokens: number;
