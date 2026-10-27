@@ -1,0 +1,9 @@
+
+ RUN  v5.0.5 /Users/gibou/code/github/understudy-wt/rerecord
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed | 13 skipped (14)
+   Start at  09:17:25
+   Duration  20.02s (tests 99%, transform 1%)
+

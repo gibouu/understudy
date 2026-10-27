@@ -137,7 +137,16 @@ export const Session = z.object({
    * How this recording was chosen among several runs of its clip, said on its page. Written by
    * hand after choosing; the recorder never writes it, so a new recording starts without the claim.
    */
-  selection: z.object({ runs: z.number().int().positive(), kept: z.string(), others: z.string().optional() }).optional(),
+  selection: z
+    .object({
+      runs: z.number().int().positive(),
+      /** which run, in recording order, was kept, when the runs were made one after another (bench/rerecord/<clip>/run-<n>.json) */
+      run: z.number().int().positive().optional(),
+      kept: z.string(),
+      others: z.string().optional(),
+    })
+    .refine((s) => s.run === undefined || s.run <= s.runs, { message: "the kept run is one of the runs", path: ["run"] })
+    .optional(),
   ledger: z.array(Call),
   total_usd: z.number(),
 });

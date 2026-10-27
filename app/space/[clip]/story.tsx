@@ -145,7 +145,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         <h1 className="display text-4xl font-semibold text-ink-deep sm:text-5xl">{label.title}</h1>
         <p className="text-lg text-neutral-700">
           {sample.label}. Recorded on {new Date(session.recorded_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}{" "}
-          {session.selection ? `as one of ${session.selection.runs} recording runs of this clip, ${session.selection.kept}; labels and patches vary from run to run` : "as one run through Understudy (labels vary run to run)"}. Its {session.ledger.length} model calls cost {usd(session.total_usd)} in all. The last version of its program {verdict(session)}.
+          {session.selection ? `as ${session.selection.run ? `run ${session.selection.run} of ${session.selection.runs}` : `one of ${session.selection.runs}`} recording runs of this clip, ${session.selection.kept}; labels and patches vary from run to run` : "as one run through Understudy (labels vary run to run)"}. Its {session.ledger.length} model calls cost {usd(session.total_usd)} in all. The last version of its program {verdict(session)}.
         </p>
       </header>
 
