@@ -71,6 +71,8 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
     // a stage mounted afresh rehearses again: what the last one found must not move the tour on
     if (!mountsFirst(at) && mountsFirst(next)) setSeenFirst({});
     if (!mountsLast(at) && mountsLast(next)) setSeenLast({});
+    // the clip is fetched again each time its step shows: its dwell waits again
+    if (steps[next].id === "clip" && next !== at) setClipReady(false);
     setAt(next);
     // the step's media sits under its header: bring the header back when the visitor has scrolled past it
     if (top.current && top.current.getBoundingClientRect().top < 0) top.current.scrollIntoView({ behavior: "smooth", block: "start" });
