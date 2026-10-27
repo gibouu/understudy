@@ -221,7 +221,8 @@ describe("models Token Factory retires on 9 Nov 2026 (#137)", () => {
     for (const [route, body] of Object.entries(BODIES) as [Exclude<Route, "label">, object][]) {
       expect((await post(route, { ...body, unlock: "orbit" })).live, route).toBe(true);
     }
-    expect(new Set(tf.models)).toEqual(new Set([RETIRED["nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"], RETIRED["nvidia/nemotron-3-super-120b-a12b"]]));
+    // the fake's "{}" changes nothing, so the patch loop is stuck at once and Ultra answers it
+    expect(new Set(tf.models)).toEqual(new Set([RETIRED["nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"], RETIRED["nvidia/nemotron-3-super-120b-a12b"], MODELS.ultra]));
   });
 
   it("replays a whole sample session when a model is gone, every stage saying why, though the pass would go live", async () => {
@@ -246,9 +247,11 @@ describe("models Token Factory retires on 9 Nov 2026 (#137)", () => {
     expect(why(r.json)).toBe(LIVE_RETIRED);
   });
 
-  it("does not need Ultra, which no route calls", async () => {
+  it("needs Ultra too, which answers a stuck patch loop", async () => {
     gone(MODELS.ultra);
-    expect((await post("compile", { ...BODIES.compile, unlock: "orbit" })).live).toBe(true);
+    const r = await post("compile", { ...BODIES.compile, unlock: "orbit" });
+    expect(r.live).toBe(false);
+    expect(why(r.json)).toContain(LIVE_RETIRED);
   });
 
   it("replays the step when the list cannot be read, and reads it again after 30 s", async () => {

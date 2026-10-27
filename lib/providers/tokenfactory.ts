@@ -40,8 +40,8 @@ export const MODELS = {
 
 export type ModelRole = keyof typeof MODELS;
 
-/** The roles the live routes call; Ultra writes only in the bench scripts, so its absence never stops the demo. */
-export const LIVE_ROLES: readonly ModelRole[] = ["vl", "nano", "super"];
+/** The roles the live routes call: Ultra too, which answers a stuck patch loop in place of Super VL (app/api/notes/route.ts). */
+export const LIVE_ROLES: readonly ModelRole[] = ["vl", "nano", "super", "ultra"];
 
 /** Whether Token Factory lists each role's model; not `ok` (every route replays) when a live role's is missing or the list could not be read. */
 export type Served = {

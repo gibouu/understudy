@@ -61,9 +61,9 @@ describe("models Token Factory retires on 9 Nov 2026 (#137)", () => {
     expect(tf.MODELS).toMatchObject({ nano: NANO, super: SUPER });
   });
 
-  it("is ok while every role the routes call is listed, and does not need Ultra", () => {
+  it("is ok while every role the routes call is listed, Ultra included", () => {
     expect(served(all)).toEqual({ ok: true, listed: true, models: { vl: true, nano: true, super: true, ultra: true } });
-    expect(served(without(MODELS.ultra))).toMatchObject({ ok: true, models: { ultra: false } });
+    expect(served(without(MODELS.ultra))).toMatchObject({ ok: false, why: `missing ultra=${MODELS.ultra}`, models: { ultra: false } });
   });
 
   it("is not ok when a role the routes call is missing, and says which", () => {

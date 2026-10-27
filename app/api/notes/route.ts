@@ -7,7 +7,8 @@
  * returns knob values (lib/notes/knobs.ts), and the route validates, clamps
  * and applies them. Thinking stays off until the loop is stuck (a patch that
  * changes nothing, re-asked at once, or two failed patches), as measured in
- * docs/MEASUREMENTS.md section 8. `unlock` or `sample_token` lets it go live
+ * docs/MEASUREMENTS.md section 8; a patcher that cannot think within the
+ * budget hands the stuck loop to Ultra instead. `unlock` or `sample_token` lets it go live
  * (lib/unlock/check.ts). Replay (no key, ?replay=1, or no way past the spend
  * guard) answers from tests/fixtures/notes.json: the recording for the same
  * program and attempt.
@@ -28,6 +29,15 @@ import { explain, liveGate } from "@/lib/unlock/check";
 
 // a thinking call takes up to ~40 s, and a no-op re-asks once
 export const maxDuration = 180;
+
+/**
+ * Patchers whose reasoning does not fit MAX_TOKENS_ON. Super VL, in Super's
+ * place since #137, used all 4,096 tokens and returned no answer in 84% of its
+ * thinking calls (docs/MEASUREMENTS.md section 12); with it, the stuck loop asks
+ * Nemotron 3 Ultra with thinking off (89% fixed within five patches, against
+ * 94% for Super escalating to its own thinking).
+ */
+const NO_ROOM_TO_THINK: ReadonlySet<string> = new Set(["nvidia/Nemotron-3.5-Super-VL"]);
 
 const RolloutIn = z.object({
   pass: z.boolean(),
@@ -84,15 +94,21 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
   const user = patchPrompt(spec, program, knobs, first, history, note);
   // one ledger for every call of this patch, the unusable answers too: each was billed
   const ledger: LedgerEntry[] = [];
-  const ask = (thinking: boolean) => callModel(client, { role: "super", system: PATCH_SYSTEM, user, maxTokens: thinking ? MAX_TOKENS_ON : MAX_TOKENS_OFF, schema: PatchReply, thinking, ledger });
+  // stuck: Super thinks, or Ultra answers in place of a patcher that cannot think within the budget
+  const toUltra = NO_ROOM_TO_THINK.has(MODELS.super);
+  const ask = (stuck: boolean) =>
+    stuck && toUltra
+      ? callModel(client, { role: "ultra", system: PATCH_SYSTEM, user, maxTokens: MAX_TOKENS_OFF, schema: PatchReply, ledger })
+      : callModel(client, { role: "super", system: PATCH_SYSTEM, user, maxTokens: stuck ? MAX_TOKENS_ON : MAX_TOKENS_OFF, schema: PatchReply, thinking: stuck, ledger });
+  const deeper = toUltra ? "asked Nemotron 3 Ultra" : "asked again with thinking on";
 
   let why = escalation(history);
   let r = await ask(why !== null);
   const warnings: string[] = r.status === "done" ? [...r.warnings] : [];
   let applied = r.status === "done" ? applyPatch(spec, program, r.value.set, steps) : null;
   if (why === null && (r.status !== "done" || applied!.noop)) {
-    // stuck on the first try: the thinking patcher answers this one, and the rest of the loop
-    warnings.push(r.status === "done" ? "the patch changed nothing: asked again with thinking on" : `the patcher failed (${r.status === "failed" ? r.message : r.status}): asked again with thinking on`);
+    // stuck on the first try: the deeper patcher answers this one, and the rest of the loop
+    warnings.push(r.status === "done" ? `the patch changed nothing: ${deeper}` : `the patcher failed (${r.status === "failed" ? r.message : r.status}): ${deeper}`);
     why = "noop";
     r = await ask(true);
     if (r.status === "done") {
@@ -119,7 +135,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
     why: r.value.why.slice(0, 400),
     expect: r.value.expect.slice(0, 400),
     note,
-    model: MODELS.super,
+    model: why !== null && toUltra ? MODELS.ultra : MODELS.super,
     thinking: why !== null,
     escalation: why,
     tokens: costs.reduce((n, e) => n + e.prompt_tokens + e.completion_tokens, 0),
