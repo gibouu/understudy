@@ -55,6 +55,8 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
           return send(200, { name: `${r.name}-ab12`, status: "validating" });
         }
         if (req.method === "GET" && /\/v0\/models\/[^/]+$/.test(url)) return send(200, { name: url.split("/").at(-1), status: "active" });
+        if (req.method === "GET" && url.endsWith("/v1/models")) return send(200, { object: "list", data: [{ id: "Qwen/Qwen3-30B-A3B-Instruct-2507", object: "model" }] });
+        if (req.method === "GET" && url.endsWith("/v0/model_artifacts")) return send(403, { detail: "You don't have access to the resource or it does not exist" });
         if (req.method === "DELETE" && /\/v1\/models\//.test(url)) return send(200, { deleted: true });
         // dedicated endpoints
         if (req.method === "GET" && url.endsWith("/v0/dedicated_endpoints")) return send(200, { object: "list", data: endpoints });
@@ -190,10 +192,16 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
   it("try-serve keeps a refused LoRA registration word for word, and asks nothing more", async () => {
     loraGone = true;
     const ledgerBefore = ledger().length;
+    const servedBefore = served.length;
     await tf("try-serve");
     const serve = state().serve;
     expect(serve.lora_model).toMatchObject({ status: 410, name: null, detail: '"LoRA adapter deployment is no longer available"' });
     expect(serve.lora_answer).toBeUndefined();
+    // the evidence is kept: what serverless serves, and the refused artifact listing
+    expect(serve.serverless_models).toEqual({ status: 200, ids: ["Qwen/Qwen3-30B-A3B-Instruct-2507"] });
+    expect(serve.model_artifacts).toMatchObject({ status: 403 });
+    // nothing is asked after the refusal: the checkpoint call, the two free GETs, the registration, and no more
+    expect(served.slice(servedBefore)).toEqual(["POST /v1/chat/completions", "GET /v1/models", "GET /v0/model_artifacts", "POST /v0/models"]);
     // only the checkpoint-id call is on the ledger, at 0 (refused)
     const calls = ledger().slice(ledgerBefore).filter((e) => !e.type && e.meta?.stage === "try-serve");
     expect(calls.map((c) => c.usd)).toEqual([0]);

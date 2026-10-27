@@ -77,11 +77,50 @@
   ],
   "serve": {
     "checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
-    "tried_at": "2026-10-27T06:08:49.797Z",
+    "tried_at": "2026-10-27T06:18:26.907Z",
     "checkpoint_id": {
       "ok": false,
       "model": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
       "error": "404 The model `ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40` does not exist."
+    },
+    "serverless_models": {
+      "status": 200,
+      "ids": [
+        "moonshotai/Kimi-K3",
+        "Qwen/Qwen3-235B-A22B-Instruct-2507",
+        "google/gemma-3-27b-it",
+        "Qwen/Qwen3-Embedding-8B",
+        "openai/gpt-oss-120b",
+        "Qwen/Qwen3-30B-A3B-Instruct-2507",
+        "NousResearch/Hermes-4-405B",
+        "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+        "zai-org/GLM-5.1",
+        "nvidia/Nemotron-3_5-Lightning",
+        "openbmb/MiniCPM-V-4_5",
+        "Qwen/Qwen3.8-27B",
+        "deepseek-ai/DeepSeek-V4-Flash-0731",
+        "MiniMaxAI/MiniMax-M3",
+        "moonshotai/Kimi-K2.7-Code",
+        "nvidia/Nemotron-3-Ultra-550b-a55b",
+        "moonshotai/Kimi-K2.6",
+        "nvidia/nemotron-3-super-120b-a12b",
+        "Qwen/Qwen3.5-397B-A17B",
+        "deepseek-ai/DeepSeek-V4-Pro",
+        "deepseek-ai/DeepSeek-V4-Pro-0813",
+        "zai-org/GLM-5.2",
+        "MiniMaxAI/MiniMax-M3.1-Flash",
+        "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+        "reflection/beam",
+        "nvidia/Nemotron-3.5-Super-VL",
+        "meta-models/muse-spark-open",
+        "zai-org/GLM-5.3-Flash",
+        "deepseek-ai/DeepSeek-V4.1-Flash",
+        "zai-org/GLM-5.3"
+      ]
+    },
+    "model_artifacts": {
+      "status": 403,
+      "detail": "\"You don't have access to the resource or it does not exist\""
     },
     "lora_model": {
       "status": 410,
@@ -129,6 +168,20 @@
         "status": 404,
         "id": null,
         "detail": "\"Not Found\""
+      }
+    },
+    {
+      "checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
+      "tried_at": "2026-10-27T06:08:49.797Z",
+      "checkpoint_id": {
+        "ok": false,
+        "model": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
+        "error": "404 The model `ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40` does not exist."
+      },
+      "lora_model": {
+        "status": 410,
+        "name": null,
+        "detail": "\"LoRA adapter deployment is no longer available\""
       }
     }
   ]

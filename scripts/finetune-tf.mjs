@@ -251,16 +251,33 @@ async function main() {
       s.serve = { checkpoint: last.model, tried_at: new Date().toISOString() };
       // 1. the checkpoint id as a serverless model
       s.serve.checkpoint_id = await ask(last.model);
+      // the evidence docs/FINETUNE.md cites: what serverless serves today, and whether this key may list the model
+      // artifacts a dedicated endpoint's custom weights come from (free GETs, each with a timeout)
+      const evidence = async (route) => {
+        try {
+          const r = await fetch(`${API_ROOT}${route}`, { headers: auth(), signal: AbortSignal.timeout(30_000) });
+          return { status: r.status, body: await r.json().catch(() => null) };
+        } catch (e) {
+          return { status: null, error: String(e?.message ?? e).slice(0, 200) };
+        }
+      };
+      const models = await evidence("/v1/models");
+      s.serve.serverless_models = { status: models.status, ids: Array.isArray(models.body?.data) ? models.body.data.map((m) => m.id) : null };
+      const artifacts = await evidence("/v0/model_artifacts");
+      s.serve.model_artifacts = { status: artifacts.status, detail: artifacts.body?.detail ? String(JSON.stringify(artifacts.body.detail)).slice(0, 300) : null };
       // 2. the checkpoint registered as a serverless LoRA model: POST /v0/models with the source "<job>:<checkpoint>",
       // then wait for it to turn active (the cookbook's post-training/fine-tuning-1/fine_tune_llama.ipynb, step 9)
       try {
-        // every request has a timeout: a stalled answer must not hold the lock for ever
+        // every request has a timeout and the wait a deadline: a stalled answer must not hold the lock for ever
         const mk = await fetch(`${API_ROOT}/v0/models`, { method: "POST", signal: AbortSignal.timeout(120_000), headers: { ...auth(), "Content-Type": "application/json" }, body: JSON.stringify({ name: "understudy-patcher", base_model: BASE_MODEL, source: `${s.job.id}:${last.id}`, description: "LoRA of the patch-loop repairs (issue #97)" }) });
         const mkBody = await mk.json().catch(() => ({}));
         s.serve.lora_model = { status: mk.status, name: mkBody.name ?? null, detail: mkBody.detail ? String(JSON.stringify(mkBody.detail)).slice(0, 300) : null };
+        // on disk before the wait: whatever happens next, delete-lora knows the name
+        save(s);
         if (mk.ok && mkBody.name) {
           let info = {};
-          for (let i = 0; i < 120 && !["active", "error"].includes(info.status); i++) {
+          const until = Date.now() + 10 * MINUTE_MS;
+          while (Date.now() < until && !["active", "error"].includes(info.status)) {
             await new Promise((r) => setTimeout(r, MINUTE_MS / 12));
             info = await fetch(`${API_ROOT}/v0/models/${encodeURIComponent(mkBody.name)}`, { headers: auth(), signal: AbortSignal.timeout(30_000) })
               .then((r) => r.json())

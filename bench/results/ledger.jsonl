@@ -21253,3 +21253,5 @@
 {"t":"2026-10-27T01:29:07.191Z","type":"release","id":"39503-mvq0c32t-0-c7xmcd"}
 {"t":"2026-10-27T06:08:49.823Z","type":"reserve","id":"27445-mvqabstb-0-b9jgjy","script":"finetune-tf","usd":0.00013,"meta":{"model":"ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40","stage":"try-serve"}}
 {"t":"2026-10-27T06:08:49.885Z","script":"finetune-tf","usd":0,"meta":{"model":"ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40","stage":"try-serve","failed":true,"status":404},"settles":"27445-mvqabstb-0-b9jgjy"}
+{"t":"2026-10-27T06:18:26.929Z","type":"reserve","id":"38353-mvqao641-0-r4ushu","script":"finetune-tf","usd":0.00013,"meta":{"model":"ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40","stage":"try-serve"}}
+{"t":"2026-10-27T06:18:27.006Z","script":"finetune-tf","usd":0,"meta":{"model":"ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40","stage":"try-serve","failed":true,"status":404},"settles":"38353-mvqao641-0-r4ushu"}

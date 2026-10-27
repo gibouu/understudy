@@ -167,7 +167,7 @@ The checkpoint's other id (`ft:...`) has the same problem, and nothing in the pu
 
 > HTTP 410: {"detail":"LoRA adapter deployment is no longer available"}
 
-The page of models that can be fine-tuned says the same in its own words: "Deployment options currently only include via Dedicated endpoints" ([models](https://docs.tokenfactory.nebius.com/post-training/models.md)). `GET /v0/model_artifacts`, where a `model-artifact_` id would come from, answers 403: "You don't have access to the resource or it does not exist". Both calls cost nothing (the ledger has the checkpoint-id call at US$0, refused with a 404 again).
+The page of models that can be fine-tuned says the same in its own words: "Deployment options currently only include via Dedicated endpoints" ([models](https://docs.tokenfactory.nebius.com/post-training/models.md)). `GET /v0/model_artifacts`, where a `model-artifact_` id would come from, answers 403: "You don't have access to the resource or it does not exist". `try-serve` ran again at 06:18 UTC and saved these answers, with the list of serverless models, in `bench/results/finetune-tf.json` (`serve`; the earlier attempts are in `serve_history`). All of it cost nothing: the ledger has each checkpoint-id call at US$0, refused with a 404.
 
 **Spend on the stand-in:** US$12.20 for the training (US$13.85 on the ledger, its estimate), US$0.22 for the baselines, US$0 for serving.
 
@@ -176,7 +176,7 @@ The page of models that can be fine-tuned says the same in its own words: "Deplo
 On 27 October gib asked for several fine-tunes in parallel on the Token Factory balance, inside the same US$100 cap: Qwen3-14B, Meta-Llama-3.1-8B-Instruct, Qwen3-32B and Llama-3.3-70B-Instruct. In the signed-in console (Billing, Prices, eu-north1, read by the lead) these four have a training price and also a serverless "<model>-LoRa" serving price, so a tuned adapter on them looked servable without custom weights. Checked against the API before any spend (27 October, 06:00 to 06:10 UTC):
 
 - All four are on the list of models that can be fine-tuned, with LoRA ([models](https://docs.tokenfactory.nebius.com/post-training/models.md)).
-- None of the four is on `GET /v1/models`, which lists 30 serverless models today. Qwen3-32B and Llama-3.3-70B-Instruct left serverless on 31 August 2026 ([August 2026 deprecations](https://docs.tokenfactory.nebius.com/august-2026-deprecation-notice.md)). So the untuned base of each cannot be called for the comparison either.
+- None of the four is on `GET /v1/models`, which lists 30 serverless models today (saved in `bench/results/finetune-tf.json`, `serve.serverless_models`). Qwen3-32B and Llama-3.3-70B-Instruct left serverless on 31 August 2026 ([August 2026 deprecations](https://docs.tokenfactory.nebius.com/august-2026-deprecation-notice.md)). So the untuned base of each cannot be called for the comparison either.
 - LoRA deployment answers HTTP 410 for every model (section 5). The console's "-LoRa" prices date from November 2025 and describe a route that is gone.
 
 So a job on any of them gives a loss curve and nothing to measure. gib approved all four on 27 October for the loss curves alone, at an estimated US$31.67 (4.95 million tokens each with the 10% margin: Qwen3-14B and Llama-3.1-8B at US$0.4 per 1M, US$1.98 each; Qwen3-32B and Llama-3.3-70B at US$2.8, US$13.85 each). With the US$12.42 already spent, #97 stays under its US$100 cap. Same data and recipe as the Qwen3 30B-A3B job: LoRA rank 16, alpha 32, learning rate 2e-4, 16 packed sequences of 8,192 tokens a batch, 5 epochs.
