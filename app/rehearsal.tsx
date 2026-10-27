@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { armFrame, type TraceFrame } from "@/lib/export/trace";
 import type { WorldRun } from "@/lib/notes/note";
 import { SimClient } from "@/lib/sim/client";
 import { describeReach } from "@/lib/sim/gesture";
 import type { Rollout } from "@/lib/sim/interpreter";
+import type { SimMeta } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { SETTING_NAMES, SETTING_WORLD, settingFor } from "@/lib/sim/settings";
 import { PatchLoop } from "./patch-loop";
@@ -34,6 +36,10 @@ const liquidOf = (r: Rollout) => r.log.findLast((l) => l.includes(" liquid: "))?
  * a rehearsal starting. `autoplay` rehearses on Earth, then in orbit, by itself once the stage is loaded and on
  * screen, and again after a setting is picked while nothing plays. `speed` plays that many times faster than real
  * time and shows a control for it; the physics steps the same, so the results do not change.
+ *
+ * `onRun` hears every rollout the table shows, with the arm's joints at each frame of it (the export's episodes).
+ * `guided` keeps only the button that rehearses in both worlds and leaves the results table out: a page that guides
+ * the visitor says the results itself, from `onRun`.
  */
 export function Rehearsal({
   spec,
@@ -43,6 +49,8 @@ export function Rehearsal({
   hint,
   autoplay = false,
   speed: initialSpeed,
+  onRun,
+  guided = false,
 }: {
   spec: TaskSpec;
   program: Program;
@@ -51,10 +59,14 @@ export function Rehearsal({
   hint?: string;
   autoplay?: boolean;
   speed?: number;
+  onRun?: (world: GravityName, rollout: Rollout, trace: TraceFrame[]) => void;
+  guided?: boolean;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const clientRef = useRef<SimClient | null>(null);
+  /** the frames of the rollout playing, while someone listens (`onRun`) */
+  const trace = useRef<TraceFrame[] | null>(null);
   const rendererRef = useRef<StageRenderer | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** how far the simulator's load has come, 0 to 1, once the worker says */
@@ -95,12 +107,14 @@ export function Rehearsal({
     rendererRef.current = renderer;
     let last: Float64Array | null = null;
     let lastT = 0;
+    let meta: SimMeta | null = null;
     const client = new SimClient()
       .on("status", (_, p) => alive && p !== undefined && setProgress(p))
       .on("error", (message) => alive && setError(message))
-      .on("loaded", (m) => renderer.setMeta(m))
+      .on("loaded", (m) => (renderer.setMeta(m), (meta = m)))
       .on("frame", (frame) => {
         renderer.update(frame);
+        if (trace.current && meta) trace.current.push(armFrame(meta, frame));
         const now = performance.now();
         const from = clock.current;
         const back = frame.t < lastT; // a reset: simulated time starts again from 0
@@ -164,11 +178,14 @@ export function Rehearsal({
     for (const world of worlds) {
       let result: Row["result"];
       try {
+        trace.current = show && onRun ? [] : null;
         // a rollout homes only the arm: the objects go back where the spec has them too, in the run's own message
         result = await client.run(p, "sensed", "home", { reset: {}, gravityG: GRAVITIES[world] });
       } catch (err) {
         result = { error: (err as Error).message };
       }
+      const frames = trace.current;
+      trace.current = null;
       out.push({ world, result });
       // the stage now shows this rollout, a patch's included: the setting follows what it shows
       const won = typeof result === "object" && !("error" in result) && result.pass;
@@ -178,13 +195,14 @@ export function Rehearsal({
       });
       if (!show) continue;
       setRows((rs) => rs.map((r) => (r.world === world ? { world, result } : r)));
+      if (frames && !("error" in result)) onRun?.(world, result, frames);
       if (!first && !("error" in result) && !result.pass && result.failed_step_id) {
         first = { step_id: result.failed_step_id, op: result.failed_op, world, why: result.why };
         onFail(first);
       }
     }
     return out;
-  }, [onFail, program]);
+  }, [onFail, onRun, program]);
 
   async function rehearse(worlds: GravityName[]) {
     if (!clientRef.current || busy || patching) return;
@@ -285,15 +303,17 @@ export function Rehearsal({
         <button className="rounded bg-neutral-900 px-3 py-1.5 text-white disabled:opacity-40" disabled={!ready || busy || patching} onClick={() => rehearse(WORLDS)}>
           Rehearse on Earth, then in orbit
         </button>
-        <button className="rounded border px-3 py-1.5 disabled:opacity-40" disabled={!ready || busy || patching} onClick={() => (clientRef.current?.reset(), setRows([]), onFail(null))}>
-          Reset
-        </button>
-        {WORLDS.map((w) => (
+        {!guided && (
+          <button className="rounded border px-3 py-1.5 disabled:opacity-40" disabled={!ready || busy || patching} onClick={() => (clientRef.current?.reset(), setRows([]), onFail(null))}>
+            Reset
+          </button>
+        )}
+        {!guided && WORLDS.map((w) => (
           <button key={w} className="rounded border px-3 py-1.5 disabled:opacity-40" disabled={!ready || busy || patching} onClick={() => rehearse([w])}>
             {w} ({GRAVITIES[w]} g)
           </button>
         ))}
-        {initialSpeed !== undefined && (
+        {!guided && initialSpeed !== undefined && (
           <div className="flex items-center gap-1" role="group" aria-label="Speed">
             <span className="mr-1 text-xs text-neutral-500">speed</span>
             {SPEEDS.map((x) => (
@@ -304,8 +324,8 @@ export function Rehearsal({
           </div>
         )}
       </div>
-      <SettingSwitch shown={building !== undefined ? building : shown} onPick={pick} note={picked === "auto" && !shown ? `after a pass ${SETTING_WORLD[suggested] === "orbit" ? "in orbit" : "on Earth"}: the ${SETTING_NAMES[suggested]}` : undefined} />
-      {rows.length > 0 && (
+      {!guided && <SettingSwitch shown={building !== undefined ? building : shown} onPick={pick} note={picked === "auto" && !shown ? `after a pass ${SETTING_WORLD[suggested] === "orbit" ? "in orbit" : "on Earth"}: the ${SETTING_NAMES[suggested]}` : undefined} />}
+      {!guided && rows.length > 0 && (
         <table className="w-full text-left text-sm">
           <thead className="text-xs text-neutral-500">
             <tr>

@@ -21,6 +21,12 @@ export default async function Home() {
           <p className="max-w-2xl text-xl leading-snug sm:text-2xl">
             Film a person doing a task once. Understudy turns the clip into a robot program, asks what the camera could not see, and a simulated arm rehearses it on Earth and in orbit.
           </p>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-2">
+            <Link href="/demo" className="rounded-full bg-sun px-7 py-3.5 text-xl font-semibold text-ink-deep shadow-[5px_6px_0_var(--accent-bright)] transition-transform hover:-translate-y-0.5 sm:text-2xl">
+              Watch the 1-minute demo <span aria-hidden="true">→</span>
+            </Link>
+            <span className="max-w-sm text-paper/85">A NASA clip, step by step, with the arm simulated live in your browser. No key, no sign-up.</span>
+          </div>
         </div>
       </section>
 

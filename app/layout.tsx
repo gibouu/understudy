@@ -21,7 +21,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Link href="/" className="display text-2xl font-semibold text-ink-deep">
               Understudy
             </Link>
-            <span className="flex gap-5 text-[15px]">
+            <span className="flex gap-4 whitespace-nowrap text-[15px] sm:gap-5">
+              <Link href="/demo" className="font-semibold underline-offset-4 hover:text-accent-text hover:underline">
+                <span className="sm:hidden">Demo</span>
+                <span className="hidden sm:inline">1-minute demo</span>
+              </Link>
               <Link href="/space" className="underline-offset-4 hover:text-accent-text hover:underline">
                 Space showcase
               </Link>
