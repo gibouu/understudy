@@ -7,7 +7,7 @@ import { SAMPLES, type Sample } from "@/lib/samples";
 import { formAnswers, recordedBy, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
 import { Session } from "@/lib/showcase/session";
 import { fitToBench, type Fit } from "@/lib/sim/fit";
-import { formFor, waitingProgram } from "@/lib/spec/answer";
+import { formFor, WAITING_NOTE, waitingProgram } from "@/lib/spec/answer";
 import { applyChanges } from "@/lib/spec/apply";
 import type { Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
@@ -137,6 +137,14 @@ export function Flow() {
       setProgram(done(turn.program, [recordedNote(clip.rec, "compile"), ...turn.warnings]));
       setProgramBy(recordedBy(clip.rec, "compile"));
       setAnswers(formAnswers(next, turn));
+      return;
+    }
+    // nowhere to go yet: the one question, written here as the route would, with no model and no wait
+    const waitingNow = waitingProgram(next);
+    if (waitingNow) {
+      setProgram(done(waitingNow, [WAITING_NOTE]));
+      setProgramBy(undefined);
+      setAnswers({});
       return;
     }
     step("program", "compile");

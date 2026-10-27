@@ -138,6 +138,8 @@ export function withRequiredAsks(spec: TaskSpec, program: Program): { program: P
  * one question, written by the compile route with no model, live or replayed alike; null for any other spec.
  * Nothing can be compiled before the answer, which the fit lays out and Nano then compiles.
  */
+export const WAITING_NOTE = "a place with nowhere to go yet: the program waits for one answer, with no model";
+
 export function waitingProgram(spec: TaskSpec): Program | null {
   if (!spec.steps.some((s) => !s.target && (s.verb === "place" || s.verb === "insert") && s.object !== undefined)) return null;
   return withRequiredAsks(spec, { spec_title: spec.title, steps: spec.steps.map((s) => ({ step_id: s.id, ops: [] })), warnings: [] }).program;
