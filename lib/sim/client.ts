@@ -48,6 +48,10 @@ export class SimClient {
   setGravity(g: number) {
     this.send({ type: "setGravity", g });
   }
+  /** Play `speed` times faster than real time (1 by default): the same steps, a different pace. */
+  setSpeed(speed: number) {
+    this.send({ type: "setSpeed", speed });
+  }
   nudge(body: string, velocity: [number, number, number]) {
     this.send({ type: "nudge", body, velocity });
   }
@@ -70,9 +74,13 @@ export class SimClient {
   async ik(target: [number, number, number], approach: Approach, site?: string): Promise<IkResult> {
     return (await this.request<IkReply>((id) => ({ type: "ik", id, target, approach, site }))).result;
   }
-  /** Tell the simulation what to do: runs `program` in real time and resolves with the rollout. */
-  async run(program: Program, mode: Mode = "sensed", from: "home" | "here" = "home"): Promise<Rollout> {
-    return (await this.request<RunReply>((id) => ({ type: "run", id, program, mode, from }))).result;
+  /**
+   * Tell the simulation what to do: runs `program` at the stage's speed and resolves with the rollout. `setup` resets
+   * the scene (the liquid refilled with `seed`) and sets gravity in the same message: separate reset and setGravity
+   * calls can let a physics tick run between them and the start, and the rollout then depends on when it fell.
+   */
+  async run(program: Program, mode: Mode = "sensed", from: "home" | "here" = "home", setup: { reset?: { seed?: number }; gravityG?: number } = {}): Promise<Rollout> {
+    return (await this.request<RunReply>((id) => ({ type: "run", id, program, mode, from, ...setup }))).result;
   }
   dispose() {
     this.rejectAll(new Error("sim client disposed"));

@@ -11,7 +11,11 @@ import { ProgramView, type Failure } from "../../program-view";
 
 const Rehearsal = dynamic(() => import("../../rehearsal").then((m) => m.Rehearsal), {
   ssr: false,
-  loading: () => <div className="aspect-[4/3] w-full animate-pulse rounded-xl border bg-neutral-100" />,
+  loading: () => (
+    <div className="flex aspect-[4/3] w-full items-center justify-center rounded-xl border bg-[#f4f1ea]">
+      <span className="rounded-lg bg-white/90 px-4 py-2.5 text-sm text-neutral-800 shadow-sm">Loading the simulator…</span>
+    </div>
+  ),
 });
 
 const SOURCE: Record<Iteration["source"], string> = { compile: "First compile", interview: "After the answers", notes: "Notes patch", playbook: "From the playbook" };
@@ -261,10 +265,10 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
           </Step>
           <Step n={5} title="The rehearsal" model="MuJoCo in your browser, SO-101">
             <p className="text-neutral-700">
-              When it was recorded, version {pick} of the program: on Earth it <Outcome run={it.results.earth} spec={it.spec} />; in orbit it <Outcome run={it.results.orbit} spec={it.spec} />. Rehearse it to run the same program again here.
+              When it was recorded, version {pick} of the program: on Earth it <Outcome run={it.results.earth} spec={it.spec} />; in orbit it <Outcome run={it.results.orbit} spec={it.spec} />. Here it runs again.
             </p>
             {/* the Notes stage calls a model, and /space never does */}
-            <Rehearsal key={pick} spec={it.spec} program={it.program} onFail={setFailure} notes={false} hint={session.hint} />
+            <Rehearsal key={pick} spec={it.spec} program={it.program} onFail={setFailure} notes={false} hint={session.hint} autoplay speed={2} />
           </Step>
         </div>
       </div>

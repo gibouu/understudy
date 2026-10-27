@@ -1,15 +1,16 @@
 /**
- * The MuJoCo worker: loads the WebAssembly engine once, puts the SO-101 MJCF
- * and meshes into the virtual file system, builds the model and steps it in
- * real time. The main thread gets geometry once (loaded) and poses every tick.
+ * The MuJoCo worker: loads the WebAssembly engine once, writes the SO-101 MJCF
+ * and meshes into its file system once, builds the model and steps it at the
+ * stage's speed (real time unless told otherwise). The main thread gets
+ * geometry once (loaded) and poses every tick.
  *
  * Ownership rules (Embind objects live on the wasm heap and are never
  * garbage-collected): the engine is created once per worker; a load builds
  * its model and data in local variables and swaps them in atomically, then
- * deletes what it replaced; the VFS is deleted in `finally`; loads are
- * serialized, a second load while one is running is refused.
+ * deletes what it replaced; loads are serialized, a second load while one is
+ * running is refused.
  */
-import type { MainModule, MjData, MjModel, MjVFS } from "@mujoco/mujoco";
+import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import { graspIndex, isAttached, type Grasp } from "./grasp";
 import { solveIk, type Approach } from "./ik";
 import { environment, forgetTilt, run, type Environment, type Rollout, type Tick } from "./interpreter";
@@ -25,7 +26,7 @@ import {
   type ToWorker,
   type Waypoint,
 } from "./protocol";
-import { G_M_S2, park, SO101_MESH_BUNDLE, SO101_MESHES, SO101_XML, stageXml } from "./so101";
+import { G_M_S2, mountSo101, park, SO101_MESH_BUNDLE, SO101_MESHES, SO101_XML, stageXml } from "./so101";
 
 type WorkerCtx = {
   postMessage: (message: FromWorker, transfer?: Transferable[]) => void;
@@ -43,8 +44,16 @@ const MAX_BACKLOG_S = 0.25;
  */
 const MAX_LIQUID_BACKLOG_S = 2 * LIQUID_STEP_S;
 const TICK_MS = 1000 / 60;
+/**
+ * Wall-clock milliseconds a tick may spend stepping. A speed that asks for more physics than the CPU does in a frame
+ * (a liquid at 2x) then runs as fast as it can at a steady frame rate, instead of in ever longer ticks; the backlog
+ * left over waits for the next tick, up to the cap.
+ */
+const TICK_BUDGET_MS = 12;
 
 let enginePromise: Promise<MainModule> | null = null;
+/** the SO-101's files, fetched and written into the engine's file system once per worker */
+let so101Promise: Promise<void> | null = null;
 let loading: Promise<void> | null = null;
 let runtime: Runtime | null = null;
 /** a setGravity that arrived while a load was in flight; applied when the load completes */
@@ -58,6 +67,8 @@ let simTime = 0;
 let backlog = 0;
 let dropped = 0;
 let lastWall = 0;
+/** simulated seconds per wall-clock second; the physics steps the same, only the pace changes */
+let speed = 1;
 let timer: ReturnType<typeof setInterval> | null = null;
 
 const post = (m: FromWorker, transfer?: Transferable[]) => ctx.postMessage(m, transfer);
@@ -110,6 +121,9 @@ ctx.onmessage = async (e) => {
       case "setGravity":
         setGravity(msg.g);
         break;
+      case "setSpeed":
+        speed = Math.max(0.25, Math.min(8, msg.speed));
+        break;
       case "nudge":
         nudge(msg.body, msg.velocity);
         break;
@@ -123,6 +137,9 @@ ctx.onmessage = async (e) => {
         if (!runtime) throw new Error("model not loaded");
         cancelRun("a newer program replaced it");
         playing = null;
+        // a reset and a gravity sent with the run apply in the same task as its start: no tick falls between them
+        if (msg.reset) reset(msg.reset.seed);
+        if (msg.gravityG !== undefined) setGravity(msg.gravityG);
         const { mujoco, model, data, env, liquid } = runtime;
         running = { id: msg.id, it: run({ mujoco, model, data, liquid }, env, msg.program, msg.mode, { from: msg.from }) };
         break;
@@ -149,21 +166,30 @@ async function engine(mujocoBase: string): Promise<MainModule> {
   return enginePromise;
 }
 
+/** The arm's files, fetched once: a later load in this worker only compiles. */
+function so101(mujoco: MainModule, assetBase: string): Promise<void> {
+  so101Promise ??= (async () => {
+    status("engine ready; fetching the SO-101", 0.05);
+    const res = await fetch(`${assetBase}/${SO101_XML}`);
+    if (!res.ok) throw new Error(`${SO101_XML}: HTTP ${res.status}`);
+    const xml = new Uint8Array(await res.arrayBuffer());
+    mountSo101(mujoco, xml, await fetchMeshes(assetBase, mujoco));
+  })().catch((err: unknown) => {
+    so101Promise = null; // a failed fetch may be retried
+    throw err;
+  });
+  return so101Promise;
+}
+
 /** `gravityG` overrides the scenario's gravity (the /stage switch). */
 async function load(id: number, mujocoBase: string, assetBase: string, env: Environment, gravityG = env.gravity_g) {
   const mujoco = await engine(mujocoBase);
-  status("engine ready; fetching the SO-101", 0.05);
-  const vfs = new mujoco.MjVFS();
+  await so101(mujoco, assetBase);
   let model: MjModel | null = null;
   let data: MjData | null = null;
   try {
-    const res = await fetch(`${assetBase}/${SO101_XML}`);
-    if (!res.ok) throw new Error(`${SO101_XML}: HTTP ${res.status}`);
-    vfs.addBuffer(SO101_XML, new TextEncoder().encode(await res.text()));
-    await loadMeshes(vfs, assetBase, mujoco);
-
     status("compiling the model", 0.7);
-    model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: gravityG, graspable: env.graspable }), vfs);
+    model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: gravityG, graspable: env.graspable }));
     data = new mujoco.MjData(model);
     park(mujoco, model, data);
     const liquid = env.liquid ? new Liquid(mujoco, model, data, env.liquid, { gravity_g: gravityG }) : null;
@@ -199,23 +225,21 @@ async function load(id: number, mujocoBase: string, assetBase: string, env: Envi
     post({ type: "loaded", id, meta }, meta.meshes.flatMap((m) => [m.vertices.buffer, m.faces.buffer]));
     timer ??= setInterval(tick, TICK_MS);
   } finally {
-    vfs.delete();
     if (data) data.delete(); // only on failure: a partial allocation
     if (model) model.delete();
   }
 }
 
 /** Mesh bundle first (one gzipped request, decompressed here), per-file fallback. */
-async function loadMeshes(vfs: MjVFS, assetBase: string, mujoco: MainModule) {
+async function fetchMeshes(assetBase: string, mujoco: MainModule): Promise<{ name: string; bytes: Uint8Array }[]> {
   if (typeof DecompressionStream === "function") {
     try {
       const res = await fetch(`${assetBase}/${SO101_MESH_BUNDLE}`);
       if (res.ok && res.body) {
         const buf = await new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).arrayBuffer();
         const entries = readBundle(buf);
-        for (const entry of entries) vfs.addBuffer(entry.name, entry.bytes);
         status(`meshes ready: ${entries.length} files, ${(buf.byteLength / 1e6).toFixed(1)} MB unpacked`, 0.65);
-        return;
+        return entries;
       }
       status(`mesh bundle HTTP ${res.status}; fetching files`, 0.1);
     } catch (err) {
@@ -223,19 +247,20 @@ async function loadMeshes(vfs: MjVFS, assetBase: string, mujoco: MainModule) {
     }
   }
   let fetched = 0;
-  // allSettled: every download finishes (and adds to the VFS) before a failure
-  // propagates, so no addBuffer can run after the VFS has been deleted.
+  // allSettled: every download is reported before a failure propagates
   const results = await Promise.allSettled(
-    SO101_MESHES.map(async (file) => {
-      const res = await fetch(`${assetBase}/assets/${file}`);
-      if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`);
-      vfs.addBuffer(file, new Uint8Array(await res.arrayBuffer()));
+    SO101_MESHES.map(async (name) => {
+      const res = await fetch(`${assetBase}/assets/${name}`);
+      if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+      const bytes = new Uint8Array(await res.arrayBuffer());
       fetched++;
       status(`fetched ${fetched}/${SO101_MESHES.length} meshes`, 0.05 + 0.6 * (fetched / SO101_MESHES.length));
+      return { name, bytes };
     }),
   );
   const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
   if (failed.length) throw new Error(failed.map((r) => errorText(r.reason, mujoco)).join("; "));
+  return results.map((r) => (r as PromiseFulfilledResult<{ name: string; bytes: Uint8Array }>).value);
 }
 
 function readBundle(buf: ArrayBuffer): { name: string; bytes: Uint8Array }[] {
@@ -406,24 +431,27 @@ function reset(seed?: number) {
 }
 
 /**
- * Real-time pacing with an accumulator: fractional timesteps carry over, so
- * three 5 ms steps per 16.7 ms tick do not drift. A backlog beyond
- * MAX_BACKLOG_S (a backgrounded tab) is dropped and reported in the frame.
+ * Pacing at `speed` times real time with an accumulator: fractional timesteps
+ * carry over, so three 5 ms steps per 16.7 ms tick do not drift. A backlog
+ * beyond the cap (a backgrounded tab), scaled by the speed, is dropped and
+ * reported in the frame. The speed changes how many fixed steps a tick takes,
+ * never the steps themselves, so a rollout is the same at any speed; a tick
+ * stops stepping once it has spent TICK_BUDGET_MS.
  */
 function tick() {
   if (!runtime) return;
   const { mujoco, model, data, meta, liquid } = runtime;
   const now = performance.now();
-  backlog += (now - lastWall) / 1000;
+  backlog += (speed * (now - lastWall)) / 1000;
   lastWall = now;
-  const cap = liquid ? MAX_LIQUID_BACKLOG_S : MAX_BACKLOG_S;
+  const cap = (liquid ? MAX_LIQUID_BACKLOG_S : MAX_BACKLOG_S) * Math.max(1, speed);
   if (backlog > cap) {
     dropped += backlog - cap;
     backlog = cap;
   }
   const dt = meta.timestep;
   let steps = 0;
-  while (backlog >= dt) {
+  while (backlog >= dt && (steps === 0 || performance.now() - now < TICK_BUDGET_MS)) {
     if (running) {
       const { id, it } = running;
       try {

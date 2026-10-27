@@ -6,6 +6,8 @@
  * (diameter the particle spacing), tinted from deep blue at rest to pale
  * when it moves fast. A setting (lib/sim/settings.ts) can be drawn around the
  * bench: decoration only, the bench's floor hidden under its work surface.
+ * A setting once built is kept until the renderer goes, so going back to it
+ * costs nothing.
  */
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -44,8 +46,9 @@ export class StageRenderer {
   private liquidPrev: { positions: Float32Array; t: number } | null = null;
   /** the move_to target */
   private marker = new THREE.Mesh(new THREE.SphereGeometry(0.006, 16, 12), new THREE.MeshBasicMaterial({ color: 0xd9480f }));
-  /** the setting drawn around the bench, and the bench view to go back to */
+  /** the setting drawn around the bench, the ones built so far, and the bench view to go back to */
   private dressing: Dressing | null = null;
+  private built = new Map<SettingName, Dressing>();
   private benchView: [THREE.Vector3Tuple, THREE.Vector3Tuple] | null = null;
 
   constructor(private canvas: HTMLCanvasElement) {
@@ -140,17 +143,25 @@ export class StageRenderer {
   setSetting(name: SettingName | null, around?: TaskSpec) {
     const was = this.dressing;
     if (was ? was.name === name && was.around === around : !name) return;
-    if (was) {
-      this.scene.remove(was.group);
-      was.dispose();
-    } else this.benchView = [this.controls.target.toArray(), this.camera.position.toArray()];
-    this.dressing = name ? new Dressing(name, around) : null;
+    if (was) this.scene.remove(was.group);
+    else this.benchView = [this.controls.target.toArray(), this.camera.position.toArray()];
+    this.dressing = name ? this.dressingFor(name, around) : null;
     if (this.dressing) this.scene.add(this.dressing.group);
     this.scene.background = this.dressing?.background ?? BENCH;
     for (const o of this.objects.values()) if (o.userData.floor) o.visible = !this.dressing;
     // into a room from the bench: step back so the walls show; back to the bench: the view it had
     if (!was) this.look(...SETTING_VIEW);
     else if (!this.dressing && this.benchView) this.look(...this.benchView);
+  }
+
+  /** A setting built around `around`, from the ones already built when it is the same spec. */
+  private dressingFor(name: SettingName, around?: TaskSpec): Dressing {
+    const kept = this.built.get(name);
+    if (kept && kept.around === around) return kept;
+    kept?.dispose();
+    const fresh = new Dressing(name, around);
+    this.built.set(name, fresh);
+    return fresh;
   }
 
   private setLiquid(l: SimMeta["liquid"]) {
@@ -275,7 +286,8 @@ export class StageRenderer {
     this.resizeObserver.disconnect();
     this.controls.dispose();
     disposeObject(this.marker);
-    this.dressing?.dispose();
+    for (const d of this.built.values()) d.dispose();
+    this.built.clear();
     this.setLiquid(null);
     for (const o of this.objects.values()) {
       this.scene.remove(o);

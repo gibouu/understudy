@@ -165,7 +165,8 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   let opIndex: number | undefined;
   // what is held is the active weld, so it carries over between runs
   let held: Grasp | null = env.graspable.map((b) => graspIndex(mujoco, model, b)).find((g) => isAttached(data, g)) ?? null;
-  const ctrl = data.ctrl as Float64Array;
+  /** the actuator commands, read at each use: an IK scratch MjData can grow the wasm heap and detach a view kept from before */
+  const ctrl = () => data.ctrl as Float64Array;
   const world = () => ({ ...sim, spec: env.spec, names: env.names, t });
   const qvel = () => Array.from(toNumbers(data.qvel));
   const step = function* () {
@@ -188,14 +189,14 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
 
   /** ramp the arm joints to q, then wait until it has arrived */
   function* moveArm(q: number[]) {
-    const from = Array.from(ctrl.slice(0, ARM));
+    const from = Array.from(ctrl().slice(0, ARM));
     const span = Math.max(MIN_MOVE_S, Math.max(...q.map((v, i) => Math.abs(v - from[i]))) / JOINT_SPEED);
     for (let s = 0; s < span; s += dt) {
       const u = s / span;
-      for (let i = 0; i < ARM; i++) ctrl[i] = from[i] + (q[i] - from[i]) * u;
+      for (let i = 0; i < ARM; i++) ctrl()[i] = from[i] + (q[i] - from[i]) * u;
       yield* step();
     }
-    for (let i = 0; i < ARM; i++) ctrl[i] = q[i];
+    for (let i = 0; i < ARM; i++) ctrl()[i] = q[i];
     yield* settle();
   }
 
@@ -226,7 +227,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
     if (held) detach(data, held);
     held = null;
     setTilted(null);
-    ctrl.set([...SO101_HOME.slice(0, ARM), GRIPPER_OPEN]);
+    ctrl().set([...SO101_HOME.slice(0, ARM), GRIPPER_OPEN]);
     yield* moveArm(SO101_HOME.slice(0, ARM));
   }
 
@@ -297,18 +298,18 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             if (held) return fail({ failed_step_id: s.step_id, why: `grasp: already holding ${held.body}` });
             const g = graspIndex(mujoco, model, name);
             // close at CLOSE_RAD_S: a jaw slammed shut knocks the object over, and in orbit nothing holds it down
-            const open = ctrl[GRIPPER];
+            const open = ctrl()[GRIPPER];
             let ok = false;
             for (let w = 0; w < GRASP_TIMEOUT_S && !ok; w += dt) {
-              ctrl[GRIPPER] = Math.max(GRIPPER_CLOSED, open - CLOSE_RAD_S * w);
+              ctrl()[GRIPPER] = Math.max(GRIPPER_CLOSED, open - CLOSE_RAD_S * w);
               yield* step();
               ok = holding(mujoco, model, data, g);
             }
             if (ok) {
-              ctrl[GRIPPER] = attach(model, data, g); // hold, don't squeeze against the weld
+              ctrl()[GRIPPER] = attach(model, data, g); // hold, don't squeeze against the weld
               held = g;
               setTilted(null);
-            } else ctrl[GRIPPER] = Math.max(open, GRIPPER_OPEN); // reopen, so a retry can close again
+            } else ctrl()[GRIPPER] = Math.max(open, GRIPPER_OPEN); // reopen, so a retry can close again
             // a miss is not a failure by itself: the object stays free, and the program's checks find out
             log.push(`${t.toFixed(2)} grasp ${op.object}: ${ok ? "held" : "missed"}`);
             break;
@@ -322,7 +323,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             }
             held = null;
             setTilted(null);
-            ctrl[GRIPPER] = GRIPPER_OPEN;
+            ctrl()[GRIPPER] = GRIPPER_OPEN;
             log.push(`${t.toFixed(2)} release${at}`);
             for (let w = 0; w < RELEASE_S; w += dt) yield* step();
             break;
@@ -451,10 +452,10 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             for (let w = 0; w < op.seconds; w += dt) {
               const f = (w / op.seconds) * n;
               const j = Math.min(n - 1, Math.floor(f));
-              for (let i = 0; i < ARM; i++) ctrl[i] = keys[j][i] + (keys[j + 1][i] - keys[j][i]) * (f - j);
+              for (let i = 0; i < ARM; i++) ctrl()[i] = keys[j][i] + (keys[j + 1][i] - keys[j][i]) * (f - j);
               yield* step();
             }
-            for (let i = 0; i < ARM; i++) ctrl[i] = keys[n][i];
+            for (let i = 0; i < ARM; i++) ctrl()[i] = keys[n][i];
             yield* settle();
             const R = vec(data.xmat, h.bodyId, 9);
             log.push(`${t.toFixed(2)} tilt ${h.body} to ${op.deg}° toward ${tl!.toward} over ${op.seconds} s: ${((Math.acos(Math.max(-1, Math.min(1, R[8]))) * 180) / Math.PI).toFixed(0)}° from upright, turned up to ${turned.toFixed(0)}° aside`);
@@ -514,11 +515,11 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
               while (j < timed.length - 2 && timed[j + 1].t_s <= w) j++;
               const span = timed[j + 1].t_s - timed[j].t_s;
               const u = span > 0 ? Math.min(1, Math.max(0, (w - timed[j].t_s) / span)) : 1;
-              for (let i = 0; i < ARM; i++) ctrl[i] = keys[j][i] + (keys[j + 1][i] - keys[j][i]) * u;
+              for (let i = 0; i < ARM; i++) ctrl()[i] = keys[j][i] + (keys[j + 1][i] - keys[j][i]) * u;
               yield* step();
               record();
             }
-            for (let i = 0; i < ARM; i++) ctrl[i] = keys.at(-1)![i];
+            for (let i = 0; i < ARM; i++) ctrl()[i] = keys.at(-1)![i];
             for (let w = 0; w < SETTLE_S; w += dt) {
               yield* step();
               record();
