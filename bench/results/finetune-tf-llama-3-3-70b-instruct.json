@@ -1,0 +1,48 @@
+{
+  "base_model": "meta-llama/Llama-3.3-70B-Instruct",
+  "train.jsonl": {
+    "id": "file-01a17c11-ff05-7f99-a58d-a6433306eaf4",
+    "sha256": "7d74ebe22ceefe76eac48a47aa877a426cd33642a71758f3f5a2699575cdd1ff",
+    "lines": 881
+  },
+  "val.jsonl": {
+    "id": "file-01a17c12-035d-7f89-9f85-358d719d5356",
+    "sha256": "86d0f104468399ea0e8f46ec40fd899866e8d127b31111de7890834afab70050",
+    "lines": 55
+  },
+  "job": {
+    "id": "ftjob-bddc214108794fffb9f9f5c87284a5df",
+    "created_at": 1793082919,
+    "status": "running",
+    "usd_per_mtok": 2.8,
+    "epochs": 5,
+    "reservation": "52293-mvqb9uvp-0-nyeppe",
+    "tokens_per_epoch": 899601,
+    "trained_tokens_est": 4947806,
+    "usd_est": 13.853856799999999,
+    "trained_tokens": 0,
+    "trained_steps": 0,
+    "total_steps": null,
+    "estimated_finish": null,
+    "finished_at": null,
+    "error": null
+  },
+  "checkpoints": [],
+  "events": [
+    {
+      "at": "2026-10-27T06:35:22.000Z",
+      "level": "info",
+      "message": "Job is submitted"
+    },
+    {
+      "at": "2026-10-27T06:36:09.000Z",
+      "level": "info",
+      "message": "Dataset 'validation' processed successfully"
+    },
+    {
+      "at": "2026-10-27T06:36:15.000Z",
+      "level": "info",
+      "message": "Dataset 'training' processed successfully"
+    }
+  ]
+}

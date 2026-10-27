@@ -2,7 +2,7 @@
 
 Goal (gib, 26 October 2026, issue #97): by the end of the week, a first small fine-tune of one Nemotron model on our own repairs, measured against the same model with our prompts on the same failures.
 
-**Status, 27 October, 07:15 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`) moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), is trained: job `ftjob-5c66a1b7020e4bd493d808e9a104853e` waited 11 hours in a queue, trained 40 steps in 49 minutes and cost US$12.20. It cannot be measured. Token Factory no longer deploys LoRA adapters: the cookbook's route answers HTTP 410, "LoRA adapter deployment is no longer available". A dedicated endpoint needs a custom-weights id, which only the beta that Support enables gives (section 5). Four other bases were then approved by gib for parallel jobs, for loss curves only (section 6): none of them can be served either. No tuned result exists; the baselines are in section 5, and what Token Factory would need to add is in section 7.
+**Status, 27 October, 07:40 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`) moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), is trained: job `ftjob-5c66a1b7020e4bd493d808e9a104853e` waited 11 hours in a queue, trained 40 steps in 49 minutes and cost US$12.20. It cannot be measured. Token Factory no longer deploys LoRA adapters: the cookbook's route answers HTTP 410, "LoRA adapter deployment is no longer available". A dedicated endpoint needs a custom-weights id, which only the beta that Support enables gives (section 5). Four other bases, approved by gib for loss curves only, are training side by side since 06:36 UTC (section 6): none of them can be served either. No tuned result exists; the baselines are in section 5, and what Token Factory would need to add is in section 7.
 
 ## 1. Where to fine-tune on Nebius
 
@@ -184,10 +184,16 @@ So a job on any of them gives a loss curve and nothing to measure. gib approved 
 | Base | Trained | Cost | Validation loss, first → last checkpoint | Served | Tuned against base, held out (5 patches) |
 |---|---|---|---|---|---|
 | Qwen3-30B-A3B-Instruct-2507 | yes, 5 epochs, 40 steps | US$12.20 | 0.789 (step 8) → 0.631 (step 40) | no: LoRA route 410, dedicated endpoint 422 (section 5) | not measured; base 73% [65 to 80] |
-| Qwen3-14B | not yet launched | est. US$1.98 | | not servable, base not on serverless | not measurable |
-| Meta-Llama-3.1-8B-Instruct | not yet launched | est. US$1.98 | | not servable, base not on serverless | not measurable |
-| Qwen3-32B | not yet launched | est. US$13.85 | | not servable, base left serverless 31 August | not measurable |
-| Llama-3.3-70B-Instruct | not yet launched | est. US$13.85 | | not servable, base left serverless 31 August | not measurable |
+| Qwen3-14B | running, `ftjob-db1c38eb648e481f8c69673a9b9612c5` | est. US$1.98 | | not servable, base not on serverless | not measurable |
+| Llama-3.1-8B-Instruct | running, `ftjob-e0dc8224df894378a12ce14eec895d11` | est. US$1.98 | | not servable, base not on serverless | not measurable |
+| Qwen3-32B | running, `ftjob-17e9c5ff1aa0454e83691ee3d388db99` | est. US$13.85 | | not servable, base left serverless 31 August | not measurable |
+| Llama-3.3-70B-Instruct | running, `ftjob-bddc214108794fffb9f9f5c87284a5df` | est. US$13.85 | | not servable, base left serverless 31 August | not measurable |
+
+The four jobs were created on 27 October between 06:34 and 06:36 UTC, one after the other; they train side by side, and their estimates (US$31.67 in all) are on the ledger. The Llama 3.1 8B job was first refused under the name the list of models gives, `meta-llama/Meta-Llama-3.1-8B-Instruct`, word for word:
+
+> 422 {"detail":"Error code: 422 - {'detail': \"Model doesn't exist or you don't have access to it\"}"}
+
+No job had started (the account's job list showed none on its training file), so its reservation was released, and it was created under `meta-llama/Llama-3.1-8B-Instruct`, the name the cookbook's fine-tuning notebook uses.
 
 Token Factory does not report a validation loss before training; the first figure is the first checkpoint's. `scripts/finetune-tf.mjs --model M` gives each base its own state file (`bench/results/finetune-tf-<base>.json`), lock and job, with the same guards as the first job: the price and balance asked for, the US$15 floor, the pending mark before the paid request, one job per base checked against the account's job list, and every charge on the ledger.
 
@@ -202,7 +208,7 @@ Each point is something this work ran into.
 3. **Custom weights as self-serve, not a beta granted by Support.** A dedicated endpoint for the tuned weights was refused with a 422 ("custom_weights_id must start with 'model-artifact_'"), `GET /v0/model_artifacts` answers 403, and no public route makes an artifact id. Support was asked on 26 October at 13:55 and 17:35 Paris; no answer by 27 October 07:15.
 4. **Fine-tuning prices published outside the signed-in console.** No public page or API gives the supervised fine-tuning price; the API lists only the speculative-draft price, "5.0" with no unit (section 5). The script has to be given the price by hand (`--usd-per-mtok`), read in the console by a person.
 5. **The queue made visible.** Our job showed `running` with 0 steps and no total or estimate from 13:09 to 00:24 UTC, 11 hours 15 minutes, before its first event "Training started" (`bench/results/finetune-tf.json`, the job's events). A `queued` status, a place in the queue or an estimated start would have told us to plan around it.
-6. **One story across docs, cookbook and console.** The cookbook still documents `POST /v0/models` for LoRA deployment, and the console still lists "-LoRa" serving prices, for a route that now answers 410.
+6. **One story across docs, cookbook and console.** The cookbook still documents `POST /v0/models` for LoRA deployment, and the console still lists "-LoRa" serving prices, for a route that now answers 410. The list of models that can be fine-tuned names `meta-llama/Meta-Llama-3.1-8B-Instruct`, which the fine-tuning API refuses with a 422; it takes `meta-llama/Llama-3.1-8B-Instruct` (section 6).
 
 ## Reproduce
 

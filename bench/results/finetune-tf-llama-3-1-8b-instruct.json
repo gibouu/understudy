@@ -1,0 +1,38 @@
+{
+  "base_model": "meta-llama/Llama-3.1-8B-Instruct",
+  "train.jsonl": {
+    "id": "file-01a17c12-7e8e-7cbc-9e05-0f201541ffbf",
+    "sha256": "7d74ebe22ceefe76eac48a47aa877a426cd33642a71758f3f5a2699575cdd1ff",
+    "lines": 881
+  },
+  "val.jsonl": {
+    "id": "file-01a17c12-8383-7dda-b625-cfb5354e7e38",
+    "sha256": "86d0f104468399ea0e8f46ec40fd899866e8d127b31111de7890834afab70050",
+    "lines": 55
+  },
+  "job": {
+    "id": "ftjob-e0dc8224df894378a12ce14eec895d11",
+    "created_at": 1793082952,
+    "status": "running",
+    "usd_per_mtok": 0.4,
+    "epochs": 5,
+    "reservation": "52857-mvqbak7a-0-utsffl",
+    "tokens_per_epoch": 899601,
+    "trained_tokens_est": 4947806,
+    "usd_est": 1.9791224,
+    "trained_tokens": 0,
+    "trained_steps": 0,
+    "total_steps": null,
+    "estimated_finish": null,
+    "finished_at": null,
+    "error": null
+  },
+  "checkpoints": [],
+  "events": [
+    {
+      "at": "2026-10-27T06:35:54.000Z",
+      "level": "info",
+      "message": "Job is submitted"
+    }
+  ]
+}
