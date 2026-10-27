@@ -32,7 +32,7 @@ export const maxDuration = 180;
 
 /**
  * Patchers whose reasoning does not fit MAX_TOKENS_ON. Super VL, in Super's
- * place since #137, used all 4,096 tokens and returned no answer in 84% of its
+ * place since #137, used all 4,096 tokens and returned no answer in 83% of its
  * thinking calls (docs/MEASUREMENTS.md section 12); with it, the stuck loop asks
  * Nemotron 3 Ultra with thinking off (89% fixed within five patches, against
  * 94% for Super escalating to its own thinking).
