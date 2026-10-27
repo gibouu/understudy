@@ -162,7 +162,9 @@ describe("the recorder's guards (no network)", () => {
 
   it("records a patch only from a live call, and one recording per notes hook", async () => {
     const { notesHook } = await import("./record");
-    const session = Session.parse(JSON.parse(readFileSync(path.join(DIR, files[0]), "utf8")));
+    // read now, not at load: a recording run may have replaced the file the inventory listed
+    const first = readdirSync(DIR).find((f) => f.endsWith(".json") && !f.endsWith(".label.json"))!;
+    const session = Session.parse(JSON.parse(readFileSync(path.join(DIR, first), "utf8")));
     const interviewed = session.iterations.filter((x) => x.source !== "notes");
     // with no key /api/notes answers from its fixtures, or not at all: neither may be recorded
     await withKey(undefined, () => expect(notesHook()(interviewed.at(-1)!, interviewed, engine)).rejects.toThrow(/^notes patch 1\b/));

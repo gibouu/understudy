@@ -72,12 +72,13 @@ describe.each(sessions.map((s) => [s.clip.name, s] as const))("%s on /try", (_, 
       const runs = [{ world: "orbit", rollout: { pass: false, t: 1, log: [] } }];
       const history = Array.from({ length: attempt }, () => ({ set: {}, thinking: false, clamps: [], rejected: [], outcome: "fails in orbit" }));
       const body = { spec: before.spec, program: before.program, runs, first: "fails in orbit", history };
-      const r = await (await post(notes, "/api/notes", body)).json();
+      // replay=1: the recorded patch comes first anyway, and a miss must not reach Token Factory
+      const r = await (await post(notes, "/api/notes?replay=1", body)).json();
       expect(r.status, `patch ${attempt + 1}`).toBe("done");
       expect(r.value.program).toEqual(session.iterations[i].program);
       expect(recordedLine(r.warnings)).toMatch(/^recorded on .*Nemotron 3 Super/);
-      // the recorder asks again with fresh: never the recorded patch (with no key the route replays its own fixtures)
-      const again = await (await post(notes, "/api/notes", { ...body, fresh: true })).json();
+      // the recorder asks again with fresh: never the recorded patch (replay=1, so a key in the environment spends nothing)
+      const again = await (await post(notes, "/api/notes?replay=1", { ...body, fresh: true })).json();
       expect(recordedLine(again.warnings ?? [])).toBeUndefined();
       // the same program asked as another attempt is not this recording's patch
       const other = await (await post(notes, "/api/notes?replay=1", { ...body, history: [...history, history[0] ?? { set: {}, thinking: false, clamps: [], rejected: [], outcome: "x" }] })).json();
