@@ -7,7 +7,7 @@ import { SAMPLES, type Sample } from "@/lib/samples";
 import { formAnswers, recordedBy, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
 import { Session } from "@/lib/showcase/session";
 import { fitToBench, type Fit } from "@/lib/sim/fit";
-import { formFor } from "@/lib/spec/answer";
+import { formFor, waitingProgram } from "@/lib/spec/answer";
 import { applyChanges } from "@/lib/spec/apply";
 import type { Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
@@ -221,6 +221,8 @@ export function Flow() {
   const asks = program.status === "done" ? asksOf(program.value) : [];
   /** a program of gestures alone is written by the compile route itself, with no model (lib/sim/gesture.ts) */
   const gestures = Boolean(spec?.steps.length) && spec!.steps.every((s) => s.verb === "gesture");
+  /** a place with nowhere to go yet: the compile route asks where, with no model (lib/spec/answer.ts waitingProgram) */
+  const waiting = Boolean(spec) && waitingProgram(spec!) !== null;
   /** Section 2 names who answered the label (its ledger: a recording's carries its recorded calls), else the model this deployment calls. */
   const labelBy = (label.status === "done" && answeredBy(label.ledger)) || say("vl");
   const ready = program.status === "done" && spec && (asks.length === 0 || turn >= MAX_ROUNDS);
@@ -306,7 +308,7 @@ export function Flow() {
       )}
 
       {program.status !== "idle" && spec && (
-        <Section n={4} title="Questions from the robot" model={gestures ? "no model: the arm follows the traced path" : (program.status === "done" && programBy) || say("nano")}>
+        <Section n={4} title="Questions from the robot" model={gestures ? "no model: the arm follows the traced path" : waiting ? "no model: one question first" : (program.status === "done" && programBy) || say("nano")}>
           <Status result={program} clock={clock.program} duration={duration} />
           {program.status === "done" && asks.length === 0 && <p className="text-sm text-emerald-700">No open questions: the program has everything it needs.</p>}
           {program.status === "done" && asks.length > 0 && turn < MAX_ROUNDS && (
@@ -333,10 +335,10 @@ export function Flow() {
           ))}
           {program.status === "done" && (
             <div className="mt-4 border-t pt-4">
-              <ProgramView spec={spec} program={program.value} failure={failure} by={gestures ? "The page" : (programBy ?? say("nano"))} />
+              <ProgramView spec={spec} program={program.value} failure={failure} by={gestures || waiting ? "The page" : (programBy ?? say("nano"))} />
             </div>
           )}
-          {program.status !== "running" && (
+          {program.status !== "running" && !waiting && (
             <button className="self-start text-xs text-neutral-500 underline" onClick={() => compile(spec, program.status === "done" ? program.value : undefined, true)}>
               Ask {say("nano")} again
             </button>
