@@ -60,6 +60,8 @@ export type SimMeta = {
 export type Frame = {
   /** simulated seconds since reset */
   t: number;
+  /** the request id of the rollout this frame's steps belong to, if one was running when its tick began */
+  run?: number;
   /** simulated seconds the worker had to drop to catch up (tab in the background) */
   dropped_s: number;
   qpos: Float64Array;

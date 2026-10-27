@@ -436,7 +436,8 @@ function reset(seed?: number) {
  * beyond the cap (a backgrounded tab), scaled by the speed, is dropped and
  * reported in the frame. The speed changes how many fixed steps a tick takes,
  * never the steps themselves, so a rollout is the same at any speed; a tick
- * stops stepping once it has spent TICK_BUDGET_MS.
+ * stops stepping once it has spent TICK_BUDGET_MS. A rollout that ends in a tick is answered after the tick's frame,
+ * so the frames a caller collects for it (Frame.run) reach its last state.
  */
 function tick() {
   if (!runtime) return;
@@ -450,6 +451,8 @@ function tick() {
     backlog = cap;
   }
   const dt = meta.timestep;
+  const runId = running?.id;
+  let finished: Extract<FromWorker, { type: "run" }> | null = null;
   let steps = 0;
   while (backlog >= dt && (steps === 0 || performance.now() - now < TICK_BUDGET_MS)) {
     if (running) {
@@ -457,7 +460,7 @@ function tick() {
       try {
         const r = it.next();
         if (r.done) {
-          post({ type: "run", id, result: r.value });
+          finished = { type: "run", id, result: r.value };
           running = null;
         }
       } catch (err) {
@@ -485,6 +488,7 @@ function tick() {
   // fall into ticks (the speed, the timer). The frame is then one 5 ms step behind the joints, which no eye sees.
   const frame: Frame = {
     t: simTime,
+    run: runId,
     dropped_s: dropped,
     qpos: Float64Array.from(toNumbers(data.qpos)),
     ctrl: Float64Array.from(toNumbers(data.ctrl)),
@@ -502,6 +506,7 @@ function tick() {
     frame.siteXpos.buffer,
     ...(frame.liquid ? [frame.liquid.positions.buffer] : []),
   ]);
+  if (finished) post(finished);
 }
 
 /** On a scratch copy of the current joints, its kinematics refreshed: the live state is a step behind them (tick). */

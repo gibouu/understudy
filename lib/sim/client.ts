@@ -22,6 +22,8 @@ export class SimClient {
   private listeners: Partial<SimEvents> = {};
   private pending = new Map<number, Pending>();
   private nextId = 1;
+  /** the rollout whose frames go to a caller as well, and where */
+  private traced: { id: number; onFrame: (frame: Frame) => void } | null = null;
   meta: SimMeta | null = null;
 
   constructor() {
@@ -79,8 +81,25 @@ export class SimClient {
    * the scene (the liquid refilled with `seed`) and sets gravity in the same message: separate reset and setGravity
    * calls can let a physics tick run between them and the start, and the rollout then depends on when it fell.
    */
-  async run(program: Program, mode: Mode = "sensed", from: "home" | "here" = "home", setup: { reset?: { seed?: number }; gravityG?: number } = {}): Promise<Rollout> {
-    return (await this.request<RunReply>((id) => ({ type: "run", id, program, mode, from, ...setup }))).result;
+  async run(
+    program: Program,
+    mode: Mode = "sensed",
+    from: "home" | "here" = "home",
+    setup: { reset?: { seed?: number }; gravityG?: number } = {},
+    /** hears every frame of this rollout and of no other, its last included */
+    onFrame?: (frame: Frame) => void,
+  ): Promise<Rollout> {
+    let mine: SimClient["traced"] = null;
+    try {
+      return (
+        await this.request<RunReply>((id) => {
+          if (onFrame) this.traced = mine = { id, onFrame };
+          return { type: "run", id, program, mode, from, ...setup };
+        })
+      ).result;
+    } finally {
+      if (mine && this.traced === mine) this.traced = null;
+    }
   }
   dispose() {
     this.rejectAll(new Error("sim client disposed"));
@@ -125,6 +144,7 @@ export class SimClient {
         this.listeners.loaded?.(msg.meta);
         break;
       case "frame":
+        if (this.traced && msg.frame.run === this.traced.id) this.traced.onFrame(msg.frame);
         this.listeners.frame?.(msg.frame);
         break;
       case "jacobian":

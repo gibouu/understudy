@@ -15,9 +15,11 @@ describe("resample", () => {
     expect(out[1].action[0]).toBe(-0.1);
   });
 
-  it("starts at the rollout's own reset, dropping frames posted before it", () => {
-    const trace = [at(8.4, 99), at(8.5, 99), at(0, 1), at(0.1, 2), at(0.2, 3)];
-    expect(resample(trace, 10).map((f) => f.state[0])).toEqual([1, 2, 3]);
+  it("starts the episode at the rollout's first frame", () => {
+    const trace = [at(0.035, 1), at(0.07, 2), at(0.135, 3), at(0.17, 4)];
+    const out = resample(trace, 10);
+    expect(out.map((f) => f.t_s)).toEqual([0, 0.1]);
+    expect(out.map((f) => f.state[0])).toEqual([1, 3]);
   });
 
   it("returns nothing for an empty trace", () => {

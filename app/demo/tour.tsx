@@ -52,6 +52,8 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
   const [seenFirst, setSeenFirst] = useState<Seen>({});
   const [seenLast, setSeenLast] = useState<Seen>({});
   const [passing, setPassing] = useState<TourRun[]>([]);
+  /** the clip can play: its dwell waits for it, not for the download */
+  const [clipReady, setClipReady] = useState(false);
   const top = useRef<HTMLDivElement>(null);
   const step = steps[at];
   const index = (id: StepId) => steps.findIndex((s) => s.id === id);
@@ -59,8 +61,17 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
   const seen = step.id === "fails" ? seenFirst : seenLast;
   const ran = Object.keys(seen).length;
 
+  // One simulator at a time, each mounted from the step before its own (hidden, it loads while the visitor reads) to
+  // its own step: a hidden stage left mounted would keep stepping and drawing. Coming back remounts and rehearses again.
+  const mountsFirst = (i: number) => first < last && i <= index("fails");
+  const mountsLast = (i: number) => i >= index("passes") - 1 && i <= index("passes");
+
   function go(to: number) {
-    setAt(Math.max(0, Math.min(steps.length - 1, to)));
+    const next = Math.max(0, Math.min(steps.length - 1, to));
+    // a stage mounted afresh rehearses again: what the last one found must not move the tour on
+    if (!mountsFirst(at) && mountsFirst(next)) setSeenFirst({});
+    if (!mountsLast(at) && mountsLast(next)) setSeenLast({});
+    setAt(next);
     // the step's media sits under its header: bring the header back when the visitor has scrolled past it
     if (top.current && top.current.getBoundingClientRect().top < 0) top.current.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -74,7 +85,9 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
   }, [stageStep, ran, paused, at]);
 
   const onKey = useEffectEvent((e: KeyboardEvent) => {
-    if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select")) return;
+    // a video's own controls seek with the arrows
+    if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+    if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select, video, audio, [contenteditable]")) return;
     if (e.key === "ArrowRight") go(at + 1);
     if (e.key === "ArrowLeft") go(at - 1);
   });
@@ -84,6 +97,8 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
     return () => window.removeEventListener("keydown", listen);
   }, []);
 
+  const onRehearseFirst = useCallback(() => setSeenFirst({}), []);
+  const onRehearseLast = useCallback(() => (setSeenLast({}), setPassing([])), []);
   const onRunFirst = useCallback((world: GravityName, rollout: Rollout) => setSeenFirst((s) => ({ ...s, [world]: rollout })), []);
   const onRunLast = useCallback((world: GravityName, rollout: Rollout, trace: TraceFrame[]) => {
     setSeenLast((s) => ({ ...s, [world]: rollout }));
@@ -98,9 +113,8 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
   const after = session.iterations[last];
   const orbitOnly = before.results.earth.pass && !before.results.orbit.pass;
 
-  // the first stage loads while the first steps read; the second while the first rehearses
-  const mountFirst = first < last && at <= index("patch");
-  const mountLast = at >= Math.max(0, index("fails") < 0 ? index("asked") : index("fails"));
+  const mountFirst = mountsFirst(at);
+  const mountLast = mountsLast(at);
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-10">
@@ -123,7 +137,7 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
                     <span
                       key={at}
                       className="tour-fill absolute inset-y-0 left-0 bg-accent-bright"
-                      style={{ animationDuration: `${s.dwell}s`, animationPlayState: paused ? "paused" : "running" }}
+                      style={{ animationDuration: `${s.dwell}s`, animationPlayState: paused || (s.id === "clip" && !clipReady) ? "paused" : "running" }}
                       onAnimationEnd={() => go(at + 1)}
                     />
                   )}
@@ -232,7 +246,7 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
         </div>
 
         <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-2">
-          {step.id === "clip" && <Clip sample={sample} autoPlay />}
+          {step.id === "clip" && <Clip sample={sample} autoPlay onReady={() => setClipReady(true)} />}
           {step.id === "saw" && (
             <div className="flex flex-col gap-4">
               <ul className="flex flex-col divide-y border-y">
@@ -295,12 +309,12 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
           )}
           {mountFirst && (
             <div hidden={step.id !== "fails"}>
-              <Rehearsal spec={before.spec} program={before.program} onFail={ignore} notes={false} hint={session.hint} autoplay speed={SPEED} guided onRun={onRunFirst} />
+              <Rehearsal spec={before.spec} program={before.program} onFail={ignore} notes={false} hint={session.hint} autoplay speed={SPEED} guided onRun={onRunFirst} onRehearse={onRehearseFirst} />
             </div>
           )}
           {mountLast && (
             <div hidden={step.id !== "passes"}>
-              <Rehearsal spec={after.spec} program={after.program} onFail={ignore} notes={false} hint={session.hint} autoplay speed={SPEED} guided onRun={onRunLast} />
+              <Rehearsal spec={after.spec} program={after.program} onFail={ignore} notes={false} hint={session.hint} autoplay speed={SPEED} guided onRun={onRunLast} onRehearse={onRehearseLast} />
             </div>
           )}
           {/* on a phone the caption sits under the stage: the results come first */}

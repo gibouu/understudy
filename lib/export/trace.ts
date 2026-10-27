@@ -24,14 +24,8 @@ export function armFrame(meta: SimMeta, frame: Frame): TraceFrame {
   return { t: frame.t, state, action };
 }
 
-/**
- * The trace from the rollout's own reset on (frames posted before it carry the previous state's later time), sampled
- * every 1/fps simulated seconds: each sample is the last frame at or before its time.
- */
-export function resample(trace: TraceFrame[], fps: number): EpisodeFrame[] {
-  let from = 0;
-  for (let i = 1; i < trace.length; i++) if (trace[i].t < trace[i - 1].t) from = i;
-  const run = trace.slice(from);
+/** One rollout's frames (SimClient.run's onFrame), sampled every 1/fps simulated seconds: each sample is the last frame at or before its time. */
+export function resample(run: TraceFrame[], fps: number): EpisodeFrame[] {
   if (run.length === 0) return [];
   const t0 = run[0].t;
   const out: EpisodeFrame[] = [];

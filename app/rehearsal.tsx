@@ -6,7 +6,7 @@ import type { WorldRun } from "@/lib/notes/note";
 import { SimClient } from "@/lib/sim/client";
 import { describeReach } from "@/lib/sim/gesture";
 import type { Rollout } from "@/lib/sim/interpreter";
-import type { SimMeta } from "@/lib/sim/protocol";
+import type { Frame } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { SETTING_NAMES, SETTING_WORLD, settingFor } from "@/lib/sim/settings";
 import { PatchLoop } from "./patch-loop";
@@ -37,7 +37,8 @@ const liquidOf = (r: Rollout) => r.log.findLast((l) => l.includes(" liquid: "))?
  * screen, and again after a setting is picked while nothing plays. `speed` plays that many times faster than real
  * time and shows a control for it; the physics steps the same, so the results do not change.
  *
- * `onRun` hears every rollout the table shows, with the arm's joints at each frame of it (the export's episodes).
+ * `onRun` hears every rollout the table shows, with the arm's joints at each frame of it (the export's episodes);
+ * `onRehearse` hears a rehearsal start, so what `onRun` said before is stale.
  * `guided` keeps only the button that rehearses in both worlds and leaves the results table out: a page that guides
  * the visitor says the results itself, from `onRun`.
  */
@@ -50,6 +51,7 @@ export function Rehearsal({
   autoplay = false,
   speed: initialSpeed,
   onRun,
+  onRehearse,
   guided = false,
 }: {
   spec: TaskSpec;
@@ -60,13 +62,12 @@ export function Rehearsal({
   autoplay?: boolean;
   speed?: number;
   onRun?: (world: GravityName, rollout: Rollout, trace: TraceFrame[]) => void;
+  onRehearse?: () => void;
   guided?: boolean;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const clientRef = useRef<SimClient | null>(null);
-  /** the frames of the rollout playing, while someone listens (`onRun`) */
-  const trace = useRef<TraceFrame[] | null>(null);
   const rendererRef = useRef<StageRenderer | null>(null);
   const [error, setError] = useState<string | null>(null);
   /** how far the simulator's load has come, 0 to 1, once the worker says */
@@ -107,14 +108,12 @@ export function Rehearsal({
     rendererRef.current = renderer;
     let last: Float64Array | null = null;
     let lastT = 0;
-    let meta: SimMeta | null = null;
     const client = new SimClient()
       .on("status", (_, p) => alive && p !== undefined && setProgress(p))
       .on("error", (message) => alive && setError(message))
-      .on("loaded", (m) => (renderer.setMeta(m), (meta = m)))
+      .on("loaded", (m) => renderer.setMeta(m))
       .on("frame", (frame) => {
         renderer.update(frame);
-        if (trace.current && meta) trace.current.push(armFrame(meta, frame));
         const now = performance.now();
         const from = clock.current;
         const back = frame.t < lastT; // a reset: simulated time starts again from 0
@@ -177,15 +176,14 @@ export function Rehearsal({
     let first: Failure | null = null;
     for (const world of worlds) {
       let result: Row["result"];
+      const frames: TraceFrame[] = [];
+      const record = show && onRun ? (f: Frame) => client.meta && frames.push(armFrame(client.meta, f)) : undefined;
       try {
-        trace.current = show && onRun ? [] : null;
         // a rollout homes only the arm: the objects go back where the spec has them too, in the run's own message
-        result = await client.run(p, "sensed", "home", { reset: {}, gravityG: GRAVITIES[world] });
+        result = await client.run(p, "sensed", "home", { reset: {}, gravityG: GRAVITIES[world] }, record);
       } catch (err) {
         result = { error: (err as Error).message };
       }
-      const frames = trace.current;
-      trace.current = null;
       out.push({ world, result });
       // the stage now shows this rollout, a patch's included: the setting follows what it shows
       const won = typeof result === "object" && !("error" in result) && result.pass;
@@ -195,7 +193,7 @@ export function Rehearsal({
       });
       if (!show) continue;
       setRows((rs) => rs.map((r) => (r.world === world ? { world, result } : r)));
-      if (frames && !("error" in result)) onRun?.(world, result, frames);
+      if (!("error" in result)) onRun?.(world, result, frames);
       if (!first && !("error" in result) && !result.pass && result.failed_step_id) {
         first = { step_id: result.failed_step_id, op: result.failed_op, world, why: result.why };
         onFail(first);
@@ -211,6 +209,7 @@ export function Rehearsal({
     awaiting.current = true;
     setStarting(true);
     setRows(worlds.map((world) => ({ world, result: "running" })));
+    onRehearse?.();
     setFailing(null);
     onFail(null);
     const out = await play(program, worlds, true);

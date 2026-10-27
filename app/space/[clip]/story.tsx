@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Sample } from "@/lib/samples";
 import { usd, verdict } from "@/lib/showcase/format";
 import { modelLabel } from "@/lib/providers/models";
@@ -51,10 +51,11 @@ function version(it: Iteration, i: number, session: Session): string {
   return SOURCE[it.source];
 }
 
-/** The clip, fetched whole into a blob URL as the guided flow does: /samples/ serves no byte ranges, which Safari needs to stream. `autoPlay` plays it muted, on a loop. */
-export function Clip({ sample, autoPlay = false }: { sample: Sample; autoPlay?: boolean }) {
+/** The clip, fetched whole into a blob URL as the guided flow does: /samples/ serves no byte ranges, which Safari needs to stream. `autoPlay` plays it muted, on a loop; `onReady` hears it can play, or that it will not. */
+export function Clip({ sample, autoPlay = false, onReady }: { sample: Sample; autoPlay?: boolean; onReady?: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const failed = useEffectEvent((message: string) => (setError(message), onReady?.()));
   useEffect(() => {
     let alive = true;
     let made: string | null = null;
@@ -68,7 +69,7 @@ export function Clip({ sample, autoPlay = false }: { sample: Sample; autoPlay?: 
         made = URL.createObjectURL(blob);
         setUrl(made);
       })
-      .catch((err: Error) => alive && setError(err.message));
+      .catch((err: Error) => alive && failed(err.message));
     return () => {
       alive = false;
       if (made) URL.revokeObjectURL(made);
@@ -78,7 +79,7 @@ export function Clip({ sample, autoPlay = false }: { sample: Sample; autoPlay?: 
   return (
     <div className="aspect-video w-full overflow-hidden rounded-lg border-2 border-ink bg-ink-deep">
       {url ? (
-        <video src={url} poster={`/showcase/${sample.name}.jpg`} controls muted playsInline autoPlay={autoPlay} loop={autoPlay} className="h-full w-full object-contain" />
+        <video src={url} poster={`/showcase/${sample.name}.jpg`} controls muted playsInline autoPlay={autoPlay} loop={autoPlay} onCanPlay={onReady} onError={onReady} className="h-full w-full object-contain" />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element -- the recorder's still, while the clip loads
         <img src={`/showcase/${sample.name}.jpg`} alt="" className="h-full w-full animate-pulse object-cover opacity-80" />
