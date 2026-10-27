@@ -61,7 +61,8 @@ describe("POST /api/notes", () => {
     const { result } = await post({ spec, program, runs, first: outcomeLine(runs), history: [] });
     expect(result.status).toBe("done");
     const v = (result as Extract<StageResult<NotePatch>, { status: "done" }>).value;
-    expect(v).toMatchObject({ set: { "s2.op1.z_mm": 13 }, thinking: true, escalation: "noop", model: MODELS.ultra, why: "b", expect: "c", noop: false });
+    // stuck, but Ultra did not think: the page says "Nemotron 3 Ultra: the cheap patch changed nothing" (app/patch-loop.tsx)
+    expect(v).toMatchObject({ set: { "s2.op1.z_mm": 13 }, thinking: true, thought: false, escalation: "noop", model: MODELS.ultra, why: "b", expect: "c", noop: false });
     expect((result as Extract<StageResult<NotePatch>, { status: "done" }>).warnings).toContain("the patch changed nothing: asked Nemotron 3 Ultra");
     expect(v.cost_usd).toBeGreaterThan(0);
     expect(v.note).toContain("orbit (0 g): FAIL");
@@ -76,7 +77,7 @@ describe("POST /api/notes", () => {
     const { result } = await post({ spec, program, runs, first: outcomeLine(runs), history: [attempt(false), attempt(false)] });
     expect(tf.sent).toHaveLength(1);
     expect(tf.sent[0]).toMatchObject({ model: MODELS.ultra, ...OFF });
-    expect(result).toMatchObject({ status: "done", value: { thinking: true, escalation: "two_failed", model: MODELS.ultra, set: { "s2.op1.z_mm": 13 }, clamps: [{ name: "s2.op1.z_mm", requested: 0, applied: 13 }] } });
+    expect(result).toMatchObject({ status: "done", value: { thinking: true, thought: false, escalation: "two_failed", model: MODELS.ultra, set: { "s2.op1.z_mm": 13 }, clamps: [{ name: "s2.op1.z_mm", requested: 0, applied: 13 }] } });
   });
 
   it("counts every billed call, the unusable answers too", async () => {

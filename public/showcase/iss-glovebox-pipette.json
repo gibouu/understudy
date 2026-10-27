@@ -1,0 +1,3200 @@
+{
+ "version": 1,
+ "clip": {
+  "name": "iss-glovebox-pipette",
+  "duration_s": 10.8,
+  "sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f"
+ },
+ "hint": "aboard the ISS, in a glovebox, pipetting liquid into a sample cartridge",
+ "recorded_at": "2026-10-27T06:21:04.035Z",
+ "models": {
+  "vl": "nvidia/Nemotron-3.5-Super-VL",
+  "nano": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+  "super": "nvidia/nemotron-3-super-120b-a12b"
+ },
+ "label": {
+  "spec": {
+   "version": 1,
+   "title": "ISS glovebox pipetting into sample cartridge",
+   "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into it, repeating the pipetting action several times while keeping the cartridge steady over a tray.",
+   "objects": [
+    {
+     "id": "sample_cartridge",
+     "name": "sample cartridge",
+     "shape": "box",
+     "size_mm": [
+      50,
+      30,
+      10
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       350,
+       0,
+       10
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.7,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "pipette",
+     "name": "pipette",
+     "shape": "cylinder",
+     "size_mm": [
+      10,
+      10,
+      250
+     ],
+     "symmetry": "axial",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       500,
+       -50,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.6,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "work_surface",
+     "name": "glovebox work surface",
+     "shape": "box",
+     "size_mm": [
+      500,
+      500,
+      10
+     ],
+     "symmetry": "none",
+     "role": "surface",
+     "pose": {
+      "xyz_mm": [
+       0,
+       0,
+       0
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.9,
+     "source": "vl#seg0",
+     "sources": {}
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "sample_cartridge",
+     "target": {
+      "fixture": "zone",
+      "frame": "work_surface"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 0,
+     "t_end_s": 0.5,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "move",
+     "object": "sample_cartridge",
+     "target": {
+      "fixture": "zone",
+      "frame": "work_surface"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 0.5,
+     "t_end_s": 1,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "s3",
+     "verb": "grasp",
+     "object": "pipette",
+     "target": {
+      "fixture": "zone",
+      "frame": "work_surface"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 2.5,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "s4",
+     "verb": "move",
+     "object": "pipette",
+     "target": {
+      "fixture": "zone",
+      "frame": "sample_cartridge"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2.5,
+     "t_end_s": 3,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "s5",
+     "verb": "insert",
+     "object": "pipette",
+     "target": {
+      "fixture": "pocket",
+      "frame": "sample_cartridge"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 3,
+     "t_end_s": 4,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "s6",
+     "verb": "move",
+     "object": "pipette",
+     "target": {
+      "fixture": "zone",
+      "frame": "sample_cartridge"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 4,
+     "t_end_s": 5,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "s7",
+     "verb": "insert",
+     "object": "pipette",
+     "target": {
+      "fixture": "pocket",
+      "frame": "sample_cartridge"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 5,
+     "t_end_s": 6,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "s8",
+     "verb": "move",
+     "object": "pipette",
+     "target": {
+      "fixture": "zone",
+      "frame": "sample_cartridge"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 6,
+     "t_end_s": 7,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "s9",
+     "verb": "insert",
+     "object": "pipette",
+     "target": {
+      "fixture": "pocket",
+      "frame": "sample_cartridge"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 7,
+     "t_end_s": 8,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "s10",
+     "verb": "retract",
+     "object": "pipette",
+     "target": {
+      "fixture": "zone",
+      "frame": "work_surface"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 8,
+     "t_end_s": 10.8,
+     "source": "vl#seg0",
+     "sources": {}
+    }
+   ],
+   "anchor": {
+    "t_s": 2,
+    "confidence": 0.8
+   },
+   "warnings": [
+    "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+   ],
+   "open_questions": [
+    "What is the exact sample_cartridge pocket_clearance_mm?",
+    "Are the estimated poses accurate without a known world-frame scale?",
+    "objects[work_surface].size_mm: is glovebox work surface really [500, 500, 10] mm?"
+   ],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "warnings": [
+   "step s10: times 8-11 s clamped to the 10.8 s clip",
+   "object work_surface: size_mm [500, 500, 10] is outside 5 to 300 mm"
+  ],
+  "cost_usd": 0.001592,
+  "seconds": 5.68
+ },
+ "fit": {
+  "spec": {
+   "version": 1,
+   "title": "ISS glovebox pipetting into sample cartridge",
+   "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into it, repeating the pipetting action several times while keeping the cartridge steady over a tray.",
+   "objects": [
+    {
+     "id": "pipette",
+     "name": "pipette",
+     "shape": "cylinder",
+     "size_mm": [
+      10,
+      10,
+      40
+     ],
+     "symmetry": "axial",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.6,
+     "source": "vl#seg0",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "sample_cartridge",
+     "name": "sample cartridge",
+     "shape": "box",
+     "size_mm": [
+      50,
+      50,
+      10
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       5
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.7,
+     "source": "vl#seg0",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "pipette",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 2.5,
+     "source": "vl#seg0",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "pipette",
+     "target": {
+      "fixture": "pocket",
+      "frame": "sample_cartridge"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 3,
+     "t_end_s": 4,
+     "source": "vl#seg0",
+     "sources": {}
+    }
+   ],
+   "warnings": [
+    "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+   ],
+   "open_questions": [
+    "What is the exact sample_cartridge pocket_clearance_mm?"
+   ],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "warnings": [
+   "pipette: size [10, 10, 250] mm scaled to [10, 10, 40] mm for the robot's jaws and reach",
+   "sample_cartridge: size [50, 30, 10] mm scaled to [50, 50, 10] mm for the robot's jaws and reach",
+   "left out of the rehearsal: glovebox work surface",
+   "rehearsing step s3 and step s5 of 10"
+  ]
+ },
+ "turns": [
+  {
+   "program": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "pipette"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "objects[sample_cartridge].pocket_clearance_mm",
+        "question": "How much wider than the pipette is the opening of the sample cartridge?",
+        "why": "the pocket's clearance was not visible"
+       },
+       {
+        "op": "ask",
+        "slot": "steps[s2].success",
+        "question": "What is needed for the step to succeed?",
+        "why": "no success predicate"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         148
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         26
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "sample_cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view.",
+     "No context for steps[s2].success"
+    ]
+   },
+   "warnings": [
+    "nano: steps[1] (insert): never releases the pipette",
+    "added an ask for objects[sample_cartridge].pocket_clearance_mm: the rehearsal needs it"
+   ],
+   "asks": [
+    {
+     "slot": "objects[sample_cartridge].pocket_clearance_mm",
+     "question": "How much wider than the pipette is the opening of the sample cartridge?",
+     "why": "the pocket's clearance was not visible"
+    },
+    {
+     "slot": "steps[s2].success",
+     "question": "What is needed for the step to succeed?",
+     "why": "no success predicate"
+    }
+   ],
+   "answers": [
+    {
+     "slot": "objects[sample_cartridge].pocket_clearance_mm",
+     "text": "10 mm",
+     "change": {
+      "path": "objects[sample_cartridge].pocket_clearance_mm",
+      "value": 10,
+      "source": "interview#1"
+     }
+    },
+    {
+     "slot": "steps[s2].success",
+     "text": "the pipette ends up in the sample cartridge and stays there",
+     "change": {
+      "path": "steps[s2].success",
+      "value": [
+       {
+        "kind": "inside_zone",
+        "object": "pipette",
+        "target": "sample_cartridge"
+       },
+       {
+        "kind": "object_still",
+        "object": "pipette"
+       }
+      ],
+      "source": "interview#1"
+     }
+    }
+   ]
+  },
+  {
+   "program": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "pipette"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         45
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         26
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         20
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "pipette"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "sample_cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ]
+   },
+   "warnings": [
+    "dropped an ask for steps[s2].success: the spec already sets it"
+   ],
+   "asks": [],
+   "answers": []
+  }
+ ],
+ "iterations": [
+  {
+   "source": "compile",
+   "program": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "pipette"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "objects[sample_cartridge].pocket_clearance_mm",
+        "question": "How much wider than the pipette is the opening of the sample cartridge?",
+        "why": "the pocket's clearance was not visible"
+       },
+       {
+        "op": "ask",
+        "slot": "steps[s2].success",
+        "question": "What is needed for the step to succeed?",
+        "why": "no success predicate"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         148
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         26
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "sample_cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view.",
+     "No context for steps[s2].success"
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "ISS glovebox pipetting into sample cartridge",
+    "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into it, repeating the pipetting action several times while keeping the cartridge steady over a tray.",
+    "objects": [
+     {
+      "id": "pipette",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       10,
+       10,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "sample_cartridge",
+      "name": "sample cartridge",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "pipette",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 2.5,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "pipette",
+      "target": {
+       "fixture": "pocket",
+       "frame": "sample_cartridge"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 4,
+      "source": "vl#seg0",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ],
+    "open_questions": [
+     "What is the exact sample_cartridge pocket_clearance_mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [],
+   "why": "Nano's first program for the fitted spec, with 2 open questions",
+   "cost_usd": 0.000555,
+   "seconds": 3.82,
+   "results": {
+    "earth": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 0,
+     "failure_class": "spec_gap",
+     "why": "unanswered: How much wider than the pipette is the opening of the sample cartridge?",
+     "t": 3.935
+    },
+    "orbit": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 0,
+     "failure_class": "spec_gap",
+     "why": "unanswered: How much wider than the pipette is the opening of the sample cartridge?",
+     "t": 3.945
+    }
+   }
+  },
+  {
+   "source": "interview",
+   "program": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "pipette"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         45
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         26
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         20
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "pipette"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "sample_cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "ISS glovebox pipetting into sample cartridge",
+    "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into it, repeating the pipetting action several times while keeping the cartridge steady over a tray.",
+    "objects": [
+     {
+      "id": "pipette",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       10,
+       10,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "sample_cartridge",
+      "name": "sample cartridge",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 10,
+      "confidence": 0.7,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit",
+       "pocket_clearance_mm": "interview#1"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "pipette",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 2.5,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "pipette",
+      "target": {
+       "fixture": "pocket",
+       "frame": "sample_cartridge"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+       {
+        "kind": "inside_zone",
+        "object": "pipette",
+        "target": "sample_cartridge"
+       },
+       {
+        "kind": "object_still",
+        "object": "pipette"
+       }
+      ],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 4,
+      "source": "vl#seg0",
+      "sources": {
+       "success": "interview#1"
+      }
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ],
+    "open_questions": [
+     "What is the exact sample_cartridge pocket_clearance_mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [
+    "the pocket clearance of the sample cartridge: 10 mm",
+    "when \"insert the pipette\" counts as done: the pipette ends up in the sample cartridge and stays there"
+   ],
+   "why": "answers to: How much wider than the pipette is the opening of the sample cartridge? What is needed for the step to succeed?",
+   "cost_usd": 0.000277,
+   "seconds": 1.59,
+   "results": {
+    "earth": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 2 s: pipette moving at 164.5 mm/s",
+     "t": 8.295
+    },
+    "orbit": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 2 s: pipette moving at 14.0 mm/s",
+     "t": 8.305
+    }
+   }
+  },
+  {
+   "source": "notes",
+   "program": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "pipette"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         45
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         26
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         20
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "pipette"
+        },
+        "timeout_s": 5
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "sample_cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "ISS glovebox pipetting into sample cartridge",
+    "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into it, repeating the pipetting action several times while keeping the cartridge steady over a tray.",
+    "objects": [
+     {
+      "id": "pipette",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       10,
+       10,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "sample_cartridge",
+      "name": "sample cartridge",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 10,
+      "confidence": 0.7,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit",
+       "pocket_clearance_mm": "interview#1"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "pipette",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 2.5,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "pipette",
+      "target": {
+       "fixture": "pocket",
+       "frame": "sample_cartridge"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+       {
+        "kind": "inside_zone",
+        "object": "pipette",
+        "target": "sample_cartridge"
+       },
+       {
+        "kind": "object_still",
+        "object": "pipette"
+       }
+      ],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 4,
+      "source": "vl#seg0",
+      "sources": {
+       "success": "interview#1"
+      }
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ],
+    "open_questions": [
+     "What is the exact sample_cartridge pocket_clearance_mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [
+    "how long to wait for object still of the pipette (s2 op 4): 2 → 5 s"
+   ],
+   "why": "The pipette remains in motion beyond 2 seconds due to residual dynamics in both gravity conditions, causing timeout.",
+   "cost_usd": 0.000485,
+   "seconds": 0.89,
+   "results": {
+    "earth": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 5 s: pipette moving at 164.5 mm/s",
+     "t": 11.295
+    },
+    "orbit": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 5 s: pipette moving at 12.8 mm/s",
+     "t": 11.305
+    }
+   },
+   "patch": {
+    "program": {
+     "spec_title": "ISS glovebox pipetting into sample cartridge",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "pipette",
+         "aperture_mm": 10
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "pipette"
+         },
+         "timeout_s": 1
+        },
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          45
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          26
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          20
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "pipette"
+         },
+         "timeout_s": 5
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "pipette",
+          "target": "sample_cartridge"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": [
+      "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+     ]
+    },
+    "set": {
+     "s2.op4.timeout_s": 5
+    },
+    "changes": [
+     {
+      "name": "s2.op4.timeout_s",
+      "from": 2,
+      "to": 5
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "The pipette remains in motion beyond 2 seconds due to residual dynamics in both gravity conditions, causing timeout.",
+    "expect": "Increasing the timeout to 5 seconds will allow sufficient time for the pipette to come to rest in both Earth and orbit environments.",
+    "note": "earth (1 g): FAIL after 8.3 s at s2 op 4 (wait_until object_still pipette (up to 2 s)).\n  Measured: timed out after 2 s: pipette moving at 164.5 mm/s.\n  Let go at 6.0 s with pipette's centre at (0.8, -2.2, 19.6) mm from sample_cartridge's centre, its bottom 0.4 mm below sample_cartridge's pocket floor (5.4 mm below its rim).\n  At the end: pipette's centre at (60.9, 340.1, -0.2) mm from sample_cartridge's centre, its bottom 20.2 mm below sample_cartridge's pocket floor (25.2 mm below its rim), moving at 164.5 mm/s, not held, not seated: pipette is 345.5 mm from sample_cartridge's centre, not inside it.\norbit (0 g): FAIL after 8.3 s at s2 op 4 (wait_until object_still pipette (up to 2 s)).\n  Measured: timed out after 2 s: pipette moving at 14.0 mm/s.\n  Let go at 6.0 s with pipette's centre at (1.0, -2.2, 19.7) mm from sample_cartridge's centre, its bottom 0.3 mm below sample_cartridge's pocket floor (5.3 mm below its rim).\n  At the end: pipette's centre at (13.3, -11.8, 67.2) mm from sample_cartridge's centre, its bottom 47.2 mm above sample_cartridge's pocket floor (42.2 mm above its rim), moving at 14.0 mm/s, not held, not seated: pipette is 17.8 mm from sample_cartridge's centre, not inside it.",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": false,
+    "escalation": null,
+    "tokens": 1470,
+    "cost_usd": 0.0004854
+   }
+  },
+  {
+   "source": "notes",
+   "program": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "pipette"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         45
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         26
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         20
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "pipette"
+        },
+        "timeout_s": 10
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "sample_cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "ISS glovebox pipetting into sample cartridge",
+    "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into it, repeating the pipetting action several times while keeping the cartridge steady over a tray.",
+    "objects": [
+     {
+      "id": "pipette",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       10,
+       10,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "sample_cartridge",
+      "name": "sample cartridge",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 10,
+      "confidence": 0.7,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit",
+       "pocket_clearance_mm": "interview#1"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "pipette",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 2.5,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "pipette",
+      "target": {
+       "fixture": "pocket",
+       "frame": "sample_cartridge"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+       {
+        "kind": "inside_zone",
+        "object": "pipette",
+        "target": "sample_cartridge"
+       },
+       {
+        "kind": "object_still",
+        "object": "pipette"
+       }
+      ],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 4,
+      "source": "vl#seg0",
+      "sources": {
+       "success": "interview#1"
+      }
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ],
+    "open_questions": [
+     "What is the exact sample_cartridge pocket_clearance_mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [
+    "how long to wait for object still of the pipette (s2 op 4): 5 → 10 s"
+   ],
+   "why": "The timeout was exceeded in both gravity conditions as the pipette continued moving due to insufficient settling time.",
+   "cost_usd": 0.000516,
+   "seconds": 0.7,
+   "results": {
+    "earth": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 10 s: pipette moving at 164.5 mm/s",
+     "t": 16.29
+    },
+    "orbit": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 10 s: pipette moving at 12.8 mm/s",
+     "t": 16.3
+    }
+   },
+   "patch": {
+    "program": {
+     "spec_title": "ISS glovebox pipetting into sample cartridge",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "pipette",
+         "aperture_mm": 10
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "pipette"
+         },
+         "timeout_s": 1
+        },
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          45
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          26
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          20
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "pipette"
+         },
+         "timeout_s": 10
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "pipette",
+          "target": "sample_cartridge"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": [
+      "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+     ]
+    },
+    "set": {
+     "s2.op4.timeout_s": 10
+    },
+    "changes": [
+     {
+      "name": "s2.op4.timeout_s",
+      "from": 5,
+      "to": 10
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "The timeout was exceeded in both gravity conditions as the pipette continued moving due to insufficient settling time.",
+    "expect": "Increasing the timeout to 10 seconds will allow the pipette to come to rest in both 1g and 0g environments before the check fails.",
+    "note": "earth (1 g): FAIL after 11.3 s at s2 op 4 (wait_until object_still pipette (up to 5 s)).\n  Measured: timed out after 5 s: pipette moving at 164.5 mm/s.\n  Let go at 6.0 s with pipette's centre at (0.8, -2.2, 19.6) mm from sample_cartridge's centre, its bottom 0.4 mm below sample_cartridge's pocket floor (5.4 mm below its rim).\n  At the end: pipette's centre at (126.8, 829.3, -0.2) mm from sample_cartridge's centre, its bottom 20.2 mm below sample_cartridge's pocket floor (25.2 mm below its rim), moving at 164.5 mm/s, not held, not seated: pipette is 838.9 mm from sample_cartridge's centre, not inside it.\norbit (0 g): FAIL after 11.3 s at s2 op 4 (wait_until object_still pipette (up to 5 s)).\n  Measured: timed out after 5 s: pipette moving at 12.8 mm/s.\n  Let go at 6.0 s with pipette's centre at (1.0, -2.2, 19.7) mm from sample_cartridge's centre, its bottom 0.3 mm below sample_cartridge's pocket floor (5.3 mm below its rim).\n  At the end: pipette's centre at (26.5, -47.7, 69.9) mm from sample_cartridge's centre, its bottom 49.9 mm above sample_cartridge's pocket floor (44.9 mm above its rim), moving at 12.8 mm/s, not held, not seated: pipette is 54.5 mm from sample_cartridge's centre, not inside it.",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": false,
+    "escalation": null,
+    "tokens": 1563,
+    "cost_usd": 0.0005162999999999999
+   }
+  },
+  {
+   "source": "notes",
+   "program": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "pipette"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         30
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         26
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         20
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "pipette"
+        },
+        "timeout_s": 10
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "sample_cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "ISS glovebox pipetting into sample cartridge",
+    "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into it, repeating the pipetting action several times while keeping the cartridge steady over a tray.",
+    "objects": [
+     {
+      "id": "pipette",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       10,
+       10,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "sample_cartridge",
+      "name": "sample cartridge",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 10,
+      "confidence": 0.7,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit",
+       "pocket_clearance_mm": "interview#1"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "pipette",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 2.5,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "pipette",
+      "target": {
+       "fixture": "pocket",
+       "frame": "sample_cartridge"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+       {
+        "kind": "inside_zone",
+        "object": "pipette",
+        "target": "sample_cartridge"
+       },
+       {
+        "kind": "object_still",
+        "object": "pipette"
+       }
+      ],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 4,
+      "source": "vl#seg0",
+      "sources": {
+       "success": "interview#1"
+      }
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ],
+    "open_questions": [
+     "What is the exact sample_cartridge pocket_clearance_mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [
+    "the height of the move to the sample cartridge (s2 op 0): 45 → 30 mm"
+   ],
+   "why": "The pipette exhibited high post-release velocity (164.5 mm/s on Earth, 12.8 mm/s in orbit) indicating excessive kinetic energy from a large drop height.",
+   "cost_usd": 0.002389,
+   "seconds": 11.65,
+   "results": {
+    "earth": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 10 s: pipette moving at 167.8 mm/s",
+     "t": 16.285
+    },
+    "orbit": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 10 s: pipette moving at 6.8 mm/s",
+     "t": 16.295
+    }
+   },
+   "patch": {
+    "program": {
+     "spec_title": "ISS glovebox pipetting into sample cartridge",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "pipette",
+         "aperture_mm": 10
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "pipette"
+         },
+         "timeout_s": 1
+        },
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          30
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          26
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          20
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "pipette"
+         },
+         "timeout_s": 10
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "pipette",
+          "target": "sample_cartridge"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": [
+      "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+     ]
+    },
+    "set": {
+     "s2.op0.z_mm": 30
+    },
+    "changes": [
+     {
+      "name": "s2.op0.z_mm",
+      "from": 45,
+      "to": 30
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "The pipette exhibited high post-release velocity (164.5 mm/s on Earth, 12.8 mm/s in orbit) indicating excessive kinetic energy from a large drop height.",
+    "expect": "Lowering the initial carry height will reduce the pipette's speed after insertion, allowing it to settle and be detected as still within the timeout.",
+    "note": "earth (1 g): FAIL after 16.3 s at s2 op 4 (wait_until object_still pipette (up to 10 s)).\n  Measured: timed out after 10 s: pipette moving at 164.5 mm/s.\n  Let go at 6.0 s with pipette's centre at (0.8, -2.2, 19.6) mm from sample_cartridge's centre, its bottom 0.4 mm below sample_cartridge's pocket floor (5.4 mm below its rim).\n  At the end: pipette's centre at (236.6, 1643.7, -0.2) mm from sample_cartridge's centre, its bottom 20.2 mm below sample_cartridge's pocket floor (25.2 mm below its rim), moving at 164.5 mm/s, not held, not seated: pipette is 1660.6 mm from sample_cartridge's centre, not inside it.\norbit (0 g): FAIL after 16.3 s at s2 op 4 (wait_until object_still pipette (up to 10 s)).\n  Measured: timed out after 10 s: pipette moving at 12.8 mm/s.\n  Let go at 6.0 s with pipette's centre at (1.0, -2.2, 19.7) mm from sample_cartridge's centre, its bottom 0.3 mm below sample_cartridge's pocket floor (5.3 mm below its rim).\n  At the end: pipette's centre at (49.0, -107.3, 73.7) mm from sample_cartridge's centre, its bottom 53.7 mm above sample_cartridge's pocket floor (48.7 mm above its rim), moving at 12.8 mm/s, not held, not seated: pipette is 117.9 mm from sample_cartridge's centre, not inside it.",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": true,
+    "escalation": "two_failed",
+    "tokens": 3708,
+    "cost_usd": 0.0023886
+   }
+  },
+  {
+   "source": "notes",
+   "program": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "pipette"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         30
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         26
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         22
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "pipette"
+        },
+        "timeout_s": 10
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "sample_cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "ISS glovebox pipetting into sample cartridge",
+    "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into it, repeating the pipetting action several times while keeping the cartridge steady over a tray.",
+    "objects": [
+     {
+      "id": "pipette",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       10,
+       10,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "sample_cartridge",
+      "name": "sample cartridge",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 10,
+      "confidence": 0.7,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit",
+       "pocket_clearance_mm": "interview#1"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "pipette",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 2.5,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "pipette",
+      "target": {
+       "fixture": "pocket",
+       "frame": "sample_cartridge"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+       {
+        "kind": "inside_zone",
+        "object": "pipette",
+        "target": "sample_cartridge"
+       },
+       {
+        "kind": "object_still",
+        "object": "pipette"
+       }
+      ],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 4,
+      "source": "vl#seg0",
+      "sources": {
+       "success": "interview#1"
+      }
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ],
+    "open_questions": [
+     "What is the exact sample_cartridge pocket_clearance_mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [
+    "the height of the move to the sample cartridge (s2 op 2): 20 → 22 mm"
+   ],
+   "why": "The pipette penetrated 0.4 mm below the cartridge floor at release, causing rebound; raising its tip above the floor will let gravity seat it without penetration.",
+   "cost_usd": 0.00267,
+   "seconds": 12.15,
+   "results": {
+    "earth": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 5,
+     "why": "pipette is 12.5 mm from sample_cartridge's centre, not inside it",
+     "t": 6.28
+    },
+    "orbit": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 10 s: pipette moving at 11.0 mm/s",
+     "t": 16.29
+    }
+   },
+   "patch": {
+    "program": {
+     "spec_title": "ISS glovebox pipetting into sample cartridge",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "pipette",
+         "aperture_mm": 10
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "pipette"
+         },
+         "timeout_s": 1
+        },
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          30
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          26
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          22
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "pipette"
+         },
+         "timeout_s": 10
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "pipette",
+          "target": "sample_cartridge"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": [
+      "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+     ]
+    },
+    "set": {
+     "s2.op2.z_mm": 22
+    },
+    "changes": [
+     {
+      "name": "s2.op2.z_mm",
+      "from": 20,
+      "to": 22
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "The pipette penetrated 0.4 mm below the cartridge floor at release, causing rebound; raising its tip above the floor will let gravity seat it without penetration.",
+    "expect": "The pipette will settle onto the cartridge floor and become still within the timeout in both 1 g and 0 g, satisfying object_still.",
+    "note": "earth (1 g): FAIL after 16.3 s at s2 op 4 (wait_until object_still pipette (up to 10 s)).\n  Measured: timed out after 10 s: pipette moving at 167.8 mm/s.\n  Let go at 6.0 s with pipette's centre at (0.8, -2.2, 19.6) mm from sample_cartridge's centre, its bottom 0.4 mm below sample_cartridge's pocket floor (5.4 mm below its rim).\n  At the end: pipette's centre at (825.1, 1484.2, -0.2) mm from sample_cartridge's centre, its bottom 20.2 mm below sample_cartridge's pocket floor (25.2 mm below its rim), moving at 167.8 mm/s, not held, not seated: pipette is 1698.1 mm from sample_cartridge's centre, not inside it.\norbit (0 g): FAIL after 16.3 s at s2 op 4 (wait_until object_still pipette (up to 10 s)).\n  Measured: timed out after 10 s: pipette moving at 6.8 mm/s.\n  Let go at 6.0 s with pipette's centre at (1.0, -2.3, 19.7) mm from sample_cartridge's centre, its bottom 0.3 mm below sample_cartridge's pocket floor (5.3 mm below its rim).\n  At the end: pipette's centre at (0.6, -61.3, 51.3) mm from sample_cartridge's centre, its bottom 31.3 mm above sample_cartridge's pocket floor (26.3 mm above its rim), moving at 6.8 mm/s, not held, not seated: pipette is 61.3 mm from sample_cartridge's centre, not inside it.",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": true,
+    "escalation": "two_failed",
+    "tokens": 4073,
+    "cost_usd": 0.0026696999999999997
+   }
+  },
+  {
+   "source": "notes",
+   "program": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "pipette"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         30
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         26
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "sample_cartridge",
+        "offset_mm": [
+         0,
+         0,
+         20
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "pipette"
+        },
+        "timeout_s": 10
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "sample_cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "ISS glovebox pipetting into sample cartridge",
+    "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into it, repeating the pipetting action several times while keeping the cartridge steady over a tray.",
+    "objects": [
+     {
+      "id": "pipette",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       10,
+       10,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "sample_cartridge",
+      "name": "sample cartridge",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 10,
+      "confidence": 0.7,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit",
+       "pocket_clearance_mm": "interview#1"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "pipette",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 2.5,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "pipette",
+      "target": {
+       "fixture": "pocket",
+       "frame": "sample_cartridge"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+       {
+        "kind": "inside_zone",
+        "object": "pipette",
+        "target": "sample_cartridge"
+       },
+       {
+        "kind": "object_still",
+        "object": "pipette"
+       }
+      ],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 4,
+      "source": "vl#seg0",
+      "sources": {
+       "success": "interview#1"
+      }
+     }
+    ],
+    "warnings": [
+     "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+    ],
+    "open_questions": [
+     "What is the exact sample_cartridge pocket_clearance_mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [
+    "the height of the move to the sample cartridge (s2 op 2): 22 → 20 mm"
+   ],
+   "why": "In attempt 4 the pipette’s bottom was 1.6 mm above the pocket floor and still moving; lowering it to touch the floor (z = 20 mm gives bottom = 0 mm) will increase contact friction and stop drift.",
+   "cost_usd": 0.00209,
+   "seconds": 7.67,
+   "results": {
+    "earth": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 10 s: pipette moving at 167.8 mm/s",
+     "t": 16.285
+    },
+    "orbit": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 4,
+     "why": "timed out after 10 s: pipette moving at 6.8 mm/s",
+     "t": 16.295
+    }
+   },
+   "patch": {
+    "program": {
+     "spec_title": "ISS glovebox pipetting into sample cartridge",
+     "steps": [
+      {
+       "step_id": "s1",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          62
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          12
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "grasp",
+         "object": "pipette",
+         "aperture_mm": 10
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "contact_both_pads",
+          "object": "pipette"
+         },
+         "timeout_s": 1
+        },
+        {
+         "op": "move_to",
+         "frame": "pipette",
+         "offset_mm": [
+          0,
+          0,
+          50
+         ],
+         "approach": "top"
+        }
+       ]
+      },
+      {
+       "step_id": "s2",
+       "ops": [
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          30
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          26
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "move_to",
+         "frame": "sample_cartridge",
+         "offset_mm": [
+          0,
+          0,
+          20
+         ],
+         "approach": "top"
+        },
+        {
+         "op": "release"
+        },
+        {
+         "op": "wait_until",
+         "predicate": {
+          "kind": "object_still",
+          "object": "pipette"
+         },
+         "timeout_s": 10
+        },
+        {
+         "op": "assert",
+         "predicate": {
+          "kind": "inside_zone",
+          "object": "pipette",
+          "target": "sample_cartridge"
+         }
+        }
+       ]
+      }
+     ],
+     "warnings": [
+      "No calibrated scale visible in the clip; object sizes are estimates from a glovebox view."
+     ]
+    },
+    "set": {
+     "s2.op2.z_mm": 20
+    },
+    "changes": [
+     {
+      "name": "s2.op2.z_mm",
+      "from": 22,
+      "to": 20
+     }
+    ],
+    "clamps": [],
+    "rejected": [],
+    "noop": false,
+    "why": "In attempt 4 the pipette’s bottom was 1.6 mm above the pocket floor and still moving; lowering it to touch the floor (z = 20 mm gives bottom = 0 mm) will increase contact friction and stop drift.",
+    "expect": "The pipette will settle inside the cartridge’s pocket and become still before the timeout, so the inside_zone assertion will succeed in both 1 g and 0 g worlds.",
+    "note": "earth (1 g): FAIL after 6.3 s at s2 op 5 (assert inside_zone pipette in sample_cartridge).\n  Measured: pipette is 12.5 mm from sample_cartridge's centre, not inside it.\n  Let go at 6.0 s with pipette's centre at (0.9, -2.1, 21.6) mm from sample_cartridge's centre, its bottom 1.6 mm above sample_cartridge's pocket floor (3.4 mm below its rim).\n  At the end: pipette's centre at (11.3, -5.4, 20.1) mm from sample_cartridge's centre, its bottom 0.1 mm above sample_cartridge's pocket floor (4.9 mm below its rim), moving at 0.5 mm/s, not held, not seated: pipette is 12.5 mm from sample_cartridge's centre, not inside it.\norbit (0 g): FAIL after 16.3 s at s2 op 4 (wait_until object_still pipette (up to 10 s)).\n  Measured: timed out after 10 s: pipette moving at 11.0 mm/s.\n  Let go at 6.0 s with pipette's centre at (1.0, -2.2, 21.7) mm from sample_cartridge's centre, its bottom 1.7 mm above sample_cartridge's pocket floor (3.3 mm below its rim).\n  At the end: pipette's centre at (161.6, 81.6, 40.4) mm from sample_cartridge's centre, its bottom 20.4 mm above sample_cartridge's pocket floor (15.4 mm above its rim), moving at 11.0 mm/s, not held, not seated: pipette is 181.1 mm from sample_cartridge's centre, not inside it.",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "thinking": true,
+    "escalation": "two_failed",
+    "tokens": 3477,
+    "cost_usd": 0.0020895
+   }
+  }
+ ],
+ "pending": [],
+ "ledger": [
+  {
+   "stage": "label",
+   "model": "nvidia/Nemotron-3.5-Super-VL",
+   "prompt_tokens": 2512,
+   "completion_tokens": 932,
+   "cached_tokens": 0,
+   "seconds": 5.68,
+   "usd": 0.0015924
+  },
+  {
+   "stage": "compile",
+   "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+   "prompt_tokens": 3049,
+   "completion_tokens": 344,
+   "seconds": 2.03,
+   "usd": 0.0002655
+  },
+  {
+   "stage": "compile",
+   "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+   "prompt_tokens": 3441,
+   "completion_tokens": 345,
+   "seconds": 1.79,
+   "usd": 0.00028926
+  },
+  {
+   "stage": "compile",
+   "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+   "prompt_tokens": 3103,
+   "completion_tokens": 379,
+   "seconds": 1.59,
+   "usd": 0.00027714
+  },
+  {
+   "stage": "notes",
+   "model": "nvidia/nemotron-3-super-120b-a12b",
+   "prompt_tokens": 1396,
+   "completion_tokens": 74,
+   "cached_tokens": 0,
+   "seconds": 0.89,
+   "usd": 0.0004854
+  },
+  {
+   "stage": "notes",
+   "model": "nvidia/nemotron-3-super-120b-a12b",
+   "prompt_tokens": 1484,
+   "completion_tokens": 79,
+   "cached_tokens": 0,
+   "seconds": 0.7,
+   "usd": 0.0005163
+  },
+  {
+   "stage": "notes",
+   "model": "nvidia/nemotron-3-super-120b-a12b",
+   "prompt_tokens": 1581,
+   "completion_tokens": 2127,
+   "cached_tokens": 0,
+   "seconds": 11.65,
+   "usd": 0.0023886
+  },
+  {
+   "stage": "notes",
+   "model": "nvidia/nemotron-3-super-120b-a12b",
+   "prompt_tokens": 1660,
+   "completion_tokens": 2413,
+   "cached_tokens": 0,
+   "seconds": 12.15,
+   "usd": 0.0026697
+  },
+  {
+   "stage": "notes",
+   "model": "nvidia/nemotron-3-super-120b-a12b",
+   "prompt_tokens": 1733,
+   "completion_tokens": 1744,
+   "cached_tokens": 0,
+   "seconds": 7.67,
+   "usd": 0.0020895
+  }
+ ],
+ "total_usd": 0.010574
+}

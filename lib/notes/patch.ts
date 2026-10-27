@@ -46,6 +46,18 @@ export type Attempt = z.infer<typeof Attempt>;
 export type Escalation = "noop" | "two_failed";
 
 /**
+ * Patchers whose reasoning does not fit MAX_TOKENS_ON. Super VL, in Super's
+ * place since #137, used all 4,096 tokens and returned no answer in 83% of its
+ * thinking calls (docs/MEASUREMENTS.md section 12); with it, the stuck loop asks
+ * Nemotron 3 Ultra with thinking off (89% fixed within five patches, against
+ * 94% for Super escalating to its own thinking).
+ */
+export const NO_ROOM_TO_THINK: ReadonlySet<string> = new Set(["nvidia/Nemotron-3.5-Super-VL"]);
+
+/** Who answers a stuck loop (app/api/notes/route.ts): the patcher itself, thinking, or Ultra in place of one that cannot think within the budget. */
+export const stuckRole = (patcher: string): "super" | "ultra" => (NO_ROOM_TO_THINK.has(patcher) ? "ultra" : "super");
+
+/**
  * Why the next patch thinks, or null while the cheap patcher still has a go. Once escalated, the
  * loop stays escalated: after a no-op (the route re-asks at once, so that patch already thought)
  * or after the cheap patcher's second failed patch.
@@ -107,6 +119,8 @@ export type NotePatch = {
   model: string;
   /** the loop is stuck, so the deeper patcher answered: Super thinking, or Ultra with thinking off in place of Super VL (app/api/notes/route.ts) */
   thinking: boolean;
+  /** the model reasoned (thinking on); recordings and fixtures made before this field: `thinking`, which meant that then */
+  thought?: boolean;
   escalation: Escalation | null;
   tokens: number;
   cost_usd: number;

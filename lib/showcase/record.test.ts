@@ -8,26 +8,39 @@
  * browser runs the same deterministic physics, so this is what /space shows.
  * No network.
  *
+ * Every public/showcase/<clip>.label.json (a clip recorded up to its label)
+ * parses and is the clip's own.
+ *
  * With SHOWCASE_RECORD the live path runs once per named clip and rewrites
- * its JSON and poster. It spends Token Factory credits, at most
- * SHOWCASE_CAP_USD per clip (default 1):
+ * its JSON and poster, or its .label.json when the fit finds nothing to
+ * rehearse. It spends Token Factory credits, at most SHOWCASE_CAP_USD per
+ * clip (default 1):
  *
  *   SHOWCASE_RECORD=iss-veggie-seed-film UNDERSTUDY_ENV_FILE=.env.local \
  *     node_modules/.bin/vitest run lib/showcase/record.test.ts
  */
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { SAMPLES } from "@/lib/samples";
 import { TaskSpec } from "@/lib/spec/schema";
 import { answerFor, DEFAULT_ANSWERS } from "./answers";
 import { loadEngine, rollouts, type Engine } from "./rehearse";
-import { Session } from "./session";
+import { LabelRecording, RECORDED_ON, Session, type Call } from "./session";
+
+/** Every call names the model its stage is recorded on; a recording made on a replacement is refused. */
+function onRecordedModels(ledger: Call[], models?: { vl: string; nano: string; super: string }) {
+  expect(ledger.filter((c) => c.stage !== "playbook").map((c) => `${c.stage} ${c.model}`)).toEqual(ledger.filter((c) => c.stage !== "playbook").map((c) => `${c.stage} ${RECORDED_ON[c.stage as keyof typeof RECORDED_ON]}`));
+  if (models) expect(models).toEqual({ vl: RECORDED_ON.label, nano: RECORDED_ON.compile, super: RECORDED_ON.notes });
+}
 
 const ROOT = process.cwd();
 const DIR = path.join(ROOT, "public", "showcase");
 const RECORD = (process.env.SHOWCASE_RECORD ?? "").split(",").filter(Boolean);
-const files = existsSync(DIR) ? readdirSync(DIR).filter((f) => f.endsWith(".json")) : [];
+const all = existsSync(DIR) ? readdirSync(DIR) : [];
+const files = all.filter((f) => f.endsWith(".json") && !f.endsWith(".label.json"));
+const labelFiles = all.filter((f) => f.endsWith(".label.json"));
 
 let engine: Engine;
 beforeAll(async () => {
@@ -41,20 +54,39 @@ describe.runIf(RECORD.length > 0)("record the showcase (live, spends credits)", 
     process.loadEnvFile(process.env.UNDERSTUDY_ENV_FILE ?? ".env.local");
     if (!process.env.NEBIUS_API_KEY) throw new Error("NEBIUS_API_KEY missing from the env file");
     const { notesHook, poster, recordClip } = await import("./record");
-    const session = await recordClip({ root: ROOT, sample, engine, capUsd: Number(process.env.SHOWCASE_CAP_USD ?? 1), notes: notesHook(), log: (l) => console.log(l) });
-    writeFileSync(path.join(DIR, `${name}.json`), JSON.stringify(session, null, 1) + "\n");
+    // SHOWCASE_TRACED=<file>: a gesture clip finished from its .label.json and the page's trace, {traced, fit, by}
+    const trace = process.env.SHOWCASE_TRACED ? JSON.parse(readFileSync(process.env.SHOWCASE_TRACED, "utf8")) : undefined;
+    const traced = trace && { ...trace, label: LabelRecording.parse(JSON.parse(readFileSync(path.join(DIR, `${name}.label.json`), "utf8"))) };
+    const session = await recordClip({ root: ROOT, sample, engine, capUsd: Number(process.env.SHOWCASE_CAP_USD ?? 1), notes: notesHook(), traced, log: (l) => console.log(l) });
+    const [full, labelOnly] = [path.join(DIR, `${name}.json`), path.join(DIR, `${name}.label.json`)];
+    if ("stops" in session) {
+      // one kind of recording per clip: /space would otherwise show an older story
+      rmSync(full, { force: true });
+      rmSync(path.join(DIR, `${name}.jpg`), { force: true });
+      writeFileSync(labelOnly, JSON.stringify(session, null, 1) + "\n");
+      console.log(`${name}: up to the label (${session.stops}), ${session.ledger.length} calls, US$${session.total_usd.toFixed(4)}`);
+      return;
+    }
+    rmSync(labelOnly, { force: true });
+    writeFileSync(full, JSON.stringify(session, null, 1) + "\n");
     poster(ROOT, sample, session, path.join(DIR, `${name}.jpg`));
     console.log(`${name}: ${session.iterations.length} iterations, ${session.ledger.length} calls, US$${session.total_usd.toFixed(4)}`);
     // up to five patches, each of which may think for ~40 s and be asked twice
   }, 900_000);
 });
 
-describe("the showcase recordings", () => {
+// a recording run may turn a full recording into a label-only one or back; the next run checks what it wrote
+describe.skipIf(RECORD.length > 0)("the showcase recordings", () => {
   it.each(files)("%s replays: same clip, same results in node", (file) => {
     const session = Session.parse(JSON.parse(readFileSync(path.join(DIR, file), "utf8")));
     expect(SAMPLES.map((s) => s.name)).toContain(session.clip.name);
     expect(file).toBe(`${session.clip.name}.json`);
     expect(existsSync(path.join(DIR, `${session.clip.name}.jpg`))).toBe(true);
+    // /api/label answers this recording, and a sample token, to whoever sends this hash
+    expect(createHash("sha256").update(readFileSync(path.join(ROOT, "samples", `${session.clip.name}.mp4`))).digest("hex")).toBe(session.clip.sha256);
+    for (const it of session.iterations) if (it.patch) expect(it.patch.program).toEqual(it.program);
+    onRecordedModels(session.ledger, session.models);
+    for (const it of session.iterations) if (it.patch) expect(it.patch.model).toBe(RECORDED_ON.notes);
     expect(session.total_usd).toBeCloseTo(session.ledger.reduce((a, c) => a + c.usd, 0), 6);
     // the interview's programs are the compile turns' programs
     const compiled = session.iterations.filter((it) => it.source === "compile" || it.source === "interview");
@@ -77,6 +109,18 @@ describe("the showcase recordings", () => {
   }, 60_000);
 });
 
+describe.runIf(labelFiles.length > 0 && RECORD.length === 0)("the label-only recordings", () => {
+  it.each(labelFiles)("%s is its clip's label, and the clip has no full recording", (file) => {
+    const rec = LabelRecording.parse(JSON.parse(readFileSync(path.join(DIR, file), "utf8")));
+    expect(file).toBe(`${rec.clip.name}.label.json`);
+    expect(SAMPLES.map((s) => s.name)).toContain(rec.clip.name);
+    expect(createHash("sha256").update(readFileSync(path.join(ROOT, "samples", `${rec.clip.name}.mp4`))).digest("hex")).toBe(rec.clip.sha256);
+    expect(files).not.toContain(`${rec.clip.name}.json`);
+    expect(rec.total_usd).toBeCloseTo(rec.ledger.reduce((a, c) => a + c.usd, 0), 6);
+    onRecordedModels(rec.ledger, rec.models);
+  });
+});
+
 describe("the recorder's guards (no network)", () => {
   const sample = SAMPLES[0];
   const withKey = async <T,>(key: string | undefined, fn: () => Promise<T>) => {
@@ -96,17 +140,40 @@ describe("the recorder's guards (no network)", () => {
     await withKey(undefined, () => expect(recordClip({ root: ROOT, sample, engine, capUsd: 1 })).rejects.toThrow(/NEBIUS_API_KEY is not set/));
   });
 
+  /** The routes set to these models while `fn` runs: once the live routes call replacements, the recorder refuses before anything else. */
+  const withModels = async <T,>(set: { vl: string; nano: string; super: string }, fn: () => Promise<T>) => {
+    const { MODELS } = await import("@/lib/providers/tokenfactory");
+    const m = MODELS as { vl: string; nano: string; super: string };
+    const saved = { vl: m.vl, nano: m.nano, super: m.super };
+    Object.assign(m, set);
+    try {
+      return await fn();
+    } finally {
+      Object.assign(m, saved);
+    }
+  };
+  const ORIGINALS = { vl: RECORDED_ON.label, nano: RECORDED_ON.compile, super: RECORDED_ON.notes };
+
+  it("refuses to record when the routes would call a replacement for Nano or Super", async () => {
+    const { recordClip } = await import("./record");
+    await withModels({ ...ORIGINALS, nano: "nvidia/Nemotron-3_5-Lightning" }, () =>
+      withKey("not-a-real-key", () => expect(recordClip({ root: ROOT, sample, engine, capUsd: 1 })).rejects.toThrow(/nano=nvidia\/Nemotron-3_5-Lightning.*UNDERSTUDY_KEEP_RETIRED=1/)),
+    );
+  });
+
   it("stops before a call whose worst case is over the cap", async () => {
     const { recordClip, worstUsd } = await import("./record");
-    await withKey("not-a-real-key", async () => {
+    await withModels(ORIGINALS, () => withKey("not-a-real-key", async () => {
       await expect(recordClip({ root: ROOT, sample, engine, capUsd: worstUsd("label") / 2 })).rejects.toThrow(/over the US\$.* cap/);
       await expect(recordClip({ root: ROOT, sample, engine, capUsd: 0 })).rejects.toThrow(/positive number/);
-    });
+    }));
   });
 
   it("records a patch only from a live call, and one recording per notes hook", async () => {
     const { notesHook } = await import("./record");
-    const session = Session.parse(JSON.parse(readFileSync(path.join(DIR, files[0]), "utf8")));
+    // read now, not at load: a recording run may have replaced the file the inventory listed
+    const first = readdirSync(DIR).find((f) => f.endsWith(".json") && !f.endsWith(".label.json"))!;
+    const session = Session.parse(JSON.parse(readFileSync(path.join(DIR, first), "utf8")));
     const interviewed = session.iterations.filter((x) => x.source !== "notes");
     // with no key /api/notes answers from its fixtures, or not at all: neither may be recorded
     await withKey(undefined, () => expect(notesHook()(interviewed.at(-1)!, interviewed, engine)).rejects.toThrow(/^notes patch 1\b/));

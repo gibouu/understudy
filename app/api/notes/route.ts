@@ -11,7 +11,10 @@
  * budget hands the stuck loop to Ultra instead. `unlock` or `sample_token` lets it go live
  * (lib/unlock/check.ts). Replay (no key, ?replay=1, or no way past the spend
  * guard) answers from tests/fixtures/notes.json: the recording for the same
- * program and attempt.
+ * program and attempt. A patch in a sample's showcase recording
+ * (lib/showcase/lookup.ts) for the same spec, program and attempt answers
+ * first, live or not: /try plays it at once; `fresh: true` asks Super anyway
+ * (the recorder, re-recording a clip).
  */
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -20,8 +23,9 @@ import { callModel } from "@/lib/providers/call";
 import { priced } from "@/lib/providers/price";
 import { MODELS, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { applyPatch, knobsOf } from "@/lib/notes/knobs";
+import { recordedPatch } from "@/lib/showcase/lookup";
 import { failureNote, type WorldRun } from "@/lib/notes/note";
-import { Attempt, escalation, MAX_PATCHES, MAX_TOKENS_OFF, MAX_TOKENS_ON, PATCH_SYSTEM, PatchReply, patchPrompt, type NotePatch } from "@/lib/notes/patch";
+import { Attempt, escalation, MAX_PATCHES, MAX_TOKENS_OFF, MAX_TOKENS_ON, PATCH_SYSTEM, PatchReply, patchPrompt, type NotePatch, stuckRole } from "@/lib/notes/patch";
 import { GRAVITIES, Predicate, Program, TaskSpec, Vec3mm } from "@/lib/spec/schema";
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { lintProgram } from "@/lib/spec/validate";
@@ -29,15 +33,6 @@ import { explain, liveGate } from "@/lib/unlock/check";
 
 // a thinking call takes up to ~40 s, and a no-op re-asks once
 export const maxDuration = 180;
-
-/**
- * Patchers whose reasoning does not fit MAX_TOKENS_ON. Super VL, in Super's
- * place since #137, used all 4,096 tokens and returned no answer in 83% of its
- * thinking calls (docs/MEASUREMENTS.md section 12); with it, the stuck loop asks
- * Nemotron 3 Ultra with thinking off (89% fixed within five patches, against
- * 94% for Super escalating to its own thinking).
- */
-const NO_ROOM_TO_THINK: ReadonlySet<string> = new Set(["nvidia/Nemotron-3.5-Super-VL"]);
 
 const RolloutIn = z.object({
   pass: z.boolean(),
@@ -59,6 +54,7 @@ const Body = z.object({
   runs: z.array(z.object({ world: z.enum(Object.keys(GRAVITIES) as [keyof typeof GRAVITIES]), rollout: RolloutIn })).min(1).max(3),
   first: z.string().max(2000),
   history: z.array(Attempt).max(MAX_PATCHES).default([]),
+  fresh: z.boolean().default(false),
 });
 
 type Recording = { program: unknown; attempt: number; result: StageResult<NotePatch> };
@@ -79,6 +75,8 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
   const runs = parsed.data.runs as WorldRun[];
   if (runs.every((r) => r.rollout.pass)) return NextResponse.json(failed("every world passed: nothing to patch", false), { status: 400 });
   if (history.length >= MAX_PATCHES) return NextResponse.json(failed(`${MAX_PATCHES} patches already tried`, false), { status: 400 });
+  const recorded = parsed.data.fresh ? null : await recordedPatch(spec, program, history.length);
+  if (recorded) return NextResponse.json(recorded);
   if (wantsReplay(req)) return NextResponse.json(replay(program, history.length));
   const gate = await liveGate("notes", body);
   if (!gate.live) return NextResponse.json(explain(replay(program, history.length), gate));
@@ -95,7 +93,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
   // one ledger for every call of this patch, the unusable answers too: each was billed
   const ledger: LedgerEntry[] = [];
   // stuck: Super thinks, or Ultra answers in place of a patcher that cannot think within the budget
-  const toUltra = NO_ROOM_TO_THINK.has(MODELS.super);
+  const toUltra = stuckRole(MODELS.super) === "ultra";
   const ask = (stuck: boolean) =>
     stuck && toUltra
       ? callModel(client, { role: "ultra", system: PATCH_SYSTEM, user, maxTokens: MAX_TOKENS_OFF, schema: PatchReply, ledger })
@@ -137,6 +135,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
     note,
     model: why !== null && toUltra ? MODELS.ultra : MODELS.super,
     thinking: why !== null,
+    thought: why !== null && !toUltra,
     escalation: why,
     tokens: costs.reduce((n, e) => n + e.prompt_tokens + e.completion_tokens, 0),
     cost_usd: spent,

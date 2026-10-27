@@ -42,7 +42,8 @@ function line(op: ProgramOp, name: (id?: string) => string): string {
 }
 
 /** The compiled program as plain lines, asks highlighted, and the op a rehearsal failed on marked. */
-export function ProgramView({ spec, program, failure }: { spec: TaskSpec; program: Program; failure: Failure | null }) {
+/** `by`: the model that wrote the program ("Nemotron 3.5 Lightning"); /space leaves it out, its recordings were all compiled by Nano (RECORDED_ON). */
+export function ProgramView({ spec, program, failure, by = "Nano" }: { spec: TaskSpec; program: Program; failure: Failure | null; by?: string }) {
   const [raw, setRaw] = useState(false);
   const name = (id?: string) => spec.objects.find((o) => o.id === id)?.name ?? id ?? "?";
   return (
@@ -84,7 +85,7 @@ export function ProgramView({ spec, program, failure }: { spec: TaskSpec; progra
           })}
         </ol>
       )}
-      {program.warnings.length > 0 && <p className="text-xs text-neutral-500">Nano noted: {program.warnings.join("; ")}</p>}
+      {program.warnings.length > 0 && <p className="text-xs text-neutral-500">{by} noted: {program.warnings.join("; ")}</p>}
     </div>
   );
 }
