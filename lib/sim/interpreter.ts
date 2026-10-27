@@ -257,7 +257,8 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
                 const sq = { mujoco, model, data: scratch };
                 if (held) {
                   // the held object's up, in the held site's frame: the weld keeps it, scratch kinematics would not
-                  const Rs = vec(data.site_xmat, mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, site), 9);
+                  const siteId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, site); // before the view: it allocates
+                  const Rs = vec(data.site_xmat, siteId, 9);
                   const Rb = vec(data.xmat, held.bodyId, 9);
                   const up = [0, 1, 2].map((c) => Rs[c] * Rb[2] + Rs[3 + c] * Rb[5] + Rs[6 + c] * Rb[8]) as Vec3;
                   ik = rollTo(sq, ik, target, op.approach, site, up, 0);
@@ -561,7 +562,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
 /** Measured, never inferred: position, speed and seating of every manipulated object. A check that throws is left out. */
 function snapshot(sim: Sim, env: Environment, w: Parameters<typeof evaluate>[0], held: Grasp | null): ObjectState[] {
   const { mujoco, model, data } = sim;
-  const xpos = toNumbers(data.xpos);
+  const xpos = Array.from(toNumbers(data.xpos)); // a copy: the lookups and checks below allocate
   const r1 = (x: number) => Math.round(x * 10) / 10;
   return env.spec.objects
     .filter((o) => o.role === "manipulated" && Object.hasOwn(env.names, o.id))
@@ -647,8 +648,8 @@ const yawOf = (xmat: unknown, i: number) => {
 
 /** the direction the jaws close in, about z: the site's z axis, column 2 of its xmat */
 function closingYaw(sim: Sim, site: string): number {
-  const m = toNumbers(sim.data.site_xmat);
   const s = sim.mujoco.mj_name2id(sim.model, sim.mujoco.mjtObj.mjOBJ_SITE.value, site);
+  const m = toNumbers(sim.data.site_xmat); // after the lookup, which allocates
   return Math.atan2(m[9 * s + 5], m[9 * s + 2]);
 }
 

@@ -88,10 +88,11 @@ export const G_M_S2 = 9.81;
  * the move home from there sweeps through the space in front of the robot, knocking over what stands there.
  */
 export function park(mujoco: MainModule, model: MjModel, data: MjData) {
+  const joints = SO101_JOINT_NAMES.map((name) => mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT.value, name));
+  // views after the lookups: a name lookup allocates, which can grow the wasm heap and detach a view taken before it
   const adr = toNumbers(model.jnt_qposadr);
   const qpos = data.qpos as Float64Array;
-  SO101_JOINT_NAMES.forEach((name, i) => {
-    const j = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT.value, name);
+  joints.forEach((j, i) => {
     if (j >= 0) qpos[adr[j]] = SO101_HOME[i];
   });
   (data.ctrl as Float64Array).set(SO101_HOME.slice(0, SO101_JOINT_NAMES.length));

@@ -479,9 +479,10 @@ function tick() {
     backlog -= dt;
     steps++;
   }
-  // mj_step integrates qpos after computing poses; refresh derived state so the
-  // published geometry and any later Jacobian match the joint state.
-  if (steps > 0) mujoco.mj_forward(model, data);
+  // No mj_forward here: the derived state (poses, contacts) stays the one mj_step computed before integrating, as
+  // between every other step and as in runToEnd. A refresh at the end of a tick would let the program see fresh
+  // poses on a tick's first step only, and solve its constraints once more, so the rollout would depend on how steps
+  // fall into ticks (the speed, the timer). The frame is then one 5 ms step behind the joints, which no eye sees.
   const frame: Frame = {
     t: simTime,
     dropped_s: dropped,
@@ -503,16 +504,22 @@ function tick() {
   ]);
 }
 
+/** On a scratch copy of the current joints, its kinematics refreshed: the live state is a step behind them (tick). */
 function jacobian(id: number, site: string) {
   if (!runtime) throw new Error("model not loaded");
   const { mujoco, model, data, meta } = runtime;
   const s = meta.sites.find((x) => x.name === site);
   if (!s) throw new Error(`no site named ${site}`);
   const nv = meta.nv;
+  const scratch = new mujoco.MjData(model);
   const jacp = new mujoco.DoubleBuffer(3 * nv);
   const jacr = new mujoco.DoubleBuffer(3 * nv);
   try {
-    mujoco.mj_jacSite(model, data, jacp, jacr, s.id);
+    // views after every allocation above: an allocation can grow the heap and detach a view taken before it
+    (scratch.qpos as Float64Array).set(data.qpos as Float64Array);
+    mujoco.mj_kinematics(model, scratch);
+    mujoco.mj_comPos(model, scratch);
+    mujoco.mj_jacSite(model, scratch, jacp, jacr, s.id);
     post({
       type: "jacobian",
       id,
@@ -524,6 +531,7 @@ function jacobian(id: number, site: string) {
   } finally {
     jacp.delete();
     jacr.delete();
+    scratch.delete();
   }
 }
 

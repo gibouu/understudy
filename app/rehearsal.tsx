@@ -94,6 +94,7 @@ export function Rehearsal({
     const renderer = new StageRenderer(canvas);
     rendererRef.current = renderer;
     let last: Float64Array | null = null;
+    let lastT = 0;
     const client = new SimClient()
       .on("status", (_, p) => alive && p !== undefined && setProgress(p))
       .on("error", (message) => alive && setError(message))
@@ -102,7 +103,9 @@ export function Rehearsal({
         renderer.update(frame);
         const now = performance.now();
         const from = clock.current;
-        if (!from || frame.t < from.t) clock.current = { wall: now, t: frame.t }; // a reset starts the clock again
+        const back = frame.t < lastT; // a reset: simulated time starts again from 0
+        lastT = frame.t;
+        if (!from || back) clock.current = { wall: now, t: frame.t };
         else if (now - from.wall >= 1000) {
           clock.current = { wall: now, t: frame.t };
           if (alive) setPace((frame.t - from.t) / ((now - from.wall) / 1000));
@@ -141,8 +144,8 @@ export function Rehearsal({
   useEffect(() => {
     const el = stageRef.current;
     if (!el) return;
-    // a fast scroll can bring several entries in one call: the last is now
-    const io = new IntersectionObserver((entries) => setInView(entries[entries.length - 1].isIntersecting), { threshold: 0.5 });
+    // a fast scroll can bring several entries in one call: the last is now; isIntersecting is any overlap at all
+    const io = new IntersectionObserver((entries) => setInView(entries[entries.length - 1].intersectionRatio >= 0.5), { threshold: 0.5 });
     io.observe(el);
     return () => io.disconnect();
   }, []);
