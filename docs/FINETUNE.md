@@ -2,7 +2,7 @@
 
 Goal (gib, 26 October 2026, issue #97): by the end of the week, a first small fine-tune of one Nemotron model on our own repairs, measured against the same model with our prompts on the same failures.
 
-**Status, 26 October, 16:30 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`, up to US$30 approved by gib) waits for gib's AI Cloud account and moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), was submitted at 13:09 UTC (job `ftjob-5c66a1b7020e4bd493d808e9a104853e`, 5 epochs, US$2.8 per 1M tokens, US$13.85 estimated and charged on the ledger), and had trained no step three hours later: its datasets were processed by 13:12, then nothing. Nothing tuned has been measured yet; the baselines are in section 5.
+**Status, 27 October, 02:20 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`, up to US$30 approved by gib) waits for gib's AI Cloud account and moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), is trained: job `ftjob-5c66a1b7020e4bd493d808e9a104853e` waited 11 hours in a queue, trained 40 steps in 49 minutes and cost US$12.20. It cannot be served yet: Token Factory serves a tuned model only on a dedicated endpoint with custom weights, which waits for Support. Nothing tuned has been measured yet; the baselines are in section 5.
 
 ## 1. Where to fine-tune on Nebius
 
@@ -145,7 +145,19 @@ On the 55 in-distribution validation prompts (`val.jsonl`): their cases and seed
 
 What this says before any training. On the held-out cases plain Qwen3 30B-A3B repairs about as many failures as Super with thinking off within five patches (73% against 70%), at a third of its cost per fix, but its single patches are worse (35% against 47% held out, 19% against 26% first patches in the loop): it gets there by trying more. Nano is far behind both (the case for tuning Nano in #122). The in-distribution prompts flatter Qwen (60% against Super's 47%), which is why they are kept out of any claim. The headline comparison is the closed loop on the 11 held-out cases: a tuned Qwen has to beat 73% within 5 patches and 19% on the first patch, and 35% on the held-out single patches.
 
-**Status.** Job `ftjob-5c66a1b7020e4bd493d808e9a104853e` was submitted at 13:09 UTC; its training and validation files were processed by 13:12, and at 16:05 it was still "running" with no step trained and no error or estimate: waiting for capacity or stuck, which the API cannot tell apart. Nothing is charged for it beyond the ledger's estimate until it trains. Next: `status` when it ends, `try-serve`, then the tuned arms.
+**The training.** Job `ftjob-5c66a1b7020e4bd493d808e9a104853e` was submitted on 26 October at 13:09 UTC; its training and validation files were processed by 13:12, and it then waited in a queue (no step, no error, no estimate) until training started at 00:24 UTC on 27 October; it completed at 01:13 UTC, 40 steps, and succeeded at 01:15. It trained 4,357,240 tokens: US$12.20 at US$2.8 per 1M (the ledger keeps the US$13.85 estimate charged at the start, which errs high). One checkpoint an epoch:
+
+| Checkpoint | Train loss | Validation loss (the 55 in-distribution prompts) |
+|---|---|---|
+| step 8 | 1.381 | 0.789 |
+| step 16 | 0.965 | 0.698 |
+| step 24 | 0.718 | 0.654 |
+| step 32 | 0.571 | 0.635 |
+| step 40 | 0.494 | 0.631 |
+
+The validation loss still falls, barely, at the last epoch: no sign of over-fitting on those prompts, which says nothing about the held-out cases.
+
+**Serving.** `try-serve` on 27 October at 01:15 UTC: the checkpoint id on the serverless API answers 404 ("does not exist"), and the cookbook's `/v0/models/upload` route answers 404 too, so neither serves a LoRA of this model without an endpoint. The tuned model is measured once Support switches custom weights on (asked on 26 October at 13:55 and 17:35 Paris): `endpoint-create` with the checkpoint, the arms `ft-qwen-ft` (closed loop, 11 held-out cases, seeds 1 to 12) and the held-out one-patch check, then `endpoint-delete`.
 
 ## Reproduce
 

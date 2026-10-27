@@ -13,19 +13,80 @@
   "job": {
     "id": "ftjob-5c66a1b7020e4bd493d808e9a104853e",
     "created_at": 1793020175,
-    "status": "running",
+    "status": "succeeded",
     "usd_per_mtok": 2.8,
     "epochs": 5,
     "reservation": "39492-mvp9x1ju-0-6xhmwg",
     "tokens_per_epoch": 899601,
     "trained_tokens_est": 4947806,
     "usd_est": 13.853856799999999,
-    "trained_tokens": 0,
-    "trained_steps": 0,
-    "total_steps": null,
-    "estimated_finish": null,
-    "finished_at": null,
-    "error": null
+    "trained_tokens": 4357240,
+    "trained_steps": 40,
+    "total_steps": 40,
+    "estimated_finish": 1793063591,
+    "finished_at": 1793063703,
+    "error": null,
+    "usd_actual": 12.200272
   },
-  "checkpoints": []
+  "checkpoints": [
+    {
+      "id": "ftckpt_7a02f142-459d-497a-a58f-6e91809a53e2",
+      "step": 8,
+      "model": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-8",
+      "metrics": {
+        "train_loss": 1.3811216354370117,
+        "valid_loss": 0.7885949611663818
+      }
+    },
+    {
+      "id": "ftckpt_081c47dc-6d1e-4458-80e6-dd852ae0946a",
+      "step": 16,
+      "model": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-16",
+      "metrics": {
+        "train_loss": 0.9648164510726929,
+        "valid_loss": 0.6982503533363342
+      }
+    },
+    {
+      "id": "ftckpt_32ebfe1e-ca1d-4f06-90ce-22eb268ebc99",
+      "step": 24,
+      "model": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-24",
+      "metrics": {
+        "train_loss": 0.7181825637817383,
+        "valid_loss": 0.6538047790527344
+      }
+    },
+    {
+      "id": "ftckpt_e7773ed0-5c87-424c-82ce-df6f0b9c9814",
+      "step": 32,
+      "model": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-32",
+      "metrics": {
+        "train_loss": 0.5711638927459717,
+        "valid_loss": 0.6354258060455322
+      }
+    },
+    {
+      "id": "ftckpt_6120136c-631d-41c6-ae65-10d6303a4dc8",
+      "step": 40,
+      "model": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
+      "metrics": {
+        "train_loss": 0.49361908435821533,
+        "valid_loss": 0.6312774419784546
+      }
+    }
+  ],
+  "serve": {
+    "checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
+    "tried_at": "2026-10-27T01:15:46.318Z",
+    "checkpoint_id": {
+      "ok": false,
+      "model": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
+      "error": "404 The model `ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40` does not exist."
+    },
+    "lora_upload": {
+      "status": 404,
+      "id": null,
+      "detail": "\"Not Found\""
+    }
+  }
 }
