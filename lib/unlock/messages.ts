@@ -19,8 +19,10 @@ export const LIVE_EXPIRED = "replay: this sample session is over an hour old; wa
 export const LIVE_NO_SECRET = "replay: this deployment cannot vouch for sample sessions, so live calls after the label need the unlock code";
 export const LIVE_CLOSED = "replay: live model calls outside a sample session are closed on this deployment until its unlock code is set";
 export const LIVE_BUSY = "replay: this server has made all the live calls it allows for this minute; try again shortly";
+export const LIVE_RETIRED = "replay: Token Factory no longer serves a model this demo calls, so every step replays its recording";
+export const LIVE_UNLISTED = "replay: Token Factory did not answer just now, so this step replays its recording; try again shortly";
 
-const GATE_NOTES: readonly string[] = [LIVE_NEEDS_PASS, LIVE_WRONG_CODE, LIVE_EXPIRED, LIVE_NO_SECRET, LIVE_CLOSED, LIVE_BUSY];
+const GATE_NOTES: readonly string[] = [LIVE_NEEDS_PASS, LIVE_WRONG_CODE, LIVE_EXPIRED, LIVE_NO_SECRET, LIVE_CLOSED, LIVE_BUSY, LIVE_RETIRED, LIVE_UNLISTED];
 
 /** The line that says why an answer was replayed, when the spend guard is the reason. */
 export const gateNote = (warnings: string[]) => warnings.find((w) => GATE_NOTES.includes(w));

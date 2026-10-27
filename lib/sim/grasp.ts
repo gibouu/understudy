@@ -40,9 +40,10 @@ export function graspIndex(mujoco: MainModule, model: MjModel, body: string): Gr
   };
   const bodyId = id(mujoco.mjtObj.mjOBJ_BODY.value, body);
   const eq = id(mujoco.mjtObj.mjOBJ_EQUALITY.value, graspWeld(body));
-  const geomBody = toNumbers(model.geom_bodyid);
-  const contype = toNumbers(model.geom_contype);
-  const conaff = toNumbers(model.geom_conaffinity);
+  // copies, not views: the name lookups below allocate, which can grow the wasm heap and detach a view
+  const geomBody = Array.from(toNumbers(model.geom_bodyid));
+  const contype = Array.from(toNumbers(model.geom_contype));
+  const conaff = Array.from(toNumbers(model.geom_conaffinity));
   const geomsOf = (b: number) =>
     Array.from({ length: model.ngeom as number }, (_, g) => g).filter((g) => geomBody[g] === b && (contype[g] || conaff[g]));
   const gripper = id(mujoco.mjtObj.mjOBJ_BODY.value, SO101_GRIPPER_BODY);

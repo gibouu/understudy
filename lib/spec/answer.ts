@@ -2,15 +2,28 @@
  * What the person types back for one compile `ask`, as a SpecChange. Until
  * Super runs the interview (#17), the page shows each ask as a form field:
  * a number for a measured field (…_mm, …_deg, …_s), a choice of checks for a
- * step's `success`. Anything else is not answerable here yet.
+ * step's `success`, a choice of the scene's objects for where a place step goes
+ * (#155). Anything else is not answerable here yet.
  */
 import { parsePath } from "./apply";
-import { AXES, type Predicate, type Program, type ProgramOp, type TaskSpec } from "./schema";
+import { isBenchSpot } from "./bench";
+import { AXES, type Predicate, type Program, type ProgramOp, type Step, type TaskSpec } from "./schema";
+
+type Target = NonNullable<Step["target"]>;
+
 
 export type AskForm =
   | { kind: "number"; unit: string }
   | { kind: "success"; options: { label: string; predicates: Predicate[] }[] }
+  | { kind: "target"; options: { label: string; target: Target }[] }
   | { kind: "unsupported" };
+
+/** The place or insert step a `steps[<id>].target` slot asks about, or undefined. */
+function targetStep(spec: TaskSpec, slot: string) {
+  const path = parsePath(slot);
+  if (path.length !== 3 || path[0] !== "steps" || path[2] !== "target") return undefined;
+  return spec.steps.find((s) => s.id === path[1] && (s.verb === "place" || s.verb === "insert") && s.object !== undefined);
+}
 
 const UNITS: [RegExp, string][] = [
   [/_mm$/, "mm"],
@@ -21,6 +34,19 @@ const UNITS: [RegExp, string][] = [
 export function formFor(spec: TaskSpec, slot: string): AskForm {
   const unit = UNITS.find(([re]) => re.test(slot))?.[1];
   if (unit) return { kind: "number", unit };
+  const placing = targetStep(spec, slot);
+  if (placing) {
+    // the scene's named objects, then the bench: chips the person picks one of
+    const others = spec.objects.filter((o) => o.id !== placing.object);
+    const fixture = placing.verb === "insert" ? "pocket" : "zone";
+    return {
+      kind: "target",
+      options: [...others.filter((o) => !isBenchSpot(o)), ...others.filter(isBenchSpot)].map((o) => ({
+        label: isBenchSpot(o) ? "somewhere else on the bench" : `the ${o.name}`,
+        target: { fixture, frame: o.id },
+      })),
+    };
+  }
   const path = parsePath(slot);
   const step = path[0] === "steps" && path[2] === "success" && path.length === 3 ? spec.steps.find((s) => s.id === path[1]) : undefined;
   // a gesture has no success to choose: its check is the path itself
@@ -55,6 +81,7 @@ export function formFor(spec: TaskSpec, slot: string): AskForm {
 export function askable(spec: TaskSpec, slot: string): boolean {
   const [list, id, field, sub, ...rest] = parsePath(slot);
   if (rest.length) return false;
+  if (targetStep(spec, slot)) return !spec.steps.find((s) => s.id === id)!.target;
   if (list === "objects") return spec.objects.some((o) => o.id === id && o.role === "fixture") && field === "pocket_clearance_mm" && sub === undefined;
   // a gesture is checked by its path alone: nothing about it is asked
   if (list !== "steps" || !spec.steps.some((s) => s.id === id && s.verb !== "gesture")) return false;
@@ -74,6 +101,14 @@ export function withRequiredAsks(spec: TaskSpec, program: Program): { program: P
   const steps = program.steps.map((ps) => {
     const step = spec.steps.find((s) => s.id === ps.step_id);
     if (!step || step.object === undefined) return ps;
+    // a place with nowhere to go (lib/sim/fit.ts whereTo): where first; its other questions wait for the answer
+    const where = `steps[${step.id}].target`;
+    if (!step.target && (step.verb === "place" || step.verb === "insert")) {
+      if (asked.has(where)) return ps;
+      added.push(where);
+      const ask = { op: "ask" as const, slot: where, question: `Where does the ${name(step.object)} go?`, why: "the clip does not show where it was put down" };
+      return { ...ps, ops: [ask, ...ps.ops] };
+    }
     if (step.verb === "pour" && step.pour) {
       const success = `steps[${step.id}].success`;
       if (step.success.length > 0 || asked.has(success)) return ps;
@@ -96,4 +131,16 @@ export function withRequiredAsks(spec: TaskSpec, program: Program): { program: P
     return asks.length ? { ...ps, ops: [...asks, ...ps.ops] } : ps;
   });
   return { program: { ...program, steps }, added };
+}
+
+/**
+ * The program for a spec whose place has nowhere to go yet (lib/sim/fit.ts whereTo): no moves, and the
+ * one question, written by the compile route with no model, live or replayed alike; null for any other spec.
+ * Nothing can be compiled before the answer, which the fit lays out and Nano then compiles.
+ */
+export const WAITING_NOTE = "a place with nowhere to go yet: the program waits for one answer, with no model";
+
+export function waitingProgram(spec: TaskSpec): Program | null {
+  if (!spec.steps.some((s) => !s.target && (s.verb === "place" || s.verb === "insert") && s.object !== undefined)) return null;
+  return withRequiredAsks(spec, { spec_title: spec.title, steps: spec.steps.map((s) => ({ step_id: s.id, ops: [] })), warnings: [] }).program;
 }

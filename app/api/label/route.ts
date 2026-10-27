@@ -8,10 +8,17 @@
  * (lib/unlock/token.ts). Replay (no key, ?replay=1, or a call the spend guard
  * keeps from going live) answers from tests/fixtures/label.json: the
  * recording of the same clip, else the first.
+ *
+ * {clip_sha256, recorded: true}, with no video, asks for a sample's showcase
+ * recording (lib/showcase/lookup.ts): its label at once, with no model call,
+ * and a sample token for the live calls the session may still make. Only a
+ * sample has a recording, so this hands out no token the live path would
+ * not; 404 when the clip has none, and the page labels it live.
  */
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/label.json";
 import { callModel, type UserPart } from "@/lib/providers/call";
+import { recordedLabel } from "@/lib/showcase/lookup";
 import { MODELS, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { hintText, LABEL_PROMPT, tidyLabel } from "@/lib/spec/label";
 import { TaskSpec } from "@/lib/spec/schema";
@@ -40,6 +47,11 @@ function replay(sha?: string): StageResult<TaskSpec> {
 export async function POST(req: Request): Promise<NextResponse<Labelled>> {
   const body = await req.json().catch(() => null);
   const sha = typeof body?.clip_sha256 === "string" && /^[0-9a-f]{64}$/.test(body.clip_sha256) ? body.clip_sha256 : undefined;
+  if (body?.recorded === true) {
+    const recorded = sha ? await recordedLabel(sha) : null;
+    if (!recorded) return NextResponse.json(failed("no recording of this clip", false), { status: 404 });
+    return NextResponse.json({ ...recorded, sample_token: sampleToken() });
+  }
   // a re-ask resends the video: two 25 s attempts and no SDK retry stay inside maxDuration
   const client = wantsReplay(req) ? null : tokenFactory({ timeout: 25_000, maxRetries: 0 });
   if (!client) return NextResponse.json(replay(sha));

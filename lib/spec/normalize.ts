@@ -82,10 +82,34 @@ function normalizePredicates(list: unknown, where: string, warnings: string[], q
 }
 
 /** Normalize a raw TaskSpec object. Unknown fixtures degrade to zone with a warning. The input is not mutated. */
+/**
+ * A model writes null for a field it leaves unset (Super VL did in 10 of 16
+ * first labels of clips of people's own, docs/MEASUREMENTS.md section 14). No
+ * field of a spec takes null, so null reads as absent, at any depth of a record
+ * (not inside arrays, where a null is a missing number). Keys in `keep` stay null,
+ * for the schema to reject and the model to be asked. Returns the paths dropped.
+ */
+function dropNulls(r: Rec, keep: ReadonlySet<string> = new Set()): string[] {
+  const dropped: string[] = [];
+  for (const [k, v] of Object.entries(r)) {
+    if (v === null && keep.has(k)) continue;
+    if (v === null) {
+      delete r[k];
+      dropped.push(k);
+    } else if (isRec(v)) dropped.push(...dropNulls(v).map((x) => `${k}.${x}`));
+  }
+  return dropped;
+}
+
 export function normalizeSpec(raw: unknown): Normalized {
   const warnings: string[] = [];
   if (!isRec(raw)) return { data: raw, warnings };
   const spec = clone(raw);
+  const nulls = (where: string, r: Rec, keep?: ReadonlySet<string>) => {
+    const dropped = dropNulls(r, keep);
+    if (dropped.length) warnings.push(`${where}: null ${dropped.join(", ")} read as unset`);
+  };
+  nulls("spec", spec);
   if (spec.version === undefined) spec.version = 1;
   if (!Array.isArray(spec.warnings)) spec.warnings = [];
   if (!Array.isArray(spec.open_questions)) spec.open_questions = [];
@@ -95,6 +119,12 @@ export function normalizeSpec(raw: unknown): Normalized {
     for (const o of spec.objects) {
       if (!isRec(o)) continue;
       const id = show(o.id);
+      nulls(`object ${id}`, o);
+      // a pose is where an object stands: without its three coordinates there is none (the fit lays objects out anyway)
+      if (o.pose !== undefined && !(isRec(o.pose) && Array.isArray(o.pose.xyz_mm) && o.pose.xyz_mm.length === 3)) {
+        warnings.push(`object ${id}: a pose without xyz_mm left out`);
+        delete o.pose;
+      }
       const shape = lookup(SHAPE_ALIASES, key(o.shape));
       if (shape && shape !== o.shape) warnings.push(`object ${id}: shape ${show(o.shape)} read as ${shape}`);
       if (shape) o.shape = shape;
@@ -116,6 +146,8 @@ export function normalizeSpec(raw: unknown): Normalized {
     spec.steps.forEach((s, i) => {
       if (!isRec(s)) return;
       const where = `step ${typeof s.id === "string" ? s.id : i}`;
+      // an insert or a place goes somewhere: a null target is a gap the model is asked about, not an unset field
+      nulls(where, s, s.verb === "insert" || s.verb === "place" ? new Set(["target"]) : undefined);
       if (isRec(s.target)) {
         const f = lookup(FIXTURE_ALIASES, key(s.target.fixture));
         if (!f) {
@@ -180,13 +212,54 @@ function opFromString(op: unknown): unknown {
   }
 }
 
-/** Normalize a raw Program: ops written as strings are read, unknown or malformed predicate kinds become `ask` slots instead of guesses. */
+/** The keys of a Program beside its steps. */
+const PROGRAM_KEYS = new Set(["spec_title", "warnings"]);
+
+/**
+ * One entry of a raw Program's steps, read as the model meant it: a step written
+ * as a JSON string is read; a key of the program itself ("warnings", or a record
+ * holding only program keys) is a bracket put one place late, closing steps after
+ * it (2 of 64 first answers from Nemotron 3.5 Lightning, both repeated word for
+ * word when asked again: docs/MEASUREMENTS.md section 14), so it leaves steps and
+ * any warnings it holds join the program's. Anything else stays for the schema.
+ */
+function stepEntry(entry: unknown, program: Rec, warnings: string[]): unknown[] {
+  if (typeof entry === "string") {
+    const text = entry.trim();
+    // the key alone, or with the start of its value ("warnings[]", #150): never a step
+    if (PROGRAM_KEYS.has(/^(\w+)\W*$/.exec(text)?.[1] ?? "")) {
+      warnings.push(`steps held the key ${show(text)}, closed one place late; read as the program's`);
+      return [];
+    }
+    try {
+      const parsed: unknown = JSON.parse(text);
+      if (isRec(parsed)) {
+        warnings.push(`a step written as a string; read as ${show(parsed.step_id)}`);
+        return [parsed];
+      }
+    } catch {
+      // not JSON: the schema says what is wrong with it
+    }
+    return [entry];
+  }
+  if (isRec(entry) && Object.keys(entry).length > 0 && Object.keys(entry).every((k) => PROGRAM_KEYS.has(k))) {
+    warnings.push(`steps held the program's ${Object.keys(entry).join(", ")}, closed one place late; read as the program's`);
+    if (Array.isArray(entry.warnings)) program.warnings = [...(Array.isArray(program.warnings) ? program.warnings : []), ...entry.warnings];
+    if (typeof entry.spec_title === "string" && typeof program.spec_title !== "string") program.spec_title = entry.spec_title;
+    return [];
+  }
+  return [entry];
+}
+
+/** Normalize a raw Program: steps and ops written as strings are read, a key of the program caught inside steps is put back, unknown or malformed predicate kinds become `ask` slots instead of guesses. */
 export function normalizeProgram(raw: unknown): Normalized {
   const warnings: string[] = [];
   if (!isRec(raw)) return { data: raw, warnings };
   const program = clone(raw);
   if (!Array.isArray(program.steps)) return { data: program, warnings };
-  for (const step of program.steps) {
+  const steps = program.steps.flatMap((entry: unknown) => stepEntry(entry, program, warnings));
+  program.steps = steps;
+  for (const step of steps) {
     if (!isRec(step) || !Array.isArray(step.ops)) continue;
     const stepId = show(step.step_id);
     step.ops = step.ops.map((raw: unknown) => {

@@ -7,6 +7,7 @@ import type { TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { gateNote } from "@/lib/unlock/messages";
 import { liveAuth } from "./capture";
+import { answeredBy, useModels } from "./models";
 
 /**
  * app/globals.css defines these with the landing page (#90). Until then the
@@ -32,12 +33,13 @@ const host = (url: string) => {
  * until the person adds a chip; `onSpec` then receives the changed spec.
  */
 export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: boolean; onSpec: (next: TaskSpec) => void }) {
+  const say = useModels();
   const [result, setResult] = useState<StageResult<Grounding>>(idle());
   const [added, setAdded] = useState<number[]>([]);
   const [note, setNote] = useState("");
 
   async function look() {
-    setResult(running("Tavily is searching and reading the top pages; Nano keeps the sentences that name this task"));
+    setResult(running(`Tavily is searching and reading the top pages; ${say("nano")} keeps the sentences that name this task`));
     try {
       const res = await fetch("/api/ground", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ spec, ...liveAuth() }) });
       setResult((await res.json()) as StageResult<Grounding>);
@@ -62,7 +64,7 @@ export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: bool
       <header className="mb-3 flex items-baseline justify-between gap-4">
         <h2 className="font-medium">What the web says</h2>
         <span className="truncate text-xs" style={{ color: MUTED }}>
-          Tavily · Nemotron 3 Nano
+          Tavily · {(result.status === "done" && answeredBy(result.ledger)) || say("nano")}
         </span>
       </header>
 
@@ -104,7 +106,7 @@ export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: bool
           )}
           {result.value.chips.length === 0 ? (
             <div className="flex items-baseline gap-3 text-sm">
-              <p style={{ color: MUTED }}>No chips this time: {result.warnings.at(-1) ?? "Nano kept no sentence"}.</p>
+              <p style={{ color: MUTED }}>No chips this time: {result.warnings.at(-1) ?? `${answeredBy(result.ledger) ?? say("nano")} kept no sentence`}.</p>
               <button className="text-xs underline" style={{ color: MUTED }} onClick={look}>
                 try again
               </button>
@@ -150,7 +152,7 @@ export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: bool
   );
 }
 
-/** The calls behind the chips: Tavily's request ids and credits, Nano's tokens, and what the route noted. */
+/** The calls behind the chips: Tavily's request ids and credits, the filtering model's tokens, and what the route noted. */
 function Spend({ ledger = [], query, warnings }: { ledger?: LedgerEntry[]; query: string; warnings: string[] }) {
   const tavily = ledger.filter((e) => e.model.startsWith("tavily/"));
   const credits = tavily.reduce((n, e) => n + (e.credits ?? 0), 0);
@@ -160,7 +162,7 @@ function Spend({ ledger = [], query, warnings }: { ledger?: LedgerEntry[]; query
     <details className="text-xs" style={{ color: MUTED }}>
       <summary className="cursor-pointer">
         {tavily.length ? `${tavily.length} Tavily call${tavily.length > 1 ? "s" : ""}, ${credits} credit${credits === 1 ? "" : "s"}` : "no Tavily call"}
-        {tokens ? ` · Nano ${tokens} tokens` : ""}
+        {tokens ? ` · ${answeredBy(ledger)} ${tokens} tokens` : ""}
       </summary>
       <div className="mt-2 flex flex-col gap-1 font-mono text-[11px]">
         <p>query: {query}</p>

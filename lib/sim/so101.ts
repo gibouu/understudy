@@ -2,7 +2,7 @@
  * The SO-101 follower arm from MuJoCo Menagerie (robotstudio_so101, Apache-2.0,
  * licence file next to the model under assets/so101). scripts/copy-assets.mjs
  * publishes the MJCF, a gzipped mesh bundle and the raw meshes (fallback) under
- * /so101; the worker puts them into MuJoCo's virtual file system.
+ * /so101; the worker writes them into the engine's file system (mountSo101).
  */
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import { toNumbers } from "./names";
@@ -10,6 +10,8 @@ export const SO101_ASSET_BASE = "/so101";
 export const SO101_XML = "so101.xml";
 /** 4-byte little-endian header length, a JSON index [{name, offset, length}], then the bytes; gzipped. */
 export const SO101_MESH_BUNDLE = "meshes.bin.gz";
+/** Where mountSo101 puts the MJCF (its meshes under assets/, the MJCF's meshdir) in the engine's own file system. */
+export const SO101_DIR = "/so101";
 /** The meshes the MJCF references, for the per-file fallback. */
 export const SO101_MESHES = [
   "base_motor_holder_so101_v1.stl",
@@ -31,6 +33,20 @@ export const SO101_MESHES = [
   "wrist_roll_follower_so101_v1.stl",
   "wrist_roll_pitch_so101_v2.stl",
 ] as const;
+
+/**
+ * Write the MJCF and its meshes into Emscripten's in-memory file system and make that directory the working one,
+ * where stageXml's include and the MJCF's meshdir find them: compile with `MjModel.from_xml_string(stageXml(...))`.
+ * The same bytes through MjVFS.addBuffer cross Embind one element at a time, about 4 s for the 17 MB of meshes on
+ * every load; a file write is one copy. Writing again replaces the files.
+ */
+export function mountSo101(mujoco: MainModule, xml: Uint8Array, meshes: { name: string; bytes: Uint8Array }[]) {
+  const { FS } = mujoco;
+  FS.mkdirTree(`${SO101_DIR}/assets`, 0o777);
+  FS.writeFile(`${SO101_DIR}/${SO101_XML}`, xml);
+  for (const m of meshes) FS.writeFile(`${SO101_DIR}/assets/${m.name}`, m.bytes);
+  FS.chdir(SO101_DIR);
+}
 
 /** Joint order, equal to the actuator order and to GR00T's so101_follower state layout. */
 export const SO101_JOINT_NAMES = [
@@ -72,10 +88,11 @@ export const G_M_S2 = 9.81;
  * the move home from there sweeps through the space in front of the robot, knocking over what stands there.
  */
 export function park(mujoco: MainModule, model: MjModel, data: MjData) {
+  const joints = SO101_JOINT_NAMES.map((name) => mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT.value, name));
+  // views after the lookups: a name lookup allocates, which can grow the wasm heap and detach a view taken before it
   const adr = toNumbers(model.jnt_qposadr);
   const qpos = data.qpos as Float64Array;
-  SO101_JOINT_NAMES.forEach((name, i) => {
-    const j = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT.value, name);
+  joints.forEach((j, i) => {
     if (j >= 0) qpos[adr[j]] = SO101_HOME[i];
   });
   (data.ctrl as Float64Array).set(SO101_HOME.slice(0, SO101_JOINT_NAMES.length));

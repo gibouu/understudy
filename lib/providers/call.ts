@@ -1,7 +1,7 @@
 /**
  * The one model call every route makes: JSON mode and thinking off (unless
- * asked for), one retry without those optional parameters when Token Factory
- * answers 400, one more ask when the output does not parse, and then the
+ * asked for), one retry without JSON mode when Token Factory answers 400
+ * (thinking stays off), one more ask when the output does not parse, and then the
  * caller's previous value (when it has one) instead of a failure, so a bad
  * recompile never loses a working program. Spec v2 risk 3.
  */
@@ -9,7 +9,7 @@ import OpenAI from "openai";
 import type { z } from "zod";
 import { ModelOutputError, parseModelJson, type Normalizer } from "@/lib/spec/parse";
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
-import { MODELS, thinkingOff, usageOf, type ModelRole } from "./tokenfactory";
+import { MODELS, notServed, thinkingOff, usageOf, type ModelRole } from "./tokenfactory";
 
 /** Token Factory takes a video as a `video_url` part, which the OpenAI types do not list. */
 export type UserPart = OpenAI.ChatCompletionContentPart | { type: "video_url"; video_url: { url: string } };
@@ -25,6 +25,8 @@ export type CallOptions<T> = {
   normalize?: Normalizer;
   /** kept, with a warning, when the second answer still does not parse */
   previous?: T;
+  /** the answer's shape in one line, repeated when an answer is not usable: a model asked again with only the error tends to repeat itself */
+  shape?: string;
   /** problems a parsed value still has; the model is asked once to fix them, and what remains becomes warnings */
   check?: (value: T) => string[];
   /** reason before answering (the model's default); maxTokens then covers reasoning and answer */
@@ -45,10 +47,11 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
 
   async function ask(): Promise<string> {
     const started = Date.now();
-    const params = { model, messages, max_tokens: o.maxTokens };
+    // thinking stays off on the retry too: a thinking answer can spend the whole budget and return nothing
+    const params = { model, messages, max_tokens: o.maxTokens, ...(o.thinking ? {} : thinkingOff()) };
     let res;
     try {
-      res = await client.chat.completions.create(optional ? { ...params, response_format: { type: "json_object" }, ...(o.thinking ? {} : thinkingOff()) } : params);
+      res = await client.chat.completions.create(optional ? { ...params, response_format: { type: "json_object" } } : params);
     } catch (err) {
       if (!(optional && err instanceof OpenAI.APIError && err.status === 400)) throw err;
       optional = false;
@@ -76,13 +79,15 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
           if (o.previous !== undefined) return done(o.previous, [`${o.role}: ${err.message}; previous value kept`], ledger);
           return failed(`${o.role}: ${err.message}`);
         }
-        messages.push({ role: "assistant", content: text }, { role: "user", content: `That answer was not usable (${err.message}). Return the whole answer again as one JSON object only.` });
+        messages.push({ role: "assistant", content: text }, { role: "user", content: `That answer was not usable (${err.message}).${o.shape ? ` The shape is ${o.shape}.` : ""} Return the whole answer again as one JSON object only.` });
       }
     }
   } catch (err) {
     // network, auth, rate limit: the SDK already retried what it could
-    if (checked) return done(checked.value, [...checked.warnings, `${o.role}: the fix was not returned (${err instanceof Error ? err.message : String(err)})`.slice(0, 300)], ledger);
     const status = err instanceof OpenAI.APIError ? err.status : undefined;
+    // a retired or unknown model: from the next request on, every route replays
+    if (status === 404) notServed(model);
+    if (checked) return done(checked.value, [...checked.warnings, `${o.role}: the fix was not returned (${err instanceof Error ? err.message : String(err)})`.slice(0, 300)], ledger);
     return failed(`${o.role}: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300), status === undefined || status === 429 || status >= 500);
   }
 }

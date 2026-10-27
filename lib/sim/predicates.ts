@@ -95,7 +95,9 @@ function insideZone(w: World, objectId: string, targetId: string): Check {
     R = vec(w.data.site_xmat, zone, 9);
     const size = vec(w.model.site_size, zone, 3);
     half = [size[0], size[1]];
-    support = pocket >= 0 ? vec(w.data.site_xpos, siteId(w, `${name}_pocket_floor`), 3)[2] : origin[2];
+    // the lookup before the view: it allocates, which can grow the wasm heap and detach a view taken before it
+    const floor = pocket >= 0 ? siteId(w, `${name}_pocket_floor`) : -1;
+    support = pocket >= 0 ? vec(w.data.site_xpos, floor, 3)[2] : origin[2];
   } else {
     const t = object(w, targetId);
     const id = bodyId(w, name);
@@ -118,9 +120,10 @@ function insideZone(w: World, objectId: string, targetId: string): Check {
 
 /** No arm geom touches the floor or a scene object, except the jaws on a manipulated object. */
 function noCollision(w: World): Check {
-  const geomBody = toNumbers(w.model.geom_bodyid);
-  const names = toNumbers(w.model.names);
-  const bodyAdr = toNumbers(w.model.name_bodyadr);
+  // copies, not views: the lookups and contact reads below allocate, which can grow the wasm heap and detach a view
+  const geomBody = Array.from(toNumbers(w.model.geom_bodyid));
+  const names = Array.from(toNumbers(w.model.names));
+  const bodyAdr = Array.from(toNumbers(w.model.name_bodyadr));
   const isScene = (b: number) => b === 0 || decodeName(names, bodyAdr[b]).startsWith(NAME_PREFIX);
   const held = w.spec.objects.filter((o) => o.role === "manipulated").map((o) => body(w, o.id));
   const manipulated = new Set(held.map((n) => bodyId(w, n)));

@@ -82,6 +82,8 @@ export type ToWorker =
   /** build the world from a task spec, perturbed by `scenario` if given; `gravityG` overrides the scenario's */
   | { type: "load"; id: number; mujocoBase: string; assetBase: string; spec: TaskSpec; scenario?: Scenario; gravityG?: number }
   | { type: "setGravity"; g: number }
+  /** simulated seconds per wall-clock second, 1 by default; kept across loads */
+  | { type: "setSpeed"; speed: number }
   | { type: "nudge"; body: string; velocity: [number, number, number] }
   | { type: "setCtrl"; ctrl: number[] }
   | { type: "play"; waypoints: Waypoint[]; loop?: boolean }
@@ -91,8 +93,11 @@ export type ToWorker =
   | { type: "jacobian"; id: number; site: string }
   /** solve IK from the current state for `site` (the tip unless given); `target` in world metres; nothing moves */
   | { type: "ik"; id: number; target: [number, number, number]; approach: Approach; site?: string }
-  /** run a program in real time; `from: "here"` continues from the current state instead of home */
-  | { type: "run"; id: number; program: Program; mode: Mode; from?: "home" | "here" };
+  /**
+   * run a program at the stage's speed; `from: "here"` continues from the current state instead of home; `reset` and
+   * `gravityG` set the scene up first, in the same message, so no physics step comes between them and the run
+   */
+  | { type: "run"; id: number; program: Program; mode: Mode; from?: "home" | "here"; reset?: { seed?: number }; gravityG?: number };
 
 export type FromWorker =
   | { type: "status"; message: string; progress?: number }

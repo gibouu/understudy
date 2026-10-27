@@ -45,7 +45,7 @@ export default async function Home() {
           <h2 className="display text-3xl font-semibold text-ink-deep sm:text-4xl">Film your own</h2>
           <p className="text-[17px] leading-relaxed text-neutral-700">Start from a sample clip or upload one of your own. The models run live on Nebius Token Factory.</p>
           <ol className="flex flex-col gap-3 border-t pt-4 text-[17px]">
-            {["Super VL watches the clip and names the objects and steps.", "Nano writes the robot’s program and asks what it could not see; you answer.", "The arm rehearses the program on Earth and in orbit."].map((line, i) => (
+            {["Super VL watches the clip and names the objects and steps.", "Lightning writes the robot’s program and asks what it could not see; you answer.", "The arm rehearses the program on Earth and in orbit."].map((line, i) => (
               <li key={line} className="grid grid-cols-[2rem_1fr] items-baseline">
                 <span className="display text-2xl font-bold text-accent-bright">{i + 1}</span>
                 {line}

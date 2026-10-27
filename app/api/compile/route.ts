@@ -18,7 +18,7 @@ import { AXES, PREDICATE_OPERANDS, Program, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type StageResult } from "@/lib/spec/stage-result";
 import { lintProgram, validateProgram } from "@/lib/spec/validate";
 import { canonicalSlot, valueAt } from "@/lib/spec/apply";
-import { askable, withRequiredAsks } from "@/lib/spec/answer";
+import { askable, WAITING_NOTE, waitingProgram, withRequiredAsks } from "@/lib/spec/answer";
 import { gestureProgram } from "@/lib/sim/gesture";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
 import { explain, liveGate } from "@/lib/unlock/check";
@@ -134,9 +134,13 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   const body = await req.json().catch(() => null);
   const spec = TaskSpec.safeParse(body?.spec);
   if (!spec.success) return NextResponse.json(failed(`invalid spec: ${spec.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`, false), { status: 400 });
-  const previous = body?.previous === undefined ? undefined : Program.safeParse(body.previous).data;
+  // a program with no moves (the one waiting for where it goes, lib/spec/answer.ts) is nothing to fall back on
+  const sent = body?.previous === undefined ? undefined : Program.safeParse(body.previous).data;
+  const previous = sent?.steps.some((s) => s.ops.some((op) => op.op !== "ask")) ? sent : undefined;
   const gestures = gestureProgram(spec.data);
   if (gestures) return NextResponse.json(done(gestures, ["every step is a gesture: the program follows each path and needs no model"]));
+  const waiting = waitingProgram(spec.data);
+  if (waiting) return NextResponse.json(done(waiting, [WAITING_NOTE]));
 
   const gate = wantsReplay(req) ? null : await liveGate("compile", body);
   const client = gate?.live ? tokenFactory({ timeout: 25_000, maxRetries: 1 }) : null;
@@ -147,6 +151,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
         user: `Task spec:\n${JSON.stringify(spec.data)}\n\nMoves for this spec:\n${geometry(spec.data)}`,
         maxTokens: 3000,
         schema: Program,
+        shape: `{"spec_title":string,"steps":[{"step_id":string,"ops":[op, ...]}, ...],"warnings":[string]}: every entry of steps is an object with step_id and ops, and warnings is a key of the answer, after the closing bracket of steps`,
         normalize: normalizeProgram,
         check: (p) => lintProgram(resolveFixtureNames(p, spec.data).program, spec.data),
         previous,

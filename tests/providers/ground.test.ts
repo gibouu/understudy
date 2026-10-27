@@ -2,10 +2,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import recordings from "@/tests/fixtures/ground.json";
 import compiled from "@/tests/fixtures/compile.json";
 import { POST } from "@/app/api/ground/route";
+import { MODELS } from "@/lib/providers/tokenfactory";
 import { applyChanges } from "@/lib/spec/apply";
 import { chipChange, type Grounding } from "@/lib/spec/ground";
 import { TaskSpec } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
+
+// Token Factory lists every model (the spend gate's list read is tested in tests/unlock/routes.test.ts)
+vi.mock("@/lib/providers/tokenfactory", async (original) => {
+  const real = await original<typeof import("@/lib/providers/tokenfactory")>();
+  return { ...real, liveModels: async () => real.served(new Set(Object.values(real.MODELS))) };
+});
 
 type Done = Extract<StageResult<Grounding>, { status: "done" }>;
 
@@ -119,7 +126,7 @@ describe("POST /api/ground live, with the network faked", () => {
     expect(r.ledger?.map((e) => [e.model, e.request_id, e.credits])).toEqual([
       ["tavily/search", "search-1", 1],
       ["tavily/extract", "extract-1", 1],
-      [expect.stringContaining("Nano"), undefined, undefined],
+      [MODELS.nano, undefined, undefined],
     ]);
     const [search, extract] = net.calls;
     expect(search.body).toMatchObject({ search_depth: "basic", include_usage: true });

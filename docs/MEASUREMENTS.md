@@ -255,9 +255,142 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 
 On the first sample clip (a slower palm wave, replaced because an agency placard and flags were in view, so these numbers are no longer reproducible from the repository), at the clip's own pace the joints turned at up to 2.9 rad/s and the arm reached 238 of 240 points within 5 mm, the farthest 5.2 mm off; held to 2 rad/s it reached all 240 within 1.1 mm. That is where the cap comes from; it was chosen in the simulator, not from a real servo. The reach box, 240 mm across and z 200 to 330 mm in the plane x = 220 mm, is checked corner by corner and with a circle that fills it, at 1 g and 0 g (`tests/sim/follow.test.ts`). Live spend for this section, about US$0.04: Super VL labels of the two sample clips and of two camera takes while the label prompt and clean-up were tuned, and three Nano compiles before a program made only of gestures stopped needing a model.
 
+## 12. The models Token Factory retires on 9 November 2026
+
+Token Factory's notice [Model Deprecations: November 2026](https://docs.tokenfactory.nebius.com/model-deprecations-november-2026), read on 27 October: Nemotron 3 Nano (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`) and Nemotron 3 Super (`nvidia/nemotron-3-super-120b-a12b`) leave Serverless on 9 November 2026, before judging ends. It names Nemotron 3.5 Lightning (`nvidia/Nemotron-3_5-Lightning`) and Nemotron 3.5 Super VL (`nvidia/Nemotron-3.5-Super-VL`) as their replacements, and a retired ID answers HTTP 404 `model_not_found`. Super VL and Ultra are not on the notice. Sections 4 to 11 were measured on Nano and Super, and the ISS examples are recordings made on them. Since 27 October a clip of your own runs on the replacements. Both sides of each table below were run on 27 October with the same harness, cases and seeds.
+
+**Compiling** (Nano's job): section 10's harness, the route's own prompt as it is today, 20 specs, 3 runs each.
+
+| Compiler | Program returned | Clean first answer | Rehearsal passes, ground-truth specs | Slowest call | Cost per compile |
+|---|---|---|---|---|---|
+| Nemotron 3 Nano | 93% [84 to 97] (56 of 60) | 67% [54 to 77] | 6 of 29 | 14.2 s | US$0.00035 |
+| Nemotron 3.5 Lightning | 100% [94 to 100] (60 of 60) | 93% [84 to 97] | 6 of 30 | 2.9 s | US$0.00029 |
+
+Lightning writes no `ask` of its own: Nano wrote 25 on the 27 degraded specs it compiled, 6 of them about a removed field. The route adds the asks the rehearsal needs (51 on Lightning's 30 degraded specs), so the robot still asks its questions.
+
+**Patching** (Super's job): section 8's round-2 loop, the same 180 solvable failures, 6 seeds, at most 5 patches.
+
+| Patcher | Fixed within 5 patches | Fixed on the first patch | Cost per fixed case | Model time per fixed case | Answers cut off / unparseable / failed calls |
+|---|---|---|---|---|---|
+| Nemotron 3 Super, thinking off (800 tokens) | 69% [62 to 75] (124 of 180) | 24% | US$0.0022 | 8 s | 0 / 0 / 2 of 603 |
+| Nemotron 3.5 Super VL, thinking off (800 tokens) | 76% [69 to 81] (136 of 180) | 38% | US$0.0015 | 5 s | 1 / 1 / 0 of 506 |
+| Nemotron 3 Super, thinking on (4096 tokens) | 94% [89 to 97] (169 of 180) | 47% | US$0.0033 | 14 s | 3 / 3 / 0 of 397 |
+| Nemotron 3.5 Super VL, thinking on (4096 tokens) | 50% [43 to 57] (90 of 180) | 26% | US$0.0272 | 33 s | 540 / 540 / 0 of 654 |
+| Super off, then Super on when stuck (the app until 27 October) | 94% [90 to 97] (170 of 180) | 27% | US$0.0024 | 12 s | 4 / 4 / 0 of 505 |
+| Super VL off, then Nemotron 3 Ultra off when stuck (the app since) | 89% [83 to 93] (160 of 180) | 32% | US$0.0022 | 6 s | 0 / 0 / 0 of 481 |
+
+Super VL patches better than Super with thinking off. With thinking on it used all 4,096 tokens without returning an answer in 83% of its calls (540 of 654), fixed half the failures, and cost twelve times as much per fix; a live preview hit that twice. So with Super VL as the patcher, the stuck loop asks Nemotron 3 Ultra with thinking off (`app/api/notes/route.ts`): 89% against Super's 94%, the intervals overlapping, at a slightly lower cost per fix. Ultra is not on the notice either.
+
+**When a model goes.** The spend gate reads Token Factory's model list, at most every five minutes per function instance. If a model the routes call is missing, every route replays its recording with the reason "Token Factory no longer serves a model this demo calls", and `/api/health` reports replay. On 27 October, on a preview deployment with Nano's ID set to one that does not exist, label, questions, recompile, rehearsal, patch loop, variants and web lookup all replayed with that line, and nothing failed. Each instance reads the list on its own, so for up to five minutes a session can be live on one step and replay the next; that step says why.
+
+Spend for this section: US$4.30 on the bench ledger (scripts `compare-compile` for both compile runs, `patch-successor` and `patch-successor-base`), under the US$5 set for this check.
+
+## 13. How long /try takes
+
+Measured on 27 October 2026 in the app's browser (Chrome 152, Electron) on an Apple M4, from the moment "Watch the clip" is pressed: the stage lines' changes timed every 100 ms in the page. The sample rows are the deployed site, https://understudy-rose.vercel.app/try, live (a sample clip needs no code); each sample ran once or twice. The deployed page cannot open a file from this Mac without a file picker, so the 8 s 1080p phone-style clip (H.264 High, 30 fps, 12 Mbit/s, with sound, made from `samples/iss-glovebox-pipette.mp4` scaled up) ran on a local server of the same branch, still calling Token Factory live: the proxy runs in the browser either way, and Super VL sees the same 480 px, 4 fps copy whatever the phone filmed.
+
+| Clip | Where | Proxy in the browser | Super VL (upload and watch) | Tracing the hand (MediaPipe) | Nano's first program | To the program |
+|---|---|---|---|---|---|---|
+| 36 s ISS, 720p (`iss-veggie-seed-film`) | deployed | 0.7 s | 17.4 s | | 4.6 s | 22.7 s |
+| 36 s ISS, 720p (`iss-veggie-seed-film-2`), two runs | deployed | 0.6 to 1.4 s | 9.0 to 18.7 s | | 1.5 to 4.3 s | 11.2 to 24.5 s |
+| 10.8 s ISS, 720p (`iss-glovebox-pipette`), two runs | deployed | 0.1 to 0.3 s | 6.7 to 8.5 s | | 1.7 to 3.0 s | 10.0 to 10.9 s |
+| 10.2 s ISS, 720p (`iss-fluid-bag-foam`) | deployed | 0.3 s | 5.9 s | | 2.0 s | 8.3 s |
+| 8 s phone-style, 1080p, three runs | local server, live models | 0.4 to 0.5 s | 3.7 to 12.7 s | | 1.8 to 3.0 s | 6.1 to 16.0 s |
+| 6 s ISS wave, 720p (`iss-wave`) | deployed | 0.1 s | 5.2 s | 12.1 s (3.8 s to load MediaPipe, then 180 frames) | 0.2 s (no model) | 17.7 s |
+| 30 s ISS chess, 720p (`dev-clip`), labelled as a gesture that run | deployed | 0.8 s | 8.4 s | 50.2 s | 0.2 s (no model) | 60.3 s |
+
+Each model call in today's recordings (`public/showcase/*.json`, from node on the same Mac): Super VL 1.7 to 7.0 s (median 5.7 s, 8 calls); Nano 1.2 to 4.6 s but for one call of 35.7 s (13 calls); Super's patches 0.7 to 1.1 s with thinking off and 7.7 to 16.7 s with it on (13 calls). Each interview answer is one more Nano call.
+
+What the page says comes from these rows (`lib/estimate.ts`): beside each stage's clock, "usually" a range that grows with the clip for the proxy (0.1 + 0.01 s to 1 + 0.04 s per clip second), Super VL (3 + 0.15 s to 10 + 0.3 s per clip second) and the trace (3 + 1.2 s to 5 + 1.8 s per clip second), and 1.5 to 10 s for Nano and 1 to 17 s for a patch; before "Watch the clip", for a clip of your own, the proxy, Super VL and Nano's first program added up: "This takes about 5 to 25 seconds for your own video" for 8 s, 10 to 35 seconds for 36 s, 20 to 65 seconds for the longest the page takes (120 s). On this Mac the proxy was the shortest stage; on a slower one its clock now shows how long it takes.
+
+A sample with a recording skips all of this: on a local server each of the six reached its program 0.05 to 0.10 s after "Watch the clip", and veggie's two Notes patches came back in 0.4 s each; the rehearsals still run in the browser. The five new recordings were made on 27 October with Nemotron 3.5 Super VL, Nemotron 3 Nano and Nemotron 3 Super, which leave Token Factory serverless on 9 November: US$0.031 for the five kept, about US$0.04 with three runs that stopped (Nano's first answer did not parse once, Super VL's label failed its schema twice). The wave's hand path was traced once in the browser against its recorded label and handed to the recorder, which cannot run MediaPipe. Where they end: the drink bag passes after the interview, chess and the first seed film pass after Notes, the wave's path is followed on Earth and in orbit; the pipette and the second seed film still fail after five patches, and are kept as they came out.
+
+## 14. Clips of your own: first answers that did not parse
+
+On the Vercel preview of #140, 2 of 4 first compiles of an uploaded clip failed their schema check, and the page said so. Issue #149 measured the own-clip path on 27 October in node through the routes themselves (`tests/bench/own-clips.test.ts`). It used the models the deployment calls, Nemotron 3.5 Super VL for the label and Nemotron 3.5 Lightning for the compile, and kept every request and raw answer in `bench/results/own-clips-*.json`.
+
+**The clips.** None is a sample, so each one runs live as a person's upload would. All four are 1080p, 30 fps, H.264 High at 12 Mbit/s with sound, cut and scaled from the NASA samples with ffmpeg:
+- an 8 s landscape clip from `iss-glovebox-pipette` (2 to 10 s);
+- an 8 s portrait clip (1080 × 1920, the middle 405 px of the frame) from `iss-veggie-seed-film-2` (4 to 12 s);
+- an 8 s portrait clip from `iss-fluid-bag-foam` (1 to 9 s);
+- a 12 s landscape clip from `iss-veggie-seed-film` (10 to 22 s).
+
+Each clip ran 4 times: twice with the line a person might type, twice with none, as the page starts. The proxy was made with ffmpeg at the browser's 480 px and 4 fps.
+
+**Before (main at 0f26296).**
+- Labels: 10 of 16 first answers were rejected, and each second answer parsed, so a label took two Super VL calls (mean 4.4 s, up to 8.9 s). Every rejection was a field written as `null` instead of left out: a step's `target` in 9 labels, its `object` in 8, and once each `pocket_clearance_mm`, `pose` and `gesture`. In 8 of the 10, a `retract` step named no object: the hand pulling back holds nothing. One `pose` also had no `xyz_mm`. When the second answer has the same nulls, the label fails outright: that happened twice in three runs while recording `iss-veggie-seed-film-2` (section 13).
+- Compiles: the 16 first compiles, then each of the 16 fitted specs compiled 3 more times, so 64 first answers from Lightning. 52 were fine. 10 had a problem the route's check sends back, and the second call fixed it: a step that never releases (6), a `follow` op in a step that is not a gesture (2), a move outside its target's frame (2). 2 did not parse, both for the same spec, and both were the same slip. Lightning closed the steps array one place late, as `"steps": [{…}, {…}, "warnings"]}`, so the key `"warnings"` became a step and its value was lost. Asked again with only the error, Lightning returned the same answer word for word, and the route failed. That makes 2 of 48 repeat compiles failed, about 4%. The page's two failures (`steps.2: expected object, received string`, and a step with neither `step_id` nor `ops`) are the same slip.
+- No answer came near the limit: every compile finished with `stop`, the longest at 1,370 of 3,000 tokens. `max_tokens` is not the cause.
+
+**The fix.**
+- `normalizeSpec` reads `null` as unset, since no field of a spec takes null. The exception is an insert's or a place's `target`: there `null` is a gap, so it stays an error and the model is asked again. It also leaves out a `pose` without its three coordinates. The label clean-up (`tidyLabel`) then leaves out a bare `retract` that names no object once the hand has let go. That is judged on the clean-up's sorted, non-overlapping timeline: the last grasp or let-go before it is a release, a place or an insert, and it has no destination, path or checks of its own (the fit drops retracts anyway). Seven of the eight object-less retracts measured were bare; the eighth named a destination and is still asked about. No insert or place had a null target.
+- `normalizeProgram` puts a program key caught inside `steps` back where it belongs, whether it is a bare `"warnings"` or a record of program keys, and reads a step written as a JSON string, as it already read ops.
+- When an answer is unusable, the retry message now repeats the answer's shape (`CallOptions.shape`), so a slip the normalizer does not know is less likely to come back unchanged.
+
+`tests/bench/own-clips-replay.test.ts` reads every kept first answer again: 15 of the 16 labels (all but that eighth retract) and all 64 programs now parse, and so do all 16 first labels from the live run after the fix. On main the same test fails on 10 labels and 2 programs.
+
+**After, live, same clips and lines, the same 16 specs.**
+
+| | Before | After |
+|---|---|---|
+| Labels right on the first answer | 6 of 16 | 16 of 16 |
+| Label time, mean (max) | 4.4 s (8.9 s) | 2.7 s (4.5 s) |
+| Compiles of the 16 specs, 3 each, that failed | 2 of 48 | 0 of 48 |
+| ... that needed a second call | 9 of 48 | 3 of 48 (all check problems) |
+
+What is still open: 5 of 16 labels after (3 of 16 before) describe the task as a move and a release with no insert or place step, so the fit finds nothing to rehearse (issue #150). Spend for this section: US$0.10.
+
+## 15. Clips of your own: labels with nothing to rehearse
+
+After #149, a quarter of the labels of people's own clips still gave "nothing to rehearse" (issue #150): the fit keeps one insert or place step onto a named object, and those labels had none. #150 added two clips to section 14's four, made the same way from the samples: an 8 s portrait clip from `iss-glovebox-pipette` (1 to 9 s) and a 10 s landscape clip from `iss-fluid-bag-foam` (0 to 10 s). It labelled all six 4 times each on main (`own-clips-label-main150.json`), and read again every label kept since section 14: 104 in all, every raw answer in `bench/results/own-clips-label-*.json`.
+
+**What the labels without a place said.** Of the 14 among the 56 labels made with main's prompt:
+- 7 put the object down as a move onto a named object, then a release of it ("grasp the drink bag, move it to the work surface, release it");
+- 3 had a move that named no target ("grasp, move, release");
+- 2 never let go (moves only), and 2 were one step or a retract.
+
+The first kind is a place written in two steps, so the label already says where the object went and that the hand let go of it there.
+
+**The fix.**
+- `fitToBench` reads a move of an object onto another named object, followed by its release with no grasp between, as a place there, and says so in its warnings ("steps s2 and s3: a move onto work_surface, then a release, read as a place there"). The release's own target wins when it names another object. Labels that have an insert or place are fitted as before.
+- The fit takes the first insert or place onto another named object. One label inserted the bag "into itself" before placing it on the foam, which used to hide the place.
+- Either one outranks a gesture beside it, as a place already did.
+- A label prompt rule ("putting something down is one place or insert step, not a move and a release") was tried on 48 runs. It made Super VL write place more and release less, but it did not leave more labels rehearsable: 40 of 48 with the fit rule, against 49 of 56 without the prompt rule. So it was not kept.
+
+**Before → after, the same 104 labels fitted again** (`tests/bench/own-clips-replay.test.ts`):
+
+| Labels | Something to rehearse, main's fit | With #150's fit |
+|---|---|---|
+| Section 14's 16 runs before #149 | 13 | 15 |
+| Section 14's 16 runs after #149 | 11 | 14 |
+| Six clips × 4 on main (`main150`) | 18 | 20 |
+| The same, labelled with the prompt rule (`after150`, `final150`) | 37 of 48 | 40 of 48 |
+| All 104 | 79 (76%) | 89 (86%) |
+
+Live, labels of the same clip vary more from run to run than either change moves them. Three arms of 24 gave 18, 20 and 18 rehearsable, so only the same labels fitted twice show the fit's effect. The 15 that remain need the person: a move with no target, or a clip whose label never lets go. Section 16 asks "where does it go?" in the interview for the 12 of them that pick something up (#155).
+
+The 72 compiles in these runs had 2 failures, both Lightning answers that went wrong: one wrote `"steps": [1]`, and one put the key `"warnings[]"` inside steps, the same slip as section 14 spelled differently. `normalizeProgram` now puts that one back too. Spend for this section: US$0.12.
+
+## 16. Clips of your own: asking where it goes
+
+After #154, 15 of the 104 kept labels still had nothing to rehearse (section 15). In 12, the label says what the hand picked up but not where it went: a move with no target, or a clip that never lets go. The other 3 never pick anything up (a single reach). Issue #155 asks the person, who knows.
+
+**How it works.** The fit keeps the grasp and a place step with no target, and the scene's other named objects stay in the spec as the answers to choose from, plus a spot on the bench. The compile route writes that program itself, with no model: no moves, and one ask, "Where does the drink bag go?". The page shows it in the same interview form as the other asks, as chips: the scene's objects, then "somewhere else on the bench". The answer sets the place step's target through `applyChanges`. The fit then runs again on the answered spec, lays out the chosen object like any target, and Nano compiles as usual.
+
+**Measured on the same 104 labels** (`tests/bench/own-clips-replay.test.ts`, the bench chip as the answer):
+
+| | Labels |
+|---|---|
+| Something to rehearse, #154's fit | 89 |
+| Asked where it goes | 12 |
+| Something to rehearse after one answer | 101 (97%) |
+| Nothing picked up, so nothing to ask | 3 |
+
+Live, for the 12, on Nemotron 3.5 Lightning: the route asked where with no model, and after the answer Lightning compiled every one, asking next what counts as done. Answered with the recorder's defaults and rehearsed in node, before any Notes patch, 5 of the 12 pass on Earth and in orbit and 1 on Earth only. The other 6 fail as other clips do: a thin object the pads do not hold, a reach 10 mm too far, an object still settling. Notes patches those on the page. In only 2 of the 12 did the label name the real destination (the cartridge, the equipment tray), so for the other 10 the right answer is the bench. Spend: about US$0.02.
+
 ## Reproduce
 
-Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend.
+Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend. Since 27 October the Nano and Super roles call their replacements (section 12): add `UNDERSTUDY_KEEP_RETIRED=1` to rerun a Nano or Super row while Token Factory still serves them, until 9 November 2026.
 
 ```bash
 pnpm test
@@ -312,3 +445,17 @@ node scripts/compare-report.mjs --json bench/results/compare-summary.json
 ```
 
 The last one prints section 10's tables from the saved results without spending anything. Token Factory withdrew Qwen3.5 397B for a while on 26 October; if a model named here is not served when you run these, the command stops at its first 404 and the report leaves the stopped run out.
+
+Section 12, the replacements against the models they replace. The compile bench names the models it compares; the patch bench reads the Super role, which is Super VL by default and Super with `UNDERSTUDY_KEEP_RETIRED=1`:
+
+```bash
+BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local COMPILE_OUT=successor-compile.json COMPILE_RUNS=3 COMPILE_CONCURRENCY=3 COMPILE_MODELS=nvidia/Nemotron-3_5-Lightning,nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B node_modules/.bin/vitest run tests/measure/compile-compare.test.ts --reporter=verbose
+```
+
+```bash
+BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local PATCH_OUT=patch-successor.json PATCH_SCRIPT=patch-successor PATCH_SEEDS=1,2,3,4,5,6 PATCH_CONCURRENCY=4 PATCH_ARMS=r2-super-off,r2-super-on,r2-esc-ultra node_modules/.bin/vitest run tests/measure/patch-loop.test.ts --reporter=verbose
+```
+
+```bash
+BENCH_LIVE=1 UNDERSTUDY_KEEP_RETIRED=1 UNDERSTUDY_ENV_FILE=.env.local PATCH_OUT=patch-successor-base.json PATCH_SCRIPT=patch-successor-base PATCH_SEEDS=1,2,3,4,5,6 PATCH_CONCURRENCY=4 PATCH_ARMS=r2-super-off,r2-esc-on,r2-super-on node_modules/.bin/vitest run tests/measure/patch-loop.test.ts --reporter=verbose
+```
