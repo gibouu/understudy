@@ -1,13 +1,17 @@
 /**
  * GET /api/health: tells the page whether the live path is available.
- * live   = key present, the four model IDs are listed, a 5-token Nano call answered
- * replay = anything else (no key, ?replay=1, a model renamed, credits gone, Token Factory down)
- * The page shows a banner and serves recorded sessions in replay mode, so the
- * demo URL keeps working through judging. Each upstream call has an 8 s
- * deadline and no retries so the route always answers inside its 30 s.
+ * live   = key present, Token Factory lists the model of every role the routes
+ *          call, and a 5-token call to the compiling model answered
+ * replay = anything else (no key, ?replay=1, a model renamed or retired,
+ *          credits gone, Token Factory down)
+ * The routes make the same model check in their spend gate (lib/unlock/check.ts),
+ * so when this says replay because a model is gone, every step replays its
+ * recording, and the demo URL keeps working through judging. Each upstream call
+ * has an 8 s deadline and no retries so the route always answers inside its 30 s.
  */
 import { connection, NextResponse } from "next/server";
-import { MODELS, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
+import OpenAI from "openai";
+import { liveModels, MODELS, notServed, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 
 export const maxDuration = 30;
 
@@ -31,19 +35,9 @@ export async function GET(req: Request): Promise<NextResponse<Health>> {
   const client = tokenFactory({ timeout: 8_000, maxRetries: 0 });
   if (!client) return NextResponse.json({ mode: "replay", reason: "no NEBIUS_API_KEY" });
   const started = Date.now();
+  const { ok, why, models } = await liveModels(client);
+  if (!ok) return NextResponse.json({ mode: "replay", reason: why, models });
   try {
-    const list = await client.models.list();
-    const ids = new Set<string>();
-    for await (const m of list) ids.add(m.id);
-    const models = Object.fromEntries(
-      Object.entries(MODELS).map(([role, id]) => [role, ids.has(id)]),
-    );
-    const missing = Object.entries(models)
-      .filter(([, ok]) => !ok)
-      .map(([role]) => `${role}=${MODELS[role as keyof typeof MODELS]}`);
-    if (missing.length) {
-      return NextResponse.json({ mode: "replay", reason: `missing ${missing.join(", ")}`, models });
-    }
     await client.chat.completions.create({
       model: MODELS.nano,
       messages: [{ role: "user", content: "Reply with the single word ok." }],
@@ -51,6 +45,8 @@ export async function GET(req: Request): Promise<NextResponse<Health>> {
     });
     return NextResponse.json({ mode: "live", models, latency_ms: Date.now() - started });
   } catch (err) {
+    // listed but refused: the routes replay from their next request on
+    if (err instanceof OpenAI.APIError && err.status === 404) notServed(MODELS.nano);
     const message = err instanceof Error ? err.message : String(err);
     return NextResponse.json({ mode: "replay", reason: message.slice(0, 200) });
   }
