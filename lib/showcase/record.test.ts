@@ -140,24 +140,33 @@ describe("the recorder's guards (no network)", () => {
     await withKey(undefined, () => expect(recordClip({ root: ROOT, sample, engine, capUsd: 1 })).rejects.toThrow(/NEBIUS_API_KEY is not set/));
   });
 
+  /** The routes set to these models while `fn` runs: once the live routes call replacements, the recorder refuses before anything else. */
+  const withModels = async <T,>(set: { vl: string; nano: string; super: string }, fn: () => Promise<T>) => {
+    const { MODELS } = await import("@/lib/providers/tokenfactory");
+    const m = MODELS as { vl: string; nano: string; super: string };
+    const saved = { vl: m.vl, nano: m.nano, super: m.super };
+    Object.assign(m, set);
+    try {
+      return await fn();
+    } finally {
+      Object.assign(m, saved);
+    }
+  };
+  const ORIGINALS = { vl: RECORDED_ON.label, nano: RECORDED_ON.compile, super: RECORDED_ON.notes };
+
   it("refuses to record when the routes would call a replacement for Nano or Super", async () => {
     const { recordClip } = await import("./record");
-    const { MODELS } = await import("@/lib/providers/tokenfactory");
-    const saved = MODELS.nano;
-    (MODELS as { nano: string }).nano = "nvidia/Nemotron-3_5-Lightning";
-    try {
-      await withKey("not-a-real-key", () => expect(recordClip({ root: ROOT, sample, engine, capUsd: 1 })).rejects.toThrow(/nano=nvidia\/Nemotron-3_5-Lightning.*UNDERSTUDY_KEEP_RETIRED=1/));
-    } finally {
-      (MODELS as { nano: string }).nano = saved;
-    }
+    await withModels({ ...ORIGINALS, nano: "nvidia/Nemotron-3_5-Lightning" }, () =>
+      withKey("not-a-real-key", () => expect(recordClip({ root: ROOT, sample, engine, capUsd: 1 })).rejects.toThrow(/nano=nvidia\/Nemotron-3_5-Lightning.*UNDERSTUDY_KEEP_RETIRED=1/)),
+    );
   });
 
   it("stops before a call whose worst case is over the cap", async () => {
     const { recordClip, worstUsd } = await import("./record");
-    await withKey("not-a-real-key", async () => {
+    await withModels(ORIGINALS, () => withKey("not-a-real-key", async () => {
       await expect(recordClip({ root: ROOT, sample, engine, capUsd: worstUsd("label") / 2 })).rejects.toThrow(/over the US\$.* cap/);
       await expect(recordClip({ root: ROOT, sample, engine, capUsd: 0 })).rejects.toThrow(/positive number/);
-    });
+    }));
   });
 
   it("records a patch only from a live call, and one recording per notes hook", async () => {
