@@ -66,6 +66,8 @@ export function Flow() {
   const [fit, setFit] = useState<Fit | null>(null);
   const [spec, setSpec] = useState<TaskSpec | null>(null);
   const [program, setProgram] = useState<StageResult<Program>>(idle());
+  /** who wrote the program shown: a recompile that kept it keeps its writer */
+  const [programBy, setProgramBy] = useState<string | undefined>(undefined);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [turn, setTurn] = useState(0);
   const [notes, setNotes] = useState<string[]>([]);
@@ -81,6 +83,7 @@ export function Flow() {
     setFit(null);
     setSpec(null);
     setProgram(idle());
+    setProgramBy(undefined);
     setAnswers({});
     setTurn(0);
     setNotes([]);
@@ -132,12 +135,16 @@ export function Flow() {
     if (turn && clip?.rec) {
       // the recording compiled exactly this spec: its program, and the answers given to its asks
       setProgram(done(turn.program, [recordedNote(clip.rec, "compile"), ...turn.warnings]));
+      setProgramBy(recordedBy(clip.rec, "compile"));
       setAnswers(formAnswers(next, turn));
       return;
     }
     step("program", "compile");
     const r = await post<Program>("/api/compile", { spec: next, previous });
     if (id !== gen.current) return;
+    // the calls that failed are in the ledger, but the program shown is the one kept (lib/providers/call.ts)
+    const kept = r.status === "done" && r.warnings.some((w) => w.endsWith("previous value kept"));
+    if (!kept) setProgramBy(r.status === "done" ? answeredBy(r.ledger) : undefined);
     setProgram(r);
     setAnswers({});
   }
@@ -207,9 +214,8 @@ export function Flow() {
   const asks = program.status === "done" ? asksOf(program.value) : [];
   /** a program of gestures alone is written by the compile route itself, with no model (lib/sim/gesture.ts) */
   const gestures = Boolean(spec?.steps.length) && spec!.steps.every((s) => s.verb === "gesture");
-  /** A section names who answered its result (its ledger, or the recording's calls for that stage), else the model this deployment calls. */
-  const named = (r: StageResult<unknown>, stage: "label" | "compile", role: Role) =>
-    (r.status === "done" ? (answeredBy(r.ledger) ?? (clip?.rec && recordedLine(r.warnings) ? recordedBy(clip.rec, stage) : undefined)) : undefined) ?? say(role);
+  /** Section 2 names who answered the label (its ledger: a recording's carries its recorded calls), else the model this deployment calls. */
+  const labelBy = (label.status === "done" && answeredBy(label.ledger)) || say("vl");
   const ready = program.status === "done" && spec && (asks.length === 0 || turn >= MAX_ROUNDS);
 
   return (
@@ -261,7 +267,7 @@ export function Flow() {
       </Section>
 
       {label.status !== "idle" && (
-        <Section n={2} title="What the model saw" model={named(label, "label", "vl")}>
+        <Section n={2} title="What the model saw" model={labelBy}>
           <Status result={label} clock={clock.label} duration={duration} />
           {label.status === "failed" && <UnlockPrompt message={label.message} onUnlock={watch} />}
           {label.status === "done" && <SpecSummary spec={label.value} />}
@@ -293,7 +299,7 @@ export function Flow() {
       )}
 
       {program.status !== "idle" && spec && (
-        <Section n={4} title="Questions from the robot" model={gestures ? "no model: the arm follows the traced path" : named(program, "compile", "nano")}>
+        <Section n={4} title="Questions from the robot" model={gestures ? "no model: the arm follows the traced path" : (program.status === "done" && programBy) || say("nano")}>
           <Status result={program} clock={clock.program} duration={duration} />
           {program.status === "done" && asks.length === 0 && <p className="text-sm text-emerald-700">No open questions: the program has everything it needs.</p>}
           {program.status === "done" && asks.length > 0 && turn < MAX_ROUNDS && (
@@ -320,7 +326,7 @@ export function Flow() {
           ))}
           {program.status === "done" && (
             <div className="mt-4 border-t pt-4">
-              <ProgramView spec={spec} program={program.value} failure={failure} by={gestures ? "The page" : named(program, "compile", "nano")} />
+              <ProgramView spec={spec} program={program.value} failure={failure} by={gestures ? "The page" : (programBy ?? say("nano"))} />
             </div>
           )}
           {program.status !== "running" && (

@@ -52,6 +52,7 @@ export const Patch = z.object({
   note: z.string(),
   model: z.string(),
   thinking: z.boolean(),
+  thought: z.boolean().optional(),
   escalation: z.enum(["noop", "two_failed"]).nullable(),
   tokens: z.number(),
   cost_usd: z.number(),

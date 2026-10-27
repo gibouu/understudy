@@ -119,6 +119,8 @@ export type NotePatch = {
   model: string;
   /** the loop is stuck, so the deeper patcher answered: Super thinking, or Ultra with thinking off in place of Super VL (app/api/notes/route.ts) */
   thinking: boolean;
+  /** the model reasoned (thinking on); recordings and fixtures made before this field: `thinking`, which meant that then */
+  thought?: boolean;
   escalation: Escalation | null;
   tokens: number;
   cost_usd: number;

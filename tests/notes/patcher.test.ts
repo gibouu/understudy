@@ -18,24 +18,20 @@ const SUPER = "nvidia/nemotron-3-super-120b-a12b";
 const SUPER_VL = "nvidia/Nemotron-3.5-Super-VL";
 const ULTRA = "nvidia/Nemotron-3-Ultra-550b-a55b";
 const patch = (p: Partial<NotePatch>) => ({ model: SUPER, thinking: false, escalation: null, ...p }) as NotePatch;
-const ids = (sup: string, stuck: string) => ({ vl: SUPER_VL, nano: "nvidia/Nemotron-3_5-Lightning", super: sup, ultra: ULTRA, stuck });
 
 describe("who wrote a patch", () => {
   it("a recording, or Super live, says thinking on or off", () => {
-    expect(patcher(patch({}), ids(SUPER_VL, ULTRA))).toBe("Nemotron 3 Super, thinking off");
-    expect(patcher(patch({ thinking: true, escalation: "two_failed" }), ids(SUPER_VL, ULTRA))).toBe("Nemotron 3 Super, thinking on: two patches failed");
-    expect(patcher(patch({ thinking: true, escalation: "noop" }), ids(SUPER, SUPER))).toBe("Nemotron 3 Super, thinking on: the cheap patch changed nothing");
+    expect(patcher(patch({}))).toBe("Nemotron 3 Super, thinking off");
+    // recordings and fixtures made before `thought`: thinking meant the model reasoned
+    expect(patcher(patch({ thinking: true, escalation: "two_failed" }))).toBe("Nemotron 3 Super, thinking on: two patches failed");
+    expect(patcher(patch({ thinking: true, thought: true, escalation: "noop" }))).toBe("Nemotron 3 Super, thinking on: the cheap patch changed nothing");
   });
 
-  it("a stuck loop handed to Ultra names Ultra and why, not thinking", () => {
-    expect(patcher(patch({ model: ULTRA, thinking: true, escalation: "two_failed" }), ids(SUPER_VL, ULTRA))).toBe("Nemotron 3 Ultra: two patches failed");
-    expect(patcher(patch({ model: SUPER_VL }), ids(SUPER_VL, ULTRA))).toBe("Nemotron 3.5 Super VL, thinking off");
-  });
-
-  it("without this deployment's models it claims neither thinking on nor off", () => {
-    expect(patcher(patch({ model: ULTRA, thinking: true, escalation: "two_failed" }), null)).toBe("Nemotron 3 Ultra: two patches failed");
-    expect(patcher(patch({ thinking: true }), null)).toBe("Nemotron 3 Super");
-    expect(patcher(patch({}), null)).toBe("Nemotron 3 Super");
+  it("a stuck loop handed to a model that did not think names it and why", () => {
+    expect(patcher(patch({ model: ULTRA, thinking: true, thought: false, escalation: "two_failed" }))).toBe("Nemotron 3 Ultra: two patches failed");
+    // Ultra set to the patcher's own model: still not thinking, as the route sent it
+    expect(patcher(patch({ model: SUPER_VL, thinking: true, thought: false, escalation: "noop" }))).toBe("Nemotron 3.5 Super VL: the cheap patch changed nothing");
+    expect(patcher(patch({ model: SUPER_VL, thought: false }))).toBe("Nemotron 3.5 Super VL, thinking off");
   });
 });
 

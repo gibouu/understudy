@@ -135,6 +135,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
     note,
     model: why !== null && toUltra ? MODELS.ultra : MODELS.super,
     thinking: why !== null,
+    thought: why !== null && !toUltra,
     escalation: why,
     tokens: costs.reduce((n, e) => n + e.prompt_tokens + e.completion_tokens, 0),
     cost_usd: spent,

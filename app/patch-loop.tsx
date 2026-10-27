@@ -8,7 +8,6 @@ import { GRAVITIES, type Program, type TaskSpec } from "@/lib/spec/schema";
 import { failed, type StageResult } from "@/lib/spec/stage-result";
 import { usual } from "@/lib/estimate";
 import { gateNote } from "@/lib/unlock/messages";
-import type { LiveModels } from "./api/models/route";
 import { liveAuth } from "./capture";
 import { useLiveModels, useModels } from "./models";
 import { Working } from "./working";
@@ -21,17 +20,16 @@ const WHY_STUCK = { noop: "the cheap patch changed nothing", two_failed: "two pa
 
 /**
  * Who wrote a patch, from the patch itself: "Nemotron 3 Super, thinking on: two patches failed", or,
- * when a stuck loop was handed to another model (Ultra in place of a patcher that cannot think within
- * the budget, app/api/notes/route.ts), "Nemotron 3 Ultra: two patches failed". Recordings keep their model.
+ * when a stuck loop was handed to a model that did not think (Ultra in place of a patcher that cannot
+ * think within the budget, app/api/notes/route.ts), "Nemotron 3 Ultra: two patches failed".
+ * Recordings keep their model.
  */
-export function patcher(p: NotePatch, ids: LiveModels | null): string {
+export function patcher(p: NotePatch): string {
   const who = modelLabel(p.model);
   const why = p.escalation ? WHY_STUCK[p.escalation] : null;
-  // without this deployment's models a thinking patch may be Ultra's, which did not think: say neither
-  const handed = p.thinking && (ids === null || (ids.stuck !== ids.super && p.model === ids.stuck));
-  if (handed) return why ? `${who}: ${why}` : who;
-  if (ids === null) return who;
-  return `${who}, ${p.thinking ? `thinking on${why ? `: ${why}` : ""}` : "thinking off"}`;
+  const thought = p.thought ?? p.thinking;
+  if (p.thinking && !thought) return why ? `${who}: ${why}` : who;
+  return `${who}, ${thought ? `thinking on${why ? `: ${why}` : ""}` : "thinking off"}`;
 }
 
 /**
@@ -119,7 +117,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
                 <span className="font-medium">Patch {x.n}</span>
                 {x.patch && (
                   <span className="text-xs text-neutral-500">
-                    {patcher(x.patch, ids)} · {x.patch.tokens.toLocaleString()} tokens · ${x.patch.cost_usd.toFixed(4)}
+                    {patcher(x.patch)} · {x.patch.tokens.toLocaleString()} tokens · ${x.patch.cost_usd.toFixed(4)}
                     {x.replayed ? ` · ${x.replayed}` : ""}
                   </span>
                 )}
