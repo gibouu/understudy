@@ -21,6 +21,8 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
   const jobs: Job[] = [];
   let failCreate: "no" | "lost-answer" | "rejected" = "no";
   const served: string[] = [];
+  const registered: { name: string; base_model: string; source: string }[] = [];
+  let loraGone = false;
   const endpoints: { id: string; name: string; routing_key: string; custom_weights_id: string }[] = [];
   let refuseDeletes = 0;
   let endpointCount = 0;
@@ -40,18 +42,19 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
         const url = req.url ?? "";
         served.push(`${req.method} ${url.replace(/\?.*/, "")}`);
         // the routes try-serve and delete-lora use
-        if (req.method === "GET" && /\/v1\/files\/file-ad-[a-z]+\/content$/.test(url)) {
-          res.writeHead(200, { "content-type": "application/octet-stream" });
-          return res.end(url.includes("cfg") ? '{"r":16}' : "weights");
-        }
-        if (req.method === "GET" && /\/v1\/files\/file-ad-[a-z]+$/.test(url)) return send(200, { id: url.split("/").at(-1), object: "file", bytes: 7, created_at: 1, filename: url.includes("cfg") ? "ckpt-1/adapter_config.json" : "ckpt-1/adapter_model.safetensors", purpose: "fine-tune-results" });
         if (req.method === "POST" && url.endsWith("/chat/completions")) {
           const r = JSON.parse(body);
           if (String(r.model).startsWith("ft:")) return send(404, { error: { message: "model not found" } });
           return send(200, { id: "c", object: "chat.completion", created: 0, model: r.model, choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"ok":true}' } }], usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 } });
         }
-        if (req.method === "POST" && url.endsWith("/v0/models/upload")) return send(200, { id: body.includes("adapter_config.json") ? "upl-1" : "upl-empty" });
-        if (req.method === "POST" && url.endsWith("/v0/models")) return send(200, { name: `${JSON.parse(body).name}-ab12` });
+        if (req.method === "POST" && url.endsWith("/v0/models")) {
+          const r = JSON.parse(body);
+          registered.push(r);
+          // what Token Factory answered on 27 October; the other branch is the cookbook's documented answer
+          if (loraGone) return send(410, { detail: "LoRA adapter deployment is no longer available" });
+          return send(200, { name: `${r.name}-ab12`, status: "validating" });
+        }
+        if (req.method === "GET" && /\/v0\/models\/[^/]+$/.test(url)) return send(200, { name: url.split("/").at(-1), status: "active" });
         if (req.method === "DELETE" && /\/v1\/models\//.test(url)) return send(200, { deleted: true });
         // dedicated endpoints
         if (req.method === "GET" && url.endsWith("/v0/dedicated_endpoints")) return send(200, { object: "list", data: endpoints });
@@ -163,11 +166,15 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
 
   it("try-serve asks the tuned model by two routes, charges each call, and delete-lora removes what it registered", async () => {
     const ledgerBefore = ledger().length;
-    await tf("try-serve");
+    // the LoRA registration polls every 5 "seconds" until active: 100 ms minutes make that a moment
+    const fast = { ...env, FINETUNE_TF_MINUTE_MS: "100" };
+    const tfFast = (...args: string[]) => run("node", ["scripts/finetune-tf.mjs", ...args], { env: fast, cwd: process.cwd() });
+    await tfFast("try-serve");
     const serve = state().serve;
     expect(serve.checkpoint_id).toMatchObject({ ok: false });
-    expect(serve.lora_upload).toMatchObject({ status: 200, id: "upl-1" });
-    expect(serve.lora_model).toMatchObject({ status: 200, name: "understudy-patcher-ab12" });
+    // registered from the job and its last checkpoint, on the base model, as the cookbook does
+    expect(registered.at(-1)).toMatchObject({ base_model: "Qwen/Qwen3-30B-A3B-Instruct-2507", source: "ftjob-1:ckpt-1" });
+    expect(serve.lora_model).toMatchObject({ status: 200, name: "understudy-patcher-ab12", final_status: "active" });
     expect(serve.lora_answer).toMatchObject({ ok: true, content: '{"ok":true}' });
     // both calls are on the ledger: the refused one at 0, the answered one at its estimate
     const calls = ledger().slice(ledgerBefore).filter((e) => !e.type && e.meta?.stage === "try-serve");
@@ -178,6 +185,19 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     await tf("delete-lora");
     expect(served).toContain("DELETE /v1/models/understudy-patcher-ab12");
     expect(state().serve.lora_deleted.status).toBe(200);
+  }, 60_000);
+
+  it("try-serve keeps a refused LoRA registration word for word, and asks nothing more", async () => {
+    loraGone = true;
+    const ledgerBefore = ledger().length;
+    await tf("try-serve");
+    const serve = state().serve;
+    expect(serve.lora_model).toMatchObject({ status: 410, name: null, detail: '"LoRA adapter deployment is no longer available"' });
+    expect(serve.lora_answer).toBeUndefined();
+    // only the checkpoint-id call is on the ledger, at 0 (refused)
+    const calls = ledger().slice(ledgerBefore).filter((e) => !e.type && e.meta?.stage === "try-serve");
+    expect(calls.map((c) => c.usd)).toEqual([0]);
+    loraGone = false;
   }, 60_000);
 
   it("a dedicated endpoint gets a deadline: its own watchdog deletes it, retrying, and charges the hours once", async () => {

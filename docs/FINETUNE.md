@@ -2,7 +2,7 @@
 
 Goal (gib, 26 October 2026, issue #97): by the end of the week, a first small fine-tune of one Nemotron model on our own repairs, measured against the same model with our prompts on the same failures.
 
-**Status, 27 October, 02:35 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`, up to US$30 approved by gib) waits for gib's AI Cloud account and moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), is trained: job `ftjob-5c66a1b7020e4bd493d808e9a104853e` waited 11 hours in a queue, trained 40 steps in 49 minutes and cost US$12.20. It cannot be measured: Token Factory serves a tuned model only on a dedicated endpoint with custom weights, and the endpoint request was refused because a custom-weights id comes only from the beta Support enables (section 5). No tuned result exists; the baselines are in section 5.
+**Status, 27 October, 07:15 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`) moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), is trained: job `ftjob-5c66a1b7020e4bd493d808e9a104853e` waited 11 hours in a queue, trained 40 steps in 49 minutes and cost US$12.20. It cannot be measured. Token Factory no longer deploys LoRA adapters: the cookbook's route answers HTTP 410, "LoRA adapter deployment is no longer available". A dedicated endpoint needs a custom-weights id, which only the beta that Support enables gives (section 5). Four other bases were considered for parallel jobs (section 6): none can be served either, so none was launched. No tuned result exists; the baselines are in section 5, and what Token Factory would need to add is in section 7.
 
 ## 1. Where to fine-tune on Nebius
 
@@ -102,7 +102,7 @@ The job, its config and the endpoint script are in `jobs/finetune-nano/` with th
 
 ## 4. Result
 
-No tuned model yet. The baselines are in section 5.
+No tuned model yet. The baselines are in section 5; why no tuned model can be served is in sections 5 and 6.
 
 ## 5. A stand-in on Token Factory
 
@@ -163,7 +163,46 @@ The validation loss still falls, barely, at the last epoch: no sign of over-fitt
 
 The checkpoint's other id (`ft:...`) has the same problem, and nothing in the public API makes a `model-artifact_` id (the live `openapi.json`, version 20261022, has no such route; the docs name only the custom-weights beta that Support enables on request). So the tuned model cannot be served on Token Factory until Support answers (asked on 26 October at 13:55 and 17:35 Paris), and it is not measured. The reservation was released: the attempt cost nothing. When an artifact id exists, the rest is ready: `endpoint-create` with it, the arm `ft-qwen-ft` on the 11 held-out cases (seeds 1 to 12) and the held-out one-patch check, then `endpoint-delete`.
 
+**The documented serverless LoRA route, tried on 27 October at 06:08 UTC.** The `/v0/models/upload` route above came from an older cookbook notebook (`AddLora.ipynb`). The cookbook's fine-tuning notebook ([fine_tune_llama.ipynb](https://github.com/nebius/token-factory-cookbook/blob/main/post-training/fine-tuning-1/fine_tune_llama.ipynb), step 9, "Deploy Your LoRA Adapter") registers a finished job's checkpoint as a serverless LoRA model: `POST /v0/models` with `source` set to `<job id>:<checkpoint id>` and the base model's id, then `GET /v0/models/<name>` until its status is `active`. `try-serve` now uses that route. For our job and its step-40 checkpoint, Token Factory answered, word for word:
+
+> HTTP 410: {"detail":"LoRA adapter deployment is no longer available"}
+
+The page of models that can be fine-tuned says the same in its own words: "Deployment options currently only include via Dedicated endpoints" ([models](https://docs.tokenfactory.nebius.com/post-training/models.md)). `GET /v0/model_artifacts`, where a `model-artifact_` id would come from, answers 403: "You don't have access to the resource or it does not exist". Both calls cost nothing (the ledger has the checkpoint-id call at US$0, refused with a 404 again).
+
 **Spend on the stand-in:** US$12.20 for the training (US$13.85 on the ledger, its estimate), US$0.22 for the baselines, US$0 for serving.
+
+## 6. Fine-tunes on other bases
+
+On 27 October gib asked for several fine-tunes in parallel on the Token Factory balance, inside the same US$100 cap: Qwen3-14B, Meta-Llama-3.1-8B-Instruct, Qwen3-32B and Llama-3.3-70B-Instruct. In the signed-in console (Billing, Prices, eu-north1, read by the lead) these four have a training price and also a serverless "<model>-LoRa" serving price, so a tuned adapter on them looked servable without custom weights. Checked against the API before any spend (27 October, 06:00 to 06:10 UTC):
+
+- All four are on the list of models that can be fine-tuned, with LoRA ([models](https://docs.tokenfactory.nebius.com/post-training/models.md)).
+- None of the four is on `GET /v1/models`, which lists 30 serverless models today. Qwen3-32B and Llama-3.3-70B-Instruct left serverless on 31 August 2026 ([August 2026 deprecations](https://docs.tokenfactory.nebius.com/august-2026-deprecation-notice.md)). So the untuned base of each cannot be called for the comparison either.
+- LoRA deployment answers HTTP 410 for every model (section 5). The console's "-LoRa" prices date from November 2025 and describe a route that is gone.
+
+So a job on any of them would give a loss curve and nothing to measure. The four would cost an estimated US$31.66 (4.95 million tokens each with the 10% margin: Qwen3-14B and Llama-3.1-8B at US$0.4 per 1M, US$1.98 each; Qwen3-32B and Llama-3.3-70B at US$2.8, US$13.85 each). None was launched; that is the lead's call for gib.
+
+| Base | Trained | Cost | Validation loss, first → last checkpoint | Served | Tuned against base, held out (5 patches) |
+|---|---|---|---|---|---|
+| Qwen3-30B-A3B-Instruct-2507 | yes, 5 epochs, 40 steps | US$12.20 | 0.789 (step 8) → 0.631 (step 40) | no: LoRA route 410, dedicated endpoint 422 (section 5) | not measured; base 73% [65 to 80] |
+| Qwen3-14B | no | US$0 (est. US$1.98) | | no: not serverless, LoRA route 410 | base not served |
+| Meta-Llama-3.1-8B-Instruct | no | US$0 (est. US$1.98) | | no: not serverless, LoRA route 410 | base not served |
+| Qwen3-32B | no | US$0 (est. US$13.85) | | no: left serverless 31 August, LoRA route 410 | base not served |
+| Llama-3.3-70B-Instruct | no | US$0 (est. US$13.85) | | no: left serverless 31 August, LoRA route 410 | base not served |
+
+The validation loss before any training is not reported by Token Factory; the first figure is the first checkpoint's. `scripts/finetune-tf.mjs` keeps one job per state file, so a job on another base needs its own state; that change waits until a base can be served.
+
+Not in the way of the hackathon but worth knowing: Nemotron 3 Nano and Nemotron 3 Super, which the app calls, leave Token Factory serverless on 9 November 2026 ([November 2026 deprecations](https://docs.tokenfactory.nebius.com/model-deprecations-november-2026.md)), after the 30 October deadline.
+
+## 7. What Token Factory should add
+
+Each point is something this work ran into.
+
+1. **Fine-tuning for Nemotron 3.** The hackathon's own models cannot be tuned on Token Factory: the list of models that can be fine-tuned has no NVIDIA entry, and the public catalog has `fine_tune: null` for every NVIDIA model (section 1). Our repairs had to train a Qwen stand-in, and the Nano LoRA had to move to AI Cloud (issue #122).
+2. **Serverless serving for every model it can fine-tune.** Our Qwen3-30B-A3B-Instruct-2507 LoRA trained for US$12.20 and cannot be called: its checkpoint id answers 404 on the serverless API, and LoRA deployment answers 410 (section 5). The four other bases in section 6 can be trained but neither they nor their adapters can be served.
+3. **Custom weights as self-serve, not a beta granted by Support.** A dedicated endpoint for the tuned weights was refused with a 422 ("custom_weights_id must start with 'model-artifact_'"), `GET /v0/model_artifacts` answers 403, and no public route makes an artifact id. Support was asked on 26 October at 13:55 and 17:35 Paris; no answer by 27 October 07:15.
+4. **Fine-tuning prices published outside the signed-in console.** No public page or API gives the supervised fine-tuning price; the API lists only the speculative-draft price, "5.0" with no unit (section 5). The script has to be given the price by hand (`--usd-per-mtok`), read in the console by a person.
+5. **The queue made visible.** Our job showed `running` with 0 steps and no total or estimate from 13:09 to 00:24 UTC, 11 hours 15 minutes, before its first event "Training started" (`bench/results/finetune-tf.json`, the job's events). A `queued` status, a place in the queue or an estimated start would have told us to plan around it.
+6. **One story across docs, cookbook and console.** The cookbook still documents `POST /v0/models` for LoRA deployment, and the console still lists "-LoRa" serving prices, for a route that now answers 410.
 
 ## Reproduce
 

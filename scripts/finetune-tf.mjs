@@ -16,8 +16,9 @@
 //        the console): gives the reservation back and clears the pending mark
 //   node scripts/finetune-tf.mjs try-serve                    once the job succeeded: asks the tuned model for one
 //        tiny answer by two routes that need no dedicated endpoint (the checkpoint id on the serverless API, and
-//        the adapter registered as a LoRA model through /v0/models, the route of Token Factory's cookbook
-//        AddLora.ipynb) and keeps what each one said; each call goes on the ledger at an estimated price
+//        the checkpoint registered as a serverless LoRA model through POST /v0/models, the route of Token
+//        Factory's cookbook fine_tune_llama.ipynb) and keeps what each one said; each call goes on the ledger at
+//        an estimated price
 //   node scripts/finetune-tf.mjs delete-lora                  removes the LoRA model try-serve registered (DELETE
 //        /v1/models/<name>, as the cookbook does), once the evaluation is done
 //   node scripts/finetune-tf.mjs endpoint-create --custom-weights-id W --minutes M [--usd-per-gpu-hour 5.6]
@@ -37,7 +38,6 @@ import os from "node:os";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { zipSync } from "fflate";
 import OpenAI, { toFile } from "openai";
 import { charge, entries, guard, release } from "./bench-ledger.mjs";
 
@@ -232,30 +232,25 @@ async function main() {
           return { ok: false, model, error: String(e?.message ?? e).slice(0, 300) };
         }
       };
+      // an earlier attempt stays on record
+      if (s.serve) s.serve_history = [...(s.serve_history ?? []), s.serve];
       s.serve = { checkpoint: last.model, tried_at: new Date().toISOString() };
       // 1. the checkpoint id as a serverless model
       s.serve.checkpoint_id = await ask(last.model);
-      // 2. the adapter as a LoRA model: download the checkpoint's files, zip them, upload, register
+      // 2. the checkpoint registered as a serverless LoRA model: POST /v0/models with the source "<job>:<checkpoint>",
+      // then wait for it to turn active (the cookbook's post-training/fine-tuning-1/fine_tune_llama.ipynb, step 9)
       try {
-        const files = {};
-        for (const id of (await tf.fineTuning.jobs.checkpoints.list(s.job.id)).data.find((c) => c.id === last.id)?.result_files ?? []) {
-          const meta = await tf.files.retrieve(id);
-          files[path.basename(meta.filename)] = new Uint8Array(await (await tf.files.content(id)).arrayBuffer());
-        }
-        if (!files["adapter_config.json"]) throw new Error(`no adapter_config.json among ${Object.keys(files).join(", ")}`);
-        const zip = zipSync(files);
-        const form = new FormData();
-        form.append("file", new Blob([zip]), "adapter.zip");
-        const auth = { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` };
-        const root = BASE_URL.replace(/\/v1\/?$/, "");
-        const up = await fetch(`${root}/v0/models/upload`, { method: "POST", headers: auth, body: form });
-        const upBody = await up.json().catch(() => ({}));
-        s.serve.lora_upload = { status: up.status, id: upBody.id ?? null, detail: upBody.detail ? String(JSON.stringify(upBody.detail)).slice(0, 300) : null };
-        if (up.ok && upBody.id) {
-          const mk = await fetch(`${root}/v0/models`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ source: upBody.id, base_model: BASE_MODEL, name: "understudy-patcher", description: "LoRA of the patch-loop repairs (issue #97)" }) });
-          const mkBody = await mk.json().catch(() => ({}));
-          s.serve.lora_model = { status: mk.status, name: mkBody.name ?? null, detail: mkBody.detail ? String(JSON.stringify(mkBody.detail)).slice(0, 300) : null };
-          if (mk.ok && mkBody.name) s.serve.lora_answer = await ask(mkBody.name);
+        const mk = await fetch(`${API_ROOT}/v0/models`, { method: "POST", headers: { ...auth(), "Content-Type": "application/json" }, body: JSON.stringify({ name: "understudy-patcher", base_model: BASE_MODEL, source: `${s.job.id}:${last.id}`, description: "LoRA of the patch-loop repairs (issue #97)" }) });
+        const mkBody = await mk.json().catch(() => ({}));
+        s.serve.lora_model = { status: mk.status, name: mkBody.name ?? null, detail: mkBody.detail ? String(JSON.stringify(mkBody.detail)).slice(0, 300) : null };
+        if (mk.ok && mkBody.name) {
+          let info = {};
+          for (let i = 0; i < 120 && !["active", "error"].includes(info.status); i++) {
+            await new Promise((r) => setTimeout(r, MINUTE_MS / 12));
+            info = await (await fetch(`${API_ROOT}/v0/models/${encodeURIComponent(mkBody.name)}`, { headers: auth() })).json().catch(() => ({}));
+          }
+          s.serve.lora_model.final_status = info.status ?? null;
+          if (info.status === "active") s.serve.lora_answer = await ask(mkBody.name);
         }
       } catch (e) {
         s.serve.lora_error = String(e?.message ?? e).slice(0, 300);

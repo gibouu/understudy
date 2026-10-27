@@ -77,16 +77,16 @@
   ],
   "serve": {
     "checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
-    "tried_at": "2026-10-27T01:15:46.318Z",
+    "tried_at": "2026-10-27T06:08:49.797Z",
     "checkpoint_id": {
       "ok": false,
       "model": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
       "error": "404 The model `ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40` does not exist."
     },
-    "lora_upload": {
-      "status": 404,
-      "id": null,
-      "detail": "\"Not Found\""
+    "lora_model": {
+      "status": 410,
+      "name": null,
+      "detail": "\"LoRA adapter deployment is no longer available\""
     }
   },
   "events": [
@@ -114,6 +114,22 @@
       "at": "2026-10-27T01:13:42.000Z",
       "level": "info",
       "message": "Training completed successfully"
+    }
+  ],
+  "serve_history": [
+    {
+      "checkpoint": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
+      "tried_at": "2026-10-27T01:15:46.318Z",
+      "checkpoint_id": {
+        "ok": false,
+        "model": "ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
+        "error": "404 The model `ft:Qwen/Qwen3-30B-A3B-Instruct-2507-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40` does not exist."
+      },
+      "lora_upload": {
+        "status": 404,
+        "id": null,
+        "detail": "\"Not Found\""
+      }
     }
   ]
 }
