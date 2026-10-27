@@ -3,6 +3,9 @@
 // which and why). Every step that can cost money asks for the numbers it needs and refuses without them:
 // Token Factory publishes no fine-tuning price and the API key cannot read the balance.
 //
+// Every command takes --model M, the base model (default Qwen/Qwen3-30B-A3B-Instruct-2507). Each base has its
+// own state file and lock, so jobs on several bases can run side by side, one job per base.
+//
 //   node scripts/finetune-tf.mjs upload                       checks the files against manifest.json, uploads them
 //   node scripts/finetune-tf.mjs create --usd-per-mtok P --balance-usd B [--epochs 5] [--dry-run] [--allow-another-job]
 //        estimates the cost (training tokens x epochs x P), refuses when B minus it would fall under
@@ -16,8 +19,9 @@
 //        the console): gives the reservation back and clears the pending mark
 //   node scripts/finetune-tf.mjs try-serve                    once the job succeeded: asks the tuned model for one
 //        tiny answer by two routes that need no dedicated endpoint (the checkpoint id on the serverless API, and
-//        the adapter registered as a LoRA model through /v0/models, the route of Token Factory's cookbook
-//        AddLora.ipynb) and keeps what each one said; each call goes on the ledger at an estimated price
+//        the checkpoint registered as a serverless LoRA model through POST /v0/models, the route of Token
+//        Factory's cookbook fine_tune_llama.ipynb) and keeps what each one said; each call goes on the ledger at
+//        an estimated price
 //   node scripts/finetune-tf.mjs delete-lora                  removes the LoRA model try-serve registered (DELETE
 //        /v1/models/<name>, as the cookbook does), once the evaluation is done
 //   node scripts/finetune-tf.mjs endpoint-create --custom-weights-id W --minutes M [--usd-per-gpu-hour 5.6]
@@ -29,25 +33,48 @@
 //
 // A create that fails leaves the job "pending": no other create runs until adopt or release says what
 // happened, so a lost answer can never lead to a second paid job, and nothing is released by guesswork.
-// State (file ids, job id, price, checkpoints, losses; no key) is kept in bench/results/finetune-tf.json.
+// State (file ids, job id, price, checkpoints, losses; no key) is kept in bench/results/finetune-tf.json for the
+// default base, and in bench/results/finetune-tf-<base, as a slug>.json for any other.
 // The key comes from UNDERSTUDY_ENV_FILE (default .env.local), as in every bench script.
 import { spawn } from "node:child_process";
-import { closeSync, existsSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { zipSync } from "fflate";
 import OpenAI, { toFile } from "openai";
 import { charge, entries, guard, release } from "./bench-ledger.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const args = process.argv.slice(2);
+const cmd = args[0];
+const opt = (name) => {
+  const i = args.indexOf(name);
+  return i >= 0 ? args[i + 1] : undefined;
+};
+export const DEFAULT_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507";
+const BASE_MODEL = opt("--model") ?? DEFAULT_MODEL;
+/**
+ * A base model's identity, whatever the spelling: Token Factory names one model several ways (its cookbook
+ * fine-tunes meta-llama/Llama-3.1-8B-Instruct and serves meta-llama/Meta-Llama-3.1-8B-Instruct), so the
+ * organisation, the case and a "Meta-" prefix are dropped, and the rest kept as a file-name part:
+ * Qwen/Qwen3-14B -> qwen3-14b, both Llama spellings -> llama-3-1-8b-instruct.
+ */
+export const canon = (model) =>
+  String(model)
+    .split("/")
+    .pop()
+    .toLowerCase()
+    .replace(/^meta-(?=llama)/, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 // overridable for the tests only (tests/providers/finetune-tf.test.ts runs this script against a local mock)
-const STATE = process.env.FINETUNE_TF_STATE ?? path.join(ROOT, "bench/results/finetune-tf.json");
+const DEFAULT_STATE = process.env.FINETUNE_TF_STATE ?? path.join(ROOT, "bench/results/finetune-tf.json");
+// the default base keeps the file it always had; every other base gets its own, so its job, lock and guards are its own
+const STATE = canon(BASE_MODEL) === canon(DEFAULT_MODEL) ? DEFAULT_STATE : DEFAULT_STATE.replace(/\.json$/, `-${canon(BASE_MODEL)}.json`);
 const BASE_URL = process.env.FINETUNE_TF_BASE_URL ?? "https://api.tokenfactory.nebius.com/v1/";
 const DATA = path.join(ROOT, "bench/finetune");
 const SCRIPT = "finetune-tf";
-export const BASE_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507";
 export const FLOOR_USD = 15;
 /** a minute, in ms; the tests shrink it so the watchdog's deadline comes in a moment */
 const MINUTE_MS = Number(process.env.FINETUNE_TF_MINUTE_MS ?? 60_000);
@@ -60,13 +87,12 @@ const MINUTE_MS = Number(process.env.FINETUNE_TF_MINUTE_MS ?? 60_000);
 export const HYPER = { lora: true, lora_r: 16, lora_alpha: 32, lora_dropout: 0.05, learning_rate: 2e-4, batch_size: 16, warmup_ratio: 0.05, context_length: 8192, packing: true };
 export const EPOCHS = 5;
 
-const args = process.argv.slice(2);
-const cmd = args[0];
-const opt = (name) => {
-  const i = args.indexOf(name);
-  return i >= 0 ? args[i + 1] : undefined;
+const state = () => {
+  if (!existsSync(STATE)) return { base_model: BASE_MODEL };
+  const s = JSON.parse(readFileSync(STATE, "utf8"));
+  if (s.base_model !== BASE_MODEL) throw new Error(`${STATE} is the state of ${s.base_model}, not of ${BASE_MODEL}: use that spelling`);
+  return s;
 };
-const state = () => (existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : { base_model: BASE_MODEL });
 /** write a temporary file and rename it over: a reader sees the old state or the new one, never a half-written file */
 const save = (s) => {
   const tmp = `${STATE}.${process.pid}.tmp`;
@@ -79,8 +105,7 @@ const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
  * One create or settle at a time: an exclusive lock file next to the state, so two shells cannot both
  * pass the "no job yet" check and pay twice, or settle the same job twice.
  */
-async function locked(fn) {
-  const lock = `${STATE}.lock`;
+async function locked(fn, lock = `${STATE}.lock`) {
   let fd;
   try {
     fd = openSync(lock, "wx");
@@ -105,6 +130,25 @@ async function lockedWait(fn) {
     }
   }
 }
+/**
+ * What the other bases' jobs will still take from the balance: the estimate of every one that is pending or not
+ * known to have ended (Token Factory takes a job's cost from the balance as it trains, so a balance read in the
+ * console does not show it yet). A state not refreshed by status errs high, which only makes the floor stricter.
+ */
+function othersUnbilled() {
+  const dir = path.dirname(DEFAULT_STATE);
+  const stem = path.basename(DEFAULT_STATE, ".json");
+  const out = [];
+  for (const f of readdirSync(dir)) {
+    const file = path.join(dir, f);
+    if (file === STATE || !(f === `${stem}.json` || (f.startsWith(`${stem}-`) && f.endsWith(".json")))) continue;
+    const o = JSON.parse(readFileSync(file, "utf8"));
+    if (o.pending) out.push({ model: o.base_model, usd: o.pending.usd_est, what: "pending" });
+    else if (o.job && !["succeeded", "failed", "cancelled"].includes(o.job.status)) out.push({ model: o.base_model, usd: o.job.usd_est, what: o.job.status });
+  }
+  return out;
+}
+
 /** the ledger already holds a charge that settles this reservation */
 const settled = (id) => entries().some((e) => e.settles === id);
 
@@ -122,7 +166,7 @@ export function estimate(meta, epochs, usdPerMtok) {
 /** refuse a job whose estimate would take the balance under the floor */
 export function checkBudget(balanceUsd, usdEst, floor = FLOOR_USD) {
   if (!(balanceUsd > 0)) throw new Error("--balance-usd: the Token Factory balance, read in the console (Billing); the API cannot read it");
-  if (balanceUsd - usdEst < floor) throw new Error(`the estimate US$${usdEst.toFixed(2)} would leave US$${(balanceUsd - usdEst).toFixed(2)}, under the US$${floor} floor the live demo needs`);
+  if (balanceUsd - usdEst < floor) throw new Error(`the estimate US$${usdEst.toFixed(2)} (with the other bases' jobs not billed yet) would leave US$${(balanceUsd - usdEst).toFixed(2)}, under the US$${floor} floor the live demo needs`);
 }
 
 /** no SDK retries: a retried create whose first answer was lost could start a second paid job */
@@ -149,7 +193,9 @@ async function main() {
       save(s);
     });
   } else if (cmd === "create") {
-    await locked(async () => {
+    // creates on every base take one shared lock as well as their own: the floor below counts the other bases'
+    // jobs, so two creates must not both count before either has marked its own
+    await locked(() => locked(async () => {
       const s = state();
       const dry = args.includes("--dry-run");
       if (!dry && (!s["train.jsonl"] || !s["val.jsonl"])) throw new Error("run upload first");
@@ -163,7 +209,10 @@ async function main() {
       const epochs = Number(opt("--epochs") ?? EPOCHS);
       const meta = readFileSync(path.join(DATA, "train.meta.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
       const est = estimate(meta, epochs, usdPerMtok);
-      checkBudget(Number(opt("--balance-usd")), est.usd_est);
+      // the balance is shared by every base: the other bases' jobs not billed yet count against the floor too
+      const others = othersUnbilled();
+      if (others.length) console.log(`other jobs not billed yet: ${others.map((o) => `${o.model} ${o.what} US$${o.usd.toFixed(2)}`).join(", ")}`);
+      checkBudget(Number(opt("--balance-usd")), est.usd_est + others.reduce((n, o) => n + o.usd, 0));
       const request = { model: BASE_MODEL, training_file: s["train.jsonl"]?.id ?? "<not uploaded>", validation_file: s["val.jsonl"]?.id ?? "<not uploaded>", hyperparameters: { ...HYPER, n_epochs: epochs }, seed: 42, suffix: "understudy-patcher" };
       console.log(JSON.stringify({ ...est, usd_per_mtok: usdPerMtok, request }, null, 2));
       if (dry) return;
@@ -172,7 +221,7 @@ async function main() {
       const listed = (await tf.fineTuning.jobs.list({ limit: 100 })).data ?? [];
       // the job list is shared by every checkout and shell using this key: a job on this model that did not fail
       // (queued, running or succeeded) is enough, unless a second training run is meant (--allow-another-job)
-      const live = listed.filter((j) => j.model === BASE_MODEL && !["failed", "cancelled"].includes(j.status));
+      const live = listed.filter((j) => canon(j.model) === canon(BASE_MODEL) && !["failed", "cancelled"].includes(j.status));
       if (live.length && !args.includes("--allow-another-job")) throw new Error(`Token Factory already has a job on ${BASE_MODEL} (${live.map((j) => `${j.id} ${j.status}`).join(", ")}): track that one, or pass --allow-another-job for a second run`);
       const before = listed.map((j) => j.id);
       const reservation = guard(est.usd_est, { script: SCRIPT, capUsd: 100, meta: { model: BASE_MODEL, stage: "fine-tune", ...est } });
@@ -188,13 +237,13 @@ async function main() {
         throw new Error(`create failed (${s.pending.error}); a job may still have started. Check, then run adopt, or release --confirm-no-job`);
       }
       start(s, job);
-    });
+    }), `${DEFAULT_STATE}.create.lock`);
   } else if (cmd === "adopt") {
     await locked(async () => {
       const s = state();
       if (!s.pending) throw new Error("nothing pending");
       const listed = (await client().fineTuning.jobs.list({ limit: 100 })).data ?? [];
-      const mine = listed.filter((j) => !s.pending.before.includes(j.id) && j.training_file === s.pending.training_file);
+      const mine = listed.filter((j) => !s.pending.before.includes(j.id) && j.training_file === s.pending.training_file && canon(j.model) === canon(BASE_MODEL));
       if (mine.length !== 1) throw new Error(`${mine.length} new jobs on ${s.pending.training_file}: adopt needs exactly one; check the console`);
       start(s, mine[0]);
     });
@@ -232,30 +281,45 @@ async function main() {
           return { ok: false, model, error: String(e?.message ?? e).slice(0, 300) };
         }
       };
+      // an earlier attempt stays on record
+      if (s.serve) s.serve_history = [...(s.serve_history ?? []), s.serve];
       s.serve = { checkpoint: last.model, tried_at: new Date().toISOString() };
       // 1. the checkpoint id as a serverless model
       s.serve.checkpoint_id = await ask(last.model);
-      // 2. the adapter as a LoRA model: download the checkpoint's files, zip them, upload, register
-      try {
-        const files = {};
-        for (const id of (await tf.fineTuning.jobs.checkpoints.list(s.job.id)).data.find((c) => c.id === last.id)?.result_files ?? []) {
-          const meta = await tf.files.retrieve(id);
-          files[path.basename(meta.filename)] = new Uint8Array(await (await tf.files.content(id)).arrayBuffer());
+      // the evidence docs/FINETUNE.md cites: what serverless serves today, and whether this key may list the model
+      // artifacts a dedicated endpoint's custom weights come from (free GETs, each with a timeout)
+      const evidence = async (route) => {
+        try {
+          const r = await fetch(`${API_ROOT}${route}`, { headers: auth(), signal: AbortSignal.timeout(30_000) });
+          return { status: r.status, body: await r.json().catch(() => null) };
+        } catch (e) {
+          return { status: null, error: String(e?.message ?? e).slice(0, 200) };
         }
-        if (!files["adapter_config.json"]) throw new Error(`no adapter_config.json among ${Object.keys(files).join(", ")}`);
-        const zip = zipSync(files);
-        const form = new FormData();
-        form.append("file", new Blob([zip]), "adapter.zip");
-        const auth = { Authorization: `Bearer ${process.env.NEBIUS_API_KEY}` };
-        const root = BASE_URL.replace(/\/v1\/?$/, "");
-        const up = await fetch(`${root}/v0/models/upload`, { method: "POST", headers: auth, body: form });
-        const upBody = await up.json().catch(() => ({}));
-        s.serve.lora_upload = { status: up.status, id: upBody.id ?? null, detail: upBody.detail ? String(JSON.stringify(upBody.detail)).slice(0, 300) : null };
-        if (up.ok && upBody.id) {
-          const mk = await fetch(`${root}/v0/models`, { method: "POST", headers: { ...auth, "Content-Type": "application/json" }, body: JSON.stringify({ source: upBody.id, base_model: BASE_MODEL, name: "understudy-patcher", description: "LoRA of the patch-loop repairs (issue #97)" }) });
-          const mkBody = await mk.json().catch(() => ({}));
-          s.serve.lora_model = { status: mk.status, name: mkBody.name ?? null, detail: mkBody.detail ? String(JSON.stringify(mkBody.detail)).slice(0, 300) : null };
-          if (mk.ok && mkBody.name) s.serve.lora_answer = await ask(mkBody.name);
+      };
+      const models = await evidence("/v1/models");
+      s.serve.serverless_models = { status: models.status, ids: Array.isArray(models.body?.data) ? models.body.data.map((m) => m.id) : null };
+      const artifacts = await evidence("/v0/model_artifacts");
+      s.serve.model_artifacts = { status: artifacts.status, detail: artifacts.body?.detail ? String(JSON.stringify(artifacts.body.detail)).slice(0, 300) : null };
+      // 2. the checkpoint registered as a serverless LoRA model: POST /v0/models with the source "<job>:<checkpoint>",
+      // then wait for it to turn active (the cookbook's post-training/fine-tuning-1/fine_tune_llama.ipynb, step 9)
+      try {
+        // every request has a timeout and the wait a deadline: a stalled answer must not hold the lock for ever
+        const mk = await fetch(`${API_ROOT}/v0/models`, { method: "POST", signal: AbortSignal.timeout(120_000), headers: { ...auth(), "Content-Type": "application/json" }, body: JSON.stringify({ name: "understudy-patcher", base_model: BASE_MODEL, source: `${s.job.id}:${last.id}`, description: "LoRA of the patch-loop repairs (issue #97)" }) });
+        const mkBody = await mk.json().catch(() => ({}));
+        s.serve.lora_model = { status: mk.status, name: mkBody.name ?? null, detail: mkBody.detail ? String(JSON.stringify(mkBody.detail)).slice(0, 300) : null };
+        // on disk before the wait: whatever happens next, delete-lora knows the name
+        save(s);
+        if (mk.ok && mkBody.name) {
+          let info = {};
+          const until = Date.now() + 10 * MINUTE_MS;
+          while (Date.now() < until && !["active", "error"].includes(info.status)) {
+            await new Promise((r) => setTimeout(r, MINUTE_MS / 12));
+            info = await fetch(`${API_ROOT}/v0/models/${encodeURIComponent(mkBody.name)}`, { headers: auth(), signal: AbortSignal.timeout(30_000) })
+              .then((r) => r.json())
+              .catch(() => ({}));
+          }
+          s.serve.lora_model.final_status = info.status ?? null;
+          if (info.status === "active") s.serve.lora_answer = await ask(mkBody.name);
         }
       } catch (e) {
         s.serve.lora_error = String(e?.message ?? e).slice(0, 300);
@@ -276,6 +340,8 @@ async function main() {
       console.log(`${name} deleted (HTTP ${res.status})`);
     });
   } else if (cmd === "endpoint-create") {
+    // the dedicated-endpoint offer (one H200 in us-central1) was checked for the default base only
+    if (BASE_MODEL !== DEFAULT_MODEL) throw new Error(`endpoint-create knows the dedicated-endpoint offer for ${DEFAULT_MODEL} only`);
     await locked(async () => {
       const s = state();
       if (s.endpoint && !s.endpoint.deleted) throw new Error(`endpoint ${s.endpoint.id} exists: endpoint-delete first`);
@@ -381,7 +447,7 @@ async function main() {
     });
     console.log(JSON.stringify({ job: now.job, checkpoints: now.checkpoints.map((c) => ({ step: c.step, model: c.model, ...c.metrics })) }, null, 2));
   } else {
-    console.log("usage: node scripts/finetune-tf.mjs upload | create --usd-per-mtok P --balance-usd B [--epochs N] [--dry-run] [--allow-another-job] | adopt | release --confirm-no-job | status | try-serve | delete-lora | endpoint-create --custom-weights-id W --minutes M | endpoint-delete | endpoint-adopt | endpoint-release --confirm-no-endpoint");
+    console.log("usage: node scripts/finetune-tf.mjs <command> [--model M], the command one of: upload | create --usd-per-mtok P --balance-usd B [--epochs N] [--dry-run] [--allow-another-job] | adopt | release --confirm-no-job | status | try-serve | delete-lora | endpoint-create --custom-weights-id W --minutes M | endpoint-delete | endpoint-adopt | endpoint-release --confirm-no-endpoint");
     process.exitCode = 1;
   }
 }

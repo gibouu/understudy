@@ -1,0 +1,105 @@
+{
+  "base_model": "meta-llama/Llama-3.1-8B-Instruct",
+  "train.jsonl": {
+    "id": "file-01a17c12-7e8e-7cbc-9e05-0f201541ffbf",
+    "sha256": "7d74ebe22ceefe76eac48a47aa877a426cd33642a71758f3f5a2699575cdd1ff",
+    "lines": 881
+  },
+  "val.jsonl": {
+    "id": "file-01a17c12-8383-7dda-b625-cfb5354e7e38",
+    "sha256": "86d0f104468399ea0e8f46ec40fd899866e8d127b31111de7890834afab70050",
+    "lines": 55
+  },
+  "job": {
+    "id": "ftjob-e0dc8224df894378a12ce14eec895d11",
+    "created_at": 1793082952,
+    "status": "succeeded",
+    "usd_per_mtok": 0.4,
+    "epochs": 5,
+    "reservation": "52857-mvqbak7a-0-utsffl",
+    "tokens_per_epoch": 899601,
+    "trained_tokens_est": 4947806,
+    "usd_est": 1.9791224,
+    "trained_tokens": 4279940,
+    "trained_steps": 40,
+    "total_steps": 40,
+    "estimated_finish": 1793104552,
+    "finished_at": 1793104658,
+    "error": null,
+    "usd_actual": 1.711976
+  },
+  "checkpoints": [
+    {
+      "id": "ftckpt_3f977127-5949-4d7a-abe7-7abd72ae6e97",
+      "step": 8,
+      "model": "ft:meta-llama/Llama-3.1-8B-Instruct-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-8",
+      "metrics": {
+        "train_loss": 1.5926083326339722,
+        "valid_loss": 1.2663767337799072
+      }
+    },
+    {
+      "id": "ftckpt_e5a7dc6a-696c-4817-bd9d-3159f56879da",
+      "step": 16,
+      "model": "ft:meta-llama/Llama-3.1-8B-Instruct-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-16",
+      "metrics": {
+        "train_loss": 1.2104873657226562,
+        "valid_loss": 0.8880094289779663
+      }
+    },
+    {
+      "id": "ftckpt_5feed524-8e96-4293-ac71-5906360d52ba",
+      "step": 24,
+      "model": "ft:meta-llama/Llama-3.1-8B-Instruct-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-24",
+      "metrics": {
+        "train_loss": 0.8554240465164185,
+        "valid_loss": 0.7732964754104614
+      }
+    },
+    {
+      "id": "ftckpt_7da8869c-00fe-453b-8b6a-95f12c9ff805",
+      "step": 32,
+      "model": "ft:meta-llama/Llama-3.1-8B-Instruct-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-32",
+      "metrics": {
+        "train_loss": 0.6160116791725159,
+        "valid_loss": 0.7574460506439209
+      }
+    },
+    {
+      "id": "ftckpt_1943f2ae-83f6-4332-8b73-8f2c438060f9",
+      "step": 40,
+      "model": "ft:meta-llama/Llama-3.1-8B-Instruct-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
+      "metrics": {
+        "train_loss": 0.4310550391674042,
+        "valid_loss": 0.778459906578064
+      }
+    }
+  ],
+  "events": [
+    {
+      "at": "2026-10-27T06:35:54.000Z",
+      "level": "info",
+      "message": "Job is submitted"
+    },
+    {
+      "at": "2026-10-27T06:36:37.000Z",
+      "level": "info",
+      "message": "Dataset 'validation' processed successfully"
+    },
+    {
+      "at": "2026-10-27T06:36:45.000Z",
+      "level": "info",
+      "message": "Dataset 'training' processed successfully"
+    },
+    {
+      "at": "2026-10-27T12:25:31.000Z",
+      "level": "info",
+      "message": "Training started"
+    },
+    {
+      "at": "2026-10-27T12:36:20.000Z",
+      "level": "info",
+      "message": "Training completed successfully"
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "base_model": "Qwen/Qwen3-14B",
+  "train.jsonl": {
+    "id": "file-01a17c11-a85e-7040-adda-f0d293b27177",
+    "sha256": "7d74ebe22ceefe76eac48a47aa877a426cd33642a71758f3f5a2699575cdd1ff",
+    "lines": 881
+  },
+  "val.jsonl": {
+    "id": "file-01a17c11-aec3-7820-b845-10b8e5c4107f",
+    "sha256": "86d0f104468399ea0e8f46ec40fd899866e8d127b31111de7890834afab70050",
+    "lines": 55
+  },
+  "job": {
+    "id": "ftjob-db1c38eb648e481f8c69673a9b9612c5",
+    "created_at": 1793082898,
+    "status": "succeeded",
+    "usd_per_mtok": 0.4,
+    "epochs": 5,
+    "reservation": "52070-mvqb9eu0-0-ujyo1v",
+    "tokens_per_epoch": 899601,
+    "trained_tokens_est": 4947806,
+    "usd_est": 1.9791224,
+    "trained_tokens": 4374855,
+    "trained_steps": 40,
+    "total_steps": 40,
+    "estimated_finish": 1793104723,
+    "finished_at": 1793104827,
+    "error": null,
+    "usd_actual": 1.749942
+  },
+  "checkpoints": [
+    {
+      "id": "ftckpt_325940ff-a1bc-4615-84e4-220fb476c5af",
+      "step": 8,
+      "model": "ft:Qwen/Qwen3-14B-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-8",
+      "metrics": {
+        "train_loss": 1.4696664810180664,
+        "valid_loss": 0.7454774379730225
+      }
+    },
+    {
+      "id": "ftckpt_8ae1e6f8-8d56-4c85-bfe9-a9a8cc405256",
+      "step": 16,
+      "model": "ft:Qwen/Qwen3-14B-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-16",
+      "metrics": {
+        "train_loss": 0.9532095193862915,
+        "valid_loss": 0.663127064704895
+      }
+    },
+    {
+      "id": "ftckpt_5d550ecc-e442-4709-9cd5-d87250a4e648",
+      "step": 24,
+      "model": "ft:Qwen/Qwen3-14B-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-24",
+      "metrics": {
+        "train_loss": 0.6431532502174377,
+        "valid_loss": 0.6203665733337402
+      }
+    },
+    {
+      "id": "ftckpt_6a24a871-d99a-4fb7-8ee9-afe631cf3150",
+      "step": 32,
+      "model": "ft:Qwen/Qwen3-14B-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-32",
+      "metrics": {
+        "train_loss": 0.434908390045166,
+        "valid_loss": 0.6668190956115723
+      }
+    },
+    {
+      "id": "ftckpt_ad617d4f-0a73-4bbf-a25f-f573b5122bc4",
+      "step": 40,
+      "model": "ft:Qwen/Qwen3-14B-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
+      "metrics": {
+        "train_loss": 0.3014890253543854,
+        "valid_loss": 0.707476794719696
+      }
+    }
+  ],
+  "events": [
+    {
+      "at": "2026-10-27T06:35:01.000Z",
+      "level": "info",
+      "message": "Job is submitted"
+    },
+    {
+      "at": "2026-10-27T06:35:44.000Z",
+      "level": "info",
+      "message": "Dataset 'validation' processed successfully"
+    },
+    {
+      "at": "2026-10-27T06:35:53.000Z",
+      "level": "info",
+      "message": "Dataset 'training' processed successfully"
+    },
+    {
+      "at": "2026-10-27T12:25:32.000Z",
+      "level": "info",
+      "message": "Training started"
+    },
+    {
+      "at": "2026-10-27T12:39:13.000Z",
+      "level": "info",
+      "message": "Training completed successfully"
+    }
+  ]
+}

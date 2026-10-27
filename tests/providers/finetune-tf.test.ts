@@ -21,6 +21,8 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
   const jobs: Job[] = [];
   let failCreate: "no" | "lost-answer" | "rejected" = "no";
   const served: string[] = [];
+  const registered: { name: string; base_model: string; source: string }[] = [];
+  let loraGone = false;
   const endpoints: { id: string; name: string; routing_key: string; custom_weights_id: string }[] = [];
   let refuseDeletes = 0;
   let endpointCount = 0;
@@ -40,18 +42,21 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
         const url = req.url ?? "";
         served.push(`${req.method} ${url.replace(/\?.*/, "")}`);
         // the routes try-serve and delete-lora use
-        if (req.method === "GET" && /\/v1\/files\/file-ad-[a-z]+\/content$/.test(url)) {
-          res.writeHead(200, { "content-type": "application/octet-stream" });
-          return res.end(url.includes("cfg") ? '{"r":16}' : "weights");
-        }
-        if (req.method === "GET" && /\/v1\/files\/file-ad-[a-z]+$/.test(url)) return send(200, { id: url.split("/").at(-1), object: "file", bytes: 7, created_at: 1, filename: url.includes("cfg") ? "ckpt-1/adapter_config.json" : "ckpt-1/adapter_model.safetensors", purpose: "fine-tune-results" });
         if (req.method === "POST" && url.endsWith("/chat/completions")) {
           const r = JSON.parse(body);
           if (String(r.model).startsWith("ft:")) return send(404, { error: { message: "model not found" } });
           return send(200, { id: "c", object: "chat.completion", created: 0, model: r.model, choices: [{ index: 0, finish_reason: "stop", message: { role: "assistant", content: '{"ok":true}' } }], usage: { prompt_tokens: 20, completion_tokens: 5, total_tokens: 25 } });
         }
-        if (req.method === "POST" && url.endsWith("/v0/models/upload")) return send(200, { id: body.includes("adapter_config.json") ? "upl-1" : "upl-empty" });
-        if (req.method === "POST" && url.endsWith("/v0/models")) return send(200, { name: `${JSON.parse(body).name}-ab12` });
+        if (req.method === "POST" && url.endsWith("/v0/models")) {
+          const r = JSON.parse(body);
+          registered.push(r);
+          // what Token Factory answered on 27 October; the other branch is the cookbook's documented answer
+          if (loraGone) return send(410, { detail: "LoRA adapter deployment is no longer available" });
+          return send(200, { name: `${r.name}-ab12`, status: "validating" });
+        }
+        if (req.method === "GET" && /\/v0\/models\/[^/]+$/.test(url)) return send(200, { name: url.split("/").at(-1), status: "active" });
+        if (req.method === "GET" && url.endsWith("/v1/models")) return send(200, { object: "list", data: [{ id: "Qwen/Qwen3-30B-A3B-Instruct-2507", object: "model" }] });
+        if (req.method === "GET" && url.endsWith("/v0/model_artifacts")) return send(403, { detail: "You don't have access to the resource or it does not exist" });
         if (req.method === "DELETE" && /\/v1\/models\//.test(url)) return send(200, { deleted: true });
         // dedicated endpoints
         if (req.method === "GET" && url.endsWith("/v0/dedicated_endpoints")) return send(200, { object: "list", data: endpoints });
@@ -163,11 +168,15 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
 
   it("try-serve asks the tuned model by two routes, charges each call, and delete-lora removes what it registered", async () => {
     const ledgerBefore = ledger().length;
-    await tf("try-serve");
+    // the LoRA registration polls every 5 "seconds" until active: 100 ms minutes make that a moment
+    const fast = { ...env, FINETUNE_TF_MINUTE_MS: "100" };
+    const tfFast = (...args: string[]) => run("node", ["scripts/finetune-tf.mjs", ...args], { env: fast, cwd: process.cwd() });
+    await tfFast("try-serve");
     const serve = state().serve;
     expect(serve.checkpoint_id).toMatchObject({ ok: false });
-    expect(serve.lora_upload).toMatchObject({ status: 200, id: "upl-1" });
-    expect(serve.lora_model).toMatchObject({ status: 200, name: "understudy-patcher-ab12" });
+    // registered from the job and its last checkpoint, on the base model, as the cookbook does
+    expect(registered.at(-1)).toMatchObject({ base_model: "Qwen/Qwen3-30B-A3B-Instruct-2507", source: "ftjob-1:ckpt-1" });
+    expect(serve.lora_model).toMatchObject({ status: 200, name: "understudy-patcher-ab12", final_status: "active" });
     expect(serve.lora_answer).toMatchObject({ ok: true, content: '{"ok":true}' });
     // both calls are on the ledger: the refused one at 0, the answered one at its estimate
     const calls = ledger().slice(ledgerBefore).filter((e) => !e.type && e.meta?.stage === "try-serve");
@@ -178,6 +187,25 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     await tf("delete-lora");
     expect(served).toContain("DELETE /v1/models/understudy-patcher-ab12");
     expect(state().serve.lora_deleted.status).toBe(200);
+  }, 60_000);
+
+  it("try-serve keeps a refused LoRA registration word for word, and asks nothing more", async () => {
+    loraGone = true;
+    const ledgerBefore = ledger().length;
+    const servedBefore = served.length;
+    await tf("try-serve");
+    const serve = state().serve;
+    expect(serve.lora_model).toMatchObject({ status: 410, name: null, detail: '"LoRA adapter deployment is no longer available"' });
+    expect(serve.lora_answer).toBeUndefined();
+    // the evidence is kept: what serverless serves, and the refused artifact listing
+    expect(serve.serverless_models).toEqual({ status: 200, ids: ["Qwen/Qwen3-30B-A3B-Instruct-2507"] });
+    expect(serve.model_artifacts).toMatchObject({ status: 403 });
+    // nothing is asked after the refusal: the checkpoint call, the two free GETs, the registration, and no more
+    expect(served.slice(servedBefore)).toEqual(["POST /v1/chat/completions", "GET /v1/models", "GET /v0/model_artifacts", "POST /v0/models"]);
+    // only the checkpoint-id call is on the ledger, at 0 (refused)
+    const calls = ledger().slice(ledgerBefore).filter((e) => !e.type && e.meta?.stage === "try-serve");
+    expect(calls.map((c) => c.usd)).toEqual([0]);
+    loraGone = false;
   }, 60_000);
 
   it("a dedicated endpoint gets a deadline: its own watchdog deletes it, retrying, and charges the hours once", async () => {
@@ -294,5 +322,63 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     s["train.jsonl"].sha256 = "0".repeat(64);
     writeFileSync(env.FINETUNE_TF_STATE, JSON.stringify(s));
     expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60", "--allow-another-job")).toMatch(/run upload again/);
+  }, 60_000);
+
+  it("--model: another base gets its own state, lock and job, one job per base, without touching the default's", async () => {
+    const m = ["--model", "Qwen/Qwen3-14B"];
+    const other = env.FINETUNE_TF_STATE.replace(/\.json$/, "-qwen3-14b.json");
+    const defaultBefore = readFileSync(env.FINETUNE_TF_STATE, "utf8");
+    // the default base's state is locked: the other base is not held up by it
+    writeFileSync(`${env.FINETUNE_TF_STATE}.lock`, "123\n");
+    await tf("upload", ...m);
+    await tf("create", ...m, "--usd-per-mtok", "0.4", "--balance-usd", "60");
+    unlinkSync(`${env.FINETUNE_TF_STATE}.lock`);
+    const s = JSON.parse(readFileSync(other, "utf8"));
+    expect(s.base_model).toBe("Qwen/Qwen3-14B");
+    expect(jobs.find((j) => j.id === s.job.id)?.model).toBe("Qwen/Qwen3-14B");
+    expect(readFileSync(env.FINETUNE_TF_STATE, "utf8")).toBe(defaultBefore);
+    // its estimate is charged under its own model, at its own price
+    const charged = ledger().filter((e) => !e.type && e.settles === s.job.reservation);
+    expect(charged).toHaveLength(1);
+    expect(charged[0].meta.model).toBe("Qwen/Qwen3-14B");
+    expect(charged[0].usd).toBeCloseTo(s.job.usd_est, 6);
+    expect(s.job.usd_per_mtok).toBe(0.4);
+    // one job per base: a second create on it is refused, by its state and by the account's job list
+    expect(await fails("create", ...m, "--usd-per-mtok", "0.4", "--balance-usd", "60")).toMatch(/a job exists already/);
+    unlinkSync(other);
+    await tf("upload", ...m);
+    expect(await fails("create", ...m, "--usd-per-mtok", "0.4", "--balance-usd", "60")).toMatch(/already has a job on Qwen\/Qwen3-14B/);
+    // a state file of another base is never used, and endpoints stay with the default base
+    writeFileSync(other, defaultBefore);
+    expect(await fails("status", ...m)).toMatch(/is the state of Qwen\/Qwen3-30B-A3B-Instruct-2507, not of Qwen\/Qwen3-14B/);
+    expect(await fails("endpoint-create", ...m, "--custom-weights-id", "w-9", "--minutes", "10")).toMatch(/offer for Qwen\/Qwen3-30B-A3B-Instruct-2507 only/);
+    unlinkSync(other);
+  }, 60_000);
+
+  it("--model: one base under two spellings, the floor across bases, and adopt within its own base", async () => {
+    const l8 = ["--model", "meta-llama/Meta-Llama-3.1-8B-Instruct"];
+    // the account has a job on the other spelling of the same model: no second job
+    jobs.push({ id: "ftjob-llama-elsewhere", object: "fine_tuning.job", model: "meta-llama/Llama-3.1-8B-Instruct", training_file: "file-other", created_at: 1, status: "running", trained_tokens: null });
+    await tf("upload", ...l8);
+    expect(await fails("create", ...l8, "--usd-per-mtok", "0.4", "--balance-usd", "60")).toMatch(/already has a job .*ftjob-llama-elsewhere running/);
+    jobs.pop();
+    // and the other spelling finds this spelling's state, refuses it, and so shares its lock
+    expect(await fails("status", "--model", "meta-llama/Llama-3.1-8B-Instruct")).toMatch(/is the state of meta-llama\/Meta-Llama-3.1-8B-Instruct.*use that spelling/);
+    // one base's job not billed yet counts against the floor for the next base: each alone fits, both do not
+    await tf("create", ...l8, "--usd-per-mtok", "0.4", "--balance-usd", "60");
+    const q8 = ["--model", "Qwen/Qwen3-8B"];
+    await tf("upload", ...q8);
+    // 4.95M tokens at US$5: US$24.74 alone leaves US$16.26 of US$41; with the Llama job's US$1.98, US$14.28
+    expect(await fails("create", ...q8, "--usd-per-mtok", "5", "--balance-usd", "41")).toMatch(/under the US\$15 floor/);
+    // a create that started nothing on one base, then a job on another base from the same training file:
+    // adopt takes only a job on its own base (every upload in this stand-in returns the same file id)
+    failCreate = "rejected";
+    expect(await fails("create", ...q8, "--usd-per-mtok", "0.4", "--balance-usd", "60")).toMatch(/adopt, or release/);
+    failCreate = "no";
+    const q4 = ["--model", "Qwen/Qwen3-4B"];
+    await tf("upload", ...q4);
+    await tf("create", ...q4, "--usd-per-mtok", "0.4", "--balance-usd", "60");
+    expect(await fails("adopt", ...q8)).toMatch(/0 new jobs/);
+    await tf("release", ...q8, "--confirm-no-job");
   }, 60_000);
 });
