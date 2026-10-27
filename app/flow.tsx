@@ -7,9 +7,9 @@ import { SAMPLES, type Sample } from "@/lib/samples";
 import { formAnswers, recordedBy, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
 import { Session } from "@/lib/showcase/session";
 import { fitToBench, type Fit } from "@/lib/sim/fit";
-import { formFor } from "@/lib/spec/answer";
+import { formFor, WAITING_NOTE, waitingProgram } from "@/lib/spec/answer";
 import { applyChanges } from "@/lib/spec/apply";
-import type { Predicate, Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
+import type { Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { gateNote } from "@/lib/unlock/messages";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
@@ -139,6 +139,14 @@ export function Flow() {
       setAnswers(formAnswers(next, turn));
       return;
     }
+    // nowhere to go yet: the one question, written here as the route would, with no model and no wait
+    const waitingNow = waitingProgram(next);
+    if (waitingNow) {
+      setProgram(done(waitingNow, [WAITING_NOTE]));
+      setProgramBy(undefined);
+      setAnswers({});
+      return;
+    }
     step("program", "compile");
     const r = await post<Program>("/api/compile", { spec: next, previous });
     if (id !== gen.current) return;
@@ -199,13 +207,20 @@ export function Flow() {
       const raw = answers[a.slot];
       if (raw === undefined || raw === "") continue;
       const form = formFor(spec, a.slot);
-      const value: number | Predicate[] = form.kind === "success" ? form.options[Number(raw)].predicates : Number(raw);
+      const value = form.kind === "success" ? form.options[Number(raw)].predicates : form.kind === "target" ? form.options[Number(raw)].target : Number(raw);
       changes.push({ path: a.slot, value, source: `interview#${turn + 1}` });
     }
     if (changes.length === 0) return;
-    const { spec: next, warnings } = applyChanges(spec, changes);
-    setNotes(warnings);
-    if (warnings.length) return;
+    const applied = applyChanges(spec, changes);
+    setNotes(applied.warnings);
+    if (applied.warnings.length) return;
+    let next = applied.spec;
+    // where it goes, answered (lib/sim/fit.ts whereTo): the fit lays out the chosen object now
+    if (changes.some((c) => formFor(spec, c.path).kind === "target")) {
+      const f = fitToBench(next);
+      setFit({ spec: f.spec, warnings: f.warnings });
+      next = f.spec;
+    }
     setSpec(next);
     setTurn(turn + 1);
     await compile(next, program.value);
@@ -214,6 +229,8 @@ export function Flow() {
   const asks = program.status === "done" ? asksOf(program.value) : [];
   /** a program of gestures alone is written by the compile route itself, with no model (lib/sim/gesture.ts) */
   const gestures = Boolean(spec?.steps.length) && spec!.steps.every((s) => s.verb === "gesture");
+  /** a place with nowhere to go yet: the compile route asks where, with no model (lib/spec/answer.ts waitingProgram) */
+  const waiting = Boolean(spec) && waitingProgram(spec!) !== null;
   /** Section 2 names who answered the label (its ledger: a recording's carries its recorded calls), else the model this deployment calls. */
   const labelBy = (label.status === "done" && answeredBy(label.ledger)) || say("vl");
   const ready = program.status === "done" && spec && (asks.length === 0 || turn >= MAX_ROUNDS);
@@ -299,7 +316,7 @@ export function Flow() {
       )}
 
       {program.status !== "idle" && spec && (
-        <Section n={4} title="Questions from the robot" model={gestures ? "no model: the arm follows the traced path" : (program.status === "done" && programBy) || say("nano")}>
+        <Section n={4} title="Questions from the robot" model={gestures ? "no model: the arm follows the traced path" : waiting ? "no model: one question first" : (program.status === "done" && programBy) || say("nano")}>
           <Status result={program} clock={clock.program} duration={duration} />
           {program.status === "done" && asks.length === 0 && <p className="text-sm text-emerald-700">No open questions: the program has everything it needs.</p>}
           {program.status === "done" && asks.length > 0 && turn < MAX_ROUNDS && (
@@ -326,10 +343,10 @@ export function Flow() {
           ))}
           {program.status === "done" && (
             <div className="mt-4 border-t pt-4">
-              <ProgramView spec={spec} program={program.value} failure={failure} by={gestures ? "The page" : (programBy ?? say("nano"))} />
+              <ProgramView spec={spec} program={program.value} failure={failure} by={gestures || waiting ? "The page" : (programBy ?? say("nano"))} />
             </div>
           )}
-          {program.status !== "running" && (
+          {program.status !== "running" && !waiting && (
             <button className="self-start text-xs text-neutral-500 underline" onClick={() => compile(spec, program.status === "done" ? program.value : undefined, true)}>
               Ask {say("nano")} again
             </button>
@@ -410,8 +427,10 @@ function SpecSummary({ spec }: { spec: TaskSpec }) {
 
 function AskField({ ask, spec, value, onChange }: { ask: Ask; spec: TaskSpec; value: string; onChange: (v: string) => void }) {
   const form = formFor(spec, ask.slot);
+  // chips are buttons: inside a label, clicking the question would press the first one
+  const Root = form.kind === "target" ? "div" : "label";
   return (
-    <label className="flex flex-col gap-1 text-sm">
+    <Root className="flex flex-col gap-1 text-sm" {...(form.kind === "target" ? { role: "group", "aria-label": ask.question } : {})}>
       <span>{ask.question}</span>
       {ask.why && <span className="text-xs text-neutral-500">{ask.why}</span>}
       {form.kind === "number" && (
@@ -430,7 +449,16 @@ function AskField({ ask, spec, value, onChange }: { ask: Ask; spec: TaskSpec; va
           ))}
         </select>
       )}
+      {form.kind === "target" && (
+        <span className="flex flex-wrap gap-2">
+          {form.options.map((o, i) => (
+            <button key={o.target.frame} type="button" aria-pressed={value === String(i)} onClick={() => onChange(String(i))} className={`rounded-full border px-3 py-1 ${value === String(i) ? "border-neutral-900 bg-neutral-900 text-white" : "hover:bg-neutral-50"}`}>
+              {o.label}
+            </button>
+          ))}
+        </span>
+      )}
       {form.kind === "unsupported" && <span className="text-xs text-amber-700">This one can&apos;t be answered here yet ({ask.slot}).</span>}
-    </label>
+    </Root>
   );
 }

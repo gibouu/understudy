@@ -11,6 +11,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { fitToBench } from "@/lib/sim/fit";
+import { applyChanges } from "@/lib/spec/apply";
+import { formFor } from "@/lib/spec/answer";
 import { tidyLabel } from "@/lib/spec/label";
 import { normalizeProgram, resolveFixtureNames } from "@/lib/spec/normalize";
 import { parseModelJson } from "@/lib/spec/parse";
@@ -78,16 +80,29 @@ describe("own clips' labels, fitted (#150)", () => {
     return Boolean(act && act.object && ids.has(act.object) && ids.has(act.target!.frame) && act.object !== act.target!.frame);
   };
 
+  /** #155: a label that picks something up and never puts it down is asked where it goes; the bench, the last chip, always answers */
+  const afterOneAnswer = (spec: TaskSpec) => {
+    const fit = fitToBench(spec);
+    if (!fit.where) return fit.spec !== spec;
+    const form = formFor(fit.spec, fit.where);
+    if (form.kind !== "target") return false;
+    const answered = applyChanges(fit.spec, [{ path: fit.where, value: form.options.at(-1)!.target, source: "interview#1" }]).spec;
+    const refit = fitToBench(answered);
+    return refit.spec !== answered && !refit.where;
+  };
+
   it.each([
-    ["own-clips-label-before.json", 16, 13, 15],
-    ["own-clips-label-after.json", 16, 11, 14],
-    ["own-clips-label-main150.json", 24, 18, 20],
-    ["own-clips-label-after150.json", 24, 20, 21],
-    ["own-clips-label-final150.json", 24, 17, 19],
-  ] as const)("%s: of %i, %i had something to rehearse on main, %i now", (file, of, main, now) => {
+    ["own-clips-label-before.json", 16, 13, 15, 1, 16],
+    ["own-clips-label-after.json", 16, 11, 14, 2, 16],
+    ["own-clips-label-main150.json", 24, 18, 20, 3, 23],
+    ["own-clips-label-after150.json", 24, 20, 21, 2, 23],
+    ["own-clips-label-final150.json", 24, 17, 19, 4, 23],
+  ] as const)("%s: of %i, %i rehearsable on main, %i with #150's fit, %i asked where, %i after one answer", (file, of, main, now, asked, after) => {
     const specs = (read(file).results as Run[]).map(labelOf);
     expect(specs).toHaveLength(of);
     expect(specs.filter(onMain)).toHaveLength(main);
-    expect(specs.filter((s) => fitToBench(s).spec !== s)).toHaveLength(now);
+    expect(specs.filter((s) => fitToBench(s).spec !== s && !fitToBench(s).where)).toHaveLength(now);
+    expect(specs.filter((s) => fitToBench(s).where !== undefined)).toHaveLength(asked);
+    expect(specs.filter(afterOneAnswer)).toHaveLength(after);
   });
 });

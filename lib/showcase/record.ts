@@ -253,7 +253,8 @@ export async function recordClip({ root, sample, engine, capUsd, notes, traced, 
     base = { version: 1, clip: { name: sample.name, duration_s: round(duration_s, 3), sha256 }, hint: sample.hint, recorded_at: new Date().toISOString(), models: recordedModels() };
     labelled = { spec: label.value, warnings: label.warnings, cost_usd: round(sum(labelCalls.map((c) => c.usd))), seconds: round(sum(labelCalls.map((c) => c.seconds)), 2) };
   }
-  if (fit.spec === labelled.spec) {
+  // nothing to rehearse, or only once the person says where it goes, which no recorded answer says
+  if (fit.spec === labelled.spec || fit.where) {
     log(`fit: ${fit.warnings.join("; ")}; recorded up to the label`);
     return LabelRecording.parse({ ...base, label: labelled, fit, stops: fit.warnings.at(-1) ?? "nothing to rehearse", ledger, total_usd: round(sum(ledger.map((c) => c.usd))) });
   }
