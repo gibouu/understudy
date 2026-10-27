@@ -2,7 +2,7 @@
 
 Goal (gib, 26 October 2026, issue #97): by the end of the week, a first small fine-tune of one Nemotron model on our own repairs, measured against the same model with our prompts on the same failures.
 
-**Status, 27 October, 07:15 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`) moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), is trained: job `ftjob-5c66a1b7020e4bd493d808e9a104853e` waited 11 hours in a queue, trained 40 steps in 49 minutes and cost US$12.20. It cannot be measured. Token Factory no longer deploys LoRA adapters: the cookbook's route answers HTTP 410, "LoRA adapter deployment is no longer available". A dedicated endpoint needs a custom-weights id, which only the beta that Support enables gives (section 5). Four other bases were considered for parallel jobs (section 6): none can be served either, so none was launched. No tuned result exists; the baselines are in section 5, and what Token Factory would need to add is in section 7.
+**Status, 27 October, 07:15 Paris:** the dataset is built from the saved patch-loop runs and the call log keeps every request and answer in full. The Nemotron Nano LoRA on AI Cloud (`jobs/finetune-nano/`) moves to issue #122. The stand-in on Token Factory, a LoRA of Qwen3 30B-A3B (section 5), is trained: job `ftjob-5c66a1b7020e4bd493d808e9a104853e` waited 11 hours in a queue, trained 40 steps in 49 minutes and cost US$12.20. It cannot be measured. Token Factory no longer deploys LoRA adapters: the cookbook's route answers HTTP 410, "LoRA adapter deployment is no longer available". A dedicated endpoint needs a custom-weights id, which only the beta that Support enables gives (section 5). Four other bases were then approved by gib for parallel jobs, for loss curves only (section 6): none of them can be served either. No tuned result exists; the baselines are in section 5, and what Token Factory would need to add is in section 7.
 
 ## 1. Where to fine-tune on Nebius
 
@@ -179,19 +179,19 @@ On 27 October gib asked for several fine-tunes in parallel on the Token Factory 
 - None of the four is on `GET /v1/models`, which lists 30 serverless models today. Qwen3-32B and Llama-3.3-70B-Instruct left serverless on 31 August 2026 ([August 2026 deprecations](https://docs.tokenfactory.nebius.com/august-2026-deprecation-notice.md)). So the untuned base of each cannot be called for the comparison either.
 - LoRA deployment answers HTTP 410 for every model (section 5). The console's "-LoRa" prices date from November 2025 and describe a route that is gone.
 
-So a job on any of them would give a loss curve and nothing to measure. The four would cost an estimated US$31.66 (4.95 million tokens each with the 10% margin: Qwen3-14B and Llama-3.1-8B at US$0.4 per 1M, US$1.98 each; Qwen3-32B and Llama-3.3-70B at US$2.8, US$13.85 each). None was launched; that is the lead's call for gib.
+So a job on any of them gives a loss curve and nothing to measure. gib approved all four on 27 October for the loss curves alone, at an estimated US$31.67 (4.95 million tokens each with the 10% margin: Qwen3-14B and Llama-3.1-8B at US$0.4 per 1M, US$1.98 each; Qwen3-32B and Llama-3.3-70B at US$2.8, US$13.85 each). With the US$12.42 already spent, #97 stays under its US$100 cap. Same data and recipe as the Qwen3 30B-A3B job: LoRA rank 16, alpha 32, learning rate 2e-4, 16 packed sequences of 8,192 tokens a batch, 5 epochs.
 
 | Base | Trained | Cost | Validation loss, first → last checkpoint | Served | Tuned against base, held out (5 patches) |
 |---|---|---|---|---|---|
 | Qwen3-30B-A3B-Instruct-2507 | yes, 5 epochs, 40 steps | US$12.20 | 0.789 (step 8) → 0.631 (step 40) | no: LoRA route 410, dedicated endpoint 422 (section 5) | not measured; base 73% [65 to 80] |
-| Qwen3-14B | no | US$0 (est. US$1.98) | | no: not serverless, LoRA route 410 | base not served |
-| Meta-Llama-3.1-8B-Instruct | no | US$0 (est. US$1.98) | | no: not serverless, LoRA route 410 | base not served |
-| Qwen3-32B | no | US$0 (est. US$13.85) | | no: left serverless 31 August, LoRA route 410 | base not served |
-| Llama-3.3-70B-Instruct | no | US$0 (est. US$13.85) | | no: left serverless 31 August, LoRA route 410 | base not served |
+| Qwen3-14B | not yet launched | est. US$1.98 | | not servable, base not on serverless | not measurable |
+| Meta-Llama-3.1-8B-Instruct | not yet launched | est. US$1.98 | | not servable, base not on serverless | not measurable |
+| Qwen3-32B | not yet launched | est. US$13.85 | | not servable, base left serverless 31 August | not measurable |
+| Llama-3.3-70B-Instruct | not yet launched | est. US$13.85 | | not servable, base left serverless 31 August | not measurable |
 
-The validation loss before any training is not reported by Token Factory; the first figure is the first checkpoint's. `scripts/finetune-tf.mjs` keeps one job per state file, so a job on another base needs its own state; that change waits until a base can be served.
+Token Factory does not report a validation loss before training; the first figure is the first checkpoint's. `scripts/finetune-tf.mjs --model M` gives each base its own state file (`bench/results/finetune-tf-<base>.json`), lock and job, with the same guards as the first job: the price and balance asked for, the US$15 floor, the pending mark before the paid request, one job per base checked against the account's job list, and every charge on the ledger.
 
-Not in the way of the hackathon but worth knowing: Nemotron 3 Nano and Nemotron 3 Super, which the app calls, leave Token Factory serverless on 9 November 2026 ([November 2026 deprecations](https://docs.tokenfactory.nebius.com/model-deprecations-november-2026.md)), after the 30 October deadline.
+**Serverless model changes after the deadline.** Token Factory's November 2026 notice lists `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` and `nvidia/nemotron-3-super-120b-a12b`, which the app calls, among the models leaving serverless on 9 November 2026, with `nvidia/Nemotron-3_5-Lightning` and `nvidia/Nemotron-3.5-Super-VL` as the replacements it recommends ([November 2026 deprecations](https://docs.tokenfactory.nebius.com/model-deprecations-november-2026.md)). Dedicated endpoints are not affected. The judging ends before that date; a demo that runs after it needs the model ids moved.
 
 ## 7. What Token Factory should add
 

@@ -3,6 +3,9 @@
 // which and why). Every step that can cost money asks for the numbers it needs and refuses without them:
 // Token Factory publishes no fine-tuning price and the API key cannot read the balance.
 //
+// Every command takes --model M, the base model (default Qwen/Qwen3-30B-A3B-Instruct-2507). Each base has its
+// own state file and lock, so jobs on several bases can run side by side, one job per base.
+//
 //   node scripts/finetune-tf.mjs upload                       checks the files against manifest.json, uploads them
 //   node scripts/finetune-tf.mjs create --usd-per-mtok P --balance-usd B [--epochs 5] [--dry-run] [--allow-another-job]
 //        estimates the cost (training tokens x epochs x P), refuses when B minus it would fall under
@@ -30,7 +33,8 @@
 //
 // A create that fails leaves the job "pending": no other create runs until adopt or release says what
 // happened, so a lost answer can never lead to a second paid job, and nothing is released by guesswork.
-// State (file ids, job id, price, checkpoints, losses; no key) is kept in bench/results/finetune-tf.json.
+// State (file ids, job id, price, checkpoints, losses; no key) is kept in bench/results/finetune-tf.json for the
+// default base, and in bench/results/finetune-tf-<base, as a slug>.json for any other.
 // The key comes from UNDERSTUDY_ENV_FILE (default .env.local), as in every bench script.
 import { spawn } from "node:child_process";
 import { closeSync, existsSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
@@ -42,12 +46,23 @@ import OpenAI, { toFile } from "openai";
 import { charge, entries, guard, release } from "./bench-ledger.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const args = process.argv.slice(2);
+const cmd = args[0];
+const opt = (name) => {
+  const i = args.indexOf(name);
+  return i >= 0 ? args[i + 1] : undefined;
+};
+export const DEFAULT_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507";
+const BASE_MODEL = opt("--model") ?? DEFAULT_MODEL;
+/** a model id as a file-name part: Qwen/Qwen3-14B -> qwen-qwen3-14b */
+export const slug = (model) => model.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 // overridable for the tests only (tests/providers/finetune-tf.test.ts runs this script against a local mock)
-const STATE = process.env.FINETUNE_TF_STATE ?? path.join(ROOT, "bench/results/finetune-tf.json");
+const DEFAULT_STATE = process.env.FINETUNE_TF_STATE ?? path.join(ROOT, "bench/results/finetune-tf.json");
+// the default base keeps the file it always had; every other base gets its own, so its job, lock and guards are its own
+const STATE = BASE_MODEL === DEFAULT_MODEL ? DEFAULT_STATE : DEFAULT_STATE.replace(/\.json$/, `-${slug(BASE_MODEL)}.json`);
 const BASE_URL = process.env.FINETUNE_TF_BASE_URL ?? "https://api.tokenfactory.nebius.com/v1/";
 const DATA = path.join(ROOT, "bench/finetune");
 const SCRIPT = "finetune-tf";
-export const BASE_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507";
 export const FLOOR_USD = 15;
 /** a minute, in ms; the tests shrink it so the watchdog's deadline comes in a moment */
 const MINUTE_MS = Number(process.env.FINETUNE_TF_MINUTE_MS ?? 60_000);
@@ -60,13 +75,12 @@ const MINUTE_MS = Number(process.env.FINETUNE_TF_MINUTE_MS ?? 60_000);
 export const HYPER = { lora: true, lora_r: 16, lora_alpha: 32, lora_dropout: 0.05, learning_rate: 2e-4, batch_size: 16, warmup_ratio: 0.05, context_length: 8192, packing: true };
 export const EPOCHS = 5;
 
-const args = process.argv.slice(2);
-const cmd = args[0];
-const opt = (name) => {
-  const i = args.indexOf(name);
-  return i >= 0 ? args[i + 1] : undefined;
+const state = () => {
+  if (!existsSync(STATE)) return { base_model: BASE_MODEL };
+  const s = JSON.parse(readFileSync(STATE, "utf8"));
+  if (s.base_model !== BASE_MODEL) throw new Error(`${STATE} is the state of ${s.base_model}, not of ${BASE_MODEL}`);
+  return s;
 };
-const state = () => (existsSync(STATE) ? JSON.parse(readFileSync(STATE, "utf8")) : { base_model: BASE_MODEL });
 /** write a temporary file and rename it over: a reader sees the old state or the new one, never a half-written file */
 const save = (s) => {
   const tmp = `${STATE}.${process.pid}.tmp`;
@@ -271,6 +285,8 @@ async function main() {
       console.log(`${name} deleted (HTTP ${res.status})`);
     });
   } else if (cmd === "endpoint-create") {
+    // the dedicated-endpoint offer (one H200 in us-central1) was checked for the default base only
+    if (BASE_MODEL !== DEFAULT_MODEL) throw new Error(`endpoint-create knows the dedicated-endpoint offer for ${DEFAULT_MODEL} only`);
     await locked(async () => {
       const s = state();
       if (s.endpoint && !s.endpoint.deleted) throw new Error(`endpoint ${s.endpoint.id} exists: endpoint-delete first`);
@@ -376,7 +392,7 @@ async function main() {
     });
     console.log(JSON.stringify({ job: now.job, checkpoints: now.checkpoints.map((c) => ({ step: c.step, model: c.model, ...c.metrics })) }, null, 2));
   } else {
-    console.log("usage: node scripts/finetune-tf.mjs upload | create --usd-per-mtok P --balance-usd B [--epochs N] [--dry-run] [--allow-another-job] | adopt | release --confirm-no-job | status | try-serve | delete-lora | endpoint-create --custom-weights-id W --minutes M | endpoint-delete | endpoint-adopt | endpoint-release --confirm-no-endpoint");
+    console.log("usage: node scripts/finetune-tf.mjs <command> [--model M], the command one of: upload | create --usd-per-mtok P --balance-usd B [--epochs N] [--dry-run] [--allow-another-job] | adopt | release --confirm-no-job | status | try-serve | delete-lora | endpoint-create --custom-weights-id W --minutes M | endpoint-delete | endpoint-adopt | endpoint-release --confirm-no-endpoint");
     process.exitCode = 1;
   }
 }

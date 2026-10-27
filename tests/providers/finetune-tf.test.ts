@@ -315,4 +315,34 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     writeFileSync(env.FINETUNE_TF_STATE, JSON.stringify(s));
     expect(await fails("create", "--usd-per-mtok", "5", "--balance-usd", "60", "--allow-another-job")).toMatch(/run upload again/);
   }, 60_000);
+
+  it("--model: another base gets its own state, lock and job, one job per base, without touching the default's", async () => {
+    const m = ["--model", "Qwen/Qwen3-14B"];
+    const other = env.FINETUNE_TF_STATE.replace(/\.json$/, "-qwen-qwen3-14b.json");
+    const defaultBefore = readFileSync(env.FINETUNE_TF_STATE, "utf8");
+    // the default base's state is locked: the other base is not held up by it
+    writeFileSync(`${env.FINETUNE_TF_STATE}.lock`, "123\n");
+    await tf("upload", ...m);
+    await tf("create", ...m, "--usd-per-mtok", "0.4", "--balance-usd", "60");
+    unlinkSync(`${env.FINETUNE_TF_STATE}.lock`);
+    const s = JSON.parse(readFileSync(other, "utf8"));
+    expect(s.base_model).toBe("Qwen/Qwen3-14B");
+    expect(jobs.find((j) => j.id === s.job.id)?.model).toBe("Qwen/Qwen3-14B");
+    expect(readFileSync(env.FINETUNE_TF_STATE, "utf8")).toBe(defaultBefore);
+    // its estimate is charged under its own model, at its own price
+    const charged = ledger().filter((e) => !e.type && e.settles === s.job.reservation);
+    expect(charged).toHaveLength(1);
+    expect(charged[0].meta.model).toBe("Qwen/Qwen3-14B");
+    expect(charged[0].usd).toBeCloseTo(s.job.usd_est, 6);
+    expect(s.job.usd_per_mtok).toBe(0.4);
+    // one job per base: a second create on it is refused, by its state and by the account's job list
+    expect(await fails("create", ...m, "--usd-per-mtok", "0.4", "--balance-usd", "60")).toMatch(/a job exists already/);
+    unlinkSync(other);
+    await tf("upload", ...m);
+    expect(await fails("create", ...m, "--usd-per-mtok", "0.4", "--balance-usd", "60")).toMatch(/already has a job on Qwen\/Qwen3-14B/);
+    // a state file of another base is never used, and endpoints stay with the default base
+    writeFileSync(other, defaultBefore);
+    expect(await fails("status", ...m)).toMatch(/is the state of Qwen\/Qwen3-30B-A3B-Instruct-2507, not of Qwen\/Qwen3-14B/);
+    expect(await fails("endpoint-create", ...m, "--custom-weights-id", "w-9", "--minutes", "10")).toMatch(/offer for Qwen\/Qwen3-30B-A3B-Instruct-2507 only/);
+  }, 60_000);
 });
