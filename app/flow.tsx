@@ -423,8 +423,10 @@ function Status<T>({ result, clock, duration }: { result: StageResult<T>; clock:
 function Confirm({ spec, onYes, onRewrite }: { spec: TaskSpec; onYes: () => void; onRewrite: (line: string) => void }) {
   const sentence = sentenceOf(spec);
   const offer = oneArmLine(spec);
-  const [line, setLine] = useState(sentence.slice(0, LINE_MAX));
-  const rewritten = line.trim() !== "" && line.trim() !== sentence;
+  // the field holds at most LINE_MAX characters, so an untouched long sentence is its first LINE_MAX
+  const shown = sentence.slice(0, LINE_MAX);
+  const [line, setLine] = useState(shown);
+  const rewritten = line.trim() !== "" && line.trim() !== shown.trim();
   return (
     <div className="mt-4 flex flex-col gap-3 border-t pt-4 text-sm" role="group" aria-label="Is this what the person did?">
       <p className="font-medium">Is this what the person did?</p>

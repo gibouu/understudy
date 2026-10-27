@@ -99,7 +99,10 @@ export function tidyLabel(raw: unknown, durationS: number): Normalized {
     delete data.on_body;
   }
   if (typeof data.one_arm === "string") data.one_arm = data.one_arm.trim();
-  if (data.one_arm !== undefined && (typeof data.one_arm !== "string" || data.one_arm === "")) delete data.one_arm;
+  if (data.one_arm !== undefined && (typeof data.one_arm !== "string" || data.one_arm === "")) {
+    warnings.push(`one_arm ${JSON.stringify(data.one_arm)} is not a line of text; left out`);
+    delete data.one_arm;
+  }
 
   if (Array.isArray(data.objects)) {
     for (const o of data.objects.filter(isRec)) {
