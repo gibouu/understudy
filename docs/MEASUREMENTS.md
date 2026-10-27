@@ -255,9 +255,39 @@ Rubric score by condition (a 4 fps, b 8 fps, c 2 fps, d keyframes, e one-line hi
 
 On the first sample clip (a slower palm wave, replaced because an agency placard and flags were in view, so these numbers are no longer reproducible from the repository), at the clip's own pace the joints turned at up to 2.9 rad/s and the arm reached 238 of 240 points within 5 mm, the farthest 5.2 mm off; held to 2 rad/s it reached all 240 within 1.1 mm. That is where the cap comes from; it was chosen in the simulator, not from a real servo. The reach box, 240 mm across and z 200 to 330 mm in the plane x = 220 mm, is checked corner by corner and with a circle that fills it, at 1 g and 0 g (`tests/sim/follow.test.ts`). Live spend for this section, about US$0.04: Super VL labels of the two sample clips and of two camera takes while the label prompt and clean-up were tuned, and three Nano compiles before a program made only of gestures stopped needing a model.
 
+## 12. The models Token Factory retires on 9 November 2026
+
+Token Factory's notice [Model Deprecations: November 2026](https://docs.tokenfactory.nebius.com/model-deprecations-november-2026), read on 27 October: Nemotron 3 Nano (`nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`) and Nemotron 3 Super (`nvidia/nemotron-3-super-120b-a12b`) leave Serverless on 9 November 2026, before judging ends. It names Nemotron 3.5 Lightning (`nvidia/Nemotron-3_5-Lightning`) and Nemotron 3.5 Super VL (`nvidia/Nemotron-3.5-Super-VL`) as their replacements, and a retired ID answers HTTP 404 `model_not_found`. Super VL and Ultra are not on the notice. Sections 4 to 11 were measured on Nano and Super, and the ISS examples are recordings made on them. Since 27 October a clip of your own runs on the replacements. Both sides of each table below were run on 27 October with the same harness, cases and seeds.
+
+**Compiling** (Nano's job): section 10's harness, the route's own prompt as it is today, 20 specs, 3 runs each.
+
+| Compiler | Program returned | Clean first answer | Rehearsal passes, ground-truth specs | Slowest call | Cost per compile |
+|---|---|---|---|---|---|
+| Nemotron 3 Nano | 93% [84 to 97] (56 of 60) | 67% [54 to 77] | 6 of 29 | 14.2 s | US$0.00035 |
+| Nemotron 3.5 Lightning | 100% [94 to 100] (60 of 60) | 93% [84 to 97] | 6 of 30 | 2.9 s | US$0.00029 |
+
+Lightning writes no `ask` of its own: Nano wrote 25 on the 27 degraded specs it compiled, 6 of them about a removed field. The route adds the asks the rehearsal needs (51 on Lightning's 30 degraded specs), so the robot still asks its questions.
+
+**Patching** (Super's job): section 8's round-2 loop, the same 180 solvable failures, 6 seeds, at most 5 patches.
+
+| Patcher | Fixed within 5 patches | Fixed on the first patch | Cost per fixed case | Model time per fixed case | Answers cut off / unparseable / failed calls |
+|---|---|---|---|---|---|
+| Nemotron 3 Super, thinking off (800 tokens) | 69% [62 to 75] (124 of 180) | 24% | US$0.0022 | 8 s | 0 / 0 / 2 of 603 |
+| Nemotron 3.5 Super VL, thinking off (800 tokens) | 76% [69 to 81] (136 of 180) | 38% | US$0.0015 | 5 s | 1 / 1 / 0 of 506 |
+| Nemotron 3 Super, thinking on (4096 tokens) | 94% [89 to 97] (169 of 180) | 47% | US$0.0033 | 14 s | 3 / 3 / 0 of 397 |
+| Nemotron 3.5 Super VL, thinking on (4096 tokens) | 50% [43 to 57] (90 of 180) | 26% | US$0.0272 | 33 s | 540 / 540 / 0 of 654 |
+| Super off, then Super on when stuck (the app until 27 October) | 94% [90 to 97] (170 of 180) | 27% | US$0.0024 | 12 s | 4 / 4 / 0 of 505 |
+| Super VL off, then Nemotron 3 Ultra off when stuck (the app since) | 89% [83 to 93] (160 of 180) | 32% | US$0.0022 | 6 s | 0 / 0 / 0 of 481 |
+
+Super VL patches better than Super with thinking off. With thinking on it used all 4,096 tokens without returning an answer in 83% of its calls (540 of 654), fixed half the failures, and cost twelve times as much per fix; a live preview hit that twice. So with Super VL as the patcher, the stuck loop asks Nemotron 3 Ultra with thinking off (`app/api/notes/route.ts`): 89% against Super's 94%, the intervals overlapping, at a slightly lower cost per fix. Ultra is not on the notice either.
+
+**When a model goes.** The spend gate reads Token Factory's model list, at most every five minutes per function instance. If a model the routes call is missing, every route replays its recording with the reason "Token Factory no longer serves a model this demo calls", and `/api/health` reports replay. On 27 October, on a preview deployment with Nano's ID set to one that does not exist, label, questions, recompile, rehearsal, patch loop, variants and web lookup all replayed with that line, and nothing failed. Each instance reads the list on its own, so for up to five minutes a session can be live on one step and replay the next; that step says why.
+
+Spend for this section: US$4.30 on the bench ledger (scripts `compare-compile` for both compile runs, `patch-successor` and `patch-successor-base`), under the US$5 set for this check.
+
 ## Reproduce
 
-Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend.
+Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend. Since 27 October the Nano and Super roles call their replacements (section 12): add `UNDERSTUDY_KEEP_RETIRED=1` to rerun a Nano or Super row while Token Factory still serves them, until 9 November 2026.
 
 ```bash
 pnpm test
@@ -312,3 +342,17 @@ node scripts/compare-report.mjs --json bench/results/compare-summary.json
 ```
 
 The last one prints section 10's tables from the saved results without spending anything. Token Factory withdrew Qwen3.5 397B for a while on 26 October; if a model named here is not served when you run these, the command stops at its first 404 and the report leaves the stopped run out.
+
+Section 12, the replacements against the models they replace. The compile bench names the models it compares; the patch bench reads the Super role, which is Super VL by default and Super with `UNDERSTUDY_KEEP_RETIRED=1`:
+
+```bash
+BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local COMPILE_OUT=successor-compile.json COMPILE_RUNS=3 COMPILE_CONCURRENCY=3 COMPILE_MODELS=nvidia/Nemotron-3_5-Lightning,nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B node_modules/.bin/vitest run tests/measure/compile-compare.test.ts --reporter=verbose
+```
+
+```bash
+BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local PATCH_OUT=patch-successor.json PATCH_SCRIPT=patch-successor PATCH_SEEDS=1,2,3,4,5,6 PATCH_CONCURRENCY=4 PATCH_ARMS=r2-super-off,r2-super-on,r2-esc-ultra node_modules/.bin/vitest run tests/measure/patch-loop.test.ts --reporter=verbose
+```
+
+```bash
+BENCH_LIVE=1 UNDERSTUDY_KEEP_RETIRED=1 UNDERSTUDY_ENV_FILE=.env.local PATCH_OUT=patch-successor-base.json PATCH_SCRIPT=patch-successor-base PATCH_SEEDS=1,2,3,4,5,6 PATCH_CONCURRENCY=4 PATCH_ARMS=r2-super-off,r2-esc-on,r2-super-on node_modules/.bin/vitest run tests/measure/patch-loop.test.ts --reporter=verbose
+```
