@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { Sample } from "@/lib/samples";
 import { usd, verdict } from "@/lib/showcase/format";
 import { modelLabel } from "@/lib/providers/models";
@@ -22,12 +22,12 @@ const Rehearsal = dynamic(() => import("../../rehearsal").then((m) => m.Rehearsa
 const SOURCE: Record<Iteration["source"], string> = { compile: "First compile", interview: "After the answers", notes: "Notes patch", playbook: "From the playbook" };
 
 /** Interpreter notes name objects by id ("obj2 moving at 68 mm/s"); the story says their names. */
-function named(spec: TaskSpec, text: string): string {
+export function named(spec: TaskSpec, text: string): string {
   return spec.objects.reduce((t, o) => t.replace(new RegExp(`\\b${o.id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "g"), `the ${o.name}`), text);
 }
 
 /** A labelled step in words; only a move, an insert or a place says where to. */
-function stepWords(spec: TaskSpec, s: TaskSpec["steps"][number]): string {
+export function stepWords(spec: TaskSpec, s: TaskSpec["steps"][number]): string {
   if (s.object === undefined) return s.verb;
   const name = (id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
   const where = s.target && s.target.frame !== s.object ? name(s.target.frame) : null;
@@ -37,7 +37,7 @@ function stepWords(spec: TaskSpec, s: TaskSpec["steps"][number]): string {
 }
 
 /** The models a stage's calls went to in this recording, by name; undefined when the stage made no call. */
-function credit(session: Session, stage: Call["stage"]): string | undefined {
+export function credit(session: Session, stage: Call["stage"]): string | undefined {
   const names = [...new Set(session.ledger.filter((c) => c.stage === stage).map((c) => modelLabel(c.model)))];
   return names.length ? names.join(" and ") : undefined;
 }
@@ -51,10 +51,11 @@ function version(it: Iteration, i: number, session: Session): string {
   return SOURCE[it.source];
 }
 
-/** The clip, fetched whole into a blob URL as the guided flow does: /samples/ serves no byte ranges, which Safari needs to stream. */
-function Clip({ sample }: { sample: Sample }) {
+/** The clip, fetched whole into a blob URL as the guided flow does: /samples/ serves no byte ranges, which Safari needs to stream. `autoPlay` plays it muted, on a loop; `onReady` hears it can play, or that it will not. */
+export function Clip({ sample, autoPlay = false, onReady }: { sample: Sample; autoPlay?: boolean; onReady?: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const failed = useEffectEvent((message: string) => (setError(message), onReady?.()));
   useEffect(() => {
     let alive = true;
     let made: string | null = null;
@@ -68,7 +69,7 @@ function Clip({ sample }: { sample: Sample }) {
         made = URL.createObjectURL(blob);
         setUrl(made);
       })
-      .catch((err: Error) => alive && setError(err.message));
+      .catch((err: Error) => alive && failed(err.message));
     return () => {
       alive = false;
       if (made) URL.revokeObjectURL(made);
@@ -78,7 +79,7 @@ function Clip({ sample }: { sample: Sample }) {
   return (
     <div className="aspect-video w-full overflow-hidden rounded-lg border-2 border-ink bg-ink-deep">
       {url ? (
-        <video src={url} poster={`/showcase/${sample.name}.jpg`} controls muted playsInline className="h-full w-full object-contain" />
+        <video src={url} poster={`/showcase/${sample.name}.jpg`} controls muted playsInline autoPlay={autoPlay} loop={autoPlay} onCanPlay={onReady} onError={onReady} className="h-full w-full object-contain" />
       ) : (
         // eslint-disable-next-line @next/next/no-img-element -- the recorder's still, while the clip loads
         <img src={`/showcase/${sample.name}.jpg`} alt="" className="h-full w-full animate-pulse object-cover opacity-80" />
@@ -102,7 +103,7 @@ function Step({ n, title, model, children, id }: { n: number; title: string; mod
   );
 }
 
-function Outcome({ run, spec }: { run: Run; spec: TaskSpec }) {
+export function Outcome({ run, spec }: { run: Run; spec: TaskSpec }) {
   if (run.pass) return <span className="font-semibold text-ok">passes</span>;
   // a program with an open question rehearses up to it and stops there
   if (run.failure_class === "spec_gap" && run.why?.startsWith("unanswered: ")) return <span className="font-semibold text-accent-text">stops at its first open question</span>;

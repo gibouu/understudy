@@ -150,4 +150,18 @@
   .tnum {
     font-variant-numeric: tabular-nums lining-nums;
   }
+
+  /* The 1-minute demo's progress: a step's bar fills over its dwell, and the tour moves on when it ends. */
+  .tour-fill {
+    animation: tour-fill linear forwards;
+  }
+}
+
+@keyframes tour-fill {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
 }
