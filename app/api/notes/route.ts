@@ -17,7 +17,7 @@ import { z } from "zod";
 import recordings from "@/tests/fixtures/notes.json";
 import { callModel } from "@/lib/providers/call";
 import { priced } from "@/lib/providers/price";
-import { MODELS, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
+import { current, MODELS, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { applyPatch, knobsOf } from "@/lib/notes/knobs";
 import { failureNote, type WorldRun } from "@/lib/notes/note";
 import { Attempt, escalation, MAX_PATCHES, MAX_TOKENS_OFF, MAX_TOKENS_ON, PATCH_SYSTEM, PatchReply, patchPrompt, type NotePatch } from "@/lib/notes/patch";
@@ -119,7 +119,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
     why: r.value.why.slice(0, 400),
     expect: r.value.expect.slice(0, 400),
     note,
-    model: MODELS.super,
+    model: current(MODELS.super),
     thinking: why !== null,
     escalation: why,
     tokens: costs.reduce((n, e) => n + e.prompt_tokens + e.completion_tokens, 0),

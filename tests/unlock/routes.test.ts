@@ -7,28 +7,43 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import OpenAI from "openai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import compiles from "@/tests/fixtures/compile.json";
 import labels from "@/tests/fixtures/label.json";
+import { forgetModels, MODELS, RETIRED } from "@/lib/providers/tokenfactory";
 import { SAMPLES } from "@/lib/samples";
 import { recordings } from "@/lib/showcase/load";
 import { Program, TaskSpec } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
 import { forgetLiveCalls } from "@/lib/unlock/cap";
 import { UNLOCK_ENV } from "@/lib/unlock/check";
-import { gateNote, LIVE_CLOSED, LIVE_NEEDS_PASS, UNLOCK_NEEDED } from "@/lib/unlock/messages";
+import { gateNote, LIVE_CLOSED, LIVE_NEEDS_PASS, LIVE_RETIRED, LIVE_UNLISTED, UNLOCK_NEEDED } from "@/lib/unlock/messages";
 import { readSampleToken, sampleToken, TOKEN_ENV } from "@/lib/unlock/token";
 
-/** Token Factory stand-in: every create() is counted; the vision model answers the recorded label. */
-const tf = vi.hoisted(() => ({ calls: 0, label: "" }));
+/**
+ * Token Factory stand-in: every create() is counted; the vision model answers the recorded label. It lists
+ * `listed` (the four models unless a test says otherwise), or fails to list when `listFails`; `refuse`
+ * answers 404 to a create() for that model, as Token Factory does for a retired one.
+ */
+const tf = vi.hoisted(() => ({ calls: 0, label: "", listed: [] as string[], lists: 0, listFails: false, refuse: "", models: [] as string[] }));
 vi.mock("@/lib/providers/tokenfactory", async (original) => ({
   ...(await original<typeof import("@/lib/providers/tokenfactory")>()),
   wantsReplay: (req: Request) => new URL(req.url).searchParams.get("replay") === "1",
   tokenFactory: () => ({
+    models: {
+      list: async () => {
+        tf.lists++;
+        if (tf.listFails) throw new Error("connect ETIMEDOUT");
+        return { data: tf.listed.map((id) => ({ id })) };
+      },
+    },
     chat: {
       completions: {
         create: async (params: { model: string }) => {
+          if (params.model === tf.refuse) throw OpenAI.APIError.generate(404, { message: `The model \`${params.model}\` does not exist.`, code: "model_not_found" }, undefined, new Headers());
           tf.calls++;
+          tf.models.push(params.model);
           return { choices: [{ message: { content: params.model.includes("VL") ? tf.label : "{}" } }], usage: { prompt_tokens: 10, completion_tokens: 10 } };
         },
       },
@@ -89,6 +104,8 @@ beforeEach(() => {
     }),
   );
   tf.label = JSON.stringify((labels[0].result as { value: unknown }).value);
+  Object.assign(tf, { listed: Object.values(MODELS), lists: 0, listFails: false, refuse: "", models: [] });
+  forgetModels();
   forgetLiveCalls();
 });
 
@@ -194,5 +211,93 @@ describe("the space showcase", () => {
     vi.stubEnv(TOKEN_ENV, "");
     vi.stubEnv("NEBIUS_API_KEY", "");
     expect((await recordings()).length).toBeGreaterThan(0);
+  });
+});
+
+describe("when Token Factory no longer serves a model (#137)", () => {
+  const LIGHTNING = RETIRED[MODELS.nano]!.by;
+  const gone = (...ids: string[]) => (tf.listed = tf.listed.filter((id) => !ids.includes(id)));
+
+  it("replays a whole sample session, every stage saying why, though the pass would go live", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    gone(MODELS.nano);
+    const label = await post("label", { clip_sha256: sampleSha, video, duration_s: 36 });
+    expect(label).toMatchObject({ status: 200, live: false, json: { status: "done" } });
+    expect(why(label.json)).toBe(LIVE_RETIRED);
+    expect(label.json.sample_token).toBeUndefined();
+    for (const [route, body] of Object.entries(BODIES) as [Exclude<Route, "label">, object][]) {
+      const r = await post(route, { ...body, unlock: "orbit", sample_token: sampleToken() });
+      expect(r.live, route).toBe(false);
+      expect(why(r.json), route).toContain(LIVE_RETIRED);
+    }
+    expect(tf.lists).toBe(1);
+  });
+
+  it("replays a clip of your own rather than asking for a code that cannot help", async () => {
+    gone(MODELS.nano);
+    const r = await post("label", { clip_sha256: ownSha, video, duration_s: 8 });
+    expect(r).toMatchObject({ status: 200, live: false, json: { status: "done" } });
+    expect(why(r.json)).toBe(LIVE_RETIRED);
+  });
+
+  it("goes live on the replacement Token Factory names, and only then", async () => {
+    gone(MODELS.nano, MODELS.super);
+    tf.listed.push(LIGHTNING);
+    for (const [route, body] of Object.entries(BODIES) as [Exclude<Route, "label">, object][]) {
+      expect((await post(route, { ...body, unlock: "orbit" })).live, route).toBe(true);
+    }
+    expect(new Set(tf.models)).toEqual(new Set([LIGHTNING, RETIRED[MODELS.super]!.by]));
+  });
+
+  it("keeps a role on its own model while Token Factory still lists it", async () => {
+    tf.listed.push(LIGHTNING);
+    await post("compile", { ...BODIES.compile, unlock: "orbit" });
+    expect(new Set(tf.models)).toEqual(new Set([MODELS.nano]));
+  });
+
+  it("moves Super to Super VL, which the vision role keeps listed", async () => {
+    gone(MODELS.super);
+    expect((await post("notes", { ...BODIES.notes, unlock: "orbit" })).live).toBe(true);
+    expect(new Set(tf.models)).toEqual(new Set([RETIRED[MODELS.super]!.by]));
+  });
+
+  it("does not need Ultra, which no route calls", async () => {
+    gone(MODELS.ultra);
+    expect((await post("compile", { ...BODIES.compile, unlock: "orbit" })).live).toBe(true);
+  });
+
+  it("replays the step when the list cannot be read, and reads it again after 30 s", async () => {
+    tf.listFails = true;
+    const r = await post("compile", { ...BODIES.compile, unlock: "orbit" });
+    expect(r.live).toBe(false);
+    expect(why(r.json)).toContain(LIVE_UNLISTED);
+    tf.listFails = false;
+    await post("compile", { ...BODIES.compile, unlock: "orbit" });
+    expect(tf.lists).toBe(1);
+    vi.useFakeTimers({ now: Date.now() + 31_000, toFake: ["Date"] });
+    try {
+      expect((await post("compile", { ...BODIES.compile, unlock: "orbit" })).live).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(tf.lists).toBe(2);
+  });
+
+  it("after a 404 from a model still listed, takes the replacement from the next request on", async () => {
+    tf.listed.push(LIGHTNING);
+    tf.refuse = MODELS.nano;
+    const first = await post("compile", { ...BODIES.compile, unlock: "orbit" });
+    expect(first.json).toMatchObject({ status: "failed" });
+    expect((await post("compile", { ...BODIES.compile, unlock: "orbit" })).live).toBe(true);
+    expect(new Set(tf.models)).toEqual(new Set([LIGHTNING]));
+    expect(tf.lists).toBe(2);
+  });
+
+  it("after a 404 with no replacement listed, replays from the next request on", async () => {
+    tf.refuse = MODELS.nano;
+    await post("compile", { ...BODIES.compile, unlock: "orbit" });
+    const r = await post("compile", { ...BODIES.compile, unlock: "orbit" });
+    expect(r.live).toBe(false);
+    expect(why(r.json)).toContain(LIVE_RETIRED);
   });
 });

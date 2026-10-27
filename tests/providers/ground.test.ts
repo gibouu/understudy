@@ -7,6 +7,12 @@ import { chipChange, type Grounding } from "@/lib/spec/ground";
 import { TaskSpec } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
 
+// Token Factory lists every model (the spend gate's list read is tested in tests/unlock/routes.test.ts)
+vi.mock("@/lib/providers/tokenfactory", async (original) => {
+  const real = await original<typeof import("@/lib/providers/tokenfactory")>();
+  return { ...real, liveModels: async () => real.served(new Set(Object.values(real.MODELS))) };
+});
+
 type Done = Extract<StageResult<Grounding>, { status: "done" }>;
 
 const recorded = recordings[0];

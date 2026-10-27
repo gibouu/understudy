@@ -11,6 +11,7 @@ vi.mock("@/lib/providers/tokenfactory", async (original) => ({
   ...(await original<typeof import("@/lib/providers/tokenfactory")>()),
   wantsReplay: (req: Request) => new URL(req.url).searchParams.get("replay") === "1",
   tokenFactory: () => ({
+    models: { list: async () => ({ data: Object.values((await original<typeof import("@/lib/providers/tokenfactory")>()).MODELS).map((id) => ({ id })) }) },
     chat: {
       completions: {
         create: async (params: Record<string, unknown>) => {

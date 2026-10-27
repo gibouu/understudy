@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type Health = { mode: "live" | "replay"; reason?: string; latency_ms?: number };
+type Health = { mode: "live" | "replay"; reason?: string; latency_ms?: number; replaced?: string[] };
 
 export function HealthBadge() {
   const [health, setHealth] = useState<Health | null>(null);
@@ -29,6 +29,7 @@ export function HealthBadge() {
     return (
       <span className="rounded-full border border-emerald-600 px-3 py-1 text-xs text-emerald-700">
         live on Nebius Token Factory · {health.latency_ms} ms
+        {health.replaced?.length ? ` · retired by Token Factory on 9 Nov 2026, answered by the model it names: ${health.replaced.join("; ")}` : ""}
       </span>
     );
   }

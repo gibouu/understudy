@@ -12,7 +12,7 @@
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/label.json";
 import { callModel, type UserPart } from "@/lib/providers/call";
-import { MODELS, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
+import { current, MODELS, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { hintText, LABEL_PROMPT, tidyLabel } from "@/lib/spec/label";
 import { TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type StageResult } from "@/lib/spec/stage-result";
@@ -67,7 +67,7 @@ export async function POST(req: Request): Promise<NextResponse<Labelled>> {
     normalize: (raw) => tidyLabel(raw, duration),
   });
   if (result.status !== "done") return NextResponse.json(result);
-  const spec: TaskSpec = { ...result.value, provenance: { label_input: "video", clip_sha256: sha, model: MODELS.vl } };
+  const spec: TaskSpec = { ...result.value, provenance: { label_input: "video", clip_sha256: sha, model: current(MODELS.vl) } };
   const warnings = [...result.warnings, ...validateSpec(spec).map((i) => `${i.path}: ${i.message}`)];
   return NextResponse.json({ ...done(spec, warnings, result.ledger), sample_token: gate.sample ? sampleToken() : undefined });
 }
