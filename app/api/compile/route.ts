@@ -18,7 +18,7 @@ import { AXES, PREDICATE_OPERANDS, Program, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type StageResult } from "@/lib/spec/stage-result";
 import { lintProgram, validateProgram } from "@/lib/spec/validate";
 import { canonicalSlot, valueAt } from "@/lib/spec/apply";
-import { askable, withRequiredAsks } from "@/lib/spec/answer";
+import { askable, waitingProgram, withRequiredAsks } from "@/lib/spec/answer";
 import { gestureProgram } from "@/lib/sim/gesture";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
 import { explain, liveGate } from "@/lib/unlock/check";
@@ -137,6 +137,8 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   const previous = body?.previous === undefined ? undefined : Program.safeParse(body.previous).data;
   const gestures = gestureProgram(spec.data);
   if (gestures) return NextResponse.json(done(gestures, ["every step is a gesture: the program follows each path and needs no model"]));
+  const waiting = waitingProgram(spec.data);
+  if (waiting) return NextResponse.json(done(waiting, ["a place with nowhere to go yet: the program waits for one answer, with no model"]));
 
   const gate = wantsReplay(req) ? null : await liveGate("compile", body);
   const client = gate?.live ? tokenFactory({ timeout: 25_000, maxRetries: 1 }) : null;

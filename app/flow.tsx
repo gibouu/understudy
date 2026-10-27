@@ -9,7 +9,7 @@ import { Session } from "@/lib/showcase/session";
 import { fitToBench, type Fit } from "@/lib/sim/fit";
 import { formFor } from "@/lib/spec/answer";
 import { applyChanges } from "@/lib/spec/apply";
-import type { Predicate, Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
+import type { Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { gateNote } from "@/lib/unlock/messages";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
@@ -199,13 +199,20 @@ export function Flow() {
       const raw = answers[a.slot];
       if (raw === undefined || raw === "") continue;
       const form = formFor(spec, a.slot);
-      const value: number | Predicate[] = form.kind === "success" ? form.options[Number(raw)].predicates : Number(raw);
+      const value = form.kind === "success" ? form.options[Number(raw)].predicates : form.kind === "target" ? form.options[Number(raw)].target : Number(raw);
       changes.push({ path: a.slot, value, source: `interview#${turn + 1}` });
     }
     if (changes.length === 0) return;
-    const { spec: next, warnings } = applyChanges(spec, changes);
-    setNotes(warnings);
-    if (warnings.length) return;
+    const applied = applyChanges(spec, changes);
+    setNotes(applied.warnings);
+    if (applied.warnings.length) return;
+    let next = applied.spec;
+    // where it goes, answered (lib/sim/fit.ts whereTo): the fit lays out the chosen object now
+    if (changes.some((c) => formFor(spec, c.path).kind === "target")) {
+      const f = fitToBench(next);
+      setFit({ spec: f.spec, warnings: f.warnings });
+      next = f.spec;
+    }
     setSpec(next);
     setTurn(turn + 1);
     await compile(next, program.value);
@@ -410,8 +417,10 @@ function SpecSummary({ spec }: { spec: TaskSpec }) {
 
 function AskField({ ask, spec, value, onChange }: { ask: Ask; spec: TaskSpec; value: string; onChange: (v: string) => void }) {
   const form = formFor(spec, ask.slot);
+  // chips are buttons: inside a label, clicking the question would press the first one
+  const Root = form.kind === "target" ? "div" : "label";
   return (
-    <label className="flex flex-col gap-1 text-sm">
+    <Root className="flex flex-col gap-1 text-sm" {...(form.kind === "target" ? { role: "group", "aria-label": ask.question } : {})}>
       <span>{ask.question}</span>
       {ask.why && <span className="text-xs text-neutral-500">{ask.why}</span>}
       {form.kind === "number" && (
@@ -430,7 +439,16 @@ function AskField({ ask, spec, value, onChange }: { ask: Ask; spec: TaskSpec; va
           ))}
         </select>
       )}
+      {form.kind === "target" && (
+        <span className="flex flex-wrap gap-2">
+          {form.options.map((o, i) => (
+            <button key={o.target.frame} type="button" aria-pressed={value === String(i)} onClick={() => onChange(String(i))} className={`rounded-full border px-3 py-1 ${value === String(i) ? "border-neutral-900 bg-neutral-900 text-white" : "hover:bg-neutral-50"}`}>
+              {o.label}
+            </button>
+          ))}
+        </span>
+      )}
       {form.kind === "unsupported" && <span className="text-xs text-amber-700">This one can&apos;t be answered here yet ({ask.slot}).</span>}
-    </label>
+    </Root>
   );
 }

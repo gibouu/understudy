@@ -25,7 +25,36 @@ const FIXTURE_H_MM = [10, 30] as const;
 /** Pocket clearance the 1 g / 0 g rehearsal has been measured over. */
 const MAX_CLEARANCE_MM = 20;
 
-export type Fit = { spec: TaskSpec; warnings: string[] };
+/** `where`: the slot of the one question the person is asked before anything can be rehearsed (whereTo). */
+export type Fit = { spec: TaskSpec; warnings: string[]; where?: string };
+
+/** The answer "somewhere else on the bench" (lib/spec/answer.ts formFor): a fixture like any other once it is chosen. */
+export const BENCH_SPOT = { id: "bench_spot", name: "spot on the bench", shape: "box", size_mm: [100, 100, 10], symmetry: "none", role: "surface", confidence: 1, source: "fit", sources: {} } as const satisfies SpecObject;
+
+/**
+ * A label that holds something but never says where it goes (a move with no target, a clip that
+ * never lets go: 12 of the 15 labels of people's own clips left with nothing to rehearse after #150,
+ * docs/MEASUREMENTS.md section 16): the grasp, and a place with no target for the person to name.
+ * The scene's other objects stay in the spec as the answers to choose from, with a spot on the bench;
+ * nothing is laid out until the answer comes back, when the fit runs again on the answered spec.
+ */
+function whereTo(spec: TaskSpec): Fit | null {
+  const named = (id: string | undefined) => id !== undefined && spec.objects.some((o) => o.id === id);
+  const first = spec.steps.find((s) => (s.verb === "grasp" || s.verb === "move") && named(s.object));
+  if (!first) return null;
+  const held = spec.objects.find((o) => o.id === first.object)!;
+  const grasp = spec.steps.find((s) => s.verb === "grasp" && s.object === held.id);
+  const steps: Step[] = [
+    grasp ? { ...grasp, id: "s1", target: undefined } : { ...first, id: "s1", verb: "grasp", target: undefined, via_points: [], preconditions: [], success: [], tolerances: {}, source: "fit", sources: {} },
+    { ...first, id: "s2", verb: "place", target: undefined, via_points: [], preconditions: [], success: [], tolerances: {}, t_start_s: (grasp ?? first).t_end_s, t_end_s: Math.max(...spec.steps.filter((s) => s.object === held.id).map((s) => s.t_end_s)), source: "fit", sources: {} },
+  ];
+  const spot = spec.objects.some((o) => o.id === BENCH_SPOT.id) ? [] : [{ ...BENCH_SPOT, size_mm: [...BENCH_SPOT.size_mm] as [number, number, number], sources: {} }];
+  return {
+    spec: { ...spec, objects: [...spec.objects, ...spot], steps, anchor: undefined },
+    warnings: [`the label shows the ${held.name} picked up but not where it goes: the robot asks`],
+    where: "steps[s2].target",
+  };
+}
 
 const clamp = (x: number, [lo, hi]: readonly [number, number]) => Math.min(Math.max(x, lo), hi);
 
@@ -69,6 +98,9 @@ export function fitToBench(spec: TaskSpec): Fit {
   const held = act && spec.objects.find((o) => o.id === act.object);
   const fixture = act && spec.objects.find((o) => o.id === act.target!.frame);
   if (!act || !held || !fixture || held === fixture) {
+    // nowhere named to put it down: ask, when the label at least says what was picked up
+    const ask = act ? null : whereTo(spec);
+    if (ask) return { ...ask, warnings: [...warnings, ...ask.warnings] };
     return { spec, warnings: ["no insert or place step onto a named object: nothing to rehearse"] };
   }
 
@@ -121,7 +153,8 @@ export function fitToBench(spec: TaskSpec): Fit {
     source: "fit",
     sources: {},
   };
-  const dropped = spec.objects.filter((o) => o !== held && o !== fixture);
+  // the spot on the bench is an answer the person did not choose, not something in the scene
+  const dropped = spec.objects.filter((o) => o !== held && o !== fixture && o.id !== BENCH_SPOT.id);
   const gone = new Set(dropped.map((o) => o.id));
   // a check on an object that is no longer in the scene cannot be evaluated
   const kept = (ps: Predicate[]) => ps.filter((p) => !(p.object && gone.has(p.object)) && !(p.target && gone.has(p.target)));

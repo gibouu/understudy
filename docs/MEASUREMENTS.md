@@ -367,9 +367,26 @@ The first kind is a place written in two steps, so the label already says where 
 | The same, labelled with the prompt rule (`after150`, `final150`) | 37 of 48 | 40 of 48 |
 | All 104 | 79 (76%) | 89 (86%) |
 
-Live, labels of the same clip vary more from run to run than either change moves them. Three arms of 24 gave 18, 20 and 18 rehearsable, so only the same labels fitted twice show the fit's effect. The 15 that remain need the person: a move with no target, or a clip whose label never lets go. Asking "where does it go?" in the interview would cover them, but no ask slot holds an object today.
+Live, labels of the same clip vary more from run to run than either change moves them. Three arms of 24 gave 18, 20 and 18 rehearsable, so only the same labels fitted twice show the fit's effect. The 15 that remain need the person: a move with no target, or a clip whose label never lets go. Section 16 asks "where does it go?" in the interview for the 12 of them that pick something up (#155).
 
 The 72 compiles in these runs had 2 failures, both Lightning answers that went wrong: one wrote `"steps": [1]`, and one put the key `"warnings[]"` inside steps, the same slip as section 14 spelled differently. `normalizeProgram` now puts that one back too. Spend for this section: US$0.12.
+
+## 16. Clips of your own: asking where it goes
+
+After #154, 15 of the 104 kept labels still had nothing to rehearse (section 15). In 12, the label says what the hand picked up but not where it went: a move with no target, or a clip that never lets go. The other 3 never pick anything up (a single reach). Issue #155 asks the person, who knows.
+
+**How it works.** The fit keeps the grasp and a place step with no target, and the scene's other named objects stay in the spec as the answers to choose from, plus a spot on the bench. The compile route writes that program itself, with no model: no moves, and one ask, "Where does the drink bag go?". The page shows it in the same interview form as the other asks, as chips: the scene's objects, then "somewhere else on the bench". The answer sets the place step's target through `applyChanges`. The fit then runs again on the answered spec, lays out the chosen object like any target, and Nano compiles as usual.
+
+**Measured on the same 104 labels** (`tests/bench/own-clips-replay.test.ts`, the bench chip as the answer):
+
+| | Labels |
+|---|---|
+| Something to rehearse, #154's fit | 89 |
+| Asked where it goes | 12 |
+| Something to rehearse after one answer | 101 (97%) |
+| Nothing picked up, so nothing to ask | 3 |
+
+Live, for the 12, on Nemotron 3.5 Lightning: the route asked where with no model, and after the answer Lightning compiled every one, asking next what counts as done. Answered with the recorder's defaults and rehearsed in node, before any Notes patch, 5 of the 12 pass on Earth and in orbit and 1 on Earth only. The other 6 fail as other clips do: a thin object the pads do not hold, a reach 10 mm too far, an object still settling. Notes patches those on the page. In only 2 of the 12 did the label name the real destination (the cartridge, the equipment tray), so for the other 10 the right answer is the bench. Spend: about US$0.02.
 
 ## Reproduce
 
