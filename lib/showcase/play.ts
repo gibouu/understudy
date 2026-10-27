@@ -5,6 +5,7 @@
  * saw finds nothing here, and the page asks the live route. Nothing here
  * reads files, so the page can use it.
  */
+import { modelLabel } from "@/lib/providers/models";
 import { formFor } from "@/lib/spec/answer";
 import type { TaskSpec } from "@/lib/spec/schema";
 import type { Call, Session, Turn } from "./session";
@@ -39,21 +40,12 @@ export function formAnswers(spec: TaskSpec, turn: Turn): Record<string, string> 
   return out;
 }
 
-const NAMES: Record<string, string> = {
-  "nvidia/Nemotron-3.5-Super-VL": "Nemotron 3.5 Super VL",
-  "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B": "Nemotron 3 Nano",
-  "nvidia/nemotron-3-super-120b-a12b": "Nemotron 3 Super",
-  "nvidia/Nemotron-3-Ultra-550b-a55b": "Nemotron 3 Ultra",
-};
-
-export const modelName = (id: string) => NAMES[id] ?? id.split("/").at(-1)!;
-
 /** "27 Oct 2026", in UTC so the server and the page say the same day. */
 export const recordedDay = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 /** The route answer's first warning: "replay: recorded on 27 Oct 2026, Nemotron 3 Nano", naming the models that answered that stage. */
 export function recordedNote(rec: { recorded_at: string; ledger: Call[] }, stage: Call["stage"]): string {
-  const models = [...new Set(rec.ledger.filter((c) => c.stage === stage).map((c) => modelName(c.model)))];
+  const models = [...new Set(rec.ledger.filter((c) => c.stage === stage).map((c) => modelLabel(c.model)))];
   return `${RECORDED}${recordedDay(rec.recorded_at)}${models.length ? `, ${models.join(", ")}` : ""}`;
 }
 
