@@ -1,7 +1,7 @@
 import type OpenAI from "openai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import models from "@/tests/fixtures/models.json";
-import { current, forgetModels, LABEL_INPUT, liveModels, MAX_IMAGES_PER_REQUEST, MAX_KEYFRAMES, MODELS, notServed, RETIRED, served, thinkingOff, usageOf, VIDEO_PROXY } from "@/lib/providers/tokenfactory";
+import { forgetModels, LABEL_INPUT, liveModels, MAX_IMAGES_PER_REQUEST, MAX_KEYFRAMES, MODELS, notServed, RETIRED, served, thinkingOff, usageOf, VIDEO_PROXY } from "@/lib/providers/tokenfactory";
 
 describe("token factory defaults", () => {
   it("names the four Nemotron models that the catalog fixture lists", () => {
@@ -24,69 +24,66 @@ describe("token factory defaults", () => {
   });
 });
 
-describe("models Token Factory retires (#137)", () => {
+describe("models Token Factory retires on 9 Nov 2026 (#137)", () => {
+  const NANO = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
+  const SUPER = "nvidia/nemotron-3-super-120b-a12b";
   const all = new Set(Object.values(MODELS));
   const without = (...ids: string[]) => new Set([...all].filter((id) => !ids.includes(id)));
-  const LIGHTNING = RETIRED[MODELS.nano]!.by;
 
   afterEach(() => {
     forgetModels();
+    vi.unstubAllEnvs();
+    vi.resetModules();
     vi.restoreAllMocks();
   });
 
   it("replaces only with a Nemotron model whose price the catalog fixture lists", () => {
     const ids = new Set(models.models.map((m) => m.id));
-    for (const { by, on } of Object.values(RETIRED)) {
+    for (const by of Object.values(RETIRED)) {
       expect(by).toMatch(/^nvidia\/.*nemotron/i);
       expect(ids.has(by)).toBe(true);
-      expect(on).toBe("2026-11-09");
     }
   });
 
-  it("keeps every role on its own model while it is listed, a replacement listed or not", () => {
-    expect(served(new Set([...all, LIGHTNING]))).toEqual({ ok: true, listed: true, models: MODELS, replaced: [] });
+  it("calls the replacements by default, and for a retired ID set in env", async () => {
+    expect(MODELS).toMatchObject({ nano: RETIRED[NANO], super: RETIRED[SUPER], vl: "nvidia/Nemotron-3.5-Super-VL", ultra: "nvidia/Nemotron-3-Ultra-550b-a55b" });
+    vi.stubEnv("UNDERSTUDY_MODEL_NANO", NANO);
+    vi.stubEnv("UNDERSTUDY_MODEL_SUPER", "nvidia/some-other-model");
+    vi.resetModules();
+    const tf = await import("@/lib/providers/tokenfactory");
+    expect(tf.MODELS).toMatchObject({ nano: RETIRED[NANO], super: "nvidia/some-other-model" });
   });
 
-  it("moves a retired role to the replacement Token Factory names", () => {
-    const s = served(new Set([...without(MODELS.nano, MODELS.super), LIGHTNING]));
-    expect(s.ok).toBe(true);
-    expect(s.models).toMatchObject({ nano: LIGHTNING, super: MODELS.vl, vl: MODELS.vl });
-    expect(s.replaced).toEqual(["Nemotron 3 Nano → Nemotron 3.5 Lightning", "Nemotron 3 Super → Nemotron 3.5 Super VL"]);
+  it("keeps the retired models with UNDERSTUDY_KEEP_RETIRED=1, to record or rerun a bench on them", async () => {
+    vi.stubEnv("UNDERSTUDY_KEEP_RETIRED", "1");
+    vi.resetModules();
+    const tf = await import("@/lib/providers/tokenfactory");
+    expect(tf.MODELS).toMatchObject({ nano: NANO, super: SUPER });
   });
 
-  it("is not ok when a role the routes call has neither its model nor a replacement, and says which", () => {
-    const s = served(without(MODELS.nano));
-    expect(s).toMatchObject({ ok: false, listed: true, why: `missing nano=${MODELS.nano}` });
-    expect(s.models.nano).toBeNull();
+  it("is ok while every role the routes call is listed, and does not need Ultra", () => {
+    expect(served(all)).toEqual({ ok: true, listed: true, models: { vl: true, nano: true, super: true, ultra: true } });
+    expect(served(without(MODELS.ultra))).toMatchObject({ ok: true, models: { ultra: false } });
   });
 
-  it("does not need Ultra", () => {
-    expect(served(without(MODELS.ultra))).toMatchObject({ ok: true, models: { ultra: null } });
+  it("is not ok when a role the routes call is missing, and says which", () => {
+    expect(served(without(MODELS.nano))).toMatchObject({ ok: false, listed: true, why: `missing nano=${MODELS.nano}`, models: { nano: false } });
   });
 
-  const fake = (lists: () => string[]) => {
-    const list = vi.fn(async () => ({ data: lists().map((id) => ({ id })) }));
+  const fake = (ids: string[]) => {
+    const list = vi.fn(async () => ({ data: ids.map((id) => ({ id })) }));
     return { client: { models: { list } } as unknown as OpenAI, list };
   };
 
-  it("calls each ID as itself until a list read says it is gone", async () => {
-    vi.spyOn(console, "info").mockImplementation(() => {});
-    expect(current(MODELS.nano)).toBe(MODELS.nano);
-    await liveModels(fake(() => [...without(MODELS.nano), LIGHTNING]).client);
-    expect(current(MODELS.nano)).toBe(LIGHTNING);
-    expect(current(MODELS.vl)).toBe(MODELS.vl);
-    expect(current("nvidia/not-a-model")).toBe("nvidia/not-a-model");
-  });
-
-  it("reads the list once per five minutes, and again after a 404", async () => {
-    const { client, list } = fake(() => [...all, LIGHTNING]);
+  it("reads the list once per five minutes, and again after a 404, which counts the model as gone", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { client, list } = fake([...all]);
     const t = Date.now();
-    await liveModels(client, t);
+    expect((await liveModels(client, t)).ok).toBe(true);
     await liveModels(client, t + 4 * 60_000);
     expect(list).toHaveBeenCalledTimes(1);
-    vi.spyOn(console, "info").mockImplementation(() => {});
     notServed(MODELS.nano);
-    expect((await liveModels(client, t + 4 * 60_000)).models.nano).toBe(LIGHTNING);
+    expect(await liveModels(client, t + 4 * 60_000)).toMatchObject({ ok: false, models: { nano: false } });
     expect(list).toHaveBeenCalledTimes(2);
     await liveModels(client, t + 10 * 60_000);
     expect(list).toHaveBeenCalledTimes(3);

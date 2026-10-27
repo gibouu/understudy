@@ -9,7 +9,7 @@ import OpenAI from "openai";
 import type { z } from "zod";
 import { ModelOutputError, parseModelJson, type Normalizer } from "@/lib/spec/parse";
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
-import { current, MODELS, notServed, thinkingOff, usageOf, type ModelRole } from "./tokenfactory";
+import { MODELS, notServed, thinkingOff, usageOf, type ModelRole } from "./tokenfactory";
 
 /** Token Factory takes a video as a `video_url` part, which the OpenAI types do not list. */
 export type UserPart = OpenAI.ChatCompletionContentPart | { type: "video_url"; video_url: { url: string } };
@@ -34,8 +34,7 @@ export type CallOptions<T> = {
 };
 
 export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<StageResult<T>> {
-  // the role's model, or the replacement Token Factory names once it has retired it
-  const model = current(MODELS[o.role]);
+  const model = MODELS[o.role];
   const ledger: LedgerEntry[] = o.ledger ?? [];
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     ...(o.system === undefined ? [] : [{ role: "system" as const, content: o.system }]),
@@ -83,7 +82,7 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
   } catch (err) {
     // network, auth, rate limit: the SDK already retried what it could
     const status = err instanceof OpenAI.APIError ? err.status : undefined;
-    // a retired or unknown model: the next request reads the list again and replays or takes the replacement
+    // a retired or unknown model: from the next request on, every route replays
     if (status === 404) notServed(model);
     if (checked) return done(checked.value, [...checked.warnings, `${o.role}: the fix was not returned (${err instanceof Error ? err.message : String(err)})`.slice(0, 300)], ledger);
     return failed(`${o.role}: ${err instanceof Error ? err.message : String(err)}`.slice(0, 300), status === undefined || status === 429 || status >= 500);

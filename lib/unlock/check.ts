@@ -7,10 +7,12 @@
  * - in the later routes, with that token, until it lapses;
  * - anywhere, with the code in UNDERSTUDY_UNLOCK_CODE;
  * and only while the route has live calls left this minute (lib/unlock/cap.ts),
- * and while Token Factory lists a model for every role the routes call (its
- * own or the replacement Token Factory names, lib/providers/tokenfactory.ts).
- * A model gone with no replacement replays every step, whatever the pass, so
- * a session replays from its recorded label on and its steps still match.
+ * and while Token Factory lists the model of every role the routes call
+ * (lib/providers/tokenfactory.ts). A model gone replays every step, whatever
+ * the pass, so a session replays from its recorded label on and its steps
+ * still match. Each function instance reads the list on its own (every five
+ * minutes), so for those few minutes a session can be live on one step and
+ * replay the next; that step then says why.
  * Otherwise the route answers from its recording and says why, except a
  * label of a clip of your own, which is refused so the page asks for the code.
  *

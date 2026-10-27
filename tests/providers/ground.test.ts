@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import recordings from "@/tests/fixtures/ground.json";
 import compiled from "@/tests/fixtures/compile.json";
 import { POST } from "@/app/api/ground/route";
+import { MODELS } from "@/lib/providers/tokenfactory";
 import { applyChanges } from "@/lib/spec/apply";
 import { chipChange, type Grounding } from "@/lib/spec/ground";
 import { TaskSpec } from "@/lib/spec/schema";
@@ -125,7 +126,7 @@ describe("POST /api/ground live, with the network faked", () => {
     expect(r.ledger?.map((e) => [e.model, e.request_id, e.credits])).toEqual([
       ["tavily/search", "search-1", 1],
       ["tavily/extract", "extract-1", 1],
-      [expect.stringContaining("Nano"), undefined, undefined],
+      [MODELS.nano, undefined, undefined],
     ]);
     const [search, extract] = net.calls;
     expect(search.body).toMatchObject({ search_depth: "basic", include_usage: true });

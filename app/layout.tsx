@@ -34,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <div className="flex flex-1 flex-col">{children}</div>
         <footer className="border-t">
           <p className="mx-auto max-w-6xl px-4 py-5 text-sm text-muted sm:px-6">
-            Built for the Nebius × NVIDIA Global AI Hackathon 2026, Physical AI track. Models: Nemotron on Nebius Token Factory. Simulator: MuJoCo in your browser. Apache-2.0,{" "}
+            Built for the Nebius × NVIDIA Global AI Hackathon 2026, Physical AI track. Models: Nemotron on Nebius Token Factory. The ISS examples were recorded on Nemotron 3 Nano and Super, which leave Token Factory serverless on 9 Nov 2026; your own clips run on Nemotron 3.5 Lightning and Super VL in their place. Simulator: MuJoCo in your browser. Apache-2.0,{" "}
             <a className="underline underline-offset-2 hover:text-accent-text" href="https://github.com/gibouu/understudy">
               source on GitHub
             </a>

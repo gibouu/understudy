@@ -214,11 +214,17 @@ describe("the space showcase", () => {
   });
 });
 
-describe("when Token Factory no longer serves a model (#137)", () => {
-  const LIGHTNING = RETIRED[MODELS.nano]!.by;
+describe("models Token Factory retires on 9 Nov 2026 (#137)", () => {
   const gone = (...ids: string[]) => (tf.listed = tf.listed.filter((id) => !ids.includes(id)));
 
-  it("replays a whole sample session, every stage saying why, though the pass would go live", async () => {
+  it("calls the replacements Token Factory names, never Nano or Super", async () => {
+    for (const [route, body] of Object.entries(BODIES) as [Exclude<Route, "label">, object][]) {
+      expect((await post(route, { ...body, unlock: "orbit" })).live, route).toBe(true);
+    }
+    expect(new Set(tf.models)).toEqual(new Set([RETIRED["nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"], RETIRED["nvidia/nemotron-3-super-120b-a12b"]]));
+  });
+
+  it("replays a whole sample session when a model is gone, every stage saying why, though the pass would go live", async () => {
     vi.stubEnv("VERCEL_ENV", "production");
     gone(MODELS.nano);
     const label = await post("label", { clip_sha256: sampleSha, video, duration_s: 36 });
@@ -234,31 +240,10 @@ describe("when Token Factory no longer serves a model (#137)", () => {
   });
 
   it("replays a clip of your own rather than asking for a code that cannot help", async () => {
-    gone(MODELS.nano);
+    gone(MODELS.super);
     const r = await post("label", { clip_sha256: ownSha, video, duration_s: 8 });
     expect(r).toMatchObject({ status: 200, live: false, json: { status: "done" } });
     expect(why(r.json)).toBe(LIVE_RETIRED);
-  });
-
-  it("goes live on the replacement Token Factory names, and only then", async () => {
-    gone(MODELS.nano, MODELS.super);
-    tf.listed.push(LIGHTNING);
-    for (const [route, body] of Object.entries(BODIES) as [Exclude<Route, "label">, object][]) {
-      expect((await post(route, { ...body, unlock: "orbit" })).live, route).toBe(true);
-    }
-    expect(new Set(tf.models)).toEqual(new Set([LIGHTNING, RETIRED[MODELS.super]!.by]));
-  });
-
-  it("keeps a role on its own model while Token Factory still lists it", async () => {
-    tf.listed.push(LIGHTNING);
-    await post("compile", { ...BODIES.compile, unlock: "orbit" });
-    expect(new Set(tf.models)).toEqual(new Set([MODELS.nano]));
-  });
-
-  it("moves Super to Super VL, which the vision role keeps listed", async () => {
-    gone(MODELS.super);
-    expect((await post("notes", { ...BODIES.notes, unlock: "orbit" })).live).toBe(true);
-    expect(new Set(tf.models)).toEqual(new Set([RETIRED[MODELS.super]!.by]));
   });
 
   it("does not need Ultra, which no route calls", async () => {
@@ -283,21 +268,13 @@ describe("when Token Factory no longer serves a model (#137)", () => {
     expect(tf.lists).toBe(2);
   });
 
-  it("after a 404 from a model still listed, takes the replacement from the next request on", async () => {
-    tf.listed.push(LIGHTNING);
+  it("after a 404 from a model still listed, replays from the next request on", async () => {
     tf.refuse = MODELS.nano;
     const first = await post("compile", { ...BODIES.compile, unlock: "orbit" });
     expect(first.json).toMatchObject({ status: "failed" });
-    expect((await post("compile", { ...BODIES.compile, unlock: "orbit" })).live).toBe(true);
-    expect(new Set(tf.models)).toEqual(new Set([LIGHTNING]));
-    expect(tf.lists).toBe(2);
-  });
-
-  it("after a 404 with no replacement listed, replays from the next request on", async () => {
-    tf.refuse = MODELS.nano;
-    await post("compile", { ...BODIES.compile, unlock: "orbit" });
     const r = await post("compile", { ...BODIES.compile, unlock: "orbit" });
     expect(r.live).toBe(false);
     expect(why(r.json)).toContain(LIVE_RETIRED);
+    expect(tf.lists).toBe(2);
   });
 });
