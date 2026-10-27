@@ -73,11 +73,11 @@ let listing: { until: number; result: Promise<Served> } | undefined;
  */
 export function liveModels(client: OpenAI, now = Date.now()): Promise<Served> {
   if (listing && now < listing.until) return listing.result;
-  // a throw while sending, as well as a refusal, counts as a list not read
+  // a throw while sending, a refusal and an answer of the wrong shape all count as a list not read
   const result = Promise.resolve()
     .then(() => client.models.list())
-    .then(
-      (page): Served => served(new Set(page.data.map((m) => m.id))),
+    .then((page): Served => served(new Set(page.data.map((m) => m.id))))
+    .catch(
       (err: unknown): Served => ({
         ok: false,
         listed: false,

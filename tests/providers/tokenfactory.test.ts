@@ -89,6 +89,12 @@ describe("models Token Factory retires on 9 Nov 2026 (#137)", () => {
     expect(list).toHaveBeenCalledTimes(3);
   });
 
+  it.each([{ data: [null] }, { data: {} }, null])("counts a list of the wrong shape (%j) as not read, never a rejection", async (page) => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const client = { models: { list: async () => page } } as unknown as OpenAI;
+    expect(await liveModels(client)).toMatchObject({ ok: false, listed: false });
+  });
+
   it("counts a list that cannot be read as not ok, and tries again after 30 s", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     const list = vi.fn(async () => {
