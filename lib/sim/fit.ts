@@ -32,8 +32,8 @@ const clamp = (x: number, [lo, hi]: readonly [number, number]) => Math.min(Math.
 /**
  * A label with no insert or place step that still puts something down: a move of an object onto a
  * named object, then a release of it with no grasp between, is that place. The move says where the
- * object went, the release that the hand let go of it there; the release's own target wins when it
- * names another object. Super VL wrote this in 7 of the 14 labels of people's own clips that had
+ * object went, the release that the hand let go of it there. The release's own target wins, and one
+ * that names no other object stops it; so does a release with preconditions of its own. Super VL wrote this in 7 of the 14 labels of people's own clips that had
  * nothing to rehearse (docs/MEASUREMENTS.md section 15). Null when the label has no such pair; `at`
  * is where the move sits in the label.
  */
@@ -46,9 +46,12 @@ function placeFromMove(spec: TaskSpec): { act: Step; at: number; note: string } 
     const at = spec.steps.slice(0, r).findLastIndex((s) => s.object === held && s.verb === "move");
     if (at < 0 || spec.steps.slice(at + 1, r).some((s) => s.object === held && (s.verb === "grasp" || s.verb === "release"))) continue;
     const move = spec.steps[at];
-    const target = named(rel.target, held) ?? named(move.target, held);
-    if (!target) continue;
-    const act: Step = { ...move, verb: "place", target, t_end_s: Math.max(move.t_end_s, rel.t_end_s), success: [...move.success, ...rel.success], source: "fit", sources: {} };
+    // a release that names somewhere else (a point, the object itself) was not let go where the move went
+    const target = rel.target ? named(rel.target, held) : named(move.target, held);
+    // the release's own preconditions belong to the moment of letting go, which a place step's start is not
+    if (!target || rel.preconditions.length > 0) continue;
+    // the place ends as the release did: its checks and its landing tolerances; the move's checks were for the carry
+    const act: Step = { ...move, verb: "place", target, t_end_s: Math.max(move.t_end_s, rel.t_end_s), success: rel.success, tolerances: { ...move.tolerances, ...rel.tolerances }, source: "fit", sources: {} };
     return { act, at, note: `steps ${move.id} and ${rel.id}: a move onto ${target.frame}, then a release, read as a place there` };
   }
   return null;

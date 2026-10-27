@@ -143,6 +143,22 @@ describe("fitToBench, a move and then a release", () => {
     expect(fit.spec.steps[1].target?.frame).toBe("bench");
   });
 
+  it("ends as the release did: its checks and landing tolerances, not the carry's", () => {
+    const carry = { success: [{ kind: "height_above", object: "bag", value: 80 }], tolerances: { x_mm: 20, z_mm: 9 } };
+    const drop = { success: [{ kind: "inside_zone", object: "bag", target: "foam" }], tolerances: { x_mm: 1 } };
+    const fit = fitToBench(label([step("s1", "grasp", {}, 0), step("s2", "move", { ...zone("foam"), ...carry }, 1), step("s3", "release", drop, 2)]));
+    expect(fit.spec.steps[1].success).toEqual(drop.success);
+    expect(fit.spec.steps[1].tolerances).toEqual({ x_mm: 1, z_mm: 9 });
+  });
+
+  it("finds nothing when the release goes elsewhere or has preconditions of its own", () => {
+    const nothing = "no insert or place step onto a named object: nothing to rehearse";
+    const elsewhere = { target: { fixture: "zone", frame: "world" } };
+    expect(fitToBench(label([step("s1", "grasp", {}, 0), step("s2", "move", zone("foam"), 1), step("s3", "release", elsewhere, 2)])).warnings.at(-1)).toBe(nothing);
+    const upright = { preconditions: [{ kind: "tilt_under", object: "bag", value: 5 }] };
+    expect(fitToBench(label([step("s1", "grasp", {}, 0), step("s2", "move", zone("foam"), 1), step("s3", "release", upright, 2)])).warnings.at(-1)).toBe(nothing);
+  });
+
   it("finds nothing when the move names no target, the bag is never let go, or is grasped again first", () => {
     const none = (steps: unknown[]) => fitToBench(label(steps)).warnings.at(-1);
     const nothing = "no insert or place step onto a named object: nothing to rehearse";
