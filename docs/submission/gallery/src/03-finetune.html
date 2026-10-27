@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Understudy fine-tuning</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .pipe { position:absolute; left:80px; top:262px; width:560px; }
+  .p { position:relative; padding:16px 22px; border-radius:16px; background:var(--card); color:var(--ink); margin-bottom:34px; }
+  .p b { display:block; font-family:var(--disp); font-weight:800; font-size:30px; line-height:1.05; color:var(--navy); }
+  .p span { display:block; margin-top:6px; font-family:var(--mono); font-size:17.5px; line-height:1.35; color:#3b4b60; }
+  .p::after { content:""; position:absolute; left:40px; bottom:-32px; border:12px solid transparent; border-top:16px solid var(--sun); }
+  .p:last-child::after { display:none; }
+  .p.jobs { background:var(--navy-2); color:var(--cream); border:3px solid var(--sun); }
+  .p.jobs b { color:var(--sun); }
+  table { margin-top:10px; width:100%; border-collapse:collapse; font-family:var(--mono); font-size:18px; }
+  td { padding:5px 0; color:var(--cream); border-bottom:1px solid var(--navy-3); }
+  td:last-child { text-align:right; color:var(--soft); }
+  td i { display:inline-block; width:14px; height:14px; border-radius:3px; margin-right:10px; vertical-align:-1px; }
+  tr.tot td { border-bottom:none; color:var(--sun); font-weight:700; }
+  .chart { position:absolute; left:700px; top:262px; width:1020px; height:600px; border-radius:20px; background:var(--navy-2); border:2px solid var(--navy-3); }
+  .chart h3 { position:absolute; left:28px; top:20px; font-family:var(--mono); font-weight:700; font-size:20px; letter-spacing:.1em; text-transform:uppercase; color:var(--soft); }
+  .wall { position:absolute; left:700px; top:886px; width:1020px; display:grid; grid-template-columns:1.05fr 1fr; gap:18px; }
+  .w { padding:18px 22px; border-radius:16px; }
+  .w.err { background:#2a1410; border:3px solid var(--orange); }
+  .w.err .code { font-family:var(--mono); font-weight:700; font-size:40px; color:var(--tangerine); line-height:1; }
+  .w.err p { margin-top:8px; font-family:var(--mono); font-size:18px; color:#f3d9c9; line-height:1.35; }
+  .w.ok { background:var(--navy-2); border:3px solid var(--navy-3); }
+  .w.ok b { display:block; font-family:var(--disp); font-weight:800; font-size:27px; line-height:1.1; color:var(--cream); }
+  .w.ok p { margin-top:8px; font-family:var(--mono); font-size:17px; color:var(--soft); line-height:1.35; }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<div class="page">
+  <div class="kicker">Fine-tuning</div>
+  <h1>881 repairs in. <em>Five LoRAs out.</em></h1>
+  <p class="lede">Our own patch-loop data, on the bases Token Factory can tune. It cannot tune a Nemotron yet.</p>
+
+  <div class="pipe">
+    <div class="p"><b>Every run logged</b><span>patch-loop sessions and experiments, failures included</span></div>
+    <div class="p"><b>881 train · 55 validation</b><span>spec + program + simulator's note → the patch; kept only if the next rollout passed</span></div>
+    <div class="p"><b>11 cases held out</b><span>picked by a fixed hash, never trained on</span></div>
+    <div class="p jobs"><b>5 LoRA jobs on Token Factory</b><span style="color:var(--soft)">rank 16 · 5 epochs · 40 steps · all succeeded</span>
+      <table>
+        <tr><td><i style="background:#efb340"></i>Qwen3 30B-A3B</td><td>$12.20</td></tr>
+        <tr><td><i style="background:#7fb0e0"></i>Qwen3 14B</td><td>$1.75</td></tr>
+        <tr><td><i style="background:#4c9a6f"></i>Qwen3 32B</td><td>$12.25</td></tr>
+        <tr><td><i style="background:#e87d3e"></i>Llama 3.1 8B</td><td>$1.71</td></tr>
+        <tr><td><i style="background:#f7efe2"></i>Llama 3.3 70B</td><td>$11.98</td></tr>
+        <tr class="tot"><td>training, all five</td><td>$39.90</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="chart"><h3>Validation loss per epoch</h3><svg id="c" width="1020" height="600"></svg></div>
+
+  <div class="wall">
+    <div class="w err"><div class="code">HTTP 410</div><p>“LoRA adapter deployment is no longer available”: no tuned model could be served, so none was measured.</p></div>
+    <div class="w ok"><b>The product runs on Nemotron, untuned.</b><p>Untuned baselines on the held-out cases, fixed within 5 patches: Nano 29% · Qwen3 30B 73% · Super 70%.</p></div>
+  </div>
+
+  <div class="foot"><span><b>Understudy</b> · Nebius × NVIDIA Global AI Hackathon · Physical AI</span><span>losses: bench/results/finetune-tf*.json · docs/FINETUNE.md</span></div>
+</div>
+<script>
+  const data = [
+    ["Qwen3 30B-A3B", "#efb340", [0.7886, 0.6983, 0.6538, 0.6354, 0.6313]],
+    ["Qwen3 14B",     "#7fb0e0", [0.7455, 0.6631, 0.6204, 0.6668, 0.7075]],
+    ["Qwen3 32B",     "#4c9a6f", [0.7321, 0.6474, 0.6110, 0.6727, 0.7298]],
+    ["Llama 3.1 8B",  "#e87d3e", [1.2664, 0.8880, 0.7733, 0.7574, 0.7785]],
+    ["Llama 3.3 70B", "#f7efe2", [1.0612, 0.7603, 0.7066, 0.7240, 0.7500]],
+  ];
+  const svg = document.getElementById('c'), NS = 'http://www.w3.org/2000/svg';
+  const L = 110, R = 945, T = 104, B = 530, y0 = 0.55, y1 = 1.30;
+  const X = e => L + (e - 1) * (R - L) / 4, Y = v => B - (v - y0) * (B - T) / (y1 - y0);
+  const el = (n, a, t) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); if (t != null) e.textContent = t; svg.appendChild(e); return e; };
+  // epoch 3 band
+  el('rect', { x: X(3) - 46, y: T - 10, width: 92, height: B - T + 10, rx: 12, fill: 'rgba(239,179,64,.12)', stroke: 'rgba(239,179,64,.45)', 'stroke-dasharray': '6 6' });
+  el('text', { x: X(3), y: T - 22, 'text-anchor': 'middle', 'font-family': 'JetBrains Mono', 'font-size': 17, fill: '#efb340' }, 'lowest: epoch 3 (Llama 3.1 8B: epoch 4)');
+  for (let v = 0.6; v <= 1.3001; v += 0.1) {
+    el('line', { x1: L, x2: R, y1: Y(v), y2: Y(v), stroke: '#1b3150', 'stroke-width': 1.5 });
+    el('text', { x: L - 16, y: Y(v) + 6, 'text-anchor': 'end', 'font-family': 'JetBrains Mono', 'font-size': 17, fill: '#6f819a' }, v.toFixed(1));
+  }
+  for (let e = 1; e <= 5; e++) el('text', { x: X(e), y: B + 36, 'text-anchor': 'middle', 'font-family': 'JetBrains Mono', 'font-size': 18, fill: '#9fb0c6' }, 'epoch ' + e);
+  for (const [name, color, vals] of data) {
+    el('polyline', { points: vals.map((v, i) => `${X(i + 1)},${Y(v)}`).join(' '), fill: 'none', stroke: color, 'stroke-width': 5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+    vals.forEach((v, i) => el('circle', { cx: X(i + 1), cy: Y(v), r: 7, fill: '#132640', stroke: color, 'stroke-width': 4 }));
+  }
+  // end labels, nudged apart
+  const ends = data.map(([n, c, v]) => ({ n, c, y: Y(v[4]) })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < ends.length; i++) if (ends[i].y - ends[i - 1].y < 24) ends[i].y = ends[i - 1].y + 24;
+  // labels sit just right of the last point, so shift the plot area's right label column
+  ends.forEach(o => el('text', { x: R + 4, y: o.y + 6, 'text-anchor': 'end', 'font-family': 'JetBrains Mono', 'font-size': 0, fill: o.c }, ''));
+  // the 30B-A3B mixture still falls at epoch 5
+  el('text', { x: X(5) - 10, y: Y(0.6313) + 40, 'text-anchor': 'end', 'font-family': 'JetBrains Mono', 'font-size': 17, fill: '#efb340' }, '30B-A3B still falling at epoch 5');
+  el('text', { x: X(1) + 16, y: Y(1.2664) - 2, 'font-family': 'JetBrains Mono', 'font-size': 17, fill: '#e87d3e' }, 'Llama 3.1 8B');
+  el('text', { x: X(1) + 16, y: Y(1.0612) - 6, 'font-family': 'JetBrains Mono', 'font-size': 17, fill: '#f7efe2' }, 'Llama 3.3 70B');
+</script>
+</body>
+</html>
