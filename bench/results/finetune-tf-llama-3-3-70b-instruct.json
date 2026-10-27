@@ -13,21 +13,68 @@
   "job": {
     "id": "ftjob-bddc214108794fffb9f9f5c87284a5df",
     "created_at": 1793082919,
-    "status": "running",
+    "status": "succeeded",
     "usd_per_mtok": 2.8,
     "epochs": 5,
     "reservation": "52293-mvqb9uvp-0-nyeppe",
     "tokens_per_epoch": 899601,
     "trained_tokens_est": 4947806,
     "usd_est": 13.853856799999999,
-    "trained_tokens": 0,
-    "trained_steps": 0,
-    "total_steps": null,
-    "estimated_finish": null,
-    "finished_at": null,
-    "error": null
+    "trained_tokens": 4279940,
+    "trained_steps": 40,
+    "total_steps": 40,
+    "estimated_finish": 1793105990,
+    "finished_at": 1793106127,
+    "error": null,
+    "usd_actual": 11.983832
   },
-  "checkpoints": [],
+  "checkpoints": [
+    {
+      "id": "ftckpt_402d77f4-a00f-4893-a787-2fd5113224fd",
+      "step": 8,
+      "model": "ft:meta-llama/Llama-3.3-70B-Instruct-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-8",
+      "metrics": {
+        "train_loss": 1.5816013813018799,
+        "valid_loss": 1.0612220764160156
+      }
+    },
+    {
+      "id": "ftckpt_1d69efbe-eea1-444e-ac44-4a225c17378f",
+      "step": 16,
+      "model": "ft:meta-llama/Llama-3.3-70B-Instruct-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-16",
+      "metrics": {
+        "train_loss": 1.092832326889038,
+        "valid_loss": 0.7603211402893066
+      }
+    },
+    {
+      "id": "ftckpt_de43308a-bca8-4de8-a102-8c37b2e8e8e8",
+      "step": 24,
+      "model": "ft:meta-llama/Llama-3.3-70B-Instruct-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-24",
+      "metrics": {
+        "train_loss": 0.7344492077827454,
+        "valid_loss": 0.7066177129745483
+      }
+    },
+    {
+      "id": "ftckpt_95487cba-fb4f-49ef-b5c1-b9aa02611d56",
+      "step": 32,
+      "model": "ft:meta-llama/Llama-3.3-70B-Instruct-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-32",
+      "metrics": {
+        "train_loss": 0.4985228180885315,
+        "valid_loss": 0.7240307331085205
+      }
+    },
+    {
+      "id": "ftckpt_c41257d0-53af-463f-ba59-0657d8b1a787",
+      "step": 40,
+      "model": "ft:meta-llama/Llama-3.3-70B-Instruct-2026-10-27:org_placeholder:understudy-patcher:IDPlaceholder:ckpt-step-40",
+      "metrics": {
+        "train_loss": 0.32660427689552307,
+        "valid_loss": 0.7500131726264954
+      }
+    }
+  ],
   "events": [
     {
       "at": "2026-10-27T06:35:22.000Z",
@@ -43,6 +90,16 @@
       "at": "2026-10-27T06:36:15.000Z",
       "level": "info",
       "message": "Dataset 'training' processed successfully"
+    },
+    {
+      "at": "2026-10-27T12:26:01.000Z",
+      "level": "info",
+      "message": "Training started"
+    },
+    {
+      "at": "2026-10-27T13:00:53.000Z",
+      "level": "info",
+      "message": "Training completed successfully"
     }
   ]
 }
