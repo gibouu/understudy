@@ -1,7 +1,8 @@
 import OpenAI from "openai";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { callModel } from "@/lib/providers/call";
+import { errorText, hasTokenFactoryKey, tokenFactory } from "@/lib/providers/tokenfactory";
 
 const Answer = z.object({ n: z.number() });
 
@@ -87,3 +88,35 @@ describe("callModel", () => {
     expect(await callModel(fake([auth]).client, opts)).toMatchObject({ status: "failed", retryable: false });
   });
 });
+
+/** A key pasted into an env var with a stray newline (#103). */
+const SECRET = "sk-test-0123456789abcdef";
+
+describe("a malformed key never reaches a route's answer (#103)", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("keeps the key out of the answer when the SDK refuses the header", async () => {
+    // the SDK's own error quotes the Authorization header; no request leaves (port 9 refuses if one did)
+    const client = new OpenAI({ apiKey: `${SECRET}\nrest`, baseURL: "http://127.0.0.1:9/v1/", maxRetries: 0, timeout: 2_000 });
+    const r = await callModel(client, opts);
+    expect(r.status).toBe("failed");
+    expect(JSON.stringify(r)).not.toContain(SECRET.slice(3));
+  });
+
+  it("gives a fixed text for an error that is not the API's, and redacts the key from an API error", () => {
+    vi.stubEnv("NEBIUS_API_KEY", `${SECRET}\n`);
+    expect(errorText(new TypeError(`Headers.append: "Bearer ${SECRET}\n" is an invalid header value.`))).toBe("the call did not go through");
+    const api = new OpenAI.AuthenticationError(401, { message: `bad key ${SECRET}` }, undefined, new Headers());
+    expect(errorText(api)).not.toContain(SECRET);
+    expect(errorText(api)).toContain("[key]");
+  });
+
+  it("trims the key before the SDK sees it, and counts a blank one as none", () => {
+    vi.stubEnv("NEBIUS_API_KEY", `  ${SECRET}\n`);
+    expect(tokenFactory()?.apiKey).toBe(SECRET);
+    vi.stubEnv("NEBIUS_API_KEY", " \n");
+    expect(hasTokenFactoryKey()).toBe(false);
+    expect(tokenFactory()).toBeNull();
+  });
+});
+

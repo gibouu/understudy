@@ -11,7 +11,7 @@
  */
 import { connection, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { liveModels, MODELS, notServed, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
+import { errorText, liveModels, MODELS, notServed, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 
 export const maxDuration = 30;
 
@@ -47,7 +47,6 @@ export async function GET(req: Request): Promise<NextResponse<Health>> {
   } catch (err) {
     // listed but refused: the routes replay from their next request on
     if (err instanceof OpenAI.APIError && err.status === 404) notServed(MODELS.nano);
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ mode: "replay", reason: message.slice(0, 200) });
+    return NextResponse.json({ mode: "replay", reason: errorText(err).slice(0, 200) });
   }
 }
