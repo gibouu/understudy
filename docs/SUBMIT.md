@@ -31,7 +31,7 @@ Checked against `main` on 27 October: the site has no Saboteur stage (no twelve-
 | Session cost (any answer, slide or caption) | $0.0375, 17 calls, which includes the saboteur and Ultra's reshoot list | the showcase sessions: 1 to 7 calls, $0.0007 to $0.0059 |
 | Testing instructions | "Try a sample clip", the cost ledger | the space showcase and Try it, as they are |
 
-Outside this file: the thumbnail (`docs/submission/thumbnail.html`, and the `thumbnail.jpg` / `thumbnail.png` made from it) and the home page (`app/page.tsx`) now say only what the site does: watch, ask, rehearse at 1 g and 0 g, patch; a recorded session costs 1 to 7 calls, US$0.0007 to US$0.0059. "Approach: no fine-tuning" stays true of the site, but if the fine-tune answer of PR #136 goes into Devpost the two must agree.
+Outside this file: the thumbnail (`docs/submission/thumbnail.html`, and the `thumbnail.jpg` / `thumbnail.png` made from it) and the home page (`app/page.tsx`) now say only what the site does (the thumbnail: the NASA clip, the robot's question from its recording, the simulated arm rehearsing it at 0 g); a recorded session costs 1 to 7 calls, US$0.0007 to US$0.0059. "Approach: no fine-tuning" stays true of the site, but if the fine-tune answer of PR #136 goes into Devpost the two must agree.
 
 ## Description (what, why, how)
 
@@ -94,7 +94,7 @@ Watch an astronaut do a task once, ask what the camera missed, rehearse it on a 
 
 ## Thumbnail
 
-`docs/submission/thumbnail.jpg` (1800 x 1200, 3:2).
+`docs/submission/thumbnail.jpg` (1800 x 1200, 3:2): the astronaut on the ISS, the robot's question from the recording, the simulated SO-101 doing the task at 0 g. Source and how it is made: `docs/submission/README.md`.
 
 ## Additional info (organiser questions), draft answers
 
