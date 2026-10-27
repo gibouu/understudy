@@ -37,7 +37,7 @@
 // default base, and in bench/results/finetune-tf-<base, as a slug>.json for any other.
 // The key comes from UNDERSTUDY_ENV_FILE (default .env.local), as in every bench script.
 import { spawn } from "node:child_process";
-import { closeSync, existsSync, openSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, openSync, readdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import { createHash } from "node:crypto";
 import path from "node:path";
@@ -54,12 +54,24 @@ const opt = (name) => {
 };
 export const DEFAULT_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507";
 const BASE_MODEL = opt("--model") ?? DEFAULT_MODEL;
-/** a model id as a file-name part: Qwen/Qwen3-14B -> qwen-qwen3-14b */
-export const slug = (model) => model.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+/**
+ * A base model's identity, whatever the spelling: Token Factory names one model several ways (its cookbook
+ * fine-tunes meta-llama/Llama-3.1-8B-Instruct and serves meta-llama/Meta-Llama-3.1-8B-Instruct), so the
+ * organisation, the case and a "Meta-" prefix are dropped, and the rest kept as a file-name part:
+ * Qwen/Qwen3-14B -> qwen3-14b, both Llama spellings -> llama-3-1-8b-instruct.
+ */
+export const canon = (model) =>
+  String(model)
+    .split("/")
+    .pop()
+    .toLowerCase()
+    .replace(/^meta-(?=llama)/, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 // overridable for the tests only (tests/providers/finetune-tf.test.ts runs this script against a local mock)
 const DEFAULT_STATE = process.env.FINETUNE_TF_STATE ?? path.join(ROOT, "bench/results/finetune-tf.json");
 // the default base keeps the file it always had; every other base gets its own, so its job, lock and guards are its own
-const STATE = BASE_MODEL === DEFAULT_MODEL ? DEFAULT_STATE : DEFAULT_STATE.replace(/\.json$/, `-${slug(BASE_MODEL)}.json`);
+const STATE = canon(BASE_MODEL) === canon(DEFAULT_MODEL) ? DEFAULT_STATE : DEFAULT_STATE.replace(/\.json$/, `-${canon(BASE_MODEL)}.json`);
 const BASE_URL = process.env.FINETUNE_TF_BASE_URL ?? "https://api.tokenfactory.nebius.com/v1/";
 const DATA = path.join(ROOT, "bench/finetune");
 const SCRIPT = "finetune-tf";
@@ -78,7 +90,7 @@ export const EPOCHS = 5;
 const state = () => {
   if (!existsSync(STATE)) return { base_model: BASE_MODEL };
   const s = JSON.parse(readFileSync(STATE, "utf8"));
-  if (s.base_model !== BASE_MODEL) throw new Error(`${STATE} is the state of ${s.base_model}, not of ${BASE_MODEL}`);
+  if (s.base_model !== BASE_MODEL) throw new Error(`${STATE} is the state of ${s.base_model}, not of ${BASE_MODEL}: use that spelling`);
   return s;
 };
 /** write a temporary file and rename it over: a reader sees the old state or the new one, never a half-written file */
@@ -93,8 +105,7 @@ const sha256 = (buf) => createHash("sha256").update(buf).digest("hex");
  * One create or settle at a time: an exclusive lock file next to the state, so two shells cannot both
  * pass the "no job yet" check and pay twice, or settle the same job twice.
  */
-async function locked(fn) {
-  const lock = `${STATE}.lock`;
+async function locked(fn, lock = `${STATE}.lock`) {
   let fd;
   try {
     fd = openSync(lock, "wx");
@@ -119,6 +130,25 @@ async function lockedWait(fn) {
     }
   }
 }
+/**
+ * What the other bases' jobs will still take from the balance: the estimate of every one that is pending or not
+ * known to have ended (Token Factory takes a job's cost from the balance as it trains, so a balance read in the
+ * console does not show it yet). A state not refreshed by status errs high, which only makes the floor stricter.
+ */
+function othersUnbilled() {
+  const dir = path.dirname(DEFAULT_STATE);
+  const stem = path.basename(DEFAULT_STATE, ".json");
+  const out = [];
+  for (const f of readdirSync(dir)) {
+    const file = path.join(dir, f);
+    if (file === STATE || !(f === `${stem}.json` || (f.startsWith(`${stem}-`) && f.endsWith(".json")))) continue;
+    const o = JSON.parse(readFileSync(file, "utf8"));
+    if (o.pending) out.push({ model: o.base_model, usd: o.pending.usd_est, what: "pending" });
+    else if (o.job && !["succeeded", "failed", "cancelled"].includes(o.job.status)) out.push({ model: o.base_model, usd: o.job.usd_est, what: o.job.status });
+  }
+  return out;
+}
+
 /** the ledger already holds a charge that settles this reservation */
 const settled = (id) => entries().some((e) => e.settles === id);
 
@@ -136,7 +166,7 @@ export function estimate(meta, epochs, usdPerMtok) {
 /** refuse a job whose estimate would take the balance under the floor */
 export function checkBudget(balanceUsd, usdEst, floor = FLOOR_USD) {
   if (!(balanceUsd > 0)) throw new Error("--balance-usd: the Token Factory balance, read in the console (Billing); the API cannot read it");
-  if (balanceUsd - usdEst < floor) throw new Error(`the estimate US$${usdEst.toFixed(2)} would leave US$${(balanceUsd - usdEst).toFixed(2)}, under the US$${floor} floor the live demo needs`);
+  if (balanceUsd - usdEst < floor) throw new Error(`the estimate US$${usdEst.toFixed(2)} (with the other bases' jobs not billed yet) would leave US$${(balanceUsd - usdEst).toFixed(2)}, under the US$${floor} floor the live demo needs`);
 }
 
 /** no SDK retries: a retried create whose first answer was lost could start a second paid job */
@@ -163,7 +193,9 @@ async function main() {
       save(s);
     });
   } else if (cmd === "create") {
-    await locked(async () => {
+    // creates on every base take one shared lock as well as their own: the floor below counts the other bases'
+    // jobs, so two creates must not both count before either has marked its own
+    await locked(() => locked(async () => {
       const s = state();
       const dry = args.includes("--dry-run");
       if (!dry && (!s["train.jsonl"] || !s["val.jsonl"])) throw new Error("run upload first");
@@ -177,7 +209,10 @@ async function main() {
       const epochs = Number(opt("--epochs") ?? EPOCHS);
       const meta = readFileSync(path.join(DATA, "train.meta.jsonl"), "utf8").trim().split("\n").map((l) => JSON.parse(l));
       const est = estimate(meta, epochs, usdPerMtok);
-      checkBudget(Number(opt("--balance-usd")), est.usd_est);
+      // the balance is shared by every base: the other bases' jobs not billed yet count against the floor too
+      const others = othersUnbilled();
+      if (others.length) console.log(`other jobs not billed yet: ${others.map((o) => `${o.model} ${o.what} US$${o.usd.toFixed(2)}`).join(", ")}`);
+      checkBudget(Number(opt("--balance-usd")), est.usd_est + others.reduce((n, o) => n + o.usd, 0));
       const request = { model: BASE_MODEL, training_file: s["train.jsonl"]?.id ?? "<not uploaded>", validation_file: s["val.jsonl"]?.id ?? "<not uploaded>", hyperparameters: { ...HYPER, n_epochs: epochs }, seed: 42, suffix: "understudy-patcher" };
       console.log(JSON.stringify({ ...est, usd_per_mtok: usdPerMtok, request }, null, 2));
       if (dry) return;
@@ -186,7 +221,7 @@ async function main() {
       const listed = (await tf.fineTuning.jobs.list({ limit: 100 })).data ?? [];
       // the job list is shared by every checkout and shell using this key: a job on this model that did not fail
       // (queued, running or succeeded) is enough, unless a second training run is meant (--allow-another-job)
-      const live = listed.filter((j) => j.model === BASE_MODEL && !["failed", "cancelled"].includes(j.status));
+      const live = listed.filter((j) => canon(j.model) === canon(BASE_MODEL) && !["failed", "cancelled"].includes(j.status));
       if (live.length && !args.includes("--allow-another-job")) throw new Error(`Token Factory already has a job on ${BASE_MODEL} (${live.map((j) => `${j.id} ${j.status}`).join(", ")}): track that one, or pass --allow-another-job for a second run`);
       const before = listed.map((j) => j.id);
       const reservation = guard(est.usd_est, { script: SCRIPT, capUsd: 100, meta: { model: BASE_MODEL, stage: "fine-tune", ...est } });
@@ -202,13 +237,13 @@ async function main() {
         throw new Error(`create failed (${s.pending.error}); a job may still have started. Check, then run adopt, or release --confirm-no-job`);
       }
       start(s, job);
-    });
+    }), `${DEFAULT_STATE}.create.lock`);
   } else if (cmd === "adopt") {
     await locked(async () => {
       const s = state();
       if (!s.pending) throw new Error("nothing pending");
       const listed = (await client().fineTuning.jobs.list({ limit: 100 })).data ?? [];
-      const mine = listed.filter((j) => !s.pending.before.includes(j.id) && j.training_file === s.pending.training_file);
+      const mine = listed.filter((j) => !s.pending.before.includes(j.id) && j.training_file === s.pending.training_file && canon(j.model) === canon(BASE_MODEL));
       if (mine.length !== 1) throw new Error(`${mine.length} new jobs on ${s.pending.training_file}: adopt needs exactly one; check the console`);
       start(s, mine[0]);
     });

@@ -326,7 +326,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
 
   it("--model: another base gets its own state, lock and job, one job per base, without touching the default's", async () => {
     const m = ["--model", "Qwen/Qwen3-14B"];
-    const other = env.FINETUNE_TF_STATE.replace(/\.json$/, "-qwen-qwen3-14b.json");
+    const other = env.FINETUNE_TF_STATE.replace(/\.json$/, "-qwen3-14b.json");
     const defaultBefore = readFileSync(env.FINETUNE_TF_STATE, "utf8");
     // the default base's state is locked: the other base is not held up by it
     writeFileSync(`${env.FINETUNE_TF_STATE}.lock`, "123\n");
@@ -352,5 +352,33 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     writeFileSync(other, defaultBefore);
     expect(await fails("status", ...m)).toMatch(/is the state of Qwen\/Qwen3-30B-A3B-Instruct-2507, not of Qwen\/Qwen3-14B/);
     expect(await fails("endpoint-create", ...m, "--custom-weights-id", "w-9", "--minutes", "10")).toMatch(/offer for Qwen\/Qwen3-30B-A3B-Instruct-2507 only/);
+    unlinkSync(other);
+  }, 60_000);
+
+  it("--model: one base under two spellings, the floor across bases, and adopt within its own base", async () => {
+    const l8 = ["--model", "meta-llama/Meta-Llama-3.1-8B-Instruct"];
+    // the account has a job on the other spelling of the same model: no second job
+    jobs.push({ id: "ftjob-llama-elsewhere", object: "fine_tuning.job", model: "meta-llama/Llama-3.1-8B-Instruct", training_file: "file-other", created_at: 1, status: "running", trained_tokens: null });
+    await tf("upload", ...l8);
+    expect(await fails("create", ...l8, "--usd-per-mtok", "0.4", "--balance-usd", "60")).toMatch(/already has a job .*ftjob-llama-elsewhere running/);
+    jobs.pop();
+    // and the other spelling finds this spelling's state, refuses it, and so shares its lock
+    expect(await fails("status", "--model", "meta-llama/Llama-3.1-8B-Instruct")).toMatch(/is the state of meta-llama\/Meta-Llama-3.1-8B-Instruct.*use that spelling/);
+    // one base's job not billed yet counts against the floor for the next base: each alone fits, both do not
+    await tf("create", ...l8, "--usd-per-mtok", "0.4", "--balance-usd", "60");
+    const q8 = ["--model", "Qwen/Qwen3-8B"];
+    await tf("upload", ...q8);
+    // 4.95M tokens at US$5: US$24.74 alone leaves US$16.26 of US$41; with the Llama job's US$1.98, US$14.28
+    expect(await fails("create", ...q8, "--usd-per-mtok", "5", "--balance-usd", "41")).toMatch(/under the US\$15 floor/);
+    // a create that started nothing on one base, then a job on another base from the same training file:
+    // adopt takes only a job on its own base (every upload in this stand-in returns the same file id)
+    failCreate = "rejected";
+    expect(await fails("create", ...q8, "--usd-per-mtok", "0.4", "--balance-usd", "60")).toMatch(/adopt, or release/);
+    failCreate = "no";
+    const q4 = ["--model", "Qwen/Qwen3-4B"];
+    await tf("upload", ...q4);
+    await tf("create", ...q4, "--usd-per-mtok", "0.4", "--balance-usd", "60");
+    expect(await fails("adopt", ...q8)).toMatch(/0 new jobs/);
+    await tf("release", ...q8, "--confirm-no-job");
   }, 60_000);
 });
