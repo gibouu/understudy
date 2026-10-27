@@ -13,6 +13,7 @@ import { pourOf } from "@/lib/variants/pour";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
 import { gateNote } from "@/lib/unlock/messages";
 import { liveAuth } from "./capture";
+import { answeredBy, useModels } from "./models";
 import { PatchLoop } from "./patch-loop";
 
 /** The same two worlds as the rehearsal above. */
@@ -74,6 +75,7 @@ export function Variants({ spec, program }: { spec: TaskSpec; program: Program }
 }
 
 function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
+  const say = useModels();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const clientRef = useRef<SimClient | null>(null);
   const [status, setStatus] = useState("starting");
@@ -158,7 +160,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
 
   async function suggestVariants() {
     const id = gen.current;
-    setSuggest(running("Super is thinking of similar tasks"));
+    setSuggest(running(`${say("super")} is thinking of similar tasks`));
     const r = await post<Checked>("/api/variants", { spec, first: reserve(MAX_VARIANTS) });
     if (id !== gen.current) return;
     setSuggest(r);
@@ -169,7 +171,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
     const line = request.trim();
     if (!line) return;
     const id = gen.current;
-    setAsk(running("Super is writing it as spec changes"));
+    setAsk(running(`${say("super")} is writing it as spec changes`));
     const r = await post<Checked>("/api/variants", { spec, request: line, first: reserve(1) });
     if (id !== gen.current) return;
     setAsk(r);
@@ -219,7 +221,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
           const prev: Run | undefined = rs[v.id];
           return { ...rs, [v.id]: { ...(prev ?? { n: 0, compile: idle(), worlds: {}, ledger: [] }), ...run } };
         });
-      setRuns((rs) => ({ ...rs, [v.id]: { n: (rs[v.id]?.n ?? 0) + 1, compile: running("Nano is writing its program"), worlds: {}, ledger: [] } }));
+      setRuns((rs) => ({ ...rs, [v.id]: { n: (rs[v.id]?.n ?? 0) + 1, compile: running(`${say("nano")} is writing its program`), worlds: {}, ledger: [] } }));
       const c = await post<Program>("/api/compile", { spec: v.spec, previous: program });
       if (id !== gen.current) return;
       update({ compile: c, ledger: callOf("", c).ledger });
@@ -251,7 +253,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-[color:var(--muted,#737373)]">
-        The same task with something changed: Super writes each one as changes to the spec above, Nano writes its program, and the arm rehearses it on Earth and in orbit. The answers given above carry over.
+        The same task with something changed: {say("super")} writes each one as changes to the spec above, {say("nano")} writes its program, and the arm rehearses it on Earth and in orbit. The answers given above carry over.
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -436,7 +438,7 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
           )}
           {cost && (
             <p className="mt-1 text-xs text-[color:var(--muted,#737373)]">
-              Its program: {cost.calls} Nano call{cost.calls === 1 ? "" : "s"}, {usd(cost.usd)}
+              Its program: {cost.calls} {answeredBy(run.ledger)} call{cost.calls === 1 ? "" : "s"}, {usd(cost.usd)}
               {run.compile.status === "done" && replayed(run.compile) && ` (${gateNote(run.compile.warnings) ?? "recorded"})`}
             </p>
           )}

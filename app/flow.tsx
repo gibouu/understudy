@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { useRef, useState } from "react";
 import { estimate, usual, type Stage } from "@/lib/estimate";
 import { SAMPLES, type Sample } from "@/lib/samples";
-import { formAnswers, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
+import { formAnswers, recordedBy, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
 import { Session } from "@/lib/showcase/session";
 import { fitToBench, type Fit } from "@/lib/sim/fit";
 import { formFor } from "@/lib/spec/answer";
@@ -16,6 +16,7 @@ import { clipSha256, makeProxy } from "@/lib/vision/proxy";
 import { withGesturePaths } from "@/lib/vision/trace";
 import { FilmYourself, keepSampleToken, liveAuth, UnlockPrompt } from "./capture";
 import { GroundChips } from "./ground-chips";
+import { answeredBy, useModels, type Role } from "./models";
 import { ProgramView, type Failure } from "./program-view";
 import { Working } from "./working";
 
@@ -28,14 +29,14 @@ const Variants = dynamic(() => import("./variants").then((m) => m.Variants), { s
 /** Nano asks about one gap per compile; past this many rounds the page stops asking. */
 const MAX_ROUNDS = 6;
 
-/** What each stage is doing and why, one line each. */
-const LINES: Record<Exclude<Stage, "notes">, string> = {
+/** What each stage is doing and why, one line each, naming the model this deployment calls for it. */
+const lines = (say: (role: Role) => string): Record<Exclude<Stage, "notes">, string> => ({
   recorded: "Opening the recording of this clip",
   proxy: "Making a small copy of the clip in your browser, 480 px wide at 4 frames a second, so it uploads quickly",
-  watch: "Nemotron 3.5 Super VL is watching the clip on Token Factory, to name the objects and the steps",
+  watch: `${say("vl")} is watching the clip on Token Factory, to name the objects and the steps`,
   trace: "MediaPipe is tracing the hand in your browser, so the arm can follow the same path",
-  compile: "Nemotron 3 Nano is writing the robot's program, with a question for each number it would have to guess",
-};
+  compile: `${say("nano")} is writing the robot's program, with a question for each number it would have to guess`,
+});
 
 /** The clip being worked on: a sample (with its showcase recording, when it has one) or a clip of your own. */
 type Clip = { blob: Blob; url: string; sample?: Sample; rec?: Session | null };
@@ -55,6 +56,7 @@ async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
 }
 
 export function Flow() {
+  const say = useModels();
   const [clip, setClip] = useState<Clip | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
   /** the stage running in each box, and Date.now() when it began */
@@ -116,7 +118,7 @@ export function Flow() {
   }
 
   /** A stage starts in a box: its line shows and its clock restarts; tracing's frame counts keep its clock running. */
-  function step(box: Box, stage: Exclude<Stage, "notes">, note: string = LINES[stage]) {
+  function step(box: Box, stage: Exclude<Stage, "notes">, note: string = lines(say)[stage]) {
     setClock((x) => (stage === "trace" && x[box].stage === "trace" && x[box].at > 0 ? x : { ...x, [box]: { stage, at: Date.now() } }));
     if (box === "label") setLabel(running(note));
     else setProgram(running(note));
@@ -171,7 +173,7 @@ export function Flow() {
       ? { result: labelled, notes: [] }
       : await withGesturePaths(labelled, clip.blob, (note) => {
           const frame = /frame \d+ of \d+/.exec(note)?.[0];
-          if (id === gen.current) step("label", "trace", frame ? `${LINES.trace}: ${frame}` : LINES.trace);
+          if (id === gen.current) step("label", "trace", frame ? `${lines(say).trace}: ${frame}` : lines(say).trace);
         });
     if (id !== gen.current) return;
     setLabel(r);
@@ -203,6 +205,11 @@ export function Flow() {
   }
 
   const asks = program.status === "done" ? asksOf(program.value) : [];
+  /** a program of gestures alone is written by the compile route itself, with no model (lib/sim/gesture.ts) */
+  const gestures = Boolean(spec?.steps.length) && spec!.steps.every((s) => s.verb === "gesture");
+  /** A section names who answered its result (its ledger, or the recording's calls for that stage), else the model this deployment calls. */
+  const named = (r: StageResult<unknown>, stage: "label" | "compile", role: Role) =>
+    (r.status === "done" ? (answeredBy(r.ledger) ?? (clip?.rec && recordedLine(r.warnings) ? recordedBy(clip.rec, stage) : undefined)) : undefined) ?? say(role);
   const ready = program.status === "done" && spec && (asks.length === 0 || turn >= MAX_ROUNDS);
 
   return (
@@ -254,7 +261,7 @@ export function Flow() {
       </Section>
 
       {label.status !== "idle" && (
-        <Section n={2} title="What the model saw" model="Nemotron 3.5 Super VL">
+        <Section n={2} title="What the model saw" model={named(label, "label", "vl")}>
           <Status result={label} clock={clock.label} duration={duration} />
           {label.status === "failed" && <UnlockPrompt message={label.message} onUnlock={watch} />}
           {label.status === "done" && <SpecSummary spec={label.value} />}
@@ -286,7 +293,7 @@ export function Flow() {
       )}
 
       {program.status !== "idle" && spec && (
-        <Section n={4} title="Questions from the robot" model="Nemotron 3 Nano">
+        <Section n={4} title="Questions from the robot" model={gestures ? "no model: the arm follows the traced path" : named(program, "compile", "nano")}>
           <Status result={program} clock={clock.program} duration={duration} />
           {program.status === "done" && asks.length === 0 && <p className="text-sm text-emerald-700">No open questions: the program has everything it needs.</p>}
           {program.status === "done" && asks.length > 0 && turn < MAX_ROUNDS && (
@@ -297,7 +304,7 @@ export function Flow() {
                 answer(asks);
               }}
             >
-              {recordedLine(program.warnings) && Object.keys(answers).length > 0 && <p className="text-xs text-neutral-500">The answers given when this clip was recorded are filled in. Change one and Nano answers live.</p>}
+              {recordedLine(program.warnings) && Object.keys(answers).length > 0 && <p className="text-xs text-neutral-500">The answers given when this clip was recorded are filled in. Change one and {say("nano")} answers live.</p>}
               {asks.map((a) => (
                 <AskField key={a.slot} ask={a} spec={spec} value={answers[a.slot] ?? ""} onChange={(v) => setAnswers({ ...answers, [a.slot]: v })} />
               ))}
@@ -313,12 +320,12 @@ export function Flow() {
           ))}
           {program.status === "done" && (
             <div className="mt-4 border-t pt-4">
-              <ProgramView spec={spec} program={program.value} failure={failure} />
+              <ProgramView spec={spec} program={program.value} failure={failure} by={gestures ? "The page" : named(program, "compile", "nano")} />
             </div>
           )}
           {program.status !== "running" && (
             <button className="self-start text-xs text-neutral-500 underline" onClick={() => compile(spec, program.status === "done" ? program.value : undefined, true)}>
-              Ask Nano again
+              Ask {say("nano")} again
             </button>
           )}
           {turn > 0 && <p className="text-xs text-neutral-500">{turn} answer{turn > 1 ? "s" : ""} so far; each one recompiles the program.</p>}
@@ -333,7 +340,7 @@ export function Flow() {
       )}
 
       {ready && program.status === "done" && !spec.steps.some((s) => s.verb === "gesture") && (
-        <Section n={6} title="Try a similar task" model="Nemotron 3 Super · Nemotron 3 Nano">
+        <Section n={6} title="Try a similar task" model={`${say("super")} · ${say("nano")}`}>
           <Variants spec={spec} program={program.value} />
         </Section>
       )}

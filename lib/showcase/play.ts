@@ -45,8 +45,14 @@ export const recordedDay = (iso: string) => new Date(iso).toLocaleDateString("en
 
 /** The route answer's first warning: "replay: recorded on 27 Oct 2026, Nemotron 3 Nano", naming the models that answered that stage. */
 export function recordedNote(rec: { recorded_at: string; ledger: Call[] }, stage: Call["stage"]): string {
+  const by = recordedBy(rec, stage);
+  return `${RECORDED}${recordedDay(rec.recorded_at)}${by ? `, ${by}` : ""}`;
+}
+
+/** The models a recording's stage was answered by, "Nemotron 3 Nano"; undefined when no model answered it (a gesture's program). */
+export function recordedBy(rec: { ledger: Call[] }, stage: Call["stage"]): string | undefined {
   const models = [...new Set(rec.ledger.filter((c) => c.stage === stage).map((c) => modelLabel(c.model)))];
-  return `${RECORDED}${recordedDay(rec.recorded_at)}${models.length ? `, ${models.join(", ")}` : ""}`;
+  return models.length ? models.join(" · ") : undefined;
 }
 
 /** The note in words for the page, without its "replay: " prefix; undefined when the answer was not recorded. */

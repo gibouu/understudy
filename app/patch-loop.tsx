@@ -2,18 +2,35 @@
 
 import { useEffect, useRef, useState } from "react";
 import { outcomeLine, type WorldRun } from "@/lib/notes/note";
-import { MAX_PATCHES, type Attempt, type NotePatch } from "@/lib/notes/patch";
+import { escalation, MAX_PATCHES, type Attempt, type NotePatch } from "@/lib/notes/patch";
+import { modelLabel } from "@/lib/providers/models";
 import { GRAVITIES, type Program, type TaskSpec } from "@/lib/spec/schema";
 import { failed, type StageResult } from "@/lib/spec/stage-result";
 import { usual } from "@/lib/estimate";
 import { gateNote } from "@/lib/unlock/messages";
+import type { LiveModels } from "./api/models/route";
 import { liveAuth } from "./capture";
+import { useLiveModels, useModels } from "./models";
 import { Working } from "./working";
 
 /** `replayed`: what the patch line says when it came from a recording, the spend guard's reason when that is why */
-type Iteration = { n: number; state: "asking" | "rehearsing" | "done" | "failed"; at: number; patch?: NotePatch; replayed?: string; runs?: WorldRun[]; message?: string };
+/** `stuck`: the loop had escalated when this patch was asked, so the deeper patcher answers it */
+type Iteration = { n: number; state: "asking" | "rehearsing" | "done" | "failed"; at: number; stuck: boolean; patch?: NotePatch; replayed?: string; runs?: WorldRun[]; message?: string };
 
-const WHY_THINKING = { noop: "thinking on: the cheap patch changed nothing", two_failed: "thinking on: two patches failed" } as const;
+const WHY_STUCK = { noop: "the cheap patch changed nothing", two_failed: "two patches failed" } as const;
+
+/**
+ * Who wrote a patch, from the patch itself: "Nemotron 3 Super, thinking on: two patches failed", or,
+ * when a stuck loop was handed to another model (Ultra in place of a patcher that cannot think within
+ * the budget, app/api/notes/route.ts), "Nemotron 3 Ultra: two patches failed". Recordings keep their model.
+ */
+export function patcher(p: NotePatch, ids: LiveModels | null): string {
+  const who = modelLabel(p.model);
+  const why = p.escalation ? WHY_STUCK[p.escalation] : null;
+  const handed = p.thinking && ids !== null && ids.stuck !== ids.super && p.model === ids.stuck;
+  if (handed) return why ? `${who}: ${why}` : who;
+  return `${who}, ${p.thinking ? `thinking on${why ? `: ${why}` : ""}` : "thinking off"}`;
+}
 
 /**
  * The Notes stage: Super reads what the simulator measured in the failed rehearsal and changes the
@@ -22,6 +39,8 @@ const WHY_THINKING = { noop: "thinking on: the cheap patch changed nothing", two
  * Keyed by the rehearsal it patches, so a new one starts from scratch.
  */
 export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, disabled = false }: { spec: TaskSpec; program: Program; first: WorldRun[]; rehearse: (p: Program) => Promise<WorldRun[]>; onBusy: (busy: boolean) => void; onPatch?: (r: StageResult<NotePatch>) => void; disabled?: boolean }) {
+  const ids = useLiveModels();
+  const say = useModels();
   const [its, setIts] = useState<Iteration[]>([]);
   const [busy, setBusy] = useState(false);
   /** bumped on unmount (a new rehearsal or program mounts a fresh loop): a reply for an old one is dropped */
@@ -45,7 +64,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
     let current = program;
     let last = first;
     for (let n = 1; n <= MAX_PATCHES; n++) {
-      setIts((xs) => [...xs, { n, state: "asking", at: Date.now() }]);
+      setIts((xs) => [...xs, { n, state: "asking", at: Date.now(), stuck: escalation(history) !== null }]);
       const r = await post<NotePatch>("/api/notes", { spec, program: current, runs: last, first: outcomeLine(first), history });
       if (id !== gen.current) return;
       onPatch?.(r);
@@ -79,10 +98,11 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
     <div className="mt-2 flex flex-col gap-3 border-t pt-4">
       <div className="flex items-baseline justify-between gap-4">
         <p className="text-sm font-medium">Notes: patch the failing step</p>
-        <span className="truncate text-xs text-neutral-500">Nemotron 3 Super</span>
+        <span className="truncate text-xs text-neutral-500">{[...new Set(its.flatMap((x) => (x.patch ? [modelLabel(x.patch.model)] : [])))].join(" · ") || say("super")}</span>
       </div>
       <p className="text-sm text-neutral-600">
-        Super reads what the simulator measured and changes the numbers of the step that failed. Each patch is rehearsed again on Earth and in orbit, up to {MAX_PATCHES} times. It thinks only when the cheap answer gets stuck.
+        {say("super")} reads what the simulator measured and changes the numbers of the step that failed. Each patch is rehearsed again on Earth and in orbit, up to {MAX_PATCHES} times.{" "}
+        {ids && ids.stuck !== ids.super ? `When the cheap answer gets stuck, ${say("stuck")} answers instead.` : "It thinks only when the cheap answer gets stuck."}
       </p>
       <div>
         <button className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40" disabled={busy || disabled} onClick={patch}>
@@ -97,12 +117,12 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
                 <span className="font-medium">Patch {x.n}</span>
                 {x.patch && (
                   <span className="text-xs text-neutral-500">
-                    {x.patch.thinking ? (x.patch.escalation ? WHY_THINKING[x.patch.escalation] : "thinking on") : "thinking off"} · {x.patch.tokens.toLocaleString()} tokens · ${x.patch.cost_usd.toFixed(4)}
+                    {patcher(x.patch, ids)} · {x.patch.tokens.toLocaleString()} tokens · ${x.patch.cost_usd.toFixed(4)}
                     {x.replayed ? ` · ${x.replayed}` : ""}
                   </span>
                 )}
               </div>
-              {x.state === "asking" && <Working note="Nemotron 3 Super is reading what the simulator measured, to change the numbers of the step that failed" since={x.at} usual={usual("notes", null)} />}
+              {x.state === "asking" && <Working note={`${say(x.stuck ? "stuck" : "super")} is reading what the simulator measured, to change the numbers of the step that failed`} since={x.at} usual={usual("notes", null)} />}
               {x.state === "failed" && <p className="text-red-700">{x.message}</p>}
               {x.patch && (
                 <div className="mt-1 flex flex-col gap-1">

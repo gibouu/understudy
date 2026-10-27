@@ -45,7 +45,8 @@ function recordings(): Promise<Kept[]> {
 /** The label Super VL gave a sample clip when it was recorded, or null. */
 export async function recordedLabel(sha256: string): Promise<StageResult<TaskSpec> | null> {
   const rec = (await recordings()).find((r) => r.clip.sha256 === sha256);
-  return rec ? done(rec.label.spec, [recordedNote(rec, "label"), ...rec.label.warnings]) : null;
+  // its recorded calls come along, so the page names the model that answered then
+  return rec ? done(rec.label.spec, [recordedNote(rec, "label"), ...rec.label.warnings], rec.ledger.filter((c) => c.stage === "label")) : null;
 }
 
 /**
