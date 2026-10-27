@@ -9,6 +9,7 @@ import { Session } from "@/lib/showcase/session";
 import { fitToBench, type Fit } from "@/lib/sim/fit";
 import { formFor, WAITING_NOTE, waitingProgram } from "@/lib/spec/answer";
 import { applyChanges } from "@/lib/spec/apply";
+import { LINE_MAX, oneArmLine, scopeNotes, sentenceOf } from "@/lib/spec/confirm";
 import type { Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { gateNote } from "@/lib/unlock/messages";
@@ -72,6 +73,8 @@ export function Flow() {
   const [turn, setTurn] = useState(0);
   const [notes, setNotes] = useState<string[]>([]);
   const [failure, setFailure] = useState<Failure | null>(null);
+  /** a live label waiting for the person to confirm it (#158): the tracing notes its fit will carry */
+  const [unconfirmed, setUnconfirmed] = useState<string[] | null>(null);
   const pick = useRef(0);
   /** bumped by every reset: a reply that lands after a newer clip or run is dropped */
   const gen = useRef(0);
@@ -88,6 +91,7 @@ export function Flow() {
     setTurn(0);
     setNotes([]);
     setFailure(null);
+    setUnconfirmed(null);
   }
 
   function choose(blob: Blob, nextHint: string, sample?: Sample, rec?: Session | null) {
@@ -158,18 +162,19 @@ export function Flow() {
   }
 
   /** The label from the sample's recording, when the line typed is still the one it was recorded with; null to label live. */
-  async function recordedLabel(c: Clip): Promise<StageResult<TaskSpec> | null> {
-    if (!c.sample || hint.trim() !== c.sample.hint) return null;
+  async function recordedLabel(c: Clip, line: string): Promise<StageResult<TaskSpec> | null> {
+    if (!c.sample || line.trim() !== c.sample.hint) return null;
     step("label", "recorded");
     const r = await post<TaskSpec>("/api/label", { clip_sha256: await clipSha256(c.blob), recorded: true });
     return r.status === "done" ? r : null;
   }
 
-  async function watch() {
+  /** `line`: the person's one line about the clip, sent as the hint (a rewrite of the label's sentence passes its own). */
+  async function watch(line: string = hint) {
     if (!clip) return;
     reset();
     const id = gen.current;
-    let labelled = await recordedLabel(clip);
+    let labelled = await recordedLabel(clip, line);
     if (id !== gen.current) return;
     if (!labelled) {
       step("label", "proxy");
@@ -177,7 +182,7 @@ export function Flow() {
       const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: await clipSha256(clip.blob) }));
       if (id !== gen.current) return;
       step("label", "watch");
-      labelled = await post<TaskSpec>("/api/label", { ...body, hint });
+      labelled = await post<TaskSpec>("/api/label", { ...body, hint: line });
       if (id !== gen.current) return;
     }
     keepSampleToken((labelled as { sample_token?: string }).sample_token);
@@ -193,7 +198,15 @@ export function Flow() {
     if (id !== gen.current) return;
     setLabel(r);
     if (r.status !== "done") return;
-    const f = rec ? { spec: rec.fit.spec, warnings: [...rec.fit.warnings] } : fitToBench(r.value);
+    // the recording's label plays at once; any other waits for the person to say it is what they did
+    if (rec) await goOn(r.value, traced, rec);
+    else setUnconfirmed(traced);
+  }
+
+  /** The label is what the person did: fit it to the bench and compile. */
+  async function goOn(labelled: TaskSpec, traced: string[], rec: Session | null = null) {
+    setUnconfirmed(null);
+    const f = rec ? { spec: rec.fit.spec, warnings: [...rec.fit.warnings] } : fitToBench(labelled);
     f.warnings.unshift(...traced);
     setFit(f);
     setSpec(f.spec);
@@ -266,7 +279,7 @@ export function Flow() {
               <input value={hint} onChange={(e) => setHint(e.target.value)} maxLength={200} className="rounded border px-3 py-1.5" placeholder="e.g. putting a capped marker into a pen holder" />
             </label>
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-              <button className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40" disabled={label.status === "running"} onClick={watch}>
+              <button className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40" disabled={label.status === "running"} onClick={() => watch()}>
                 Watch the clip
               </button>
               <span className="text-sm text-neutral-600">
@@ -286,8 +299,19 @@ export function Flow() {
       {label.status !== "idle" && (
         <Section n={2} title="What the model saw" model={labelBy}>
           <Status result={label} clock={clock.label} duration={duration} />
-          {label.status === "failed" && <UnlockPrompt message={label.message} onUnlock={watch} />}
+          {label.status === "failed" && <UnlockPrompt message={label.message} onUnlock={() => watch()} />}
           {label.status === "done" && <SpecSummary spec={label.value} />}
+          {label.status === "done" && unconfirmed && (
+            <Confirm
+              key={sentenceOf(label.value)}
+              spec={label.value}
+              onYes={() => goOn(label.value, unconfirmed)}
+              onRewrite={(line) => {
+                setHint(line);
+                watch(line);
+              }}
+            />
+          )}
         </Section>
       )}
 
@@ -395,6 +419,52 @@ function Status<T>({ result, clock, duration }: { result: StageResult<T>; clock:
   return null;
 }
 
+/** The question after the label (#158): the person says it is what they did, or rewrites it and the clip is watched again. */
+function Confirm({ spec, onYes, onRewrite }: { spec: TaskSpec; onYes: () => void; onRewrite: (line: string) => void }) {
+  const sentence = sentenceOf(spec);
+  const offer = oneArmLine(spec);
+  // the field holds at most LINE_MAX characters, so an untouched long sentence is its first LINE_MAX
+  const shown = sentence.slice(0, LINE_MAX);
+  const [line, setLine] = useState(shown);
+  const rewritten = line.trim() !== "" && line.trim() !== shown.trim();
+  return (
+    <div className="mt-4 flex flex-col gap-3 border-t pt-4 text-sm" role="group" aria-label="Is this what the person did?">
+      <p className="font-medium">Is this what the person did?</p>
+      <p className="text-neutral-700">&ldquo;{sentence}&rdquo;</p>
+      <div>
+        <button className="rounded bg-neutral-900 px-3 py-1.5 text-white" onClick={onYes}>
+          Yes, that&apos;s it
+        </button>
+      </div>
+      {offer && (
+        <p className="text-neutral-700">
+          One arm could do this instead:{" "}
+          <button className="rounded-full border px-3 py-0.5 hover:bg-neutral-50" onClick={() => setLine(offer)}>
+            {offer}
+          </button>
+        </p>
+      )}
+      <form
+        className="flex flex-col gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (rewritten) onRewrite(line.trim());
+        }}
+      >
+        <label className="flex flex-col gap-1">
+          <span className="text-neutral-600">If not, say what the person did in one line, and the model watches the clip again with it.</span>
+          <input value={line} onChange={(e) => setLine(e.target.value)} maxLength={LINE_MAX} className="rounded border px-3 py-1.5" />
+        </label>
+        <div>
+          <button className="rounded border px-3 py-1.5 disabled:opacity-40" disabled={!rewritten}>
+            Watch again with my line
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 function SpecSummary({ spec }: { spec: TaskSpec }) {
   const name = (id: string) => spec.objects.find((o) => o.id === id)?.name ?? id;
   return (
@@ -403,6 +473,11 @@ function SpecSummary({ spec }: { spec: TaskSpec }) {
         <p className="font-medium">{spec.title}</p>
         <p className="text-neutral-600">{spec.summary}</p>
       </div>
+      {scopeNotes(spec).map((n) => (
+        <p key={n} className="text-amber-700">
+          {n}
+        </p>
+      ))}
       <ul className="flex flex-col gap-1">
         {spec.objects.map((o) => (
           <li key={o.id}>

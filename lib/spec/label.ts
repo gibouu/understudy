@@ -14,6 +14,7 @@ export const LABEL_PROMPT = `You label a short video of one person doing a hands
  "objects":[{"id":string,"name":string,"shape":"cylinder"|"box"|"sphere","size_mm":[number,number,number],"symmetry":"none"|"axial"|"full","role":"manipulated"|"fixture"|"obstacle"|"surface","pose":{"xyz_mm":[x,y,z],"yaw_deg":number,"frame":"world"},"pocket_clearance_mm":number,"confidence":number,"source":"vl#seg<n>"}],
  "steps":[{"id":"s1","verb":"reach"|"grasp"|"move"|"insert"|"place"|"release"|"retract"|"gesture","object":<object id>,"target":{"fixture":"pocket"|"zone"|"stack","frame":<object id>},"gesture":{"hand":"left"|"right"},"t_start_s":number,"t_end_s":number,"source":"vl#seg<n>"}],
  "anchor":{"t_s":number,"confidence":number},
+ "hands":1|2,"on_body":boolean,"one_arm":string,
  "warnings":[string],"open_questions":[string]}
 Rules:
 - Objects are primitives. A cylinder's size_mm is [diameter, diameter, height]; a box's [x, y, z]; a sphere's [d, d, d]; millimetres, 5 to 300 mm. A size outside that range goes to warnings.
@@ -25,6 +26,9 @@ Rules:
 - pocket_clearance_mm only for fixtures with a pocket, and only if you can see it; otherwise leave it out.
 - confidence 0 to 1 per object. Anything you are unsure of gets a lower confidence and an open question that names the field.
 - anchor is the grasp moment of the first grasp.
+- hands is 2 when the person's two hands work together on the task, one passing, holding or catching for the other: for example tossing a ball from hand to hand, unscrewing a jar lid held in the other hand, tying a knot. Otherwise 1; a hand that only gestures while the other works does not count.
+- on_body is true when the task is done on the person's own body: for example putting on lip balm or hand cream, combing hair, buttoning the shirt they wear. Otherwise false.
+- one_arm, only when hands is 2 or on_body is true: one line saying how a single robot arm, which has no second hand and no body of its own, could do the same task: what two hands share, its one gripper does alone; what the person does to their own body, the arm does to another person. For example "toss the ball up and catch it in the same hand", "in orbit, push the ball across and catch it on the other side", "hold the jar against a stop and unscrew the lid", "apply the cream gently to another person's hand". Otherwise leave it out.
 - source names the segment you saw it in, e.g. "vl#seg2".`;
 
 export const hintText = (hint: string) => `Context from the person who uploaded the clip: ${hint}`;
@@ -83,6 +87,22 @@ export function tidyLabel(raw: unknown, durationS: number): Normalized {
     });
   }
   if (isRec(data.anchor) && typeof data.anchor.t_s === "number") data.anchor.t_s = clamp(data.anchor.t_s);
+
+  // what fits one arm is advice for the person, never a reason to re-ask the model: a value the schema would refuse is dropped
+  if (typeof data.hands === "string" && /^[12]$/.test(data.hands.trim())) data.hands = Number(data.hands.trim());
+  if (data.hands !== undefined && data.hands !== 1 && data.hands !== 2) {
+    warnings.push(`hands ${JSON.stringify(data.hands)} is not 1 or 2; left out`);
+    delete data.hands;
+  }
+  if (data.on_body !== undefined && typeof data.on_body !== "boolean") {
+    warnings.push(`on_body ${JSON.stringify(data.on_body)} is not true or false; left out`);
+    delete data.on_body;
+  }
+  if (typeof data.one_arm === "string") data.one_arm = data.one_arm.trim();
+  if (data.one_arm !== undefined && (typeof data.one_arm !== "string" || data.one_arm === "")) {
+    warnings.push(`one_arm ${JSON.stringify(data.one_arm)} is not a line of text; left out`);
+    delete data.one_arm;
+  }
 
   if (Array.isArray(data.objects)) {
     for (const o of data.objects.filter(isRec)) {
