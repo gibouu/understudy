@@ -15,6 +15,7 @@ import { gateNote } from "@/lib/unlock/messages";
 import { liveAuth } from "./capture";
 import { answeredBy, useModels } from "./models";
 import { PatchLoop } from "./patch-loop";
+import { Pulse } from "./working";
 
 /** The same two worlds as the rehearsal above. */
 const WORLDS: GravityName[] = ["earth", "orbit"];
@@ -381,7 +382,12 @@ function VariantPatch({ id, setOwner, ...loop }: Omit<React.ComponentProps<typeo
 
 /** A finished suggestion names the model that wrote it, from its own ledger: a replay names the recorded one. */
 function StatusLine({ result }: { result: StageResult<Checked> }) {
-  if (result.status === "running") return <span className="animate-pulse text-sm text-[color:var(--muted,#737373)]">{result.note}…</span>;
+  if (result.status === "running") return (
+      <span className="text-sm text-[color:var(--muted,#737373)]">
+        <Pulse />
+        {result.note}…
+      </span>
+    );
   if (result.status === "failed") return <span className="text-sm text-red-700">{result.message}</span>;
   if (result.status !== "done") return null;
   const by = answeredBy(result.ledger);
@@ -419,7 +425,10 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
       ))}
       {run && (
         <div className="mt-2 pl-6">
-          {run.compile.status === "running" && <p className="animate-pulse text-xs">{run.compile.note}…</p>}
+          {run.compile.status === "running" && <p className="text-xs">
+              <Pulse />
+              {run.compile.note}…
+            </p>}
           {run.compile.status === "failed" && <p className="text-xs text-red-700">{run.compile.message}</p>}
           {run.compile.status === "done" && (
             <table className="text-left text-xs">
@@ -457,7 +466,12 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
 
 function Outcome({ result }: { result?: WorldResult }) {
   if (!result) return <span className="text-neutral-400">waiting</span>;
-  if (result === "running") return <span className="animate-pulse">running…</span>;
+  if (result === "running") return (
+      <span>
+        <Pulse />
+        running…
+      </span>
+    );
   if ("error" in result) return <span className="text-red-700">error</span>;
   return result.pass ? <span className="text-emerald-700">pass</span> : <span className="text-red-700">fail{result.failed_step_id ? ` at ${result.failed_step_id}` : ""}</span>;
 }

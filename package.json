@@ -2,6 +2,7 @@
   "name": "understudy",
   "version": "0.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "scripts": {
     "dev": "node scripts/copy-assets.mjs && next dev",
     "build": "node scripts/copy-assets.mjs && next build",

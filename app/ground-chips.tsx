@@ -8,6 +8,7 @@ import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib
 import { gateNote } from "@/lib/unlock/messages";
 import { liveAuth } from "./capture";
 import { answeredBy, useModels } from "./models";
+import { Pulse } from "./working";
 
 /**
  * app/globals.css defines these with the landing page (#90). Until then the
@@ -83,7 +84,8 @@ export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: bool
       )}
 
       {result.status === "running" && (
-        <p className="animate-pulse text-sm" style={{ color: MUTED }}>
+        <p className="text-sm" style={{ color: MUTED }}>
+          <Pulse />
           {result.note}…
         </p>
       )}

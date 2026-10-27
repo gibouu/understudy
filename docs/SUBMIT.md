@@ -16,7 +16,7 @@ Hackathon: Nebius x NVIDIA Global AI Hackathon. Submission closes Friday 30 Octo
 
 ## Answers that named a stage the site does not have (fix the form, 27 October)
 
-Checked against `main` on 27 October: the site has no Saboteur stage (no twelve-scenario grid, no blind versus sensed runs), no reshoot list from Nemotron Ultra, no Export button, no interview by Super (the questions are Nano's `ask` slots, answered on the page), no scoreboard on 24 rollouts and no playbook. Each answer below said otherwise before this change and is rewritten in this file; if it is already typed into Devpost, replace it there with the text here.
+Checked against `main` on 27 October: the site has no Saboteur stage (no twelve-scenario grid, no blind versus sensed runs), no reshoot list from Nemotron Ultra, no export on Try it (the 1-minute demo, added later, ends with a download: see below), no interview by Super (the questions are Nano's `ask` slots, answered on the page), no scoreboard on 24 rollouts and no playbook. Each answer below said otherwise before this change and is rewritten in this file; if it is already typed into Devpost, replace it there with the text here.
 
 | Devpost field | What it said | Now |
 |---|---|---|
@@ -31,13 +31,13 @@ Checked against `main` on 27 October: the site has no Saboteur stage (no twelve-
 | Session cost (any answer, slide or caption) | $0.0375, 17 calls, which includes the saboteur and Ultra's reshoot list | the showcase sessions: 1 to 7 calls, $0.0007 to $0.0059 |
 | Testing instructions | "Try a sample clip", the cost ledger | the space showcase and Try it, as they are |
 
-Outside this file: the thumbnail (`docs/submission/thumbnail.html`, and the `thumbnail.jpg` / `thumbnail.png` made from it) and the home page (`app/page.tsx`) now say only what the site does: watch, ask, rehearse at 1 g and 0 g, patch; a recorded session costs 1 to 7 calls, US$0.0007 to US$0.0059. "Approach: no fine-tuning" stays true of the site, but if the fine-tune answer of PR #136 goes into Devpost the two must agree.
+Outside this file: the thumbnail (`docs/submission/thumbnail.html`, and the `thumbnail.jpg` / `thumbnail.png` made from it) and the home page (`app/page.tsx`) now say only what the site does (the thumbnail: the NASA clip, the robot's question from its recording, the simulated arm rehearsing it at 0 g); a recorded session costs 1 to 7 calls, US$0.0007 to US$0.0059. "Approach: no fine-tuning" stays true of the site, but if the fine-tune answer of PR #136 goes into Devpost the two must agree.
 
 ## Description (what, why, how)
 
 Draft, to be finished on day five with the measured numbers:
 
-**What.** Understudy turns one clip of a person doing a hands-on task, an astronaut handling samples aboard a station or a technician at a bench, into a task specification checked with the person, a robot program rehearsed by a simulated SO-101 arm in the browser on Earth and in orbit, and, when the rehearsal fails, the patches the model wrote from the simulator's notes until it passed, up to five. It suggests similar tasks and rehearses them too, and the patches, the similar tasks and the recorded sessions show what their model calls cost. Next, not on the site yet: perturbation scenarios run blind and sensed for a perception budget per axis, a reshoot list, and a LeRobot v2.1 dataset skeleton in the layout GR00T reads.
+**What.** Understudy turns one clip of a person doing a hands-on task, an astronaut handling samples aboard a station or a technician at a bench, into a task specification checked with the person, a robot program rehearsed by a simulated SO-101 arm in the browser on Earth and in orbit, and, when the rehearsal fails, the patches the model wrote from the simulator's notes until it passed, up to five. It suggests similar tasks and rehearses them too, and the patches, the similar tasks and the recorded sessions show what their model calls cost. The 1-minute demo ends by downloading the rollouts it played as a LeRobot v2.1 skeleton in the layout GR00T reads (joint values, no video; format-valid, not training data). Next, not on the site yet: perturbation scenarios run blind and sensed for a perception budget per axis, and a reshoot list.
 
 **Why.** On a station every crew hour is scarce: NASA prices one hour of ISS crew time at $130,000 for commercial activities. The robots meant to take over routine crew work need a clear task, a rehearsed program and labelled data, and crew procedures are already filmed by the hour. The same loop serves satellite servicing and refuelling. It started as a month of internal research into robot demonstration data on the ground, where teaching a robot is expensive (GR00T N1 took about 50,000 H100 GPU-hours to pretrain) and the waste comes after collection: in DROID one recorded trajectory in six was marked failed, one vendor's model puts re-collection at 30 to 50 percent of the original budget, and nobody asks the person who did the task what mattered. Understudy is the briefing and QA layer in front of collection, on the bench and in orbit. The hackathon week is where that research became software.
 
@@ -73,7 +73,7 @@ The concept and the research behind Understudy come from a month of internal wor
 
 ## Testing instructions for judges
 
-Chrome on a laptop. Open the demo URL. "Space showcase" plays recorded runs of NASA clips, with the arm rehearsing every version of the program in the browser and no model call. "Try it" runs a sample clip or one of your own through the stages: what the model saw, the robot's questions, the rehearsal on Earth and in orbit, the Notes patches when it fails, and similar tasks; a sample answers from its recording where it has one and live otherwise, and each section names the model that answered. Uploading your own clip needs the unlock code given in the submission (H.264 MP4, one person, fixed phone). A live call that Token Factory refuses shows as failed on the page; the space showcase never calls a model, so it works whatever the state of the credits.
+Chrome on a laptop. Open the demo URL. "Watch the 1-minute demo" plays one recorded NASA run step by step in under a minute, with the arm rehearsing live in the browser and no model call; its last step downloads that run as a LeRobot v2.1 skeleton in the layout Isaac-GR00T N1.7 reads: `meta/info.json`, `modality.json` and one parquet file per passing rollout, with joint states and actions in radians at 15 fps and no video, plus `QUALITY.md` and the run's spec, program, interview, versions and ledger. It is format-valid, not checked with GR00T's loader, and not training data. "Space showcase" plays recorded runs of NASA clips, with the arm rehearsing every version of the program in the browser and no model call. "Try it" runs a sample clip or one of your own through the stages: what the model saw, the robot's questions, the rehearsal on Earth and in orbit, the Notes patches when it fails, and similar tasks; a sample answers from its recording where it has one and live otherwise, and each section names the model that answered. With a sample, the answers given when it was recorded are filled in: click "Answer and recompile", then "Rehearse on Earth, then in orbit". Uploading your own clip needs the unlock code given in the submission (H.264 MP4, one person, fixed phone). A live call that Token Factory refuses shows as failed on the page; the space showcase never calls a model, so it works whatever the state of the credits.
 
 ## Checklist (from spec v2, section 15)
 
@@ -94,7 +94,7 @@ Watch an astronaut do a task once, ask what the camera missed, rehearse it on a 
 
 ## Thumbnail
 
-`docs/submission/thumbnail.jpg` (1800 x 1200, 3:2).
+`docs/submission/thumbnail.jpg` (1800 x 1200, 3:2): the astronaut on the ISS, the robot's question from the recording, the simulated SO-101 doing the task at 0 g. Source and how it is made: `docs/submission/README.md`.
 
 ## Additional info (organiser questions), draft answers
 
