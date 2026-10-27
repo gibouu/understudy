@@ -323,11 +323,11 @@ Each clip ran 4 times: twice with the line a person might type, twice with none,
 - No answer came near the limit: every compile finished with `stop`, the longest at 1,370 of 3,000 tokens. `max_tokens` is not the cause.
 
 **The fix.**
-- `normalizeSpec` reads `null` as unset, since no field of a spec takes null. The exception is an insert's or a place's `target`: there `null` is a gap, so it stays an error and the model is asked again. It also leaves out a bare `retract` that names no object once the hand has let go (no path or checks of its own; the fit drops retracts anyway), and a `pose` without its three coordinates. Every retract measured was of that kind, and no insert or place had a null target.
+- `normalizeSpec` reads `null` as unset, since no field of a spec takes null. The exception is an insert's or a place's `target`: there `null` is a gap, so it stays an error and the model is asked again. It also leaves out a bare `retract` that names no object once the hand has let go: its last grasp was followed by a release, a place or an insert, and it has no destination, path or checks of its own (the fit drops retracts anyway). It also leaves out a `pose` without its three coordinates. Seven of the eight object-less retracts measured were bare; the eighth named a destination and is still asked about. No insert or place had a null target.
 - `normalizeProgram` puts a program key caught inside `steps` back where it belongs, whether it is a bare `"warnings"` or a record of program keys, and reads a step written as a JSON string, as it already read ops.
 - When an answer is unusable, the retry message now repeats the answer's shape (`CallOptions.shape`), so a slip the normalizer does not know is less likely to come back unchanged.
 
-`tests/bench/own-clips-replay.test.ts` reads every kept first answer again: all 16 labels and all 64 programs now parse. On main the same test fails on 10 labels and 2 programs.
+`tests/bench/own-clips-replay.test.ts` reads every kept first answer again: 15 of the 16 labels (all but that eighth retract) and all 64 programs now parse, and so do all 16 first labels from the live run after the fix. On main the same test fails on 10 labels and 2 programs.
 
 **After, live, same clips and lines, the same 16 specs.**
 

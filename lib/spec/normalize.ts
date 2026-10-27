@@ -144,14 +144,15 @@ export function normalizeSpec(raw: unknown): Normalized {
 
   if (Array.isArray(spec.steps)) {
     // a hand pulling back after it let go holds nothing (8 of 16 first labels of own clips, section 14); the
-    // fit drops retract steps anyway, so a bare one is left out rather than asked again. One before the hand
-    // let go, or with a path or checks of its own, stays for the schema to reject.
+    // fit drops retract steps anyway, so a bare one is left out rather than asked again. One while the hand
+    // may still hold something, or with a destination, a path or checks of its own, stays for the schema to reject.
     const letGo = (s: unknown) => isRec(s) && (s.verb === "release" || s.verb === "place" || s.verb === "insert");
-    const bare = (s: Rec) => (["via_points", "success", "preconditions", "tolerances"] as const).every((k) => s[k] == null || (Array.isArray(s[k]) ? s[k].length === 0 : isRec(s[k]) && Object.keys(s[k]).length === 0));
+    const handEmpty = (before: unknown[]) => letGo(before.findLast((s) => isRec(s) && (s.verb === "grasp" || letGo(s))));
+    const bare = (s: Rec) => (["target", "via_points", "success", "preconditions", "tolerances"] as const).every((k) => s[k] == null || (Array.isArray(s[k]) ? s[k].length === 0 : isRec(s[k]) && Object.keys(s[k]).length === 0));
     const raw = spec.steps;
     const steps = raw.filter((s: unknown, i: number) => {
       if (!isRec(s) || s.verb !== "retract" || (s.object !== undefined && s.object !== null && s.object !== "")) return true;
-      if (!raw.slice(0, i).some(letGo) || !bare(s)) return true;
+      if (!handEmpty(raw.slice(0, i)) || !bare(s)) return true;
       warnings.push(`step ${typeof s.id === "string" ? s.id : i}: a retract with no object, after the hand let go, left out`);
       return false;
     });

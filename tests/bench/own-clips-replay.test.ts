@@ -4,7 +4,8 @@
  * clip of someone's own, and every first program Nemotron 3.5 Lightning gave
  * for its fitted spec. Before #149, 10 of 16 labels and 2 of 64 programs did
  * not parse (docs/MEASUREMENTS.md section 14); a check problem the route asks
- * the model to fix is counted apart, since a second call recovers it.
+ * the model to fix is counted apart, since a second call recovers it. The
+ * answers from the live run after the fix are read too.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -20,14 +21,15 @@ type Call = { content: string };
 type Run = { clip: string; run: number; k?: number; label?: { calls: Call[] }; compile?: { calls: Call[] } };
 
 const labels = read("own-clips-label-before.json").results as Run[];
+const labelsAfter = read("own-clips-label-after.json").results as Run[];
 const compiles = read("own-clips-compile-before.json").results as Run[];
 const specs = read("own-clips-specs-before.json").specs as { clip: string; run: number; spec: unknown }[];
 const specOf = (r: Run) => TaskSpec.parse(specs.find((s) => s.clip === r.clip && s.run === r.run)!.spec);
 const seconds = (clip: string) => Number(/(\d+)s$/.exec(clip)![1]);
 
 describe("own clips' first answers, read again", () => {
-  it("every first label parses", () => {
-    const failed = labels.flatMap((r) => {
+  const unparsed = (runs: Run[]) =>
+    runs.flatMap((r) => {
       try {
         parseModelJson(r.label!.calls[0].content, TaskSpec, { normalize: (raw) => tidyLabel(raw, seconds(r.clip)) });
         return [];
@@ -35,8 +37,11 @@ describe("own clips' first answers, read again", () => {
         return [`${r.clip} #${r.run}: ${(err as Error).message}`];
       }
     });
+
+  it("every first label parses but one retract that names a destination, which is asked about", () => {
     expect(labels).toHaveLength(16);
-    expect(failed).toEqual([]);
+    expect(unparsed(labels)).toEqual(["veggie-landscape-12s #2: schema validation failed: steps.6.object: only a gesture step has no object"]);
+    expect(unparsed(labelsAfter)).toEqual([]);
   });
 
   it("every first program parses; the ones the route asks to fix are the check's, not the parser's", () => {
