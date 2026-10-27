@@ -40,7 +40,15 @@ export async function GET(req: Request): Promise<NextResponse<Health>> {
   }
   const now = Date.now();
   // requests that arrive while the probe runs wait for it rather than start their own
-  if (!probe || now >= probe.until) probe = { until: now + PROBE_FOR_MS, result: check() };
+  if (!probe || now >= probe.until) {
+    const entry = { until: now + PROBE_FOR_MS, result: check() };
+    // a probe that throws (a client that cannot be built) is not kept: the next request tries again
+    entry.result = entry.result.catch((): Health => {
+      if (probe === entry) probe = undefined;
+      return { mode: "replay", reason: "the health check failed" };
+    });
+    probe = entry;
+  }
   return NextResponse.json(await probe.result);
 }
 

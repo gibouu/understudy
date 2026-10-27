@@ -7,24 +7,27 @@ import OpenAI from "openai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { forgetModels } from "@/lib/providers/tokenfactory";
 
-const tf = vi.hoisted(() => ({ calls: 0, refuse: false }));
+const tf = vi.hoisted(() => ({ calls: 0, refuse: false, broken: false }));
 vi.mock("@/lib/providers/tokenfactory", async (original) => {
   const real = await original<typeof import("@/lib/providers/tokenfactory")>();
   return {
     ...real,
     wantsReplay: (req: Request) => new URL(req.url).searchParams.get("replay") === "1",
-    tokenFactory: () => ({
-      models: { list: async () => ({ data: Object.values(real.MODELS).map((id) => ({ id })) }) },
-      chat: {
-        completions: {
-          create: async (params: { model: string }) => {
-            tf.calls++;
-            if (tf.refuse) throw OpenAI.APIError.generate(503, { message: "overloaded" }, undefined, new Headers());
-            return { choices: [{ message: { content: "ok" } }], model: params.model };
+    tokenFactory: () => {
+      if (tf.broken) throw new TypeError("bad header");
+      return {
+        models: { list: async () => ({ data: Object.values(real.MODELS).map((id) => ({ id })) }) },
+        chat: {
+          completions: {
+            create: async (params: { model: string }) => {
+              tf.calls++;
+              if (tf.refuse) throw OpenAI.APIError.generate(503, { message: "overloaded" }, undefined, new Headers());
+              return { choices: [{ message: { content: "ok" } }], model: params.model };
+            },
           },
         },
-      },
-    }),
+      };
+    },
   };
 });
 vi.mock("next/server", async (original) => ({ ...(await original<typeof import("next/server")>()), connection: async () => {} }));
@@ -41,6 +44,7 @@ describe("GET /api/health", () => {
     vi.setSystemTime(now);
     tf.calls = 0;
     tf.refuse = false;
+    tf.broken = false;
     forgetModels();
   });
   afterEach(() => vi.useRealTimers());
@@ -60,6 +64,14 @@ describe("GET /api/health", () => {
     vi.setSystemTime(now + 61_000);
     expect(await health()).toMatchObject({ mode: "replay" });
     expect(tf.calls).toBe(2);
+  });
+
+  it("does not keep a probe that threw: the next request probes again", async () => {
+    tf.broken = true;
+    expect(await health()).toMatchObject({ mode: "replay", reason: "the health check failed" });
+    tf.broken = false;
+    expect((await health()).mode).toBe("live");
+    expect(tf.calls).toBe(1);
   });
 
   it("answers ?replay=1 without a call", async () => {
