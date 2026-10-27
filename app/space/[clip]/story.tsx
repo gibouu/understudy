@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { Sample } from "@/lib/samples";
 import { usd, verdict } from "@/lib/showcase/format";
-import type { Iteration, Run, Session } from "@/lib/showcase/session";
+import { modelLabel } from "@/lib/providers/models";
+import type { Call, Iteration, Run, Session } from "@/lib/showcase/session";
 import type { TaskSpec } from "@/lib/spec/schema";
 import { ProgramView, type Failure } from "../../program-view";
 
@@ -33,6 +34,12 @@ function stepWords(spec: TaskSpec, s: TaskSpec["steps"][number]): string {
   if (where && (s.verb === "insert" || s.verb === "place")) return `${s.verb} the ${name(s.object)} ${s.target!.fixture === "pocket" ? "into" : "onto"} the ${where}`;
   if (where && s.verb === "move") return `move the ${name(s.object)} to the ${where}`;
   return `${s.verb} the ${name(s.object)}`;
+}
+
+/** The models a stage's calls went to in this recording, by name; undefined when the stage made no call. */
+function credit(session: Session, stage: Call["stage"]): string | undefined {
+  const names = [...new Set(session.ledger.filter((c) => c.stage === stage).map((c) => modelLabel(c.model)))];
+  return names.length ? names.join(" and ") : undefined;
 }
 
 function version(it: Iteration, i: number, session: Session): string {
@@ -121,6 +128,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
   const asked = session.turns.filter((t) => t.asks.length > 0);
   const finalFails = !session.iterations[last].results.earth.pass || !session.iterations[last].results.orbit.pass;
   const firstNote = session.iterations.findIndex((x) => x.source === "notes");
+  const compiler = credit(session, "compile");
 
   function choose(i: number, scroll: boolean) {
     setPick(i);
@@ -158,7 +166,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         </div>
       </Step>
 
-      <Step n={2} title="What the model saw" model="Nemotron 3.5 Super VL">
+      <Step n={2} title="What the model saw" model={credit(session, "label")}>
         <div className="grid gap-8 lg:grid-cols-2">
           <div className="flex flex-col gap-4">
             <p className="text-[17px] leading-relaxed">{label.summary}</p>
@@ -210,11 +218,18 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
         </div>
       </Step>
 
-      <Step n={3} title="What the robot asked" model="Nemotron 3 Nano">
-        <p className="max-w-3xl text-[17px] leading-relaxed">
-          Nano writes the robot’s program and turns every value it would otherwise have to guess into a question for the person who did the task. The answers below were given when recording, standing in for the crew member; each round recompiles the program.
-        </p>
-        {asked.length === 0 && <p className="text-neutral-700">Nano had no questions: the spec held everything the program needed.</p>}
+      <Step n={3} title="What the robot asked" model={compiler}>
+        {compiler ? (
+          <>
+            <p className="max-w-3xl text-[17px] leading-relaxed">
+              Nano writes the robot’s program and turns every value it would otherwise have to guess into a question for the person who did the task. The answers below were given when recording, standing in for the crew member; each round recompiles the program.
+            </p>
+            {asked.length === 0 && <p className="text-neutral-700">Nano had no questions: the spec held everything the program needed.</p>}
+          </>
+        ) : (
+          // a gesture: its program is the hand's path, written without a model call
+          <p className="max-w-3xl text-[17px] leading-relaxed">No model wrote this program: it follows the hand’s path traced from the clip, so there was nothing to ask.</p>
+        )}
         {asked.map((turn, i) => (
           <ol key={i} className="flex max-w-3xl flex-col gap-5">
             {turn.asks.map((a) => {
