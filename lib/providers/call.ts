@@ -25,6 +25,8 @@ export type CallOptions<T> = {
   normalize?: Normalizer;
   /** kept, with a warning, when the second answer still does not parse */
   previous?: T;
+  /** the answer's shape in one line, repeated when an answer is not usable: a model asked again with only the error tends to repeat itself */
+  shape?: string;
   /** problems a parsed value still has; the model is asked once to fix them, and what remains becomes warnings */
   check?: (value: T) => string[];
   /** reason before answering (the model's default); maxTokens then covers reasoning and answer */
@@ -77,7 +79,7 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
           if (o.previous !== undefined) return done(o.previous, [`${o.role}: ${err.message}; previous value kept`], ledger);
           return failed(`${o.role}: ${err.message}`);
         }
-        messages.push({ role: "assistant", content: text }, { role: "user", content: `That answer was not usable (${err.message}). Return the whole answer again as one JSON object only.` });
+        messages.push({ role: "assistant", content: text }, { role: "user", content: `That answer was not usable (${err.message}).${o.shape ? ` The shape is ${o.shape}.` : ""} Return the whole answer again as one JSON object only.` });
       }
     }
   } catch (err) {

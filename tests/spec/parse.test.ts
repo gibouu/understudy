@@ -175,3 +175,48 @@ describe("parseModelJson", () => {
     expect(parseModelJson("[1,2,3]", z.array(z.number())).value).toEqual([1, 2, 3]);
   });
 });
+
+/** What live models wrote for clips of people's own (#149, docs/MEASUREMENTS.md section 14). */
+describe("answers from own clips", () => {
+  const step = (id: string) => ({ step_id: id, ops: [{ op: "release" }] });
+
+  it("a key of the program closed inside steps is put back, in either form", () => {
+    // Nemotron 3.5 Lightning: ..."steps": [{s1}, {s2}, "warnings"]}
+    const slip = JSON.stringify({ spec_title: "t", steps: [step("s1"), step("s2"), "warnings"] });
+    const a = parseModelJson(slip, Program, { normalize: normalizeProgram });
+    expect(a.value.steps.map((s) => s.step_id)).toEqual(["s1", "s2"]);
+    expect(a.value.warnings).toEqual([]);
+    expect(a.warnings.join(" ")).toMatch(/closed one place late/);
+    const held = JSON.stringify({ spec_title: "t", steps: [step("s1"), { warnings: ["scale unknown"] }] });
+    expect(parseModelJson(held, Program, { normalize: normalizeProgram }).value).toMatchObject({ steps: [{ step_id: "s1" }], warnings: ["scale unknown"] });
+  });
+
+  it("a step written as a JSON string is read; any other string still fails", () => {
+    const asText = JSON.stringify({ spec_title: "t", steps: [JSON.stringify(step("s1"))] });
+    expect(parseModelJson(asText, Program, { normalize: normalizeProgram }).value.steps[0].step_id).toBe("s1");
+    expect(() => parseModelJson(JSON.stringify({ spec_title: "t", steps: ["s1"] }), Program, { normalize: normalizeProgram })).toThrow(ModelOutputError);
+  });
+
+  it("null reads as unset in a label, a pose without coordinates is left out", () => {
+    // Nemotron 3.5 Super VL: "target": null on a grasp, "pocket_clearance_mm": null, "pose": {"yaw_deg": 0}
+    const raw = {
+      ...minimalSpec,
+      anchor: null,
+      objects: [{ ...minimalSpec.objects[0], pose: { yaw_deg: 0 }, pocket_clearance_mm: null }, { ...minimalSpec.objects[1], pose: null }],
+      steps: [{ ...minimalSpec.steps[0], target: null }, minimalSpec.steps[1]],
+    };
+    const r = parseModelJson(JSON.stringify(raw), TaskSpec, { normalize: normalizeSpec });
+    expect(r.value.steps[0].target).toBeUndefined();
+    expect(r.value.objects.map((o) => o.pose)).toEqual([undefined, undefined]);
+    expect(r.warnings).toEqual(expect.arrayContaining(["spec: null anchor read as unset", "step s1: null target read as unset", 'object "rack": null pose read as unset', 'object "marker": a pose without xyz_mm left out', 'object "marker": null pocket_clearance_mm read as unset']));
+  });
+
+  it("a retract that names no object is left out; a grasp with none still fails", () => {
+    const retract = { id: "s3", verb: "retract", object: null, t_start_s: 3.1, t_end_s: 3.5 };
+    const r = parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, retract] }), TaskSpec, { normalize: normalizeSpec });
+    expect(r.value.steps.map((s) => s.id)).toEqual(["s1", "s2"]);
+    expect(r.warnings).toContain("step s3: a retract with no object left out");
+    const grasp = { ...minimalSpec, steps: [{ ...minimalSpec.steps[0], object: null }, minimalSpec.steps[1]] };
+    expect(() => parseModelJson(JSON.stringify(grasp), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
+  });
+});

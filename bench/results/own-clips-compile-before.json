@@ -1,0 +1,1477 @@
+{
+ "when": "2026-10-27T08:03:08.919Z",
+ "model": "nvidia/Nemotron-3_5-Lightning",
+ "results": [
+  {
+   "clip": "foam-portrait-8s",
+   "run": 0,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3049,
+      "completion_tokens": 461,
+      "seconds": 1.632,
+      "content": "{\"spec_title\": \"Squeezing a drink bag so juice flows into a foam block\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"drink_bag\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"drink_bag\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"follow\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 32.5], \"approach\": \"top\"}, {\"op\": \"tilt\", \"deg\": 0, \"toward\": \"drink_bag\", \"seconds\": 1}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 13.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"drink_bag\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"drink_bag\", \"target\": \"work_surface\"}}], \"warnings\": [\"Drink bag is very thin (15 mm) near lower bound of allowed size range\"]}], \"warnings\": [\"No visible scale reference; object dimensions are estimates\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 3565,
+      "completion_tokens": 425,
+      "seconds": 1.541,
+      "content": "{\"spec_title\": \"Squeezing a drink bag so juice flows into a foam block\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"drink_bag\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"drink_bag\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 32.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 13.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"drink_bag\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"drink_bag\", \"target\": \"work_surface\"}}], \"warnings\": [\"Drink bag is very thin (15 mm) near lower bound of allowed size range\"]}], \"warnings\": [\"No visible scale reference; object dimensions are estimates\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 0,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3049,
+      "completion_tokens": 376,
+      "seconds": 1.349,
+      "content": "{\"spec_title\": \"Squeezing a drink bag so juice flows into a foam block\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"drink_bag\", \"aperture_mm\": 50}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 32.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 13.5], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": [\"No visible scale reference; object dimensions are estimates\", \"Drink bag is very thin (15 mm) near lower bound of allowed size range\", \"Retract step references object as no null object allowed by schema\"]}], \"warnings\": [\"No visible scale reference; object dimensions are estimates\", \"Drink bag is very thin (15 mm) near lower bound of allowed size range\", \"Retract step references object as no null object allowed by schema\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 0,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3049,
+      "completion_tokens": 516,
+      "seconds": 1.782,
+      "content": "{\"spec_title\": \"Squeezing a drink bag so juice flows into a foam block\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"drink_bag\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"drink_bag\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 32.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 13.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"drink_bag\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"drink_bag\", \"target\": \"work_surface\"}}], \"warnings\": [\"No visible scale reference; object dimensions are estimates\", \"Drink bag is very thin (15 mm) near lower bound of allowed size range\", \"Retract step references object as no null object allowed by schema\", \"pocket_clearance_mm not applicable as no pocket/holder is visible\"]}], \"warnings\": [\"No visible scale reference; object dimensions are estimates\", \"Drink bag is very thin (15 mm) near lower bound of allowed size range\", \"Retract step references object as no null object allowed by schema\", \"pocket_clearance_mm not applicable as no pocket/holder is visible\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 1,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3308,
+      "completion_tokens": 489,
+      "seconds": 2.322,
+      "content": "{\"spec_title\": \"Gloves and foil packet removed from workstation\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"foil_packet\", \"aperture_mm\": 60}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"foil_packet\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": []}], \"warnings\": [\"No visible scale reference in the clip; all object sizes and poses are estimated.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 1,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3308,
+      "completion_tokens": 483,
+      "seconds": 2.42,
+      "content": "{\"spec_title\": \"Gloves and foil packet removed from workstation\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"foil_packet\", \"aperture_mm\": 60}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"foil_packet\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}], \"warnings\": []}], \"warnings\": [\"No visible scale reference in the clip; all object sizes and poses are estimated.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 1,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3308,
+      "completion_tokens": 524,
+      "seconds": 2.506,
+      "content": "{\"spec_title\": \"Gloves and foil packet removed from workstation\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"foil_packet\", \"aperture_mm\": 60}, {\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 25], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"work_surface\", \"offset_mm\": [0, 0, 6], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": []}], \"warnings\": [\"No visible scale reference in the clip; all object sizes and poses are estimated.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 2,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3525,
+      "completion_tokens": 604,
+      "seconds": 2.416,
+      "content": "{\"spec_title\": \"Squeezing a drink bag so juice flows into a foam block\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 52], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 2], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"drink_bag\", \"aperture_mm\": 100}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"drink_bag\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"foam_block\", \"offset_mm\": [0, 0, 70], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"foam_block\", \"offset_mm\": [0, 0, 51], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s4\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}], \"warnings\": []}], \"warnings\": [\"objects[blue_workbench].size_mm: is blue workbench really [600, 400, 20] mm?\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 2,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3525,
+      "completion_tokens": 723,
+      "seconds": 2.569,
+      "content": "{\"spec_title\": \"Squeezing a drink bag so juice flows into a foam block\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 52], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 2], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"drink_bag\", \"aperture_mm\": 100}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"drink_bag\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"foam_block\", \"offset_mm\": [0, 0, 70], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"foam_block\", \"offset_mm\": [0, 0, 51], \"approach\": \"top\"}, {\"op\": \"tilt\", \"deg\": 60, \"toward\": \"drink_bag\", \"seconds\": 2}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"liquid_inside\", \"object\": \"drink_bag\", \"target\": \"foam_block\", \"value\": 50}, \"timeout_s\": 5}, {\"op\": \"tilt\", \"deg\": 0, \"toward\": \"drink_bag\", \"seconds\": 2}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": []}, {\"step_id\": \"s4\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}], \"warnings\": []}], \"warnings\": [\"objects[blue_workbench].size_mm: is blue workbench really [600, 400, 20] mm?\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 2,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3525,
+      "completion_tokens": 783,
+      "seconds": 2.685,
+      "content": "{\"spec_title\": \"Squeezing a drink bag so juice flows into a foam block\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 52], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 2], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"drink_bag\", \"aperture_mm\": 100}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"drink_bag\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"foam_block\", \"offset_mm\": [0, 0, 70], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"foam_block\", \"offset_mm\": [0, 0, 51], \"approach\": \"top\"}, {\"op\": \"tilt\", \"deg\": 180, \"toward\": \"foam_block\", \"seconds\": 2}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"liquid_inside\", \"target\": \"foam_block\", \"value\": 100}, \"timeout_s\": 5}, {\"op\": \"tilt\", \"deg\": 0, \"seconds\": 1}, {\"op\": \"release\"}, {\"op\": \"move_to\", \"frame\": \"drink_bag\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"drink_bag\"}, \"timeout_s\": 2}], \"warnings\": []}, {\"step_id\": \"s4\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 40], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"blue_workbench\", \"offset_mm\": [0, 0, 21], \"approach\": \"top\"}], \"warnings\": []}], \"warnings\": [\"objects[blue_workbench].size_mm: is blue workbench really [600, 400, 20] mm?\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 3,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3116,
+      "completion_tokens": 508,
+      "seconds": 1.766,
+      "content": "{\"spec_title\": \"Fold and place a foil packet on a blue work surface next to a large white boxed component\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj_foil_packet\", \"aperture_mm\": 50}, {\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj_blue_panel\", \"offset_mm\": [0, 0, 27.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj_blue_panel\", \"offset_mm\": [0, 0, 8.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj_foil_packet\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj_foil_packet\", \"target\": \"obj_blue_panel\"}}], \"warnings\": [\"Object sizes are estimated without a visible scale reference and may be outside the 5–300 mm validity range.\", \"Foil packet dimensions exceed typical manipulated part size and are highly approximate.\", \"No pocket is visible, so pocket_clearance_mm is omitted.\", \"Pose is given despite uncertain scale because no calibration object is visible.\"]}], \"warnings\": [\"Object sizes are estimated without a visible scale reference and may be outside the 5–300 mm validity range.\", \"Foil packet dimensions exceed typical manipulated part size and are highly approximate.\", \"No pocket is visible, so pocket_clearance_mm is omitted.\", \"Pose is given despite uncertain scale because no calibration object is visible.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 3,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3116,
+      "completion_tokens": 509,
+      "seconds": 1.762,
+      "content": "{\"spec_title\": \"Fold and place a foil packet on a blue work surface next to a large white boxed component\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj_foil_packet\", \"aperture_mm\": 50}, {\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj_blue_panel\", \"offset_mm\": [0, 0, 27.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj_blue_panel\", \"offset_mm\": [0, 0, 8.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj_foil_packet\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj_foil_packet\", \"target\": \"obj_blue_panel\"}}], \"warnings\": [\"Object sizes are estimated without a visible scale reference and may be outside the 5–300 mm validity range.\", \"Foil packet dimensions exceed typical manipulated part size and are highly approximate.\", \"No pocket is visible, so pocket_clearance_mm is omitted.\", \"Pose is given despite uncertain scale because no calibration object is visible.\"]}], \"warnings\": [\"Object sizes are estimated without a visible scale reference and may be outside the 5–300 mm validity range.\", \"Foil packet dimensions exceed typical manipulated part size and are highly approximate.\", \"No pocket is visible, so pocket_clearance_mm is omitted.\", \"Pose is given despite uncertain scale because no calibration object is visible.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 3,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3116,
+      "completion_tokens": 479,
+      "seconds": 1.797,
+      "content": "{\"spec_title\": \"Fold and place a foil packet on a blue work surface next to a large white boxed component\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj_foil_packet\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj_foil_packet\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj_foil_packet\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj_blue_panel\", \"offset_mm\": [0, 0, 27.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj_blue_panel\", \"offset_mm\": [0, 0, 8.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj_foil_packet\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj_foil_packet\", \"target\": \"obj_blue_panel\"}}], \"warnings\": [\"Object sizes are estimated without a visible scale reference and may be outside the 5–300 mm validity range.\", \"Foil packet dimensions exceed typical manipulated part size and are highly approximate.\", \"No pocket is visible, so pocket_clearance_mm is omitted.\", \"Pose is given despite uncertain scale because no calibration object is visible.\"]}], \"warnings\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 0,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "nano: steps[2] (move): never moves in the frame of its target \"obj1\""
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3886,
+      "completion_tokens": 1179,
+      "seconds": 4.285,
+      "content": "{\"spec_title\": \"pipetting liquid into a small cartridge\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 152], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 102], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 12}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 145], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 126], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 32], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}, {\"op\": \"ask\", \"slot\": \"objects[obj1].pocket_clearance_mm\", \"question\": \"What is the pocket clearance for obj1?\", \"why\": \"pocket_clearance_mm omitted\"}, {\"op\": \"grasp\", \"object\": \"obj1\", \"aperture_mm\": 25}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s4\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s5\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}], \"warnings\": []}], \"warnings\": []}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 5116,
+      "completion_tokens": 969,
+      "seconds": 3.301,
+      "content": "{\"spec_title\": \"pipetting liquid into a small cartridge\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 152], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 102], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 12}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 145], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 126], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 32], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s4\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s5\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}], \"warnings\": []}], \"warnings\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 0,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3886,
+      "completion_tokens": 939,
+      "seconds": 3.212,
+      "content": "{\"spec_title\": \"pipetting liquid into a small cartridge\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 152], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 102], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 12}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 145], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 126], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj1\", \"aperture_mm\": 25}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}], \"warnings\": [\"Cartridge pocket location not clearly visible\"]}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s4\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s5\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}], \"warnings\": []}], \"warnings\": [\"Cartridge pocket location not clearly visible\", \"World-scale pose estimates are approximate; no visible scale reference\", \"objects[obj3].size_mm: is workbench really [1000, 600, 30] mm?\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 0,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3886,
+      "completion_tokens": 1007,
+      "seconds": 3.443,
+      "content": "{\"spec_title\": \"pipetting liquid into a small cartridge\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 152], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 102], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 12}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 145], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 126], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj1\", \"aperture_mm\": 25}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}, {\"op\": \"follow\"}], \"warnings\": []}, {\"step_id\": \"s4\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s5\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}, {\"op\": \"follow\"}], \"warnings\": [\"Cartridge pocket location not clearly visible; pocket_clearance_mm omitted.\", \"World-scale pose estimates are approximate; no visible scale reference.\", \"objects[obj3].size_mm: is workbench really [1000, 600, 30] mm?\"]}], \"warnings\": [\"Cartridge pocket location not clearly visible; pocket_clearance_mm omitted.\", \"World-scale pose estimates are approximate; no visible scale reference.\", \"objects[obj3].size_mm: is workbench really [1000, 600, 30] mm?\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 4970,
+      "completion_tokens": 1007,
+      "seconds": 3.552,
+      "content": "{\"spec_title\": \"pipetting liquid into a small cartridge\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 152], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 102], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 12}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 145], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 126], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj1\", \"aperture_mm\": 25}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s3\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": []}, {\"step_id\": \"s4\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 41], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 22], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s5\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 136], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 117], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 110], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": [\"Cartridge pocket location not clearly visible; pocket_clearance_mm omitted.\", \"World-scale pose estimates are approximate; no visible scale reference.\", \"objects[obj3].size_mm: is workbench really [1000, 600, 30] mm?\"]}], \"warnings\": [\"Cartridge pocket location not clearly visible; pocket_clearance_mm omitted.\", \"World-scale pose estimates are approximate; no visible scale reference.\", \"objects[obj3].size_mm: is workbench really [1000, 600, 30] mm?\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 1,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3042,
+      "completion_tokens": 433,
+      "seconds": 1.536,
+      "content": "{\"spec_title\": \"pipette and chip into well plate\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette\", \"aperture_mm\": 12}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"pipette\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"pipette\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"pipette\", \"target\": \"well_plate\"}}], \"warnings\": []}], \"warnings\": [\"no visible scale reference; poses estimated from typical bench size\", \"well plate pocket clearance not directly visible\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 1,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3042,
+      "completion_tokens": 388,
+      "seconds": 1.396,
+      "content": "{\"spec_title\": \"person pipetting liquid into a small well plate while holding a chip\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette\", \"aperture_mm\": 12}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"pipette\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}], \"warnings\": [\"no visible scale reference; poses estimated from typical bench size\", \"well plate pocket clearance not directly visible\"]}], \"warnings\": [\"no visible scale reference; poses estimated from typical bench size\", \"well plate pocket clearance not directly visible\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 3475,
+      "completion_tokens": 428,
+      "seconds": 1.56,
+      "content": "{\"spec_title\": \"person pipetting liquid into a small well plate while holding a chip\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette\", \"aperture_mm\": 12}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"pipette\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"pipette\"}, \"timeout_s\": 2}], \"warnings\": [\"no visible scale reference; poses estimated from typical bench size\", \"well plate pocket clearance not directly visible\"]}], \"warnings\": [\"no visible scale reference; poses estimated from typical bench size\", \"well plate pocket clearance not directly visible\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 1,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3042,
+      "completion_tokens": 331,
+      "seconds": 1.218,
+      "content": "{\"spec_title\": \"person pipetting liquid into a small well plate while holding a chip\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette\", \"aperture_mm\": 12}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}], \"warnings\": []}], \"warnings\": [\"no visible scale reference; poses estimated from typical bench size\", \"well plate pocket clearance not directly visible\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 3418,
+      "completion_tokens": 358,
+      "seconds": 1.538,
+      "content": "{\"spec_title\": \"person pipetting liquid into a small well plate while holding a chip\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette\", \"aperture_mm\": 12}, {\"op\": \"move_to\", \"frame\": \"pipette\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"well_plate\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": [\"no visible scale reference; poses estimated from typical bench size\", \"well plate pocket clearance not directly visible\"]}], \"warnings\": [\"no visible scale reference; poses estimated from typical bench size\", \"well plate pocket clearance not directly visible\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 2,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3025,
+      "completion_tokens": 393,
+      "seconds": 1.413,
+      "content": "{\"spec_title\": \"pipetting liquid into a small cartridge\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 10}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}]}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 45], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 26], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj2\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"no_collision\"}}]}], \"warnings\": [\"No visible scale in the scene; object poses are estimates.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 2,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3025,
+      "completion_tokens": 412,
+      "seconds": 1.638,
+      "content": "{\"spec_title\": \"pipetting liquid into a small cartridge\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 10}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 45], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 26], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj2\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}}], \"warnings\": []}], \"warnings\": [\"No visible scale in the scene; object poses are estimates.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 2,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3025,
+      "completion_tokens": 350,
+      "seconds": 1.339,
+      "content": "{\"spec_title\": \"pipetting liquid into a small cartridge\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 10}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 45], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 26], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": [\"No visible scale in the scene; object poses are estimates.\"]}], \"asks\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 3,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[card1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3048,
+      "completion_tokens": 316,
+      "seconds": 1.173,
+      "content": "{\"spec_title\": \"Person pipetting over a small card in a cluttered workspace\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette1\", \"aperture_mm\": 15}, {\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 45], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 26], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}], \"warnings\": [\"Object poses and sizes estimated without a visible scale reference.\"]}], \"asks\": []}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 3410,
+      "completion_tokens": 322,
+      "seconds": 1.186,
+      "content": "{\"spec_title\": \"Person pipetting over a small card in a cluttered workspace\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette1\", \"aperture_mm\": 15}, {\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 45], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 26], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}], \"warnings\": [\"Object poses and sizes estimated without a visible scale reference.\"]}], \"asks\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 3,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[card1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3048,
+      "completion_tokens": 391,
+      "seconds": 1.489,
+      "content": "{\"spec_title\": \"Person pipetting over a small card in a cluttered workspace\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette1\", \"aperture_mm\": 15}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"pipette1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 45], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 26], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"pipette1\", \"target\": \"card1\"}}], \"warnings\": [\"Object poses and sizes estimated without a visible scale reference.\"]}], \"asks\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 3,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "dropped an ask for open_questions: the spec already sets it",
+     "added an ask for objects[card1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3048,
+      "completion_tokens": 486,
+      "seconds": 1.722,
+      "content": "{\"spec_title\": \"Person pipetting over a small card in a cluttered workspace\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"pipette1\", \"aperture_mm\": 15}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"pipette1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"pipette1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 45], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 26], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"card1\", \"offset_mm\": [0, 0, 20], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"pipette1\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"no_collision\"}}, {\"op\": \"ask\", \"slot\": \"open_questions\", \"question\": \"Does the workspace have a defined pocket or holder for the card?\", \"why\": \"Object poses and sizes estimated without a visible scale reference; open question about defined pocket\"}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"pipette1\"}}]}], \"warnings\": [\"Object poses and sizes estimated without a visible scale reference.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 0,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3028,
+      "completion_tokens": 416,
+      "seconds": 1.473,
+      "content": "{\"spec_title\": \"putting seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj1\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj1\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj1\", \"target\": \"obj2\"}}], \"warnings\": []}], \"warnings\": [\"No calibrated scale available; object dimensions are estimated from video.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 0,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3028,
+      "completion_tokens": 416,
+      "seconds": 1.476,
+      "content": "{\"spec_title\": \"putting seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj1\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj1\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj1\", \"target\": \"obj2\"}}], \"warnings\": []}], \"warnings\": [\"No calibrated scale available; object dimensions are estimated from video.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 0,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3028,
+      "completion_tokens": 428,
+      "seconds": 1.515,
+      "content": "{\"spec_title\": \"putting seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj1\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj1\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj1\", \"target\": \"obj2\"}}], \"warnings\": [\"No calibrated scale available; object dimensions are estimated from video.\"]}], \"warnings\": [\"No calibrated scale available; object dimensions are estimated from video.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 1,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "failed",
+    "message": "nano: schema validation failed: steps.2: Invalid input: expected object, received string",
+    "warnings": [],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3015,
+      "completion_tokens": 367,
+      "seconds": 1.333,
+      "content": "{\"spec_title\": \"ISS crew member unloads battery stowage pack\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 54.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 4.5], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj3\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj3\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}]}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj3\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj3\", \"target\": \"obj4\"}}]}, \"warnings\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 3428,
+      "completion_tokens": 367,
+      "seconds": 1.333,
+      "content": "{\"spec_title\": \"ISS crew member unloads battery stowage pack\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 54.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 4.5], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj3\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj3\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}]}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj3\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj3\", \"target\": \"obj4\"}}]}, \"warnings\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 1,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "failed",
+    "message": "nano: schema validation failed: steps.2: Invalid input: expected object, received string",
+    "warnings": [],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3015,
+      "completion_tokens": 367,
+      "seconds": 1.346,
+      "content": "{\"spec_title\": \"ISS crew member unloads battery stowage pack\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 54.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 4.5], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj3\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj3\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}]}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj3\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj3\", \"target\": \"obj4\"}}]}, \"warnings\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 3428,
+      "completion_tokens": 367,
+      "seconds": 1.425,
+      "content": "{\"spec_title\": \"ISS crew member unloads battery stowage pack\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 54.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 4.5], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj3\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj3\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}]}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj3\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj3\", \"target\": \"obj4\"}}]}, \"warnings\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 1,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3015,
+      "completion_tokens": 480,
+      "seconds": 1.684,
+      "content": "{\"spec_title\": \"ISS crew member unloads battery stowage pack\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 54.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 4.5], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj3\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj3\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj3\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj3\", \"target\": \"obj4\"}}], \"warnings\": [\"No scale reference visible; object poses and sizes are estimated from video proportions.\", \"Pocket clearance for stowage tray not visible.\", \"Task may be one repetition of a multi-battery transfer; only one battery pack clearly manipulated in this clip.\"]}], \"warnings\": [\"No scale reference visible; object poses and sizes are estimated from video proportions.\", \"Pocket clearance for stowage tray not visible.\", \"Task may be one repetition of a multi-battery transfer; only one battery pack clearly manipulated in this clip.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 2,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 2999,
+      "completion_tokens": 404,
+      "seconds": 1.544,
+      "content": "{\"spec_title\": \"Putting seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj3\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj3\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj3\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj3\", \"target\": \"obj1\"}}], \"warnings\": []}], \"warnings\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 2,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 2999,
+      "completion_tokens": 404,
+      "seconds": 1.52,
+      "content": "{\"spec_title\": \"Putting seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj3\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj3\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj3\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj3\", \"target\": \"obj1\"}}], \"warnings\": []}], \"warnings\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 2,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 2999,
+      "completion_tokens": 404,
+      "seconds": 1.621,
+      "content": "{\"spec_title\": \"Putting seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj3\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj3\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj3\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj3\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj3\", \"target\": \"obj1\"}}], \"warnings\": []}], \"warnings\": []}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 3,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 2967,
+      "completion_tokens": 388,
+      "seconds": 1.456,
+      "content": "{\"spec_title\": \"Astronaut handles black rectangular packets on a work surface in a station module\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj4\", \"aperture_mm\": 20}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj4\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 29], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 10], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj4\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj4\", \"target\": \"obj2\"}}], \"warnings\": []}], \"warnings\": [\"Object dimensions are estimated from video without a visible scale reference\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 3,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 2967,
+      "completion_tokens": 388,
+      "seconds": 1.604,
+      "content": "{\"spec_title\": \"Astronaut handles black rectangular packets on a work surface in a station module\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj4\", \"aperture_mm\": 20}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj4\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 29], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 10], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj4\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj4\", \"target\": \"obj2\"}}], \"warnings\": []}], \"warnings\": [\"Object dimensions are estimated from video without a visible scale reference\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 3,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 2967,
+      "completion_tokens": 388,
+      "seconds": 1.618,
+      "content": "{\"spec_title\": \"Astronaut handles black rectangular packets on a work surface in a station module\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 0], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj4\", \"aperture_mm\": 20}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj4\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 29], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 10], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj4\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj4\", \"target\": \"obj2\"}}], \"warnings\": []}], \"warnings\": [\"Object dimensions are estimated from video without a visible scale reference\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 0,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3060,
+      "completion_tokens": 446,
+      "seconds": 1.823,
+      "content": "{\"spec_title\": \"Pushing seed film into plant pillows aboard station\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"seed_packet_1\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"seed_packet_1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"seed_packet_1\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"seed_packet_1\", \"target\": \"plant_pillow_tray\"}}], \"warnings\": []}], \"warnings\": [\"Object sizes are estimated without a visible scale reference\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 0,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3060,
+      "completion_tokens": 446,
+      "seconds": 1.729,
+      "content": "{\"spec_title\": \"Pushing seed film into plant pillows aboard station\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"seed_packet_1\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"seed_packet_1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"seed_packet_1\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"seed_packet_1\", \"target\": \"plant_pillow_tray\"}}], \"warnings\": []}], \"warnings\": [\"Object sizes are estimated without a visible scale reference\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 0,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3060,
+      "completion_tokens": 446,
+      "seconds": 1.922,
+      "content": "{\"spec_title\": \"Pushing seed film into plant pillows aboard station\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"seed_packet_1\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"seed_packet_1\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"seed_packet_1\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"plant_pillow_tray\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"seed_packet_1\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"seed_packet_1\", \"target\": \"plant_pillow_tray\"}}], \"warnings\": []}], \"warnings\": [\"Object sizes are estimated without a visible scale reference\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 1,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3030,
+      "completion_tokens": 455,
+      "seconds": 1.625,
+      "content": "{\"spec_title\": \"Astronaut opens a battery pack on a station workbench\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 54.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 4.5], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj2\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj2\", \"target\": \"obj4\"}}], \"warnings\": [\"Object sizes and poses are estimated from video without a visible scale reference; no ruler or known object size is present.\", \"All poses and clearances are approximate due to missing scale information.\"]}], \"warnings\": [\"Object sizes and poses are estimated from video without a visible scale reference; no ruler or known object size is present.\", \"All poses and clearances are approximate due to missing scale information.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 1,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3030,
+      "completion_tokens": 455,
+      "seconds": 1.618,
+      "content": "{\"spec_title\": \"Astronaut opens a battery pack on a station workbench\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 54.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 4.5], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj2\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj2\", \"target\": \"obj4\"}}], \"warnings\": [\"Object sizes and poses are estimated from video without a visible scale reference; no ruler or known object size is present.\", \"All poses and clearances are approximate due to missing scale information.\"]}], \"warnings\": [\"Object sizes and poses are estimated from video without a visible scale reference; no ruler or known object size is present.\", \"All poses and clearances are approximate due to missing scale information.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 1,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3030,
+      "completion_tokens": 418,
+      "seconds": 1.517,
+      "content": "{\"spec_title\": \"Astronaut opens a battery pack on a station workbench\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 54.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 4.5], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 50}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 47.5], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj4\", \"offset_mm\": [0, 0, 28.5], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj2\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"obj2\", \"target\": \"obj4\"}}], \"warnings\": []}], \"warnings\": [\"Object sizes and poses are estimated from video without a visible scale reference; no ruler or known object size is present.\", \"All poses and clearances are approximate due to missing scale information.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 2,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3053,
+      "completion_tokens": 447,
+      "seconds": 2.22,
+      "content": "{\"spec_title\": \"Astronaut pushing seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 3545,
+      "completion_tokens": 487,
+      "seconds": 2.595,
+      "content": "{\"spec_title\": \"Astronaut pushing seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 6}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"obj2\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"obj2\"}, \"timeout_s\": 2}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 2,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3053,
+      "completion_tokens": 411,
+      "seconds": 2.136,
+      "content": "{\"spec_title\": \"Astronaut pushing seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 6}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 3509,
+      "completion_tokens": 452,
+      "seconds": 2.244,
+      "content": "{\"spec_title\": \"Astronaut pushing seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 6}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 2,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it",
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 2,
+    "first_parsed": false,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3053,
+      "completion_tokens": 411,
+      "seconds": 2.049,
+      "content": "{\"spec_title\": \"Astronaut pushing seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 6}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}"
+     },
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 4,
+      "finish_reason": "stop",
+      "prompt_tokens": 3509,
+      "completion_tokens": 452,
+      "seconds": 1.796,
+      "content": "{\"spec_title\": \"Astronaut pushing seed film into plant pillows\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"obj2\", \"aperture_mm\": 6}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"obj1\", \"offset_mm\": [0, 0, 13], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"move_to\", \"frame\": \"obj2\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}], \"warnings\": [\"Object sizes estimated from video without reference scale; pillow tray and seed film dimensions uncertain.\", \"Seed film is small and partially occluded; its presence and insertion are inferred from hand motion and context.\", \"pocket_clearance_mm not provided because the pocket geometry is not clearly visible.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 3,
+   "k": 0,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3030,
+      "completion_tokens": 438,
+      "seconds": 1.564,
+      "content": "{\"spec_title\": \"Astronaut works with battery packs on a work panel aboard a station\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"tool\", \"aperture_mm\": 20}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"tool\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"panel\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"panel\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"tool\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"tool\", \"target\": \"panel\"}}], \"warnings\": [\"No visible scale or reference object for absolute pose; poses are estimates based on frame proportions.\", \"Tool object is small and partially occluded; its size and exact location are uncertain.\"]}], \"warnings\": [\"No visible scale or reference object for absolute pose; poses are estimates based on frame proportions.\", \"Tool object is small and partially occluded; its size and exact location are uncertain.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 3,
+   "k": 1,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3030,
+      "completion_tokens": 438,
+      "seconds": 1.838,
+      "content": "{\"spec_title\": \"Astronaut works with battery packs on a work panel aboard a station\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"tool\", \"aperture_mm\": 20}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"tool\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"panel\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"panel\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"tool\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"tool\", \"target\": \"panel\"}}], \"warnings\": [\"No visible scale or reference object for absolute pose; poses are estimates based on frame proportions.\", \"Tool object is small and partially occluded; its size and exact location are uncertain.\"]}], \"warnings\": [\"No visible scale or reference object for absolute pose; poses are estimates based on frame proportions.\", \"Tool object is small and partially occluded; its size and exact location are uncertain.\"]}"
+     }
+    ]
+   }
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 3,
+   "k": 2,
+   "model": "nvidia/Nemotron-3_5-Lightning",
+   "compile": {
+    "status": "done",
+    "warnings": [
+     "added an ask for steps[s2].success: the rehearsal needs it"
+    ],
+    "attempts": 1,
+    "first_parsed": true,
+    "calls": [
+     {
+      "model": "nvidia/Nemotron-3_5-Lightning",
+      "max_tokens": 3000,
+      "json_mode": true,
+      "thinking_off": true,
+      "turn": 2,
+      "finish_reason": "stop",
+      "prompt_tokens": 3030,
+      "completion_tokens": 438,
+      "seconds": 1.982,
+      "content": "{\"spec_title\": \"Astronaut works with battery packs on a work panel aboard a station\", \"steps\": [{\"step_id\": \"s1\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 62], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 12], \"approach\": \"top\"}, {\"op\": \"grasp\", \"object\": \"tool\", \"aperture_mm\": 20}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"contact_both_pads\", \"object\": \"tool\"}, \"timeout_s\": 1}, {\"op\": \"move_to\", \"frame\": \"tool\", \"offset_mm\": [0, 0, 50], \"approach\": \"top\"}], \"warnings\": []}, {\"step_id\": \"s2\", \"ops\": [{\"op\": \"move_to\", \"frame\": \"panel\", \"offset_mm\": [0, 0, 55], \"approach\": \"top\"}, {\"op\": \"move_to\", \"frame\": \"panel\", \"offset_mm\": [0, 0, 36], \"approach\": \"top\"}, {\"op\": \"release\"}, {\"op\": \"wait_until\", \"predicate\": {\"kind\": \"object_still\", \"object\": \"tool\"}, \"timeout_s\": 2}, {\"op\": \"assert\", \"predicate\": {\"kind\": \"inside_zone\", \"object\": \"tool\", \"target\": \"panel\"}}], \"warnings\": [\"No visible scale or reference object for absolute pose; poses are estimates based on frame proportions.\", \"Tool object is small and partially occluded; its size and exact location are uncertain.\"]}], \"warnings\": [\"No visible scale or reference object for absolute pose; poses are estimates based on frame proportions.\", \"Tool object is small and partially occluded; its size and exact location are uncertain.\"]}"
+     }
+    ]
+   }
+  }
+ ]
+}

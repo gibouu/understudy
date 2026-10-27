@@ -305,6 +305,41 @@ What the page says comes from these rows (`lib/estimate.ts`): beside each stage'
 
 A sample with a recording skips all of this: on a local server each of the six reached its program 0.05 to 0.10 s after "Watch the clip", and veggie's two Notes patches came back in 0.4 s each; the rehearsals still run in the browser. The five new recordings were made on 27 October with Nemotron 3.5 Super VL, Nemotron 3 Nano and Nemotron 3 Super, which leave Token Factory serverless on 9 November: US$0.031 for the five kept, about US$0.04 with three runs that stopped (Nano's first answer did not parse once, Super VL's label failed its schema twice). The wave's hand path was traced once in the browser against its recorded label and handed to the recorder, which cannot run MediaPipe. Where they end: the drink bag passes after the interview, chess and the first seed film pass after Notes, the wave's path is followed on Earth and in orbit; the pipette and the second seed film still fail after five patches, and are kept as they came out.
 
+## 14. Clips of your own: first answers that did not parse
+
+On the Vercel preview of #140, 2 of 4 first compiles of an uploaded clip failed their schema check, and the page said so. Issue #149 measured the own-clip path on 27 October in node through the routes themselves (`tests/bench/own-clips.test.ts`). It used the models the deployment calls, Nemotron 3.5 Super VL for the label and Nemotron 3.5 Lightning for the compile, and kept every request and raw answer in `bench/results/own-clips-*.json`.
+
+**The clips.** None is a sample, so each one runs live as a person's upload would. All four are 1080p, 30 fps, H.264 High at 12 Mbit/s with sound, cut and scaled from the NASA samples with ffmpeg:
+- an 8 s landscape clip from `iss-glovebox-pipette` (2 to 10 s);
+- an 8 s portrait clip (1080 × 1920, the middle 405 px of the frame) from `iss-veggie-seed-film-2` (4 to 12 s);
+- an 8 s portrait clip from `iss-fluid-bag-foam` (1 to 9 s);
+- a 12 s landscape clip from `iss-veggie-seed-film` (10 to 22 s).
+
+Each clip ran 4 times: twice with the line a person might type, twice with none, as the page starts. The proxy was made with ffmpeg at the browser's 480 px and 4 fps.
+
+**Before (main at 0f26296).**
+- Labels: 10 of 16 first answers were rejected, and each second answer parsed, so a label took two Super VL calls (mean 4.4 s, up to 8.9 s). Every rejection was a field written as `null` instead of left out: a step's `target` in 9 labels, its `object` in 8, and once each `pocket_clearance_mm`, `pose` and `gesture`. In 8 of the 10, a `retract` step named no object: the hand pulling back holds nothing. One `pose` also had no `xyz_mm`. When the second answer has the same nulls, the label fails outright: that happened twice in three runs while recording `iss-veggie-seed-film-2` (section 13).
+- Compiles: the 16 first compiles, then each of the 16 fitted specs compiled 3 more times, so 64 first answers from Lightning. 52 were fine. 10 had a problem the route's check sends back, and the second call fixed it: a step that never releases (6), a `follow` op in a step that is not a gesture (2), a move outside its target's frame (2). 2 did not parse, both for the same spec, and both were the same slip. Lightning closed the steps array one place late, as `"steps": [{…}, {…}, "warnings"]}`, so the key `"warnings"` became a step and its value was lost. Asked again with only the error, Lightning returned the same answer word for word, and the route failed. That makes 2 of 48 repeat compiles failed, about 4%. The page's two failures (`steps.2: expected object, received string`, and a step with neither `step_id` nor `ops`) are the same slip.
+- No answer came near the limit: every compile finished with `stop`, the longest at 1,370 of 3,000 tokens. `max_tokens` is not the cause.
+
+**The fix.**
+- `normalizeSpec` reads `null` as unset, since no field of a spec takes null. It also leaves out a `retract` that names no object, which the fit drops anyway, and a `pose` without its three coordinates.
+- `normalizeProgram` puts a program key caught inside `steps` back where it belongs, whether it is a bare `"warnings"` or a record of program keys, and reads a step written as a JSON string, as it already read ops.
+- When an answer is unusable, the retry message now repeats the answer's shape (`CallOptions.shape`), so a slip the normalizer does not know is less likely to come back unchanged.
+
+`tests/bench/own-clips-replay.test.ts` reads every kept first answer again: all 16 labels and all 64 programs now parse. On main the same test fails on 10 labels and 2 programs.
+
+**After, live, same clips and lines, the same 16 specs.**
+
+| | Before | After |
+|---|---|---|
+| Labels right on the first answer | 6 of 16 | 16 of 16 |
+| Label time, mean (max) | 4.4 s (8.9 s) | 2.7 s (4.5 s) |
+| Compiles of the 16 specs, 3 each, that failed | 2 of 48 | 0 of 48 |
+| ... that needed a second call | 9 of 48 | 3 of 48 (all check problems) |
+
+What is still open: 5 of 16 labels after (3 of 16 before) describe the task as a move and a release with no insert or place step, so the fit finds nothing to rehearse (issue #150). Spend for this section: US$0.10.
+
 ## Reproduce
 
 Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend. Since 27 October the Nano and Super roles call their replacements (section 12): add `UNDERSTUDY_KEEP_RETIRED=1` to rerun a Nano or Super row while Token Factory still serves them, until 9 November 2026.
