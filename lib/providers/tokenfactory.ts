@@ -82,7 +82,7 @@ export function liveModels(client: OpenAI, now = Date.now()): Promise<Served> {
         ok: false,
         listed: false,
         models: { vl: false, nano: false, super: false, ultra: false },
-        why: `Token Factory did not list its models (${err instanceof Error ? err.message : String(err)})`.slice(0, 200),
+        why: `Token Factory did not list its models (${errorText(err)})`.slice(0, 200),
       }),
     );
   const entry = { until: now + LISTED_FOR_MS, result };
@@ -136,8 +136,24 @@ export function thinkingOff(): { extra_body: { chat_template_kwargs: { enable_th
 /** Unknown request parameters are accepted silently (no 400), so a typo never fails loudly. */
 export const UNKNOWN_PARAMS_ARE_IGNORED = true;
 
+/** The key as set, without the whitespace a paste into an env var can bring: a newline in it makes the SDK throw a header error that quotes it (#103). */
+function apiKey(): string | undefined {
+  return process.env.NEBIUS_API_KEY?.trim() || undefined;
+}
+
 export function hasTokenFactoryKey(): boolean {
-  return Boolean(process.env.NEBIUS_API_KEY);
+  return Boolean(apiKey());
+}
+
+/**
+ * What a failed call may say in a route's answer (#103): an API error's own
+ * message, a fixed text for anything else (an SDK error can quote the
+ * request's headers), and never the key.
+ */
+export function errorText(err: unknown): string {
+  const text = err instanceof OpenAI.APIError ? err.message : "the call did not go through";
+  const key = process.env.NEBIUS_API_KEY;
+  return [key, key?.trim()].reduce<string>((t, k) => (k ? t.split(k).join("[key]") : t), text);
 }
 
 export type ClientOptions = {
@@ -148,10 +164,10 @@ export type ClientOptions = {
 
 /** Returns null when no key is configured: every route then serves recorded replays. */
 export function tokenFactory(options: ClientOptions = {}): OpenAI | null {
-  const apiKey = process.env.NEBIUS_API_KEY;
-  if (!apiKey) return null;
+  const key = apiKey();
+  if (!key) return null;
   return new OpenAI({
-    apiKey,
+    apiKey: key,
     baseURL: TOKEN_FACTORY_BASE_URL,
     timeout: options.timeout ?? 60_000,
     maxRetries: options.maxRetries ?? 2,
