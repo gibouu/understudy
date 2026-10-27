@@ -35,11 +35,14 @@ describe("callModel", () => {
     expect(sent[0]).toMatchObject({ response_format: { type: "json_object" }, extra_body: { chat_template_kwargs: { enable_thinking: false } } });
   });
 
-  it("retries a 400 once without the optional parameters", async () => {
+  it("retries a 400 once without JSON mode, thinking still off", async () => {
     const { client, sent } = fake([badRequest(), '{"n":2}']);
     expect(await callModel(client, opts)).toMatchObject({ status: "done", value: { n: 2 } });
     expect(sent[1]).not.toHaveProperty("response_format");
-    expect(sent[1]).not.toHaveProperty("extra_body");
+    expect(sent[1]).toMatchObject({ extra_body: { chat_template_kwargs: { enable_thinking: false } } });
+    const thinking = fake([badRequest(), '{"n":2}']);
+    await callModel(thinking.client, { ...opts, thinking: true });
+    expect(thinking.sent[1]).not.toHaveProperty("extra_body");
   });
 
   it("asks once to fix what check finds, and keeps what is left as warnings", async () => {
