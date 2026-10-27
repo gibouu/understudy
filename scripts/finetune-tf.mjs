@@ -254,14 +254,17 @@ async function main() {
       // 2. the checkpoint registered as a serverless LoRA model: POST /v0/models with the source "<job>:<checkpoint>",
       // then wait for it to turn active (the cookbook's post-training/fine-tuning-1/fine_tune_llama.ipynb, step 9)
       try {
-        const mk = await fetch(`${API_ROOT}/v0/models`, { method: "POST", headers: { ...auth(), "Content-Type": "application/json" }, body: JSON.stringify({ name: "understudy-patcher", base_model: BASE_MODEL, source: `${s.job.id}:${last.id}`, description: "LoRA of the patch-loop repairs (issue #97)" }) });
+        // every request has a timeout: a stalled answer must not hold the lock for ever
+        const mk = await fetch(`${API_ROOT}/v0/models`, { method: "POST", signal: AbortSignal.timeout(120_000), headers: { ...auth(), "Content-Type": "application/json" }, body: JSON.stringify({ name: "understudy-patcher", base_model: BASE_MODEL, source: `${s.job.id}:${last.id}`, description: "LoRA of the patch-loop repairs (issue #97)" }) });
         const mkBody = await mk.json().catch(() => ({}));
         s.serve.lora_model = { status: mk.status, name: mkBody.name ?? null, detail: mkBody.detail ? String(JSON.stringify(mkBody.detail)).slice(0, 300) : null };
         if (mk.ok && mkBody.name) {
           let info = {};
           for (let i = 0; i < 120 && !["active", "error"].includes(info.status); i++) {
             await new Promise((r) => setTimeout(r, MINUTE_MS / 12));
-            info = await (await fetch(`${API_ROOT}/v0/models/${encodeURIComponent(mkBody.name)}`, { headers: auth() })).json().catch(() => ({}));
+            info = await fetch(`${API_ROOT}/v0/models/${encodeURIComponent(mkBody.name)}`, { headers: auth(), signal: AbortSignal.timeout(30_000) })
+              .then((r) => r.json())
+              .catch(() => ({}));
           }
           s.serve.lora_model.final_status = info.status ?? null;
           if (info.status === "active") s.serve.lora_answer = await ask(mkBody.name);
