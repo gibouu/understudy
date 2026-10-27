@@ -62,11 +62,16 @@ describe("the tour", async () => {
         "understudy/ledger.json",
       ]),
     );
-    expect(quality.headline).toBe("2 scripted, primitive-rendered episodes; a format-valid skeleton, not training data");
+    // the tour exports no video: nothing is rendered, and the report must not say so (#168)
+    expect(quality.headline).toBe("2 scripted episodes; a format-valid skeleton, not training data");
+    expect(paths.some((p) => p.endsWith(".mp4"))).toBe(false);
     const files = unzipSync(zip);
     const info = JSON.parse(new TextDecoder().decode(files["lerobot/meta/info.json"]));
     expect(info.fps).toBe(15);
     expect(info.total_episodes).toBe(2);
-    expect(new TextDecoder().decode(files["lerobot/QUALITY.md"])).toContain("not training data");
+    const quality_md = new TextDecoder().decode(files["lerobot/QUALITY.md"]);
+    expect(quality_md).toContain("not training data");
+    expect(quality_md).toContain("joint states and actions only, no video");
+    expect(quality_md).not.toContain("rendered");
   });
 });

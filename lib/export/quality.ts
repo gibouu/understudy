@@ -1,6 +1,6 @@
 /**
  * The quality report that travels with every export. It says what the data is
- * (scripted, primitive-rendered episodes) and flags any state or action
+ * (scripted episodes, primitive-rendered only when the export holds video) and flags any state or action
  * dimension that never moves, since a model trained on it would learn nothing
  * there.
  */
@@ -26,9 +26,19 @@ const ORIGIN_TEXT: Record<EpisodeOrigin, { kind: string; how: string; units: str
   },
 };
 
-export function headline(episodeCount: number, origin: EpisodeOrigin = "rehearsal"): string {
+/** Rehearsed episodes are rendered only when the export holds their video; without it they are joint values alone (#168). */
+function originText(origin: EpisodeOrigin, rendered: boolean) {
+  if (origin === "synthetic" || rendered) return ORIGIN_TEXT[origin];
+  return {
+    ...ORIGIN_TEXT.rehearsal,
+    kind: "scripted",
+    how: "These episodes come from a scripted SO-101 program rehearsed in rigid-body simulation with a geometric grasp: joint states and actions only, no video.",
+  };
+}
+
+export function headline(episodeCount: number, origin: EpisodeOrigin = "rehearsal", rendered = false): string {
   const noun = episodeCount === 1 ? "episode" : "episodes";
-  return `${episodeCount} ${ORIGIN_TEXT[origin].kind} ${noun}; a format-valid skeleton, not training data`;
+  return `${episodeCount} ${originText(origin, rendered).kind} ${noun}; a format-valid skeleton, not training data`;
 }
 
 /**
@@ -83,6 +93,8 @@ export type QualityInput = {
   /** true only once validate_groot.py has loaded this export */
   loaderValidated?: boolean;
   origin?: EpisodeOrigin;
+  /** the export holds a video of each episode */
+  rendered?: boolean;
 };
 
 export function buildQualityReport({
@@ -91,9 +103,10 @@ export function buildQualityReport({
   spec,
   loaderValidated = false,
   origin = "rehearsal",
+  rendered = false,
 }: QualityInput): QualityReport {
   return {
-    headline: headline(episodes.length, origin),
+    headline: headline(episodes.length, origin, rendered),
     envelope_per_axis: Object.fromEntries(Object.entries(envelope ?? {}).filter(([, v]) => v !== undefined)),
     spec_coverage_by_source: spec ? specCoverageBySource(spec) : {},
     degenerate_dimensions: degenerateDimensions(episodes),
@@ -119,18 +132,20 @@ export type QualityMarkdownOptions = {
   jointUnits?: string;
   /** must match the origin the report was built with */
   origin?: EpisodeOrigin;
+  /** must match the report's too */
+  rendered?: boolean;
 };
 
 /** QUALITY.md, written next to the dataset. */
 export function renderQualityMarkdown(
   report: QualityReport,
   episodes: EpisodeRecord[],
-  { origin = "rehearsal", jointUnits = ORIGIN_TEXT[origin].units }: QualityMarkdownOptions = {},
+  { origin = "rehearsal", rendered = false, jointUnits = ORIGIN_TEXT[origin].units }: QualityMarkdownOptions = {},
 ): string {
   const lines: string[] = ["# Quality report", "", `**${report.headline}.**`, ""];
 
   lines.push(
-    `${ORIGIN_TEXT[origin].how} They fill the LeRobot v2.1 layout Isaac-GR00T reads, to show the format; they are not demonstrations to train a policy on.`,
+    `${originText(origin, rendered).how} They fill the LeRobot v2.1 layout Isaac-GR00T reads, to show the format; they are not demonstrations to train a policy on.`,
     "",
   );
   lines.push(
