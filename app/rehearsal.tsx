@@ -304,7 +304,7 @@ export function Rehearsal({
           </div>
         )}
       </div>
-      <SettingSwitch shown={shown} onPick={pick} note={picked === "auto" && !shown ? `after a pass ${SETTING_WORLD[suggested] === "orbit" ? "in orbit" : "on Earth"}: the ${SETTING_NAMES[suggested]}` : undefined} />
+      <SettingSwitch shown={building !== undefined ? building : shown} onPick={pick} note={picked === "auto" && !shown ? `after a pass ${SETTING_WORLD[suggested] === "orbit" ? "in orbit" : "on Earth"}: the ${SETTING_NAMES[suggested]}` : undefined} />
       {rows.length > 0 && (
         <table className="w-full text-left text-sm">
           <thead className="text-xs text-neutral-500">

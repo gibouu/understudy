@@ -95,7 +95,9 @@ function insideZone(w: World, objectId: string, targetId: string): Check {
     R = vec(w.data.site_xmat, zone, 9);
     const size = vec(w.model.site_size, zone, 3);
     half = [size[0], size[1]];
-    support = pocket >= 0 ? vec(w.data.site_xpos, siteId(w, `${name}_pocket_floor`), 3)[2] : origin[2];
+    // the lookup before the view: it allocates, which can grow the wasm heap and detach a view taken before it
+    const floor = pocket >= 0 ? siteId(w, `${name}_pocket_floor`) : -1;
+    support = pocket >= 0 ? vec(w.data.site_xpos, floor, 3)[2] : origin[2];
   } else {
     const t = object(w, targetId);
     const id = bodyId(w, name);
