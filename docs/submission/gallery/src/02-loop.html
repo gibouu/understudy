@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Understudy loop</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .stages { position:absolute; left:80px; top:258px; width:520px; }
+  .stage { position:relative; padding:20px 24px 20px 92px; border-radius:18px; background:var(--card); color:var(--ink); border:3px solid var(--cream); margin-bottom:46px; }
+  .stage .n { position:absolute; left:20px; top:18px; width:54px; height:54px; border-radius:50%; background:var(--navy); color:var(--sun); font-family:var(--disp); font-weight:800; font-size:32px; display:flex; align-items:center; justify-content:center; }
+  .stage b { display:block; font-family:var(--disp); font-weight:800; font-size:32px; line-height:1.05; color:var(--navy); }
+  .stage span { display:block; margin-top:6px; font-family:var(--mono); font-size:18px; line-height:1.35; color:#3b4b60; }
+  .stage .who { display:inline-block; margin-top:10px; font-family:var(--mono); font-weight:700; font-size:16px; letter-spacing:.06em; text-transform:uppercase; color:var(--orange); }
+  .stage::after { content:""; position:absolute; left:46px; bottom:-44px; width:4px; height:40px; background:var(--sun); }
+  .stage:last-child::after { display:none; }
+  .q { margin-top:12px; padding:10px 14px; border-left:5px solid var(--orange); background:#fff; font-family:var(--disp); font-weight:600; font-size:21px; line-height:1.2; color:var(--navy); }
+  svg.orbit { position:absolute; left:610px; top:236px; width:1130px; height:680px; overflow:visible; }
+  .node { position:absolute; width:330px; padding:18px 22px; border-radius:18px; }
+  .node b { display:block; font-family:var(--disp); font-weight:800; font-size:34px; line-height:1.05; }
+  .node span { display:block; margin-top:6px; font-family:var(--mono); font-size:18px; line-height:1.35; }
+  .node .who { display:block; margin-top:8px; font-family:var(--mono); font-weight:700; font-size:16px; letter-spacing:.06em; text-transform:uppercase; }
+  .n4 { left:640px; top:470px; background:var(--cream); color:var(--navy); border:4px solid var(--sun); }
+  .n4 span { color:#3b4b60; } .n4 .who { color:var(--orange); }
+  .n5 { left:1390px; top:470px; background:var(--orange); color:#fff8ee; border:4px solid var(--orange); }
+  .n5 .who { color:var(--navy); }
+  .n6 { left:660px; top:246px; width:400px; padding:14px 20px; background:var(--navy-2); color:var(--cream); border:3px solid var(--ok); }
+  .n6 b { font-size:30px; } .n6 span { color:var(--soft); } .n6 .who { color:var(--ok); }
+  .core { position:absolute; left:1020px; top:500px; width:330px; text-align:center; font-family:var(--disp); font-weight:600; font-size:27px; line-height:1.2; color:var(--cream); }
+  .core small { display:block; margin-top:8px; font-family:var(--mono); font-size:16px; color:var(--soft); }
+  .stats { position:absolute; left:640px; right:80px; top:836px; display:grid; grid-template-columns:1fr 1fr 1fr 1.25fr; gap:18px; }
+  .stat { padding:16px 20px; border-radius:16px; background:var(--navy-2); border:2px solid var(--navy-3); }
+  .stat b { display:block; font-family:var(--disp); font-weight:800; font-size:48px; line-height:1; color:var(--sun); }
+  .stat span { display:block; margin-top:8px; font-family:var(--mono); font-size:16.5px; line-height:1.35; color:var(--soft); }
+  .stat.red b { color:var(--tangerine); }
+  .stat.rec { border-color:var(--sun); } .stat.rec b { font-size:27px; color:var(--cream); line-height:1.1; }
+  .src { position:absolute; left:640px; top:1052px; font-family:var(--mono); font-size:15px; color:var(--dim); }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<div class="page">
+  <div class="kicker">How it improves</div>
+  <h1>Rehearse. Fail. Read the notes. <em>Patch.</em></h1>
+  <p class="lede">No policy is trained: the simulator is the reward signal and Nemotron edits the program.</p>
+
+  <div class="stages">
+    <div class="stage"><div class="n">1</div><b>Watch</b><span>one clip of a person doing the task, kept in the browser</span></div>
+    <div class="stage"><div class="n">2</div><b>What the model saw</b><span>steps, objects as shapes with sizes, the target</span><div class="who">Nemotron 3.5 Super VL</div></div>
+    <div class="stage"><div class="n">3</div><b>The robot asks</b><span>every value it would have to guess becomes a question</span>
+      <div class="q">“When does putting the seed film packet in the Veggie plant pillow tray count as done?”</div>
+      <div class="who">Nemotron 3.5 Lightning</div></div>
+  </div>
+
+  <svg class="orbit" viewBox="610 236 1130 680">
+    <defs>
+      <radialGradient id="planet" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#2a4a74"/><stop offset="1" stop-color="#132640"/></radialGradient>
+      <marker id="a1" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#efb340"/></marker>
+      <marker id="a2" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#e87d3e"/></marker>
+      <marker id="a3" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#4c9a6f"/></marker>
+    </defs>
+    <!-- the planet: the simulator -->
+    <circle cx="1185" cy="560" r="170" fill="url(#planet)" stroke="#1b3150" stroke-width="3"/>
+    <ellipse cx="1185" cy="560" rx="470" ry="190" fill="none" stroke="#1b3150" stroke-width="2"/>
+    <!-- upper half: rehearse -> notes (failure note) -->
+    <path d="M 760 470 C 860 360, 1510 360, 1610 470" fill="none" stroke="#e87d3e" stroke-width="6" stroke-linecap="round" marker-end="url(#a2)"/>
+    <text x="1300" y="372" text-anchor="middle" font-family="JetBrains Mono" font-size="19" fill="#e87d3e">fails → the simulator's note, as text</text>
+    <!-- lower half: notes -> rehearse (patch) -->
+    <path d="M 1610 690 C 1510 770, 860 770, 760 690" fill="none" stroke="#efb340" stroke-width="6" stroke-linecap="round" marker-end="url(#a1)"/>
+    <text x="1185" y="796" text-anchor="middle" font-family="JetBrains Mono" font-size="19" fill="#efb340">one patch → rehearse again · up to 5</text>
+    <!-- exit: pass -->
+    <path d="M 720 468 C 716 440, 716 420, 718 398" fill="none" stroke="#4c9a6f" stroke-width="5" stroke-dasharray="3 10" stroke-linecap="round" marker-end="url(#a3)"/>
+    <!-- entry from stage 3 -->
+    <path d="M 612 640 C 630 600, 630 580, 636 560" fill="none" stroke="#efb340" stroke-width="5" stroke-linecap="round" marker-end="url(#a1)"/>
+  </svg>
+
+  <div class="core">The simulator<br>is the reward signal<small>MuJoCo in your browser</small></div>
+
+  <div class="node n4"><b>4 · Rehearse</b><span>SO-101 runs the program on Earth (1 g) and in orbit (0 g)</span><div class="who">MuJoCo WebAssembly</div></div>
+  <div class="node n5"><b>5 · Notes</b><span>reads the failure, proposes one patch; thinks only when stuck</span><div class="who">Super · Ultra when stuck</div></div>
+  <div class="node n6"><b>6 · Passes</b><span>then try similar tasks: a bigger bowl, a higher shelf, rehearsed again</span><div class="who">exits the loop</div></div>
+
+  <div class="stats">
+    <div class="stat red"><b>86%</b><span>of disturbed runs fail with a naive, human-like program</span></div>
+    <div class="stat"><b>69%</b><span>of solvable failures fixed within 5 patches, thinking off</span></div>
+    <div class="stat"><b>94%</b><span>when it thinks only once stuck, at $0.0024 per fix</span></div>
+    <div class="stat rec"><b>The seed film, as recorded</b><span>1 question · 4 versions of the program · the last passes at 1 g and 0 g · 7 model calls, $0.0040</span></div>
+  </div>
+  <div class="src">Bench harness: 4 tasks × 4 gravities, 180 failures, Nemotron 3 Super (docs/MEASUREMENTS.md §8). Seed film: public/showcase.</div>
+
+  <div class="foot"><span><b>Understudy</b> · Nebius × NVIDIA Global AI Hackathon · Physical AI</span><span>github.com/gibouu/understudy</span></div>
+</div>
+</body>
+</html>

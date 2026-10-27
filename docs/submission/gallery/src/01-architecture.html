@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Understudy architecture</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .col { position:absolute; top:284px; border-radius:22px; }
+  .col h2 { font-family:var(--mono); font-weight:700; font-size:21px; letter-spacing:.12em; text-transform:uppercase; }
+  .col .sub { font-family:var(--mono); font-size:18px; margin-top:6px; }
+  /* browser */
+  .browser { left:80px; width:560px; height:800px; background:var(--card); color:var(--ink); border:4px solid var(--cream); box-shadow:14px 14px 0 var(--orange); padding:24px 26px; }
+  .browser h2 { color:var(--orange); } .browser .sub { color:#5b6b80; }
+  .chrome { display:flex; gap:9px; margin-bottom:16px; } .chrome i { width:15px; height:15px; border-radius:50%; background:#d9cdb8; display:block; }
+  .blk { position:relative; margin-top:14px; padding:14px 18px; border:3px solid var(--ink); border-radius:14px; background:#fff; }
+  .blk b { display:block; font-family:var(--disp); font-weight:600; font-size:27px; line-height:1.1; color:var(--navy); }
+  .blk span { display:block; margin-top:4px; font-family:var(--mono); font-size:17px; color:#5b6b80; line-height:1.35; }
+  .blk.hot { background:#fff3e6; border-color:var(--orange); }
+  .blk.rec { border-style:dashed; background:transparent; }
+  /* routes */
+  .routes { left:760px; width:330px; height:800px; background:var(--navy-2); border:3px solid var(--navy-3); padding:24px 22px; }
+  .routes h2 { color:var(--cream); } .routes .sub { color:var(--soft); }
+  .route { margin-top:18px; padding:13px 16px; border-radius:12px; background:var(--navy-3); font-family:var(--mono); font-weight:500; font-size:23px; color:var(--cream); }
+  .route small { display:block; font-weight:400; font-size:16px; color:var(--soft); margin-top:3px; }
+  /* token factory */
+  .tf { left:1210px; width:510px; height:590px; background:var(--navy-2); border:3px solid var(--sun); box-shadow:14px 14px 0 rgba(239,179,64,.35); padding:24px 24px; }
+  .tf h2 { color:var(--sun); } .tf .sub { color:var(--soft); }
+  .model { margin-top:16px; padding:14px 18px; border-radius:14px; background:var(--cream); color:var(--navy); }
+  .model b { display:block; font-family:var(--disp); font-weight:800; font-size:26px; line-height:1.05; }
+  .model span { display:block; margin-top:5px; font-family:var(--mono); font-size:16.5px; color:#3b4b60; line-height:1.3; }
+  .model.u { background:var(--sun); }
+  .tavily { left:1210px; top:910px; width:510px; height:174px; background:var(--navy-2); border:3px solid var(--sky); padding:22px 24px; }
+  .tavily h2 { color:var(--sky); } .tavily p { margin-top:10px; font-family:var(--mono); font-size:19px; color:var(--cream); line-height:1.4; }
+  .legend { position:absolute; left:80px; top:226px; display:flex; gap:28px; font-family:var(--mono); font-size:18px; color:var(--soft); }
+  .legend i { display:inline-block; width:34px; height:4px; border-radius:2px; vertical-align:middle; margin-right:10px; }
+  .legend i.d { background:repeating-linear-gradient(90deg,#efb340 0 8px,transparent 8px 14px); }
+  .lede { max-width:1000px; font-size:26px; }
+  svg.wires { position:absolute; inset:0; width:1800px; height:1200px; pointer-events:none; overflow:visible; }
+  .wl { font-family:var(--mono); font-size:16px; fill:var(--soft); }
+  .tagline { position:absolute; font-family:var(--mono); font-size:17px; color:var(--sun); background:var(--navy); padding:4px 10px; border-radius:8px; border:2px solid var(--navy-3); }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<div class="page">
+  <div class="kicker">Architecture</div>
+  <h1>Physics in your browser. <em>Thinking on Nebius.</em></h1>
+  <p class="lede">Only a 480 px proxy of the clip, your answers and the simulator's notes leave the page.</p>
+  <div class="legend"><span><i style="background:#efb340"></i>proxy and answers</span><span><i style="background:#e87d3e"></i>failure note out, patch back</span><span><i class="d"></i>when the loop is stuck</span></div>
+
+  <div class="col browser">
+    <div class="chrome"><i></i><i></i><i></i></div>
+    <h2>Your browser</h2>
+    <div class="sub">Next.js 16 page · nothing to install</div>
+    <div class="blk" id="b-clip"><b>Your clip</b><span>MP4 or 8 s from the camera · stays local<br>→ 480 px · 4 fps proxy for the model</span></div>
+    <div class="blk" id="b-hand"><b>MediaPipe hand trace</b><span>a wave: the arm follows the hand's path</span></div>
+    <div class="blk hot" id="b-sim"><b>MuJoCo 3.17 WebAssembly</b><span>in a Web Worker · SO-101 from Menagerie<br>program interpreter · IK · 1 g and 0 g</span></div>
+    <div class="blk" id="b-liq"><b>Liquid solver</b><span>position-based fluid, TypeScript<br>reads the cup's walls from MuJoCo</span></div>
+    <div class="blk rec" id="b-rec"><b>Space showcase</b><span>recorded sessions replay with no model call</span></div>
+  </div>
+
+  <div class="col routes">
+    <h2>Vercel routes</h2>
+    <div class="sub">stateless · replayable · priced</div>
+    <div class="route" id="r-label">/api/label<small>clip → task spec</small></div>
+    <div class="route" id="r-compile">/api/compile<small>spec → program + questions</small></div>
+    <div class="route" id="r-notes">/api/notes<small>failure note → one patch</small></div>
+    <div class="route" id="r-variants">/api/variants<small>similar tasks</small></div>
+    <div class="route" id="r-ground">/api/ground<small>web advice, opt-in</small></div>
+    <div class="route" id="r-models">/api/models<small>list prices per call</small></div>
+  </div>
+
+  <div class="col tf">
+    <h2>Nebius Token Factory</h2>
+    <div class="sub">OpenAI SDK · structured JSON · thinking per call</div>
+    <div class="model" id="m-vl"><b>Nemotron 3.5 Super VL</b><span>watches the clip (video_url) · labels steps, objects, sizes</span></div>
+    <div class="model" id="m-lite"><b>Nemotron 3.5 Lightning</b><span>compiles after every answer · turns each guess into a question · recordings: Nano</span></div>
+    <div class="model" id="m-super"><b>Nemotron 3 Super</b><span>patches from the simulator's notes · similar tasks · live: Super VL (Super retires 9 Nov)</span></div>
+    <div class="model u" id="m-ultra"><b>Nemotron 3 Ultra</b><span>takes over a patch loop that is stuck</span></div>
+  </div>
+
+  <div class="col tavily" id="t-tav">
+    <h2>Tavily</h2>
+    <p>search + extract → advice chips<br>with their source URLs</p>
+  </div>
+
+  <svg class="wires" id="wires">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#efb340"/></marker>
+      <marker id="ahc" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#f7efe2"/></marker>
+      <marker id="aho" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#e87d3e"/></marker>
+    </defs>
+  </svg>
+
+  <div class="foot"><span><b>Understudy</b> · Nebius × NVIDIA Global AI Hackathon · Physical AI</span><span>github.com/gibouu/understudy</span></div>
+</div>
+<script>
+  const svg = document.getElementById('wires'), NS = 'http://www.w3.org/2000/svg';
+  const box = id => document.getElementById(id).getBoundingClientRect();
+  const curve = (x1,y1,x2,y2,color,marker,w=3,dash) => {
+    const p = document.createElementNS(NS,'path'); const dx = (x2-x1)*.5;
+    p.setAttribute('d',`M${x1} ${y1} C ${x1+dx} ${y1}, ${x2-dx} ${y2}, ${x2} ${y2}`);
+    p.setAttribute('stroke',color); p.setAttribute('stroke-width',w); p.setAttribute('fill','none'); p.setAttribute('stroke-linecap','round');
+    if (dash) p.setAttribute('stroke-dasharray',dash);
+    if (marker) p.setAttribute('marker-end',`url(#${marker})`);
+    svg.appendChild(p);
+  };
+  const R = id => { const b = box(id); return [b.right, b.top + b.height/2]; };
+  const L = id => { const b = box(id); return [b.left, b.top + b.height/2]; };
+  // browser -> routes
+  const link = (a,b,color,marker,dash) => { const [x1,y1]=R(a), [x2,y2]=L(b); curve(x1+4,y1,x2-6,y2,color,marker,3,dash); };
+  link('b-clip','r-label','#efb340','ah');
+  link('b-clip','r-compile','#efb340','ah');
+  link('b-sim','r-notes','#e87d3e','aho');
+  // routes -> models
+  link('r-label','m-vl','#f7efe2','ahc');
+  link('r-compile','m-lite','#f7efe2','ahc');
+  link('r-notes','m-super','#f7efe2','ahc');
+  link('r-notes','m-ultra','#efb340','ah','10 8');
+  link('r-variants','m-super','#f7efe2','ahc');
+  link('r-ground','t-tav','#7fb0e0','ahc');
+  // patch back to the simulator
+  { const b = box('r-notes'), s = box('b-sim'); const x1=b.left-6, y1=b.bottom-8, x2=s.right+6, y2=s.bottom-18;
+    curve(x1,y1,x2,y2,'#e87d3e','aho',3,'2 9'); }
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How Understudy was built</title>
+<link rel="stylesheet" href="base.css">
+<style>
+  .grid { position:absolute; left:80px; top:262px; width:720px; display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .k { height:300px; display:flex; flex-direction:column; justify-content:flex-end; padding:24px 28px; border-radius:18px; background:var(--navy-2); border:2px solid var(--navy-3); }
+  .k b { display:block; font-family:var(--disp); font-weight:800; font-size:104px; line-height:1; color:var(--sun); }
+  .k span { display:block; margin-top:12px; font-family:var(--mono); font-size:20px; color:var(--soft); line-height:1.35; }
+  .k.c b { color:var(--cream); }
+  .days { position:absolute; left:80px; top:912px; width:720px; padding:20px 24px; border-radius:18px; background:var(--navy-2); border:2px solid var(--navy-3); }
+  .days h3 { font-family:var(--mono); font-weight:700; font-size:18px; letter-spacing:.1em; text-transform:uppercase; color:var(--soft); }
+  .bars { margin-top:30px; display:flex; align-items:flex-end; gap:22px; height:96px; }
+  .bars div { flex:1; position:relative; background:var(--sun); border-radius:8px 8px 0 0; }
+  .bars div span { position:absolute; top:-26px; left:0; right:0; text-align:center; font-family:var(--mono); font-size:17px; color:var(--cream); }
+  .bars div i { position:absolute; bottom:-30px; left:0; right:0; text-align:center; font-family:var(--mono); font-style:normal; font-size:16px; color:var(--dim); }
+  .code { position:absolute; left:860px; top:262px; width:860px; height:618px; border-radius:18px; background:#0a1424; border:3px solid var(--navy-3); box-shadow:14px 14px 0 var(--orange); overflow:hidden; }
+  .code .bar { height:46px; display:flex; align-items:center; gap:10px; padding:0 18px; background:var(--navy-2); font-family:var(--mono); font-size:17px; color:var(--soft); }
+  .code .bar i { width:13px; height:13px; border-radius:50%; background:var(--navy-3); display:block; }
+  .code .bar span { margin-left:12px; }
+  pre { margin:0; padding:22px 24px; font-family:var(--mono); font-size:19.5px; line-height:1.55; color:#d8e2ef; white-space:pre-wrap; }
+  .kw { color:#e87d3e; } .fn { color:#efb340; } .st { color:#9fd0a8; } .cm { color:#6f819a; } .ln { color:#3c5170; display:inline-block; width:34px; }
+  .stack { position:absolute; left:860px; top:950px; width:860px; display:flex; flex-wrap:wrap; gap:12px; }
+  .stack span { padding:10px 16px; border-radius:999px; border:2px solid var(--navy-3); font-family:var(--mono); font-size:18px; color:var(--cream); }
+  .stack span.h { border-color:var(--sun); color:var(--sun); }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<div class="page">
+  <div class="kicker">How it was built</div>
+  <h1>Five days, <em>measured as we went.</em></h1>
+  <p class="lede">Issues for every gap we found, pull requests for every fix, and a second model reviewing the code.</p>
+
+  <div class="grid">
+    <div class="k"><b>60</b><span>pull requests merged</span></div>
+    <div class="k"><b>111</b><span>issues filed, failures included</span></div>
+    <div class="k c"><b>63</b><span>test files: simulator, specs, providers, bench</span></div>
+    <div class="k c"><b>22.8k</b><span>lines of TypeScript, no test files counted</span></div>
+  </div>
+
+  <div class="days">
+    <h3>Commits on main, per day</h3>
+    <div class="bars">
+      <div style="height:67%"><span>12</span><i>23 Oct</i></div>
+      <div style="height:22%"><span>4</span><i>24</i></div>
+      <div style="height:61%"><span>11</span><i>25</i></div>
+      <div style="height:100%"><span>18</span><i>26</i></div>
+      <div style="height:100%"><span>18</span><i>27</i></div>
+    </div>
+  </div>
+
+  <div class="code">
+    <div class="bar"><i></i><i></i><i></i><span>lib/providers/call.ts · every model call goes through here</span></div>
+<pre><span class="ln">51</span><span class="kw">const</span> params = { model, messages, max_tokens: o.maxTokens,
+<span class="ln"></span>  ...(o.thinking ? {} : <span class="fn">thinkingOff</span>()) };
+<span class="ln">52</span><span class="kw">let</span> res;
+<span class="ln">53</span><span class="kw">try</span> {
+<span class="ln">54</span>  res = <span class="kw">await</span> client.chat.completions.<span class="fn">create</span>(optional
+<span class="ln"></span>    ? { ...params, response_format: { type: <span class="st">"json_object"</span> } }
+<span class="ln"></span>    : params);
+<span class="ln">55</span>} <span class="kw">catch</span> (err) { <span class="cm">/* retry once without JSON mode on a 400 */</span> }
+<span class="ln">60</span><span class="kw">const</span> u = <span class="fn">usageOf</span>(res);
+<span class="ln">61</span>ledger.<span class="fn">push</span>({ model, prompt_tokens: u.prompt_tokens,
+<span class="ln"></span>  completion_tokens: u.completion_tokens,
+<span class="ln"></span>  cached_tokens: u.cached_tokens, seconds });
+<span class="ln">62</span><span class="kw">return</span> res.choices[<span class="st">0</span>]?.message?.content ?? <span class="st">""</span>;</pre>
+  </div>
+
+  <div class="stack">
+    <span class="h">Nebius Token Factory</span><span class="h">Nemotron</span><span>Next.js 16</span><span>Vercel</span><span>MuJoCo 3.17 WASM</span><span>MediaPipe</span><span>Tavily</span><span>Zod</span><span>three.js</span>
+  </div>
+
+  <div class="foot"><span><b>Understudy</b> · Nebius × NVIDIA Global AI Hackathon · Physical AI</span><span>counts from github.com/gibouu/understudy, 27 October</span></div>
+</div>
+</body>
+</html>
