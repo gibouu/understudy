@@ -12,6 +12,7 @@
  * hand path (traced in the browser, already scaled into the arm's reach by
  * lib/sim/gesture.ts) and no objects: a gesture handles nothing.
  */
+import { benchSpot, isBenchSpot } from "@/lib/spec/bench";
 import type { Predicate, SpecObject, Step, TaskSpec } from "@/lib/spec/schema";
 
 /** Resting spots checked by tests/sim/demo-spec.test.ts: in reach, clear of each other. */
@@ -28,8 +29,6 @@ const MAX_CLEARANCE_MM = 20;
 /** `where`: the slot of the one question the person is asked before anything can be rehearsed (whereTo). */
 export type Fit = { spec: TaskSpec; warnings: string[]; where?: string };
 
-/** The answer "somewhere else on the bench" (lib/spec/answer.ts formFor): a fixture like any other once it is chosen. */
-export const BENCH_SPOT = { id: "bench_spot", name: "spot on the bench", shape: "box", size_mm: [100, 100, 10], symmetry: "none", role: "surface", confidence: 1, source: "fit", sources: {} } as const satisfies SpecObject;
 
 /**
  * A label that holds something but never says where it goes (a move with no target, a clip that
@@ -48,7 +47,8 @@ function whereTo(spec: TaskSpec): Fit | null {
     grasp ? { ...grasp, id: "s1", target: undefined } : { ...first, id: "s1", verb: "grasp", target: undefined, via_points: [], preconditions: [], success: [], tolerances: {}, source: "fit", sources: {} },
     { ...first, id: "s2", verb: "place", target: undefined, via_points: [], preconditions: [], success: [], tolerances: {}, t_start_s: (grasp ?? first).t_end_s, t_end_s: Math.max(...spec.steps.filter((s) => s.object === held.id).map((s) => s.t_end_s)), source: "fit", sources: {} },
   ];
-  const spot = spec.objects.some((o) => o.id === BENCH_SPOT.id) ? [] : [{ ...BENCH_SPOT, size_mm: [...BENCH_SPOT.size_mm] as [number, number, number], sources: {} }];
+  // the answer "somewhere else on the bench" (lib/spec/bench.ts): a fixture like any other once it is chosen
+  const spot = spec.objects.some(isBenchSpot) ? [] : [benchSpot(spec)];
   return {
     spec: { ...spec, objects: [...spec.objects, ...spot], steps, anchor: undefined },
     warnings: [`the label shows the ${held.name} picked up but not where it goes: the robot asks`],
@@ -154,7 +154,7 @@ export function fitToBench(spec: TaskSpec): Fit {
     sources: {},
   };
   // the spot on the bench is an answer the person did not choose, not something in the scene
-  const dropped = spec.objects.filter((o) => o !== held && o !== fixture && o.id !== BENCH_SPOT.id);
+  const dropped = spec.objects.filter((o) => o !== held && o !== fixture && !isBenchSpot(o));
   const gone = new Set(dropped.map((o) => o.id));
   // a check on an object that is no longer in the scene cannot be evaluated
   const kept = (ps: Predicate[]) => ps.filter((p) => !(p.object && gone.has(p.object)) && !(p.target && gone.has(p.target)));

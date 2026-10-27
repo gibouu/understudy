@@ -6,12 +6,11 @@
  * (#155). Anything else is not answerable here yet.
  */
 import { parsePath } from "./apply";
+import { isBenchSpot } from "./bench";
 import { AXES, type Predicate, type Program, type ProgramOp, type Step, type TaskSpec } from "./schema";
 
 type Target = NonNullable<Step["target"]>;
 
-/** The fit's spot on the bench (lib/sim/fit.ts BENCH_SPOT), named here so this file stays free of the fit. */
-const BENCH_SPOT_ID = "bench_spot";
 
 export type AskForm =
   | { kind: "number"; unit: string }
@@ -42,8 +41,8 @@ export function formFor(spec: TaskSpec, slot: string): AskForm {
     const fixture = placing.verb === "insert" ? "pocket" : "zone";
     return {
       kind: "target",
-      options: [...others.filter((o) => o.id !== BENCH_SPOT_ID), ...others.filter((o) => o.id === BENCH_SPOT_ID)].map((o) => ({
-        label: o.id === BENCH_SPOT_ID ? "somewhere else on the bench" : `the ${o.name}`,
+      options: [...others.filter((o) => !isBenchSpot(o)), ...others.filter(isBenchSpot)].map((o) => ({
+        label: isBenchSpot(o) ? "somewhere else on the bench" : `the ${o.name}`,
         target: { fixture, frame: o.id },
       })),
     };

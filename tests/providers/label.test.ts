@@ -257,3 +257,24 @@ describe("fitToBench, nowhere named to put it down", () => {
     expect(f.warnings.at(-1)).toBe("no insert or place step onto a named object: nothing to rehearse");
   });
 });
+
+describe("the spot on the bench (#155)", () => {
+  it("never takes a label's own id, and only it is called the bench", () => {
+    const own = TaskSpec.parse({
+      version: 1,
+      title: "t",
+      summary: "",
+      objects: [
+        { id: "bench_spot", name: "drink bag", shape: "box", size_mm: [80, 20, 120], symmetry: "none", role: "manipulated" },
+        { id: "foam", name: "foam block", shape: "box", size_mm: [100, 100, 60], symmetry: "none", role: "fixture" },
+      ],
+      steps: [{ id: "s1", verb: "grasp", object: "bench_spot", t_start_s: 0, t_end_s: 1 }],
+    });
+    const fit = fitToBench(own);
+    const form = formFor(fit.spec, fit.where!);
+    expect(form.kind === "target" && form.options.map((o) => [o.label, o.target.frame])).toEqual([
+      ["the foam block", "foam"],
+      ["somewhere else on the bench", "bench_spot_2"],
+    ]);
+  });
+});

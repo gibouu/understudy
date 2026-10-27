@@ -134,7 +134,9 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   const body = await req.json().catch(() => null);
   const spec = TaskSpec.safeParse(body?.spec);
   if (!spec.success) return NextResponse.json(failed(`invalid spec: ${spec.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`, false), { status: 400 });
-  const previous = body?.previous === undefined ? undefined : Program.safeParse(body.previous).data;
+  // a program with no moves (the one waiting for where it goes, lib/spec/answer.ts) is nothing to fall back on
+  const sent = body?.previous === undefined ? undefined : Program.safeParse(body.previous).data;
+  const previous = sent?.steps.some((s) => s.ops.some((op) => op.op !== "ask")) ? sent : undefined;
   const gestures = gestureProgram(spec.data);
   if (gestures) return NextResponse.json(done(gestures, ["every step is a gesture: the program follows each path and needs no model"]));
   const waiting = waitingProgram(spec.data);
