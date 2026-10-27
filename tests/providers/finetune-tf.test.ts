@@ -91,7 +91,26 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
     env.FINETUNE_TF_BASE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1/`;
   });
-  afterAll(() => server.close());
+  // every watchdog the tests start is stopped at the end, whether or not it finished on its own
+  const watchdogs: number[] = [];
+  const alive = (pid: number) => {
+    try {
+      process.kill(pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  afterAll(() => {
+    for (const pid of watchdogs) {
+      try {
+        process.kill(-pid, "SIGTERM"); // its process group: the watchdog and, on a Mac, caffeinate
+      } catch {
+        // gone already
+      }
+    }
+    server.close();
+  });
 
   const tf = (...args: string[]) => run("node", ["scripts/finetune-tf.mjs", ...args], { env, cwd: process.cwd() });
   const fails = async (...args: string[]) => {
@@ -171,6 +190,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     refuseDeletes = 2;
     await tfFast("endpoint-create", "--custom-weights-id", "w-1", "--minutes", "10");
     const ep = state().endpoint;
+    watchdogs.push(ep.watchdog_pid);
     expect(ep.routing_key).toBe("dedicated/qwen-1");
     expect(endpoints).toHaveLength(1);
     await new Promise((r) => setTimeout(r, 4000));
@@ -178,21 +198,28 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     expect(served.filter((x) => x === `DELETE /v0/dedicated_endpoints/${ep.id}`).length).toBe(3);
     expect(state().endpoint.deleted).toBeTruthy();
     expect(ledger().filter((e) => !e.type && e.settles === ep.reservation)).toHaveLength(1);
+    expect(alive(ep.watchdog_pid)).toBe(false);
     // A deleted by hand, then B created before A's deadline: A's watchdog must leave B running and uncharged
     await tfFast("endpoint-create", "--custom-weights-id", "w-2", "--minutes", "20");
     const a = state().endpoint;
+    watchdogs.push(a.watchdog_pid);
     await tfFast("endpoint-delete");
-    const slow = { ...env, FINETUNE_TF_MINUTE_MS: "400" };
-    await run("node", ["scripts/finetune-tf.mjs", "endpoint-create", "--custom-weights-id", "w-3", "--minutes", "20"], { env: slow, cwd: process.cwd() });
+    await tfFast("endpoint-create", "--custom-weights-id", "w-3", "--minutes", "40");
     const b = state().endpoint;
-    await new Promise((r) => setTimeout(r, 3000)); // past A's deadline (2 s), before B's (8 s)
+    watchdogs.push(b.watchdog_pid);
+    await new Promise((r) => setTimeout(r, 2500)); // past A's deadline (2 s), before B's (4 s)
     expect(endpoints.map((e) => e.id)).toEqual([b.id]);
     expect(state().endpoint).toMatchObject({ id: b.id });
     expect(state().endpoint.deleted).toBeUndefined();
     expect(ledger().filter((e) => !e.type && e.settles === a.reservation)).toHaveLength(1);
     expect(ledger().filter((e) => !e.type && e.settles === b.reservation)).toHaveLength(0);
-    await run("node", ["scripts/finetune-tf.mjs", "endpoint-delete"], { env: slow, cwd: process.cwd() });
+    expect(alive(a.watchdog_pid)).toBe(false);
+    // B deleted by hand too: at its deadline its watchdog stops without calling the API again
+    await tfFast("endpoint-delete");
     expect(endpoints).toHaveLength(0);
+    await new Promise((r) => setTimeout(r, 2500)); // past B's deadline
+    expect(alive(b.watchdog_pid)).toBe(false);
+    expect(served.filter((x) => x === `DELETE /v0/dedicated_endpoints/${b.id}`)).toHaveLength(1);
   }, 60_000);
 
   it("an endpoint create: a refusal gives the reservation back, a lost answer waits for adopt", async () => {
@@ -209,6 +236,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     await new Promise((r) => setTimeout(r, 1500));
     await run("node", ["scripts/finetune-tf.mjs", "endpoint-adopt"], { env: fast, cwd: process.cwd() });
     const adopted = state().endpoint;
+    watchdogs.push(adopted.watchdog_pid);
     expect(adopted.deadline).toBeLessThan(Date.now());
     await new Promise((r) => setTimeout(r, 1500));
     expect(endpoints).toHaveLength(0);

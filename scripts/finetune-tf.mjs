@@ -328,14 +328,20 @@ async function main() {
     // everything it needs comes in its arguments: it acts on its own endpoint only, whatever the state file says later
     const [id, reservation, created, deadline, perHour] = args.slice(1);
     while (Date.now() < Number(deadline)) await new Promise((r) => setTimeout(r, Math.min(20_000, Math.max(50, Number(deadline) - Date.now()))));
+    // deleted by hand already: nothing to do (the state still names it, marked deleted, and its charge is settled)
+    const now = state();
+    if (now.endpoint?.id === id && now.endpoint.deleted && settled(reservation)) return console.log(`${new Date().toISOString()} endpoint ${id} was deleted by hand; the watchdog stops`);
     client();
-    await deleteEndpoint(id);
+    if (!(await deleteEndpoint(id))) {
+      process.exitCode = 1;
+      return;
+    }
     await settleEndpoint({ id, reservation, created: Number(created), usd_per_gpu_hour: Number(perHour) });
   } else if (cmd === "endpoint-delete") {
     const s = state();
     if (!s.endpoint || s.endpoint.deleted) return console.log("no live endpoint");
     client();
-    await deleteEndpoint(s.endpoint.id);
+    if (!(await deleteEndpoint(s.endpoint.id))) throw new Error(`could not delete endpoint ${s.endpoint.id}: delete it in the console`);
     await settleEndpoint(s.endpoint);
   } else if (cmd === "status") {
     const s = state();
@@ -403,14 +409,27 @@ async function startEndpoint(s, ep) {
     throw new Error(`the watchdog could not start, so endpoint ${ep.id} was deleted at once`);
   }
   child.unref();
-  console.log(`endpoint ${ep.id}, routing key ${ep.routing_key}; the watchdog (pid ${child.pid}) deletes it at ${new Date(s.endpoint.deadline).toISOString()}`);
+  // its process group (detached: the watchdog and, on a Mac, caffeinate): what to stop if it must be stopped by hand
+  s.endpoint.watchdog_pid = child.pid;
+  save(s);
+  console.log(`endpoint ${ep.id}, routing key ${ep.routing_key}; the watchdog (process group ${child.pid}) deletes it at ${new Date(s.endpoint.deadline).toISOString()}`);
 }
 
-/** delete an endpoint, retrying every 30 s until Token Factory says it is gone */
+/**
+ * Delete an endpoint, retrying every 30 s until Token Factory says it is gone (true), or until the deletes have
+ * failed for 6 hours (false: an outage that long needs a person, so the watchdog stops instead of retrying
+ * for ever, and says so; the endpoint's reservation then stays open on the ledger).
+ */
+const GIVE_UP_MINUTES = 360;
 async function deleteEndpoint(id) {
+  const until = Date.now() + GIVE_UP_MINUTES * MINUTE_MS;
   for (;;) {
     const res = await fetch(`${API_ROOT}/v0/dedicated_endpoints/${id}`, { method: "DELETE", headers: auth() }).catch((e) => ({ ok: false, status: String(e) }));
-    if (res.ok || res.status === 404) return;
+    if (res.ok || res.status === 404) return true;
+    if (Date.now() > until) {
+      console.log(`${new Date().toISOString()} GAVE UP deleting endpoint ${id} after ${GIVE_UP_MINUTES} minutes of failures (last: ${res.status}): delete it by hand in the console`);
+      return false;
+    }
     console.log(`${new Date().toISOString()} delete ${id}: HTTP ${res.status}, retrying in 30 s`);
     await new Promise((r) => setTimeout(r, (30 * MINUTE_MS) / 60));
   }
