@@ -27,7 +27,13 @@ import { SAMPLES } from "@/lib/samples";
 import { TaskSpec } from "@/lib/spec/schema";
 import { answerFor, DEFAULT_ANSWERS } from "./answers";
 import { loadEngine, rollouts, type Engine } from "./rehearse";
-import { LabelRecording, Session } from "./session";
+import { LabelRecording, RECORDED_ON, Session, type Call } from "./session";
+
+/** Every call names the model its stage is recorded on; a recording made on a replacement is refused. */
+function onRecordedModels(ledger: Call[], models?: { vl: string; nano: string; super: string }) {
+  expect(ledger.filter((c) => c.stage !== "playbook").map((c) => `${c.stage} ${c.model}`)).toEqual(ledger.filter((c) => c.stage !== "playbook").map((c) => `${c.stage} ${RECORDED_ON[c.stage as keyof typeof RECORDED_ON]}`));
+  if (models) expect(models).toEqual({ vl: RECORDED_ON.label, nano: RECORDED_ON.compile, super: RECORDED_ON.notes });
+}
 
 const ROOT = process.cwd();
 const DIR = path.join(ROOT, "public", "showcase");
@@ -69,7 +75,8 @@ describe.runIf(RECORD.length > 0)("record the showcase (live, spends credits)", 
   }, 900_000);
 });
 
-describe("the showcase recordings", () => {
+// a recording run may turn a full recording into a label-only one or back; the next run checks what it wrote
+describe.skipIf(RECORD.length > 0)("the showcase recordings", () => {
   it.each(files)("%s replays: same clip, same results in node", (file) => {
     const session = Session.parse(JSON.parse(readFileSync(path.join(DIR, file), "utf8")));
     expect(SAMPLES.map((s) => s.name)).toContain(session.clip.name);
@@ -78,6 +85,8 @@ describe("the showcase recordings", () => {
     // /api/label answers this recording, and a sample token, to whoever sends this hash
     expect(createHash("sha256").update(readFileSync(path.join(ROOT, "samples", `${session.clip.name}.mp4`))).digest("hex")).toBe(session.clip.sha256);
     for (const it of session.iterations) if (it.patch) expect(it.patch.program).toEqual(it.program);
+    onRecordedModels(session.ledger, session.models);
+    for (const it of session.iterations) if (it.patch) expect(it.patch.model).toBe(RECORDED_ON.notes);
     expect(session.total_usd).toBeCloseTo(session.ledger.reduce((a, c) => a + c.usd, 0), 6);
     // the interview's programs are the compile turns' programs
     const compiled = session.iterations.filter((it) => it.source === "compile" || it.source === "interview");
@@ -100,7 +109,7 @@ describe("the showcase recordings", () => {
   }, 60_000);
 });
 
-describe.runIf(labelFiles.length > 0)("the label-only recordings", () => {
+describe.runIf(labelFiles.length > 0 && RECORD.length === 0)("the label-only recordings", () => {
   it.each(labelFiles)("%s is its clip's label, and the clip has no full recording", (file) => {
     const rec = LabelRecording.parse(JSON.parse(readFileSync(path.join(DIR, file), "utf8")));
     expect(file).toBe(`${rec.clip.name}.label.json`);
@@ -108,6 +117,7 @@ describe.runIf(labelFiles.length > 0)("the label-only recordings", () => {
     expect(createHash("sha256").update(readFileSync(path.join(ROOT, "samples", `${rec.clip.name}.mp4`))).digest("hex")).toBe(rec.clip.sha256);
     expect(files).not.toContain(`${rec.clip.name}.json`);
     expect(rec.total_usd).toBeCloseTo(rec.ledger.reduce((a, c) => a + c.usd, 0), 6);
+    onRecordedModels(rec.ledger, rec.models);
   });
 });
 
@@ -128,6 +138,18 @@ describe("the recorder's guards (no network)", () => {
   it("refuses to record without a key: the routes would replay their fixtures", async () => {
     const { recordClip } = await import("./record");
     await withKey(undefined, () => expect(recordClip({ root: ROOT, sample, engine, capUsd: 1 })).rejects.toThrow(/NEBIUS_API_KEY is not set/));
+  });
+
+  it("refuses to record when the routes would call a replacement for Nano or Super", async () => {
+    const { recordClip } = await import("./record");
+    const { MODELS } = await import("@/lib/providers/tokenfactory");
+    const saved = MODELS.nano;
+    (MODELS as { nano: string }).nano = "nvidia/Nemotron-3_5-Lightning";
+    try {
+      await withKey("not-a-real-key", () => expect(recordClip({ root: ROOT, sample, engine, capUsd: 1 })).rejects.toThrow(/nano=nvidia\/Nemotron-3_5-Lightning.*UNDERSTUDY_KEEP_RETIRED=1/));
+    } finally {
+      (MODELS as { nano: string }).nano = saved;
+    }
   });
 
   it("stops before a call whose worst case is over the cap", async () => {

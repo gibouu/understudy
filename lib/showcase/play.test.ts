@@ -76,6 +76,9 @@ describe.each(sessions.map((s) => [s.clip.name, s] as const))("%s on /try", (_, 
       expect(r.status, `patch ${attempt + 1}`).toBe("done");
       expect(r.value.program).toEqual(session.iterations[i].program);
       expect(recordedLine(r.warnings)).toMatch(/^recorded on .*Nemotron 3 Super/);
+      // the recorder asks again with fresh: never the recorded patch (with no key the route replays its own fixtures)
+      const again = await (await post(notes, "/api/notes", { ...body, fresh: true })).json();
+      expect(recordedLine(again.warnings ?? [])).toBeUndefined();
       // the same program asked as another attempt is not this recording's patch
       const other = await (await post(notes, "/api/notes?replay=1", { ...body, history: [...history, history[0] ?? { set: {}, thinking: false, clamps: [], rejected: [], outcome: "x" }] })).json();
       expect(recordedLine(other.warnings ?? [])).not.toBe(recordedLine(r.warnings));

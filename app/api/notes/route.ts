@@ -12,7 +12,8 @@
  * guard) answers from tests/fixtures/notes.json: the recording for the same
  * program and attempt. A patch in a sample's showcase recording
  * (lib/showcase/lookup.ts) for the same spec, program and attempt answers
- * first, live or not: /try plays it at once.
+ * first, live or not: /try plays it at once; `fresh: true` asks Super anyway
+ * (the recorder, re-recording a clip).
  */
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -52,6 +53,7 @@ const Body = z.object({
   runs: z.array(z.object({ world: z.enum(Object.keys(GRAVITIES) as [keyof typeof GRAVITIES]), rollout: RolloutIn })).min(1).max(3),
   first: z.string().max(2000),
   history: z.array(Attempt).max(MAX_PATCHES).default([]),
+  fresh: z.boolean().default(false),
 });
 
 type Recording = { program: unknown; attempt: number; result: StageResult<NotePatch> };
@@ -72,7 +74,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
   const runs = parsed.data.runs as WorldRun[];
   if (runs.every((r) => r.rollout.pass)) return NextResponse.json(failed("every world passed: nothing to patch", false), { status: 400 });
   if (history.length >= MAX_PATCHES) return NextResponse.json(failed(`${MAX_PATCHES} patches already tried`, false), { status: 400 });
-  const recorded = await recordedPatch(spec, program, history.length);
+  const recorded = parsed.data.fresh ? null : await recordedPatch(spec, program, history.length);
   if (recorded) return NextResponse.json(recorded);
   if (wantsReplay(req)) return NextResponse.json(replay(program, history.length));
   const gate = await liveGate("notes", body);

@@ -37,7 +37,7 @@ import { MAX_PATCHES, type Attempt, type NotePatch } from "@/lib/notes/patch";
 import { UNLOCK_ENV } from "@/lib/unlock/check";
 import { answerFor, CLIP_ANSWERS, DEFAULT_ANSWERS, slotWords } from "./answers";
 import { rehearseAll, rollouts, summary, type Engine } from "./rehearse";
-import { LabelRecording, Session, type Answer, type Call, type Iteration, type Models, type Turn } from "./session";
+import { LabelRecording, RECORDED_ON, Session, type Answer, type Call, type Iteration, type Models, type Turn } from "./session";
 
 /** The guided flow stops asking after this many rounds (app/flow.tsx). */
 export const MAX_ROUNDS = 6;
@@ -184,7 +184,8 @@ export function notesHook(): NotesHook {
     const { spec, program } = last;
     const runs = rollouts(engine, spec, program);
     const start = first ?? outcomeLine(runs);
-    const r = live(await post<NotePatch>(notesRoute as Handler, "/api/notes", { spec, program, runs, first: start, history }), `notes patch ${history.length + 1}`);
+    // fresh: a clip recorded before would otherwise get its own recorded patch back
+    const r = live(await post<NotePatch>(notesRoute as Handler, "/api/notes", { spec, program, runs, first: start, history, fresh: true }), `notes patch ${history.length + 1}`);
     first = start;
     const patch = r.value;
     const cost = calls("notes", r.ledger);
@@ -215,6 +216,9 @@ export async function recordClip({ root, sample, engine, capUsd, notes, traced, 
   // with no key every route answers from its fixtures, some with no replay warning: never record those
   if (!process.env.NEBIUS_API_KEY) throw new Error("NEBIUS_API_KEY is not set: the routes would answer from their replay fixtures");
   if (!(capUsd > 0)) throw new Error(`the cap must be a positive number of US dollars, not ${capUsd}`);
+  const set = recordedModels();
+  const wrong = (["vl", "nano", "super"] as const).filter((r) => set[r] !== { vl: RECORDED_ON.label, nano: RECORDED_ON.compile, super: RECORDED_ON.notes }[r]);
+  if (wrong.length) throw new Error(`the routes would call ${wrong.map((r) => `${r}=${set[r]}`).join(", ")}: showcase recordings are made on ${Object.values(RECORDED_ON).join(", ")} (UNDERSTUDY_KEEP_RETIRED=1 while Token Factory serves them)`);
   const ledger: Call[] = [];
   /** what the calls so far could have billed, seen or not */
   let reserved = 0;
@@ -275,7 +279,12 @@ export async function recordClip({ root, sample, engine, capUsd, notes, traced, 
       program,
       spec,
       changes: given.map((a) => `${slotWords(spec, a.slot)}: ${a.text}`),
-      why: turn === 0 ? `Nano's first program for the fitted spec${asks.length ? `, with ${asks.length} open question${asks.length > 1 ? "s" : ""}` : ""}` : `answers to: ${asked.map((a) => a.question).join(" ")}`,
+      why:
+        turn === 0
+          ? gesturesOnly(spec)
+            ? "the program for the traced path, written with no model (lib/sim/gesture.ts)"
+            : `Nano's first program for the fitted spec${asks.length ? `, with ${asks.length} open question${asks.length > 1 ? "s" : ""}` : ""}`
+          : `answers to: ${asked.map((a) => a.question).join(" ")}`,
       cost_usd: round(sum(cost.map((c) => c.usd))),
       seconds: round(sum(cost.map((c) => c.seconds)), 2),
       results,
@@ -306,6 +315,8 @@ export async function recordClip({ root, sample, engine, capUsd, notes, traced, 
     log(`notes ${n + 1}: ${patched.iteration.changes.join("; ") || "no change"}; earth ${earth.pass ? "pass" : "fail"}, orbit ${orbit.pass ? "pass" : "fail"}`);
   }
 
+  const strays = ledger.filter((c) => c.stage in RECORDED_ON && c.model !== RECORDED_ON[c.stage as keyof typeof RECORDED_ON]);
+  if (strays.length) throw new Error(`not recorded: ${strays.map((c) => `${c.stage} answered by ${c.model}`).join(", ")}`);
   return Session.parse({
     ...base,
     label: labelled,

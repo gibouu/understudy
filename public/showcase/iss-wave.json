@@ -3094,7 +3094,7 @@
     }
    },
    "changes": [],
-   "why": "Nano's first program for the fitted spec",
+   "why": "the program for the traced path, written with no model (lib/sim/gesture.ts)",
    "cost_usd": 0,
    "seconds": 0,
    "results": {

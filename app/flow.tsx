@@ -240,7 +240,13 @@ export function Flow() {
                 Watch the clip
               </button>
               <span className="text-sm text-neutral-600">
-                {clip.sample && hint.trim() === clip.sample.hint ? "Recorded, so it plays at once; the rehearsal runs live in your browser." : duration ? `This takes about ${estimate(duration)} for your own video, and a few seconds for each answer.` : null}
+                {clip.rec && hint.trim() === clip.sample?.hint
+                  ? "Recorded, so it plays at once; the rehearsal runs live in your browser."
+                  : duration
+                    ? clip.sample
+                      ? `With your own line the models run live: about ${estimate(duration)}.`
+                      : `This takes about ${estimate(duration)} for your own video, and a few seconds for each answer.`
+                    : null}
               </span>
             </div>
           </div>

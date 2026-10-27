@@ -58,6 +58,14 @@ export const Patch = z.object({
 });
 export type Patch = z.infer<typeof Patch>;
 
+/**
+ * The models every showcase recording is made on, per stage: Nemotron 3 Nano and Nemotron 3 Super
+ * leave Token Factory serverless on 9 Nov 2026, and these recordings are the record of what they did.
+ * Once the live routes call their replacements, record with UNDERSTUDY_KEEP_RETIRED=1 while Token
+ * Factory still serves them; lib/showcase/record.test.ts fails on a recording with any other model.
+ */
+export const RECORDED_ON = { label: "nvidia/Nemotron-3.5-Super-VL", compile: "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B", notes: "nvidia/nemotron-3-super-120b-a12b" } as const;
+
 /** The model each route was set to call when the clip was recorded (MODELS in lib/providers/tokenfactory.ts). */
 export const Models = z.object({ vl: z.string(), nano: z.string(), super: z.string() });
 export type Models = z.infer<typeof Models>;
