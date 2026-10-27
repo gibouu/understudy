@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { extractJson, jsonCandidates, ModelOutputError, parseModelJson, stripLeadingThink } from "@/lib/spec/parse";
+import { tidyLabel } from "@/lib/spec/label";
 import { normalizeProgram, normalizeSpec } from "@/lib/spec/normalize";
 import { Envelope, InterviewTurn, Program, TaskSpec } from "@/lib/spec/schema";
 
@@ -211,27 +212,28 @@ describe("answers from own clips", () => {
     expect(r.warnings).toEqual(expect.arrayContaining(["spec: null anchor read as unset", "step s1: null target read as unset", 'object "rack": null pose read as unset', 'object "marker": a pose without xyz_mm left out', 'object "marker": null pocket_clearance_mm read as unset']));
   });
 
-  it("a retract that names no object is left out; a grasp with none still fails", () => {
-    const retract = { id: "s3", verb: "retract", object: null, t_start_s: 3.1, t_end_s: 3.5 };
-    const r = parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, retract] }), TaskSpec, { normalize: normalizeSpec });
+  // the retract rule reads the label's cleaned timeline, so it is tidyLabel's (lib/spec/label.ts)
+  const label = (steps: unknown[]) => parseModelJson(JSON.stringify({ ...minimalSpec, steps }), TaskSpec, { normalize: (raw) => tidyLabel(raw, 10) });
+  const retract = (id: string, t0: number, t1: number, extra: object = {}) => ({ id, verb: "retract", object: null, t_start_s: t0, t_end_s: t1, ...extra });
+  const NO_OBJECT = /only a gesture step has no object/;
+
+  it("a retract that names no object, after the hand let go, is left out; a grasp with none still fails", () => {
+    const r = label([...minimalSpec.steps, retract("s3", 3.1, 3.5)]);
     expect(r.value.steps.map((s) => s.id)).toEqual(["s1", "s2"]);
     expect(r.warnings).toContain("step s3: a retract with no object, after the hand let go, left out");
-    const grasp = { ...minimalSpec, steps: [{ ...minimalSpec.steps[0], object: null }, minimalSpec.steps[1]] };
-    expect(() => parseModelJson(JSON.stringify(grasp), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
+    expect(() => label([{ ...minimalSpec.steps[0], object: null }, minimalSpec.steps[1]])).toThrow(NO_OBJECT);
   });
 
   it("a retract while the hand may hold something, or with a destination or checks, is still asked about", () => {
-    const regrasp = [{ ...minimalSpec.steps[0], id: "s3", t_start_s: 3.1, t_end_s: 3.3 }, { id: "s4", verb: "retract", object: null, t_start_s: 3.3, t_end_s: 3.6 }];
-    expect(() => parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, ...regrasp] }), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
+    expect(() => label([retract("s0", 0, 0.5), ...minimalSpec.steps])).toThrow(NO_OBJECT);
     // listed after the insert but timed before it: in the clip the marker is still held
-    const listedLate = { id: "s3", verb: "retract", object: null, t_start_s: 1.0, t_end_s: 1.4 };
-    expect(() => parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, listedLate] }), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
-    const away = { id: "s3", verb: "retract", object: null, target: { fixture: "zone", frame: "rack" }, t_start_s: 3.1, t_end_s: 3.5 };
-    expect(() => parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, away] }), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
-    const early = { id: "s0", verb: "retract", object: null, t_start_s: 0, t_end_s: 0.5 };
-    expect(() => parseModelJson(JSON.stringify({ ...minimalSpec, steps: [early, ...minimalSpec.steps] }), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
-    const checked = { id: "s3", verb: "retract", object: null, t_start_s: 3.1, t_end_s: 3.5, success: [{ kind: "object_still", object: "marker" }] };
-    expect(() => parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, checked] }), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
+    expect(() => label([...minimalSpec.steps, retract("s3", 1.0, 1.4)])).toThrow(NO_OBJECT);
+    // a grasp that overlaps the release is moved after it by the clean-up: the hand holds something again
+    const grasp = { id: "g2", verb: "grasp", object: "marker", t_start_s: 2, t_end_s: 3 };
+    const release = { id: "r1", verb: "release", object: "marker", t_start_s: 1, t_end_s: 4 };
+    expect(() => label([minimalSpec.steps[0], release, grasp, retract("s4", 4, 5)])).toThrow(NO_OBJECT);
+    expect(() => label([...minimalSpec.steps, retract("s3", 3.1, 3.5, { target: { fixture: "zone", frame: "rack" } })])).toThrow(NO_OBJECT);
+    expect(() => label([...minimalSpec.steps, retract("s3", 3.1, 3.5, { success: [{ kind: "object_still", object: "marker" }] })])).toThrow(NO_OBJECT);
   });
 
   it("an insert or a place with a null target is still asked about", () => {

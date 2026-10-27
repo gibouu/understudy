@@ -36,6 +36,22 @@ const isRec = (v: unknown): v is Record<string, unknown> => typeof v === "object
 const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 const r2 = (x: number) => Math.round(x * 100) / 100;
 
+const letGo = (verb: unknown) => verb === "release" || verb === "place" || verb === "insert";
+const empty = (v: unknown) => v == null || v === "" || (Array.isArray(v) ? v.length === 0 : isRec(v) && Object.keys(v).length === 0);
+
+/**
+ * A hand pulling back after it let go holds nothing (8 of 16 first labels of clips of people's own,
+ * docs/MEASUREMENTS.md section 14), and the fit drops retract steps anyway, so such a step with no
+ * object is left out rather than asked again. Judged on the cleaned timeline (sorted, no overlaps):
+ * the last grasp or let-go before it is a let-go, and it has no destination, path or checks of its
+ * own. Any other retract with no object stays for the schema to reject.
+ */
+function droppableRetract(s: Record<string, unknown>, before: Record<string, unknown>[]): boolean {
+  if (s.verb !== "retract" || !empty(s.object)) return false;
+  if (!(["target", "via_points", "success", "preconditions", "tolerances"] as const).every((k) => empty(s[k]))) return false;
+  return letGo(before.findLast((x) => x.verb === "grasp" || letGo(x.verb))?.verb);
+}
+
 /** normalizeSpec, then the label clean-up against a clip of `durationS` seconds. The input is not mutated. */
 export function tidyLabel(raw: unknown, durationS: number): Normalized {
   const { data, warnings } = normalizeSpec(raw);
@@ -60,7 +76,11 @@ export function tidyLabel(raw: unknown, durationS: number): Normalized {
       }
       end = s.t_end_s as number;
     }
-    data.steps = steps;
+    data.steps = steps.filter((s, i) => {
+      if (!droppableRetract(s, steps.slice(0, i))) return true;
+      warnings.push(`step ${String(s.id)}: a retract with no object, after the hand let go, left out`);
+      return false;
+    });
   }
   if (isRec(data.anchor) && typeof data.anchor.t_s === "number") data.anchor.t_s = clamp(data.anchor.t_s);
 
