@@ -1,6 +1,6 @@
 /**
  * How long each stage of /try takes, from the times measured on 27 Oct 2026
- * (docs/MEASUREMENTS.md section 12): the deployed site and a local server,
+ * (docs/MEASUREMENTS.md section 13): the deployed site and a local server,
  * the app's Chrome 152 browser on an Apple M4. The browser's proxy and the
  * model's watching grow with the clip; a compile does not. The page says
  * these beside a stage's clock ("usually 4 to 15 s") and adds them up front.

@@ -102,7 +102,7 @@ describe("a clip with no recording", () => {
   });
 });
 
-describe("the estimates (docs/MEASUREMENTS.md section 12)", () => {
+describe("the estimates (docs/MEASUREMENTS.md section 13)", () => {
   it("say a range that grows with the clip", () => {
     expect(usual("recorded", 10)).toBeUndefined();
     expect(usual("proxy", 8)).toBe("under 5 s");
