@@ -24,7 +24,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 /** One model call as the route made it: what was asked, and the model's words exactly. */
 type Raw = { model: string; max_tokens?: number; json_mode: boolean; thinking_off: boolean; turn: number; finish_reason?: string; prompt_tokens?: number; completion_tokens?: number; seconds: number; content: string; error?: string };
@@ -96,7 +96,8 @@ function outcome(r: { status: string; message?: string; warnings?: string[] }, f
 }
 
 describe.runIf(PHASE !== "")("own clips, live (spends credits)", () => {
-  process.loadEnvFile(process.env.UNDERSTUDY_ENV_FILE ?? ".env.local");
+  // in a hook: a skipped suite still runs its body, and CI has no env file
+  beforeAll(() => process.loadEnvFile(process.env.UNDERSTUDY_ENV_FILE ?? ".env.local"));
 
   it.runIf(PHASE === "label")("labels each clip, fits it, compiles it once", async () => {
     const dir = process.env.OWN_CLIPS_DIR ?? "";

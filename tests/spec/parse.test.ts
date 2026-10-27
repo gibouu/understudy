@@ -215,8 +215,20 @@ describe("answers from own clips", () => {
     const retract = { id: "s3", verb: "retract", object: null, t_start_s: 3.1, t_end_s: 3.5 };
     const r = parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, retract] }), TaskSpec, { normalize: normalizeSpec });
     expect(r.value.steps.map((s) => s.id)).toEqual(["s1", "s2"]);
-    expect(r.warnings).toContain("step s3: a retract with no object left out");
+    expect(r.warnings).toContain("step s3: a retract with no object, after the hand let go, left out");
     const grasp = { ...minimalSpec, steps: [{ ...minimalSpec.steps[0], object: null }, minimalSpec.steps[1]] };
     expect(() => parseModelJson(JSON.stringify(grasp), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
+  });
+
+  it("a retract before the hand let go, or with checks of its own, is still asked about", () => {
+    const early = { id: "s0", verb: "retract", object: null, t_start_s: 0, t_end_s: 0.5 };
+    expect(() => parseModelJson(JSON.stringify({ ...minimalSpec, steps: [early, ...minimalSpec.steps] }), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
+    const checked = { id: "s3", verb: "retract", object: null, t_start_s: 3.1, t_end_s: 3.5, success: [{ kind: "object_still", object: "marker" }] };
+    expect(() => parseModelJson(JSON.stringify({ ...minimalSpec, steps: [...minimalSpec.steps, checked] }), TaskSpec, { normalize: normalizeSpec })).toThrow(/only a gesture step has no object/);
+  });
+
+  it("an insert or a place with a null target is still asked about", () => {
+    const raw = { ...minimalSpec, steps: [minimalSpec.steps[0], { ...minimalSpec.steps[1], target: null }] };
+    expect(() => parseModelJson(JSON.stringify(raw), TaskSpec, { normalize: normalizeSpec })).toThrow(/steps\.1\.target/);
   });
 });
