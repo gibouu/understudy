@@ -31,7 +31,7 @@ Checked against `main` on 27 October: the site has no Saboteur stage (no twelve-
 | Session cost (any answer, slide or caption) | $0.0375, 17 calls, which includes the saboteur and Ultra's reshoot list | the showcase sessions: 1 to 7 calls, $0.0007 to $0.0059 |
 | Testing instructions | "Try a sample clip", the cost ledger | the space showcase and Try it, as they are |
 
-Outside this file, still to fix by hand: the thumbnail (`docs/submission/thumbnail.html` and the `thumbnail.jpg` made from it) says "Export the dataset", "24 rollouts · blind vs sensed · Earth, Moon, orbit" and has an export chip; the home page (`app/page.tsx`) says a session runs "from watching the clip to the reshoot list". "Approach: no fine-tuning" stays true of the site, but if the fine-tune answer of PR #136 goes into Devpost the two must agree.
+Outside this file: the thumbnail (`docs/submission/thumbnail.html`, and the `thumbnail.jpg` / `thumbnail.png` made from it) and the home page (`app/page.tsx`) now say only what the site does: watch, ask, rehearse at 1 g and 0 g, patch; a recorded session costs 1 to 7 calls, US$0.0007 to US$0.0059. "Approach: no fine-tuning" stays true of the site, but if the fine-tune answer of PR #136 goes into Devpost the two must agree.
 
 ## Description (what, why, how)
 

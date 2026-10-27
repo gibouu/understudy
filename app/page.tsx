@@ -3,9 +3,9 @@ import { recordings } from "@/lib/showcase/load";
 
 const MEASURED = "https://github.com/gibouu/understudy/blob/main/docs/MEASUREMENTS.md";
 
-/** Three numbers from docs/MEASUREMENTS.md, each linked to the section that measures it. */
+/** Three measured numbers, each linked to where it is measured: the showcase sessions, or a section of docs/MEASUREMENTS.md. */
 const NUMBERS = [
-  { figure: "US$0.04", text: "for a whole session of model calls, from watching the clip to the reshoot list (US$0.0375 on average over three runs).", href: `${MEASURED}#1-what-a-session-costs` },
+  { figure: "< US$0.01", text: "for a whole recorded session in the space showcase, every model call from the label to the last patch: 1 to 7 calls, US$0.0007 to US$0.0059.", href: "/space" },
   { figure: "94%", text: "of the failing rehearsals that can be fixed are fixed within five patches, by Super reading the simulator's notes and reasoning when it gets stuck. Measured on small probe programs of two to four knobs.", href: `${MEASURED}#8-the-self-improvement-loop` },
   { figure: "+28 points", text: "of first-try success on the Moon and in orbit, from rules learned on Earth and Mars, with the cheap model: 5% becomes 33%, against a matched control.", href: `${MEASURED}#8-the-self-improvement-loop` },
 ];
@@ -63,7 +63,7 @@ export default async function Home() {
       </section>
 
       <section className="mx-auto w-full max-w-6xl px-4 pb-16 sm:px-6">
-        <h2 className="mb-5 text-lg text-muted">Measured on 25 October 2026, not estimated:</h2>
+        <h2 className="mb-5 text-lg text-muted">Measured on 25 to 27 October 2026, not estimated:</h2>
         <ol className="grid gap-px overflow-hidden rounded-lg border-2 border-ink bg-ink md:grid-cols-3">
           {NUMBERS.map((n) => (
             <li key={n.figure} className="bg-paper">
