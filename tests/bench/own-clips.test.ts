@@ -70,6 +70,8 @@ const HINTS: Record<string, string> = {
   "veggie2-portrait-8s": "pushing seed film into plant pillows",
   "foam-portrait-8s": "squeezing a drink bag so juice flows into a foam block",
   "veggie-landscape-12s": "putting seed film into plant pillows",
+  "pipette-portrait-8s": "filling a cartridge with a pipette",
+  "foam-landscape-10s": "squeezing juice from a bag into a foam block",
 };
 
 type Post = (req: Request) => Promise<Response>;

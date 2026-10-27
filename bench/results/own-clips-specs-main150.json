@@ -1,0 +1,2799 @@
+{
+ "when": "2026-10-27T08:58:50.275Z",
+ "specs": [
+  {
+   "clip": "foam-landscape-10s",
+   "run": 0,
+   "hint": "squeezing juice from a bag into a foam block",
+   "spec": {
+    "version": 1,
+    "title": "Squeezing juice from a bag into a foam block",
+    "summary": "A person uses both hands to squeeze a sealed juice bag resting on a blue tiled work surface, next to a foam block and red tubing, then places the bag back down and gestures with both hands before leaving the frame.",
+    "objects": [
+     {
+      "id": "obj1",
+      "name": "juice bag",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       20
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj3",
+      "name": "work surface",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 2,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj1",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj3"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 5,
+      "t_end_s": 6,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "Work surface dimensions and object poses are estimated without visible scale markers.",
+     "Red tubing pocket clearance cannot be determined from the video."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "85994c84f85159dba1b0e2fbde5190c158d6ad9aa1819146db6c4f3d90a9f542",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "foam-landscape-10s",
+   "run": 1,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "Person opens a foil package on a blue work table",
+    "summary": "A person wearing gloves places a small foil packet on a blue perforated work surface, tears it open with both hands, then removes their hands and gestures toward the opened packet. A larger foam block wrapped in plastic remains stationary in the center of the table throughout the clip.",
+    "objects": [
+     {
+      "id": "obj1",
+      "name": "foil packet",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       15
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        7.5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj3",
+      "name": "blue work table",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       30
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        15
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 0,
+      "source": "fit",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj1",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj3"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 0.5,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "No absolute scale visible; object poses and sizes are estimates based on the frame and a typical work-table size."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "85994c84f85159dba1b0e2fbde5190c158d6ad9aa1819146db6c4f3d90a9f542",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "foam-landscape-10s",
+   "run": 2,
+   "hint": "squeezing juice from a bag into a foam block",
+   "spec": {
+    "version": 1,
+    "title": "squeezing juice from a bag into a foam block",
+    "summary": "A person squeezes juice from a foil pouch into a foam block sitting on a blue work panel, then releases the empty pouch onto the panel.",
+    "objects": [
+     {
+      "id": "obj1",
+      "name": "foam block",
+      "shape": "box",
+      "size_mm": [
+       120,
+       80,
+       50
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        430,
+        250,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.8,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "obj2",
+      "name": "juice pouch",
+      "shape": "box",
+      "size_mm": [
+       120,
+       90,
+       15
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        250,
+        250,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "obj3",
+      "name": "blue work panel",
+      "shape": "box",
+      "size_mm": [
+       600,
+       400,
+       5
+      ],
+      "symmetry": "none",
+      "role": "surface",
+      "pose": {
+       "xyz_mm": [
+        350,
+        0,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "vl#seg0",
+      "sources": {}
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 1,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "move",
+      "object": "obj2",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1,
+      "t_end_s": 3,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s3",
+      "verb": "release",
+      "object": "obj2",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj3"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 5,
+      "source": "vl#seg0",
+      "sources": {}
+     }
+    ],
+    "anchor": {
+     "t_s": 1,
+     "confidence": 0.8
+    },
+    "warnings": [
+     "Object sizes and positions are visual estimates; no absolute scale reference is visible."
+    ],
+    "open_questions": [
+     "Exact dimensions of the foam block and juice pouch are not measurable from the video.",
+     "objects[obj3].size_mm: is blue work panel really [600, 400, 5] mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "85994c84f85159dba1b0e2fbde5190c158d6ad9aa1819146db6c4f3d90a9f542",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": false,
+   "gestures": false
+  },
+  {
+   "clip": "foam-landscape-10s",
+   "run": 3,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "Unwrap foil packet on blue work surface",
+    "summary": "A person removes a foil-wrapped item from a sealed clear bag, places the packet on the surface, and discards the empty bag off-screen.",
+    "objects": [
+     {
+      "id": "obj1",
+      "name": "foil packet",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       12
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        6
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.8,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj3",
+      "name": "blue work surface",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1,
+      "t_end_s": 2,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj1",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj3"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 5,
+      "t_end_s": 6,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "Object dimensions estimated without a visible scale; pose values are approximate."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "85994c84f85159dba1b0e2fbde5190c158d6ad9aa1819146db6c4f3d90a9f542",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 0,
+   "hint": "squeezing a drink bag so juice flows into a foam block",
+   "spec": {
+    "version": 1,
+    "title": "Squeezing a drink bag so juice flows into a foam block",
+    "summary": "A person squeezes a silver drink bag connected to a tube, dispensing juice into a large foam block, then places the bag down on the work surface.",
+    "objects": [
+     {
+      "id": "drink_bag",
+      "name": "drink bag",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       20
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "blue_panel",
+      "name": "blue work panel",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.8,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "drink_bag",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 1,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "drink_bag",
+      "target": {
+       "fixture": "zone",
+       "frame": "blue_panel"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 4.5,
+      "t_end_s": 6,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "No visible scale reference; object sizes and poses are estimates.",
+     "Drink bag size at lower end of allowed range; confidence reduced.",
+     "pocket_clearance_mm not applicable as there is no pocket in this task.",
+     "Tube diameter at lower end of allowed range; confidence reduced."
+    ],
+    "open_questions": [
+     "Where is the world origin relative to the robot base in this scene?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "639993fc542cb36d52bb8407a55a85c7262a12bef900b6a9cace0466158842aa",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 1,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "Person removes a foil-wrapped cable assembly from a blue workbench",
+    "summary": "A person uses both hands to peel a foil packet off the left side of the table, briefly holds it, then moves it out of frame to the left, leaving the workspace empty.",
+    "objects": [
+     {
+      "id": "obj1",
+      "name": "foil-wrapped cable assembly",
+      "shape": "box",
+      "size_mm": [
+       120,
+       90,
+       15
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        80,
+        120,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "obj2",
+      "name": "blue workbench panel",
+      "shape": "box",
+      "size_mm": [
+       600,
+       400,
+       5
+      ],
+      "symmetry": "none",
+      "role": "surface",
+      "pose": {
+       "xyz_mm": [
+        0,
+        0,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg0",
+      "sources": {}
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 1,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "move",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1,
+      "t_end_s": 4,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s3",
+      "verb": "release",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 4,
+      "t_end_s": 5,
+      "source": "vl#seg0",
+      "sources": {}
+     }
+    ],
+    "anchor": {
+     "t_s": 0.3,
+     "confidence": 0.6
+    },
+    "warnings": [
+     "Object dimensions estimated without a visible scale reference"
+    ],
+    "open_questions": [
+     "Where does the foil packet go after leaving the frame?",
+     "objects[obj2].size_mm: is blue workbench panel really [600, 400, 5] mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "639993fc542cb36d52bb8407a55a85c7262a12bef900b6a9cace0466158842aa",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": false,
+   "gestures": false
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 2,
+   "hint": "squeezing a drink bag so juice flows into a foam block",
+   "spec": {
+    "version": 1,
+    "title": "Squeezing a drink bag so juice flows into a foam block",
+    "summary": "A person squeezes a small foil drink bag with a tube, causing juice to flow into the adjacent foam block, then sets the bag down on the blue work surface.",
+    "objects": [
+     {
+      "id": "drink_bag",
+      "name": "drink bag",
+      "shape": "box",
+      "size_mm": [
+       80,
+       40,
+       10
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        0,
+        0,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "foam_block",
+      "name": "foam block",
+      "shape": "box",
+      "size_mm": [
+       150,
+       100,
+       30
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        150,
+        0,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "work_surface",
+      "name": "blue work surface",
+      "shape": "box",
+      "size_mm": [
+       500,
+       400,
+       5
+      ],
+      "symmetry": "none",
+      "role": "surface",
+      "pose": {
+       "xyz_mm": [
+        250,
+        0,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "drink_bag",
+      "target": {
+       "fixture": "zone",
+       "frame": "drink_bag"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 0.5,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "move",
+      "object": "drink_bag",
+      "target": {
+       "fixture": "zone",
+       "frame": "foam_block"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0.5,
+      "t_end_s": 3.5,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s3",
+      "verb": "release",
+      "object": "drink_bag",
+      "target": {
+       "fixture": "zone",
+       "frame": "work_surface"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 3.5,
+      "t_end_s": 4,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s4",
+      "verb": "retract",
+      "object": "drink_bag",
+      "target": {
+       "fixture": "zone",
+       "frame": "work_surface"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 4,
+      "t_end_s": 5,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "anchor": {
+     "t_s": 0,
+     "confidence": 0.8
+    },
+    "warnings": [],
+    "open_questions": [
+     "Absolute scale and pose are not available from the video; placeholder poses are used.",
+     "objects[work_surface].size_mm: is blue work surface really [500, 400, 5] mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "639993fc542cb36d52bb8407a55a85c7262a12bef900b6a9cace0466158842aa",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": false,
+   "gestures": false
+  },
+  {
+   "clip": "foam-portrait-8s",
+   "run": 3,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "Unwrap foil packet",
+    "summary": "The person unwraps a crinkled foil packet on a blue workbench and then lets go of it, leaving it on the table.",
+    "objects": [
+     {
+      "id": "foil_packet",
+      "name": "foil packet",
+      "shape": "box",
+      "size_mm": [
+       120,
+       80,
+       30
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        60,
+        0,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "workbench",
+      "name": "workbench",
+      "shape": "box",
+      "size_mm": [
+       600,
+       400,
+       20
+      ],
+      "symmetry": "none",
+      "role": "surface",
+      "pose": {
+       "xyz_mm": [
+        0,
+        0,
+        0
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "foil_packet",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 2,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "move",
+      "object": "foil_packet",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 4,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s3",
+      "verb": "release",
+      "object": "foil_packet",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 4,
+      "t_end_s": 6,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "anchor": {
+     "t_s": 1,
+     "confidence": 0.8
+    },
+    "warnings": [
+     "Pose and sizes are estimated from the video without a visible scale reference."
+    ],
+    "open_questions": [
+     "What are the exact world coordinates and dimensions of the foil packet?",
+     "objects[workbench].size_mm: is workbench really [600, 400, 20] mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "639993fc542cb36d52bb8407a55a85c7262a12bef900b6a9cace0466158842aa",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": false,
+   "gestures": false
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 0,
+   "hint": "pipetting liquid into a small cartridge",
+   "spec": {
+    "version": 1,
+    "title": "Pipetting liquid into a small cartridge",
+    "summary": "A person in blue gloves holds a small cartridge in the left hand and a pipette in the right hand, positions the pipette tip over the cartridge, and appears to dispense liquid into it while keeping both hands steady over the workbench.",
+    "objects": [
+     {
+      "id": "pipette",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       12,
+       12,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "cartridge",
+      "name": "small cartridge",
+      "shape": "box",
+      "size_mm": [
+       52,
+       52,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "pipette",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0.3,
+      "t_end_s": 0.3,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "pipette",
+      "target": {
+       "fixture": "pocket",
+       "frame": "cartridge"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 4,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "0747b821eaa087a0270bd8408298d936e147727884b8019aa6173d2b69624769",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 1,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "Pipette liquid into a small well on a strip",
+    "summary": "A gloved person holds a small tray with one hand and uses a pipette in the other to dispense liquid into a well on a multi-channel strip, then lifts the pipette away.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       10,
+       10,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.8,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj3",
+      "name": "strip with wells",
+      "shape": "box",
+      "size_mm": [
+       60,
+       50,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 5,
+      "confidence": 0.6,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 7,
+      "t_end_s": 7,
+      "source": "fit",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "obj2",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj3"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 7,
+      "t_end_s": 7,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "0747b821eaa087a0270bd8408298d936e147727884b8019aa6173d2b69624769",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 2,
+   "hint": "pipetting liquid into a small cartridge",
+   "spec": {
+    "version": 1,
+    "title": "Pipetting liquid into a small cartridge",
+    "summary": "A gloved technician holds a small transparent cartridge in the left hand while operating a pipette in the right hand to dispense liquid into it.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       10,
+       10,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj1",
+      "name": "cartridge",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg0",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 0.5,
+      "source": "vl#seg0",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj2",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 4,
+      "t_end_s": 4.5,
+      "source": "vl#seg0",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "Object poses estimated without a visible scale reference; millimetre values are approximate."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "0747b821eaa087a0270bd8408298d936e147727884b8019aa6173d2b69624769",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "pipette-landscape-8s",
+   "run": 3,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "Liquid transfer with pipette into microplate",
+    "summary": "A person in a lab holds a small plate in the left hand and uses a pipette in the right hand to dispense liquid into its wells, repeating the action across several wells.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       12,
+       12,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.8,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj1",
+      "name": "microplate",
+      "shape": "box",
+      "size_mm": [
+       80,
+       52,
+       12
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        6
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 1.5,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "obj2",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 4.5,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "Object size estimates are approximate due to limited scale reference; may fall outside 5-300 mm range."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "0747b821eaa087a0270bd8408298d936e147727884b8019aa6173d2b69624769",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "pipette-portrait-8s",
+   "run": 0,
+   "hint": "filling a cartridge with a pipette",
+   "spec": {
+    "version": 1,
+    "title": "Filling a cartridge with a pipette",
+    "summary": "A gloved hand holds a small rectangular cartridge while a pipette dispenses liquid into it; the cartridge is then set down in the holder.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "pipette",
+      "shape": "cylinder",
+      "size_mm": [
+       6,
+       6,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj1",
+      "name": "cartridge",
+      "shape": "box",
+      "size_mm": [
+       60,
+       46,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 4,
+      "t_end_s": 4,
+      "source": "fit",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "obj2",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 4,
+      "t_end_s": 6,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "Object sizes estimated from video without a visible scale reference"
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "3fbe7976e57f3c3298bd4912f964fa5d0399574d232d16c7f34b9eb4b285b644",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "pipette-portrait-8s",
+   "run": 1,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "Person holding a small circuit board and gesturing toward a device",
+    "summary": "A gloved hand holds a small circuit board while the other hand gestures, then moves the board as if inserting it into a holder.",
+    "objects": [
+     {
+      "id": "obj1",
+      "name": "circuit board",
+      "shape": "box",
+      "size_mm": [
+       30,
+       6,
+       40
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.6,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj2",
+      "name": "holder",
+      "shape": "box",
+      "size_mm": [
+       80,
+       70,
+       20
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 10,
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0.5,
+      "t_end_s": 1,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "obj1",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj2"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 3,
+      "t_end_s": 4,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "No scale reference visible; object dimensions and poses are estimated."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "3fbe7976e57f3c3298bd4912f964fa5d0399574d232d16c7f34b9eb4b285b644",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "pipette-portrait-8s",
+   "run": 2,
+   "hint": "filling a cartridge with a pipette",
+   "spec": {
+    "version": 1,
+    "title": "Filling a cartridge with a pipette",
+    "summary": "A gloved hand holds a small translucent cartridge while a pipette tip dispenses liquid into it. No grasping, insertion, or placement is shown; the cartridge remains held over the work surface throughout the clip.",
+    "objects": [
+     {
+      "id": "cartridge1",
+      "name": "cartridge",
+      "shape": "box",
+      "size_mm": [
+       50,
+       20,
+       10
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        150,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg0",
+      "sources": {}
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "reach",
+      "object": "cartridge1",
+      "target": {
+       "fixture": "zone",
+       "frame": "world"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 8,
+      "source": "vl#seg0",
+      "sources": {}
+     }
+    ],
+    "anchor": {
+     "t_s": 0,
+     "confidence": 0
+    },
+    "warnings": [
+     "No grasp, insert, place, or release observed; cartridge remains held in hand throughout the clip."
+    ],
+    "open_questions": [
+     "Where exactly does the pipette tip enter the cartridge?",
+     "What are the precise cartridge dimensions and pose?",
+     "Is there a fixture receiving the cartridge after the clip ends?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "3fbe7976e57f3c3298bd4912f964fa5d0399574d232d16c7f34b9eb4b285b644",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": false,
+   "gestures": false
+  },
+  {
+   "clip": "pipette-portrait-8s",
+   "run": 3,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "Holding and displaying a biological sample slide",
+    "summary": "A gloved hand holds a rectangular microscope slide with a biological specimen, keeping it steady in view while a pipette approaches from the right. The hand then moves the slide toward the pipette tip and releases it, ending the clip with the hand moving away.",
+    "objects": [
+     {
+      "id": "slide",
+      "name": "microscope slide with specimen",
+      "shape": "box",
+      "size_mm": [
+       50,
+       25,
+       1
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        0.5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "work_surface",
+      "name": "work bench surface",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.8,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "slide",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1.5,
+      "t_end_s": 2.5,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "slide",
+      "target": {
+       "fixture": "zone",
+       "frame": "work_surface"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 7,
+      "t_end_s": 7.5,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "No reliable scale reference visible; object poses and dimensions are estimated from the video frame.",
+     "pipette tip approaches but does not contact the slide within the visible clip.",
+     "Object dimensions fall below the 5 mm minimum for height and are estimates.",
+     "pocket_clearance_mm omitted because no pocket/holder is visible."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "3fbe7976e57f3c3298bd4912f964fa5d0399574d232d16c7f34b9eb4b285b644",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 0,
+   "hint": "putting seed film into plant pillows",
+   "spec": {
+    "version": 1,
+    "title": "putting seed film into plant pillows",
+    "summary": "An astronaut in a red shirt and blue gloves takes a small green seed film packet from a tray of black plant pillows, opens it, and places the film into a white plant pillow.",
+    "objects": [
+     {
+      "id": "obj1",
+      "name": "seed film packet",
+      "shape": "box",
+      "size_mm": [
+       20,
+       6,
+       40
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 5,
+      "confidence": 0.7,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj3",
+      "name": "white plant pillow",
+      "shape": "box",
+      "size_mm": [
+       100,
+       100,
+       20
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 5,
+      "confidence": 0.6,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 3,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "obj1",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj3"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 6,
+      "t_end_s": 9,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "Object sizes are estimated from video without a visible scale reference."
+    ],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "670dd0871ae0f7d932ebcce5fb4a394200f23cb216d7e71993d37ae6212436ab",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 1,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "ISS crewmember handling stowage bag on work surface",
+    "summary": "A crewmember in a red shirt and blue gloves removes a small bag from a tray of battery packs, opens it, places it on the blue work surface, then pushes the tray of battery packs away.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "small bag",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       30
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        15
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.4,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj4",
+      "name": "blue work surface",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       20
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 2,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj2",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj4"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 8,
+      "t_end_s": 10,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "No visible scale reference; object sizes and world poses are estimates"
+    ],
+    "open_questions": [
+     "World origin and scale not visible in video"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "670dd0871ae0f7d932ebcce5fb4a394200f23cb216d7e71993d37ae6212436ab",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 2,
+   "hint": "putting seed film into plant pillows",
+   "spec": {
+    "version": 1,
+    "title": "Putting seed film into plant pillows aboard station",
+    "summary": "An astronaut wearing blue gloves works at a blue work surface with a tray of black packets. He reaches for a small yellow-green seed film, handles and separates its layers, then appears to place it into a clear plant pillow on the table while the tray of packets remains nearby.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "seed film packet",
+      "shape": "box",
+      "size_mm": [
+       40,
+       6,
+       40
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg2",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj3",
+      "name": "clear plant pillow",
+      "shape": "box",
+      "size_mm": [
+       100,
+       100,
+       30
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        15
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 8,
+      "confidence": 0.5,
+      "source": "vl#seg3",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1.5,
+      "t_end_s": 2,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj2",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj3"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 10,
+      "t_end_s": 12,
+      "source": "vl#seg3",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "Object sizes and poses are estimated from video without a calibrated scale; confidence is low.",
+     "The pillow pocket is only partly visible, so pocket_clearance_mm is an estimate."
+    ],
+    "open_questions": [
+     "Is the clear bag at the end a plant pillow or another type of pouch?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "670dd0871ae0f7d932ebcce5fb4a394200f23cb216d7e71993d37ae6212436ab",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "veggie-landscape-12s",
+   "run": 3,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "Astronaut manipulates small green component at ISS workstation",
+    "summary": "An astronaut in a red shirt and blue gloves removes a small green rectangular component from a tray of battery-like units, detaches a yellow tab, and places the component onto a white cloth on the workbench.",
+    "objects": [
+     {
+      "id": "obj1",
+      "name": "small green component",
+      "shape": "box",
+      "size_mm": [
+       20,
+       10,
+       5
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        2.5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj3",
+      "name": "white cloth",
+      "shape": "box",
+      "size_mm": [
+       150,
+       100,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.4,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2,
+      "t_end_s": 3,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj1",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj3"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 8,
+      "t_end_s": 10,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "No absolute scale provided; all poses are estimates in an assumed workstation frame",
+     "pocket clearance not visible",
+     "target frame for move step ambiguous",
+     "object dimensions estimated from video without reference scale"
+    ],
+    "open_questions": [
+     "What is the absolute world-frame origin and scale of the workstation?",
+     "Is there a pocket or connector on the white cloth or tray?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "670dd0871ae0f7d932ebcce5fb4a394200f23cb216d7e71993d37ae6212436ab",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 0,
+   "hint": "pushing seed film into plant pillows",
+   "spec": {
+    "version": 1,
+    "title": "Astronaut pushing seed film into plant pillows aboard a station",
+    "summary": "An astronaut wearing blue gloves pushes a small seed film strip into a white slit on a black plant pillow in a grid, then pulls his hand back and gestures toward the pillows.",
+    "objects": [
+     {
+      "id": "obj3",
+      "name": "seed film strip",
+      "shape": "box",
+      "size_mm": [
+       10,
+       6,
+       40
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.3,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj1",
+      "name": "plant pillow",
+      "shape": "box",
+      "size_mm": [
+       100,
+       100,
+       20
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.5,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj3",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1.5,
+      "t_end_s": 1.5,
+      "source": "fit",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "obj3",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1.5,
+      "t_end_s": 2,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "World origin not visible; poses are guesses relative to the work surface.",
+     "Seed film strip is very thin and partially hidden; pose and size are uncertain.",
+     "Object dimensions are estimated without a visible scale."
+    ],
+    "open_questions": [
+     "What is the pocket clearance for the seed film slit?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "0f6edd04147c360400abe1680327800b079d227ee113a36b2baa60dc359b75fe",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 1,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "ISS glove transfer and surface placement",
+    "summary": "An astronaut wearing blue gloves picks a small white glove from a panel, moves it to the right, and places it on a flat surface beside the panel.",
+    "objects": [
+     {
+      "id": "obj_white_glove",
+      "name": "white glove",
+      "shape": "box",
+      "size_mm": [
+       50,
+       50,
+       40
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.4,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj_surface",
+      "name": "flat work surface",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       10
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        5
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.3,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj_white_glove",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 1,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "place",
+      "object": "obj_white_glove",
+      "target": {
+       "fixture": "zone",
+       "frame": "obj_surface"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 2.5,
+      "t_end_s": 3.5,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "No visible scale in the scene, so object sizes and poses are guesses."
+    ],
+    "open_questions": [
+     "What is the exact size of the white glove?",
+     "What is the panel's pocket geometry and clearance?",
+     "Where is the world origin relative to the robot base?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "0f6edd04147c360400abe1680327800b079d227ee113a36b2baa60dc359b75fe",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 2,
+   "hint": "pushing seed film into plant pillows",
+   "spec": {
+    "version": 1,
+    "title": "pushing seed film into plant pillows",
+    "summary": "An astronaut wearing blue gloves places and presses seed film packets into the slots of a plant pillow array on a bench inside a station module.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "seed film packet",
+      "shape": "box",
+      "size_mm": [
+       40,
+       6,
+       40
+      ],
+      "symmetry": "axial",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj1",
+      "name": "plant pillow array",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       20
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        10
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.7,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1,
+      "t_end_s": 1,
+      "source": "fit",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "obj2",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1,
+      "t_end_s": 2,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "object dimensions estimated from video; no visible scale reference"
+    ],
+    "open_questions": [
+     "exact pocket_clearance_mm for plant pillow array not visible"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "0f6edd04147c360400abe1680327800b079d227ee113a36b2baa60dc359b75fe",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": true,
+   "gestures": false
+  },
+  {
+   "clip": "veggie2-portrait-8s",
+   "run": 3,
+   "hint": "",
+   "spec": {
+    "version": 1,
+    "title": "Astronaut handling battery pack in microgravity",
+    "summary": "An astronaut wearing blue gloves reaches for a white battery pack with a silver terminal sitting on a black rectangular device in a grid, detaches it, and moves it away to the left while the camera zooms in on the remaining battery packs.",
+    "objects": [
+     {
+      "id": "obj1",
+      "name": "battery pack",
+      "shape": "box",
+      "size_mm": [
+       60,
+       30,
+       12
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        220,
+        250,
+        100
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.8,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "obj2",
+      "name": "device grid",
+      "shape": "box",
+      "size_mm": [
+       400,
+       300,
+       40
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        250,
+        220,
+        90
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.9,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "obj3",
+      "name": "work surface",
+      "shape": "box",
+      "size_mm": [
+       500,
+       400,
+       20
+      ],
+      "symmetry": "none",
+      "role": "surface",
+      "pose": {
+       "xyz_mm": [
+        250,
+        200,
+        70
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.85,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 0,
+      "t_end_s": 1.5,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "move",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 1.5,
+      "t_end_s": 3.5,
+      "source": "vl#seg1",
+      "sources": {}
+     },
+     {
+      "id": "s3",
+      "verb": "release",
+      "object": "obj1",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 3.5,
+      "t_end_s": 4,
+      "source": "vl#seg1",
+      "sources": {}
+     }
+    ],
+    "anchor": {
+     "t_s": 1,
+     "confidence": 0.85
+    },
+    "warnings": [
+     "Object size estimated without a visible scale reference"
+    ],
+    "open_questions": [
+     "Exact dimensions of the battery pack and device grid are unknown; no scale reference visible in clip",
+     "objects[obj2].size_mm: is device grid really [400, 300, 40] mm?",
+     "objects[obj3].size_mm: is work surface really [500, 400, 20] mm?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "0f6edd04147c360400abe1680327800b079d227ee113a36b2baa60dc359b75fe",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "rehearsable": false,
+   "gestures": false
+  }
+ ]
+}

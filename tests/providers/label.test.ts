@@ -116,3 +116,67 @@ describe("fitToBench", () => {
     expect(fit.open_questions).toEqual(["Is a snug fit needed?"]);
   });
 });
+
+/** Own clips (#150): Super VL often puts something down as a move onto an object, then a release, with no place step. */
+describe("fitToBench, a move and then a release", () => {
+  const objects = [
+    { id: "bag", name: "drink bag", shape: "box", size_mm: [80, 20, 120], symmetry: "none", role: "manipulated" },
+    { id: "foam", name: "foam block", shape: "box", size_mm: [100, 100, 60], symmetry: "none", role: "fixture" },
+    { id: "bench", name: "work surface", shape: "box", size_mm: [300, 300, 20], symmetry: "none", role: "surface" },
+  ];
+  const label = (steps: unknown[]) => TaskSpec.parse({ version: 1, title: "t", summary: "", objects, steps });
+  const step = (id: string, verb: string, extra: object, t: number) => ({ id, verb, object: "bag", t_start_s: t, t_end_s: t + 1, ...extra });
+  const zone = (frame: string) => ({ target: { fixture: "zone", frame } });
+
+  it("reads them as a place onto where the bag went, and says so", () => {
+    const fit = fitToBench(label([step("s1", "grasp", {}, 0), step("s2", "move", zone("foam"), 1), step("s3", "release", {}, 2)]));
+    expect(fit.spec.steps.map((s) => [s.id, s.verb, s.object, s.target?.frame])).toEqual([
+      ["s1", "grasp", "bag", undefined],
+      ["s2", "place", "bag", "foam"],
+    ]);
+    expect(fit.warnings[0]).toBe("steps s2 and s3: a move onto foam, then a release, read as a place there");
+    expect(fit.spec.steps[1]).toMatchObject({ t_start_s: 1, t_end_s: 3, source: "fit" });
+  });
+
+  it("takes the release's own target when it names another object", () => {
+    const fit = fitToBench(label([step("s1", "grasp", {}, 0), step("s2", "move", zone("foam"), 1), step("s3", "release", zone("bench"), 2)]));
+    expect(fit.spec.steps[1].target?.frame).toBe("bench");
+  });
+
+  it("ends as the release did: its checks and landing tolerances, not the carry's", () => {
+    const carry = { success: [{ kind: "height_above", object: "bag", value: 80 }], tolerances: { x_mm: 20, z_mm: 9 } };
+    const drop = { success: [{ kind: "inside_zone", object: "bag", target: "foam" }], tolerances: { x_mm: 1 } };
+    const fit = fitToBench(label([step("s1", "grasp", {}, 0), step("s2", "move", { ...zone("foam"), ...carry }, 1), step("s3", "release", drop, 2)]));
+    expect(fit.spec.steps[1].success).toEqual(drop.success);
+    expect(fit.spec.steps[1].tolerances).toEqual({ x_mm: 1, z_mm: 9 });
+  });
+
+  it("finds nothing when the release goes elsewhere or has preconditions of its own", () => {
+    const nothing = "no insert or place step onto a named object: nothing to rehearse";
+    const elsewhere = { target: { fixture: "zone", frame: "world" } };
+    expect(fitToBench(label([step("s1", "grasp", {}, 0), step("s2", "move", zone("foam"), 1), step("s3", "release", elsewhere, 2)])).warnings.at(-1)).toBe(nothing);
+    const upright = { preconditions: [{ kind: "tilt_under", object: "bag", value: 5 }] };
+    expect(fitToBench(label([step("s1", "grasp", {}, 0), step("s2", "move", zone("foam"), 1), step("s3", "release", upright, 2)])).warnings.at(-1)).toBe(nothing);
+  });
+
+  it("finds nothing when the move names no target, the bag is never let go, or is grasped again first", () => {
+    const none = (steps: unknown[]) => fitToBench(label(steps)).warnings.at(-1);
+    const nothing = "no insert or place step onto a named object: nothing to rehearse";
+    expect(none([step("s1", "grasp", {}, 0), step("s2", "move", {}, 1), step("s3", "release", {}, 2)])).toBe(nothing);
+    expect(none([step("s1", "grasp", {}, 0), step("s2", "move", zone("foam"), 1)])).toBe(nothing);
+    expect(none([step("s1", "move", zone("foam"), 0), step("s2", "grasp", {}, 1), step("s3", "release", {}, 2)])).toBe(nothing);
+    // a move onto the bag itself goes nowhere
+    expect(none([step("s1", "grasp", {}, 0), step("s2", "move", zone("bag"), 1), step("s3", "release", {}, 2)])).toBe(nothing);
+  });
+
+  it("skips an insert of an object into itself for the place after it", () => {
+    const fit = fitToBench(label([step("s1", "grasp", {}, 0), step("s2", "insert", { target: { fixture: "pocket", frame: "bag" } }, 1), step("s3", "place", zone("foam"), 2)]));
+    expect(fit.spec.steps[1]).toMatchObject({ id: "s2", verb: "place", target: { frame: "foam" } });
+  });
+
+  it("leaves a label that has a place as it was", () => {
+    const fit = fitToBench(label([step("s1", "grasp", {}, 0), step("s2", "move", zone("bench"), 1), step("s3", "place", zone("foam"), 2), step("s4", "release", {}, 3)]));
+    expect(fit.spec.steps[1]).toMatchObject({ id: "s2", verb: "place", target: { frame: "foam" } });
+    expect(fit.warnings.some((w) => /read as a place/.test(w))).toBe(false);
+  });
+});

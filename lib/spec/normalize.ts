@@ -226,7 +226,8 @@ const PROGRAM_KEYS = new Set(["spec_title", "warnings"]);
 function stepEntry(entry: unknown, program: Rec, warnings: string[]): unknown[] {
   if (typeof entry === "string") {
     const text = entry.trim();
-    if (PROGRAM_KEYS.has(text)) {
+    // the key alone, or with the start of its value ("warnings[]", #150): never a step
+    if (PROGRAM_KEYS.has(/^(\w+)\W*$/.exec(text)?.[1] ?? "")) {
       warnings.push(`steps held the key ${show(text)}, closed one place late; read as the program's`);
       return [];
     }
