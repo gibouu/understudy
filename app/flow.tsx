@@ -340,7 +340,7 @@ export function Flow() {
       )}
 
       {ready && program.status === "done" && !spec.steps.some((s) => s.verb === "gesture") && (
-        <Section n={6} title="Try a similar task" model={`${say("super")} · ${say("nano")}`}>
+        <Section n={6} title="Try a similar task">
           <Variants spec={spec} program={program.value} />
         </Section>
       )}

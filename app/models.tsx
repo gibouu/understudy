@@ -20,7 +20,10 @@ export function useLiveModels(): LiveModels | null {
     asked ??= fetch("/api/models")
       .then((r) => (r.ok ? (r.json() as Promise<LiveModels>) : null))
       .catch(() => null);
-    asked.then((m) => alive && setIds(m));
+    asked.then((m) => {
+      if (m === null) asked = undefined; // ask again on the next mount
+      if (alive) setIds(m);
+    });
     return () => {
       alive = false;
     };

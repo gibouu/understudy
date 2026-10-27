@@ -27,8 +27,10 @@ const WHY_STUCK = { noop: "the cheap patch changed nothing", two_failed: "two pa
 export function patcher(p: NotePatch, ids: LiveModels | null): string {
   const who = modelLabel(p.model);
   const why = p.escalation ? WHY_STUCK[p.escalation] : null;
-  const handed = p.thinking && ids !== null && ids.stuck !== ids.super && p.model === ids.stuck;
+  // without this deployment's models a thinking patch may be Ultra's, which did not think: say neither
+  const handed = p.thinking && (ids === null || (ids.stuck !== ids.super && p.model === ids.stuck));
   if (handed) return why ? `${who}: ${why}` : who;
+  if (ids === null) return who;
   return `${who}, ${p.thinking ? `thinking on${why ? `: ${why}` : ""}` : "thinking off"}`;
 }
 

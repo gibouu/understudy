@@ -360,7 +360,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
           <ul className="mt-1 text-xs text-[color:var(--muted,#737373)]">
             {calls.map((c, i) => (
               <li key={i}>
-                {c.what}: {c.failed && c.ledger.length === 0 ? "failed, cost not reported" : `${c.ledger.length} call${c.ledger.length === 1 ? "" : "s"}, ${usd(costOf(c.ledger).usd)}${c.failed ? ", then failed" : ""}`}
+                {c.what}: {c.failed && c.ledger.length === 0 ? "failed, cost not reported" : `${c.ledger.length} ${answeredBy(c.ledger) ?? ""} call${c.ledger.length === 1 ? "" : "s"}, ${usd(costOf(c.ledger).usd)}${c.failed ? ", then failed" : ""}`.replace("  ", " ")}
               </li>
             ))}
           </ul>
@@ -379,11 +379,14 @@ function VariantPatch({ id, setOwner, ...loop }: Omit<React.ComponentProps<typeo
   return <PatchLoop {...loop} onBusy={onBusy} />;
 }
 
+/** A finished suggestion names the model that wrote it, from its own ledger: a replay names the recorded one. */
 function StatusLine({ result }: { result: StageResult<Checked> }) {
   if (result.status === "running") return <span className="animate-pulse text-sm text-[color:var(--muted,#737373)]">{result.note}…</span>;
   if (result.status === "failed") return <span className="text-sm text-red-700">{result.message}</span>;
-  if (replayed(result) && result.status === "done") return <span className="text-xs text-amber-700">{gateNote(result.warnings) ?? "replayed from a recording"}</span>;
-  return null;
+  if (result.status !== "done") return null;
+  const by = answeredBy(result.ledger);
+  if (replayed(result)) return <span className="text-xs text-amber-700">{gateNote(result.warnings) ?? "replayed from a recording"}{by ? `, written by ${by}` : ""}</span>;
+  return by ? <span className="text-xs text-[color:var(--muted,#737373)]">written by {by}</span> : null;
 }
 
 function VariantCard({ base, variant: v, from, run, showing, checked, disabled, onCheck, onRehearse, patch }: { base: TaskSpec; variant: Variant; from: string; run?: Run; showing: boolean; checked: boolean; disabled: boolean; onCheck: (on: boolean) => void; onRehearse: () => void; patch: React.ReactNode }) {

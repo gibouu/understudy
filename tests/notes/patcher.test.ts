@@ -3,7 +3,10 @@
  * "thinking on" only when that model thought, and a stuck loop handed to Ultra says so; the
  * deployment's models come from /api/models.
  */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// a route handler's connection() needs Next's request scope, which a unit test has not got
+vi.mock("next/server", async (original) => ({ ...(await original<typeof import("next/server")>()), connection: async () => {} }));
 import { patcher } from "@/app/patch-loop";
 import { answeredBy } from "@/app/models";
 import { GET } from "@/app/api/models/route";
@@ -29,8 +32,10 @@ describe("who wrote a patch", () => {
     expect(patcher(patch({ model: SUPER_VL }), ids(SUPER_VL, ULTRA))).toBe("Nemotron 3.5 Super VL, thinking off");
   });
 
-  it("before /api/models answers, a thinking patch reads as thinking", () => {
-    expect(patcher(patch({ thinking: true }), null)).toBe("Nemotron 3 Super, thinking on");
+  it("without this deployment's models it claims neither thinking on nor off", () => {
+    expect(patcher(patch({ model: ULTRA, thinking: true, escalation: "two_failed" }), null)).toBe("Nemotron 3 Ultra: two patches failed");
+    expect(patcher(patch({ thinking: true }), null)).toBe("Nemotron 3 Super");
+    expect(patcher(patch({}), null)).toBe("Nemotron 3 Super");
   });
 });
 
@@ -42,7 +47,7 @@ describe("the models that answered", () => {
   });
 
   it("/api/models says each role's model and who answers a stuck loop", async () => {
-    const body = await GET().json();
+    const body = await (await GET()).json();
     expect(body).toEqual({ vl: MODELS.vl, nano: MODELS.nano, super: MODELS.super, ultra: MODELS.ultra, stuck: MODELS[stuckRole(MODELS.super)] });
     expect(stuckRole(SUPER_VL)).toBe("ultra");
     expect(stuckRole(SUPER)).toBe("super");
