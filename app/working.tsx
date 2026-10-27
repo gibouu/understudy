@@ -8,6 +8,11 @@ import { useEffect, useState } from "react";
  * looks frozen. `since` is Date.now() when the stage began; a new line for the
  * same stage (a frame count, say) keeps the clock running.
  */
+/** A small pulsing dot beside a running line: the text itself stays opaque, so it keeps its contrast (#121). */
+export function Pulse() {
+  return <span aria-hidden="true" className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-current align-middle" />;
+}
+
 export function Working({ note, since, usual }: { note: string; since: number; usual?: string }) {
   const [now, setNow] = useState(since);
   useEffect(() => {
@@ -19,7 +24,8 @@ export function Working({ note, since, usual }: { note: string; since: number; u
   const s = Math.max(0, Math.floor((now - since) / 1000));
   return (
     <p className="text-sm text-neutral-600" role="status">
-      <span className="animate-pulse">{note}…</span>{" "}
+      <Pulse />
+      <span>{note}…</span>{" "}
       <span className="whitespace-nowrap tabular-nums text-neutral-500">
         {s} s{usual ? `, usually ${usual}` : ""}
       </span>
