@@ -237,7 +237,7 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
           {step.id === "export" && (
             <>
               <p className="text-xl leading-snug text-ink-deep">The passing rollouts you just watched, as a LeRobot v2.1 dataset in the layout GR00T N1.7 reads, built in your browser.</p>
-              <p className="text-muted">It is a format-valid skeleton, not training data: scripted, primitive-rendered episodes, and its QUALITY.md says so.</p>
+              <p className="text-muted">It is a format-valid skeleton, not training data: joint states and actions of a scripted program, no video, not checked with GR00T’s loader, and its QUALITY.md says so.</p>
             </>
           )}
           {stageStep && (

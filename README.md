@@ -41,7 +41,7 @@ Understudy was a month of internal research before it was a hackathon project. T
 
 ## What it does
 
-Two pages: **Try it** (`/try`) runs a sample clip or one of your own through the stages below, and the **space showcase** (`/space`) plays recorded runs of NASA clips with no model call.
+Three pages: the **1-minute demo** (`/demo`) walks through one recorded run step by step and ends with its export, **Try it** (`/try`) runs a sample clip or one of your own through the stages below, and the **space showcase** (`/space`) plays recorded runs of NASA clips with no model call.
 
 ### Built: on the site today
 
@@ -55,6 +55,7 @@ Two pages: **Try it** (`/try`) runs a sample clip or one of your own through the
 | **Notes** | When a rehearsal fails, the simulator's failure note goes to the model as text; it returns one patch, the route clamps and applies it, and the arm runs again, up to five patches. Thinking stays off until the loop is stuck (a patch that changes nothing, or two failed patches). | `nvidia/nemotron-3-super-120b-a12b` in the recordings, thinking when stuck; live, `nvidia/Nemotron-3.5-Super-VL`, handing a stuck loop to `nvidia/Nemotron-3-Ultra-550b-a55b` |
 | **Try a similar task** | The model suggests similar tasks, or writes one from a line you type; each is checked against the bench, compiled and rehearsed on Earth and in orbit, and an idea the arm cannot do yet comes back with the reason. | Super (Super VL live), then the compiling model |
 | **Space showcase** | NASA clips from the ISS, each one recorded run: what the model saw, what the robot asked, and "How it improved", one row per version of the program (first compile, after the answers, each Notes patch). The arm rehearses every version again in your browser. | recordings, browser |
+| **Export** (1-minute demo only) | The demo's last step builds `understudy-<sample>.zip` in the browser from the Earth and orbit rollouts it just played: a LeRobot v2.1 skeleton in the layout Isaac-GR00T N1.7 reads: `meta/info.json`, `modality.json` and one parquet file per passing rollout, with joint states and actions in radians at 15 fps and no video, plus `QUALITY.md` and the run's spec, program, interview, versions and ledger. It is format-valid, not checked with GR00T's loader, and not training data. | `lib/export/`, browser |
 | **Cost** | Priced at Token Factory's list prices (`GET /v1/models?verbose=true`): each Notes patch shows its tokens and price, the similar tasks show each call's price and their total, and each showcase run shows the price of every version of its program and of the whole session. The section titles on Try it name the model that answered. | browser |
 
 ### Next: designed, not on the site yet
@@ -62,7 +63,7 @@ Two pages: **Try it** (`/try`) runs a sample clip or one of your own through the
 - **Saboteur:** twelve perturbation scenarios chosen from object symmetry and the tightest constraint, each run **blind** (nominal object pose) and **sensed** (perturbed pose known), giving the **perception budget**: per axis and per gravity, how much pose error the task survives without perception and with it. The simulator takes both modes; the site runs sensed only.
 - **Scoreboard and playbook:** every version scored on the same 24 rollouts against a retarget-and-replay baseline ([#55](https://github.com/gibouu/understudy/issues/55)), and patches that fixed a failure carried to the next clip as rules ([#56](https://github.com/gibouu/understudy/issues/56)).
 - **Reshoot:** failure classes (spec gap, footage gap, embodiment limit, simulator artefact), a reshoot list and open risks, from Nemotron 3 Ultra.
-- **Export:** `understudy-<task>.zip`, a LeRobot v2.1 dataset skeleton with `modality.json` (the layout Isaac-GR00T N1.7 reads). The writer is in [lib/export/](lib/export/) with its tests; nothing on the site calls it yet.
+- **Export from Try it, with video:** Try it has no export, and the demo's export holds no video. The writer in [lib/export/](lib/export/) can add an MP4 per episode, and no export has been loaded by GR00T's loader yet.
 - **The Moon on Try it:** the Moon preset (0.1654 g) is in the contract and on the `/stage` page; Try it rehearses on Earth and in orbit.
 
 Task-agnostic by construction: the code never names a task. The sample clips are NASA public-domain footage from the ISS, in [samples/](samples/README.md): an astronaut placing seed film into the plant pillows of the station's Veggie facility (the hero clip, filmed in microgravity), a second seed film clip, a pipette into a sample cartridge in a glovebox, a drink bag squeezed into foam, a chess match, and a wave.
@@ -125,7 +126,7 @@ The loop itself is measured on the bench harness, on small probe programs of two
 
 ## Simulated versus real
 
-The rehearsal proves that the clarified spec is executable by a scripted SO-101 program across the stated band, in rigid-body physics with a geometric grasp, and that its success criteria are computable. On the site today the band is the nominal layout at 1 g and 0 g; the perturbation band is next. It does not prove a learned policy would succeed or that a real grasp holds. The export writer in `lib/export/`, not on the site yet, makes a format-valid skeleton for GR00T's loader, not training data, and its quality report says so. Details: [docs/LIMITATIONS.md](docs/LIMITATIONS.md) (three documented failing rollouts land with issue #24).
+The rehearsal proves that the clarified spec is executable by a scripted SO-101 program across the stated band, in rigid-body physics with a geometric grasp, and that its success criteria are computable. On the site today the band is the nominal layout at 1 g and 0 g; the perturbation band is next. It does not prove a learned policy would succeed or that a real grasp holds. The 1-minute demo's export is a format-valid LeRobot skeleton of the rollouts it played (joint values, no video), not training data, and its quality report says so. Details: [docs/LIMITATIONS.md](docs/LIMITATIONS.md) (three documented failing rollouts land with issue #24).
 
 ## Prior art
 

@@ -98,7 +98,7 @@ describe("QUALITY.md", () => {
         },
       },
     });
-    expect(report.headline).toBe("4 scripted, primitive-rendered episodes; a format-valid skeleton, not training data");
+    expect(report.headline).toBe("4 scripted episodes; a format-valid skeleton, not training data");
     expect(report.loader_validated).toBe(false);
     const md = renderQualityMarkdown(report, episodes);
     expect(md).toContain(`**${report.headline}.**`);
@@ -109,6 +109,16 @@ describe("QUALITY.md", () => {
     expect(md).not.toContain("Loader-validated with Isaac-GR00T");
     expect(md).toContain("Every state and action dimension moves");
     expect(md).toContain("| 2 | x_mm+8 | blind | no | 60 |");
+  });
+
+  it("says primitive-rendered only when the export holds video (#168)", () => {
+    const episodes = syntheticEpisodes();
+    const rendered = buildQualityReport({ episodes, rendered: true });
+    expect(rendered.headline).toBe("4 scripted, primitive-rendered episodes; a format-valid skeleton, not training data");
+    expect(renderQualityMarkdown(rendered, episodes, { rendered: true })).toContain("rendered from primitives");
+    const bare = renderQualityMarkdown(buildQualityReport({ episodes }), episodes);
+    expect(bare).toContain("joint states and actions only, no video");
+    expect(bare).not.toContain("rendered");
   });
 
   it("describes synthetic episodes without physics claims", () => {
