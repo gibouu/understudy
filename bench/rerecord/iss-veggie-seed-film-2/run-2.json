@@ -1,0 +1,1162 @@
+{
+ "version": 1,
+ "clip": {
+  "name": "iss-veggie-seed-film-2",
+  "duration_s": 36,
+  "sha256": "68cf0a1173658ce286d152c54061b145ea8889b3df681862111ad4487c55d772"
+ },
+ "hint": "aboard the ISS, planting seed film into the Veggie plant pillows",
+ "recorded_at": "2026-10-27T08:17:37.355Z",
+ "models": {
+  "vl": "nvidia/Nemotron-3.5-Super-VL",
+  "nano": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+  "super": "nvidia/nemotron-3-super-120b-a12b"
+ },
+ "label": {
+  "spec": {
+   "version": 1,
+   "title": "ISS astronaut planting seed film into Veggie plant pillows",
+   "summary": "An astronaut aboard the ISS works on a tabletop Veggie plant pillow tray, handling a small seed-film packet and placing it into one of the pillow slots on the tray, then adjusting it with both gloved hands.",
+   "objects": [
+    {
+     "id": "obj1",
+     "name": "Veggie plant pillow tray",
+     "shape": "box",
+     "size_mm": [
+      220,
+      160,
+      18
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       480,
+       160,
+       0
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.65,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "obj2",
+     "name": "seed film packet",
+     "shape": "box",
+     "size_mm": [
+      60,
+      40,
+      4
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       560,
+       190,
+       15
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.55,
+     "source": "vl#seg2",
+     "sources": {}
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "reach",
+     "object": "obj2",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 5,
+     "source": "vl#seg1",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "grasp",
+     "object": "obj2",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 5,
+     "t_end_s": 7,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s3",
+     "verb": "move",
+     "object": "obj2",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 7,
+     "t_end_s": 14,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s4",
+     "verb": "insert",
+     "object": "obj2",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 14,
+     "t_end_s": 16,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s5",
+     "verb": "place",
+     "object": "obj2",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 16,
+     "t_end_s": 18,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s6",
+     "verb": "release",
+     "object": "obj2",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 18,
+     "t_end_s": 19,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s7",
+     "verb": "move",
+     "object": "obj1",
+     "target": {
+      "fixture": "zone",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 19,
+     "t_end_s": 36,
+     "source": "vl#seg3",
+     "sources": {}
+    },
+    {
+     "id": "s8",
+     "verb": "retract",
+     "object": "obj2",
+     "target": {
+      "fixture": "zone",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 36,
+     "t_end_s": 36,
+     "source": "vl#seg3",
+     "sources": {}
+    }
+   ],
+   "anchor": {
+    "t_s": 5,
+    "confidence": 0.5
+   },
+   "warnings": [
+    "No visible scale reference in the scene; object poses are rough visual estimates and may be inaccurate",
+    "Seed film packet size is estimated below the 5 mm minimum dimension guideline and may be inaccurate",
+    "No clearly defined pocket is visible; pocket_clearance_mm omitted"
+   ],
+   "open_questions": [
+    "What are the exact dimensions and pose of the Veggie plant pillow tray and seed film packet in world coordinates?",
+    "Is there a defined pocket/holder in the tray for the seed film, and what is its clearance?",
+    "objects[obj2].size_mm: is seed film packet really [60, 40, 4] mm?"
+   ],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "68cf0a1173658ce286d152c54061b145ea8889b3df681862111ad4487c55d772",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "warnings": [
+   "step s7: times 19-36.5 s clamped to the 36 s clip",
+   "step s8: times 36.5-36.5 s clamped to the 36 s clip",
+   "object obj2: size_mm [60, 40, 4] is outside 5 to 300 mm",
+   "objects[0].pocket_clearance_mm: fixture \"obj1\" is used as a pocket but has no clearance"
+  ],
+  "cost_usd": 0.004033,
+  "seconds": 6.93
+ },
+ "fit": {
+  "spec": {
+   "version": 1,
+   "title": "ISS astronaut planting seed film into Veggie plant pillows",
+   "summary": "An astronaut aboard the ISS works on a tabletop Veggie plant pillow tray, handling a small seed-film packet and placing it into one of the pillow slots on the tray, then adjusting it with both gloved hands.",
+   "objects": [
+    {
+     "id": "obj2",
+     "name": "seed film packet",
+     "shape": "box",
+     "size_mm": [
+      40,
+      6,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.55,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "obj1",
+     "name": "Veggie plant pillow tray",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      18
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       9
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.65,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "obj2",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 5,
+     "t_end_s": 7,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "obj2",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj1"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 14,
+     "t_end_s": 16,
+     "source": "vl#seg2",
+     "sources": {}
+    }
+   ],
+   "warnings": [
+    "No visible scale reference in the scene; object poses are rough visual estimates and may be inaccurate",
+    "Seed film packet size is estimated below the 5 mm minimum dimension guideline and may be inaccurate",
+    "No clearly defined pocket is visible; pocket_clearance_mm omitted"
+   ],
+   "open_questions": [
+    "Is there a defined pocket/holder in the tray for the seed film, and what is its clearance?"
+   ],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "68cf0a1173658ce286d152c54061b145ea8889b3df681862111ad4487c55d772",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "warnings": [
+   "obj2: size [60, 40, 4] mm scaled to [40, 6, 40] mm for the robot's jaws and reach",
+   "obj1: size [220, 160, 18] mm scaled to [150, 150, 18] mm for the robot's jaws and reach",
+   "rehearsing step s2 and step s4 of 8"
+  ]
+ },
+ "turns": [
+  {
+   "program": {
+    "spec_title": "ISS astronaut planting seed film into Veggie plant pillows",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj2",
+        "aperture_mm": 6
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj2"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "objects[obj1].pocket_clearance_mm",
+        "question": "How much wider than the seed film packet is the opening of the Veggie plant pillow tray?",
+        "why": "the pocket's clearance was not visible"
+       },
+       {
+        "op": "ask",
+        "slot": "steps[s2].success",
+        "question": "How will the robot confirm insertion success?",
+        "why": "A missing success predicate"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         49
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         30
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj2"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj2",
+         "target": "obj1"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No visible scale reference in the scene; object poses are rough visual estimates and may be inaccurate",
+     "Seed film packet size is estimated below the 5 mm minimum dimension guideline and may be inaccurate",
+     "No clearly defined pocket is visible; pocket_clearance_mm omitted"
+    ]
+   },
+   "warnings": [
+    "dropped an ask for open_questions[0]: the spec already sets it",
+    "dropped an ask for open_questions[1] (\"Is there a defined clearance for the seed film in the pocket?\"): not something the person who did the task can answer",
+    "dropped an ask for steps[s2].tolerances.pocket_clearance_mm (\"What is the pocket clearance for obj2?\"): not something the person who did the task can answer",
+    "added an ask for objects[obj1].pocket_clearance_mm: the rehearsal needs it"
+   ],
+   "asks": [
+    {
+     "slot": "objects[obj1].pocket_clearance_mm",
+     "question": "How much wider than the seed film packet is the opening of the Veggie plant pillow tray?",
+     "why": "the pocket's clearance was not visible"
+    },
+    {
+     "slot": "steps[s2].success",
+     "question": "How will the robot confirm insertion success?",
+     "why": "A missing success predicate"
+    }
+   ],
+   "answers": [
+    {
+     "slot": "objects[obj1].pocket_clearance_mm",
+     "text": "10 mm",
+     "change": {
+      "path": "objects[obj1].pocket_clearance_mm",
+      "value": 10,
+      "source": "interview#1"
+     }
+    },
+    {
+     "slot": "steps[s2].success",
+     "text": "the seed film packet ends up in the Veggie plant pillow tray and stays there",
+     "change": {
+      "path": "steps[s2].success",
+      "value": [
+       {
+        "kind": "inside_zone",
+        "object": "obj2",
+        "target": "obj1"
+       },
+       {
+        "kind": "object_still",
+        "object": "obj2"
+       }
+      ],
+      "source": "interview#1"
+     }
+    }
+   ]
+  },
+  {
+   "program": {
+    "spec_title": "ISS astronaut planting seed film into Veggie plant pillows",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj2",
+        "aperture_mm": 6
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj2"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         49
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         30
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         19
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj2",
+         "target": "obj1"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No visible scale reference in the scene; object poses are rough visual estimates and may be inaccurate",
+     "Seed film packet size is estimated below the 5 mm minimum dimension guideline and may be inaccurate",
+     "No clearly defined pocket is visible; pocket_clearance_mm omitted"
+    ]
+   },
+   "warnings": [
+    "nano: steps[1] (insert): never releases the obj2"
+   ],
+   "asks": [],
+   "answers": []
+  }
+ ],
+ "iterations": [
+  {
+   "source": "compile",
+   "program": {
+    "spec_title": "ISS astronaut planting seed film into Veggie plant pillows",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj2",
+        "aperture_mm": 6
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj2"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "objects[obj1].pocket_clearance_mm",
+        "question": "How much wider than the seed film packet is the opening of the Veggie plant pillow tray?",
+        "why": "the pocket's clearance was not visible"
+       },
+       {
+        "op": "ask",
+        "slot": "steps[s2].success",
+        "question": "How will the robot confirm insertion success?",
+        "why": "A missing success predicate"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         49
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         30
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj2"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj2",
+         "target": "obj1"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No visible scale reference in the scene; object poses are rough visual estimates and may be inaccurate",
+     "Seed film packet size is estimated below the 5 mm minimum dimension guideline and may be inaccurate",
+     "No clearly defined pocket is visible; pocket_clearance_mm omitted"
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "ISS astronaut planting seed film into Veggie plant pillows",
+    "summary": "An astronaut aboard the ISS works on a tabletop Veggie plant pillow tray, handling a small seed-film packet and placing it into one of the pillow slots on the tray, then adjusting it with both gloved hands.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "seed film packet",
+      "shape": "box",
+      "size_mm": [
+       40,
+       6,
+       40
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.55,
+      "source": "vl#seg2",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj1",
+      "name": "Veggie plant pillow tray",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       18
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        9
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.65,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 5,
+      "t_end_s": 7,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "obj2",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 14,
+      "t_end_s": 16,
+      "source": "vl#seg2",
+      "sources": {}
+     }
+    ],
+    "warnings": [
+     "No visible scale reference in the scene; object poses are rough visual estimates and may be inaccurate",
+     "Seed film packet size is estimated below the 5 mm minimum dimension guideline and may be inaccurate",
+     "No clearly defined pocket is visible; pocket_clearance_mm omitted"
+    ],
+    "open_questions": [
+     "Is there a defined pocket/holder in the tray for the seed film, and what is its clearance?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "68cf0a1173658ce286d152c54061b145ea8889b3df681862111ad4487c55d772",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [],
+   "why": "Nano's first program for the fitted spec, with 2 open questions",
+   "cost_usd": 0.00031,
+   "seconds": 3,
+   "results": {
+    "earth": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 0,
+     "failure_class": "spec_gap",
+     "why": "unanswered: How much wider than the seed film packet is the opening of the Veggie plant pillow tray?",
+     "t": 3.975
+    },
+    "orbit": {
+     "pass": false,
+     "failed_step_id": "s2",
+     "failed_op": 0,
+     "failure_class": "spec_gap",
+     "why": "unanswered: How much wider than the seed film packet is the opening of the Veggie plant pillow tray?",
+     "t": 3.965
+    }
+   }
+  },
+  {
+   "source": "interview",
+   "program": {
+    "spec_title": "ISS astronaut planting seed film into Veggie plant pillows",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj2",
+        "aperture_mm": 6
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj2"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         49
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         30
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         19
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj2",
+         "target": "obj1"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No visible scale reference in the scene; object poses are rough visual estimates and may be inaccurate",
+     "Seed film packet size is estimated below the 5 mm minimum dimension guideline and may be inaccurate",
+     "No clearly defined pocket is visible; pocket_clearance_mm omitted"
+    ]
+   },
+   "spec": {
+    "version": 1,
+    "title": "ISS astronaut planting seed film into Veggie plant pillows",
+    "summary": "An astronaut aboard the ISS works on a tabletop Veggie plant pillow tray, handling a small seed-film packet and placing it into one of the pillow slots on the tray, then adjusting it with both gloved hands.",
+    "objects": [
+     {
+      "id": "obj2",
+      "name": "seed film packet",
+      "shape": "box",
+      "size_mm": [
+       40,
+       6,
+       40
+      ],
+      "symmetry": "none",
+      "role": "manipulated",
+      "pose": {
+       "xyz_mm": [
+        200,
+        -100,
+        20
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "confidence": 0.55,
+      "source": "vl#seg2",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit"
+      }
+     },
+     {
+      "id": "obj1",
+      "name": "Veggie plant pillow tray",
+      "shape": "box",
+      "size_mm": [
+       150,
+       150,
+       18
+      ],
+      "symmetry": "none",
+      "role": "fixture",
+      "pose": {
+       "xyz_mm": [
+        175,
+        100,
+        9
+       ],
+       "yaw_deg": 0,
+       "frame": "world"
+      },
+      "pocket_clearance_mm": 10,
+      "confidence": 0.65,
+      "source": "vl#seg1",
+      "sources": {
+       "pose": "fit",
+       "size_mm": "fit",
+       "pocket_clearance_mm": "interview#1"
+      }
+     }
+    ],
+    "steps": [
+     {
+      "id": "s1",
+      "verb": "grasp",
+      "object": "obj2",
+      "via_points": [],
+      "preconditions": [],
+      "success": [],
+      "tolerances": {},
+      "t_start_s": 5,
+      "t_end_s": 7,
+      "source": "vl#seg2",
+      "sources": {}
+     },
+     {
+      "id": "s2",
+      "verb": "insert",
+      "object": "obj2",
+      "target": {
+       "fixture": "pocket",
+       "frame": "obj1"
+      },
+      "via_points": [],
+      "preconditions": [],
+      "success": [
+       {
+        "kind": "inside_zone",
+        "object": "obj2",
+        "target": "obj1"
+       },
+       {
+        "kind": "object_still",
+        "object": "obj2"
+       }
+      ],
+      "tolerances": {},
+      "t_start_s": 14,
+      "t_end_s": 16,
+      "source": "vl#seg2",
+      "sources": {
+       "success": "interview#1"
+      }
+     }
+    ],
+    "warnings": [
+     "No visible scale reference in the scene; object poses are rough visual estimates and may be inaccurate",
+     "Seed film packet size is estimated below the 5 mm minimum dimension guideline and may be inaccurate",
+     "No clearly defined pocket is visible; pocket_clearance_mm omitted"
+    ],
+    "open_questions": [
+     "Is there a defined pocket/holder in the tray for the seed film, and what is its clearance?"
+    ],
+    "sources": {},
+    "provenance": {
+     "label_input": "video",
+     "clip_sha256": "68cf0a1173658ce286d152c54061b145ea8889b3df681862111ad4487c55d772",
+     "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+   },
+   "changes": [
+    "the pocket clearance of the Veggie plant pillow tray: 10 mm",
+    "when \"insert the seed film packet\" counts as done: the seed film packet ends up in the Veggie plant pillow tray and stays there"
+   ],
+   "why": "answers to: How much wider than the seed film packet is the opening of the Veggie plant pillow tray? How will the robot confirm insertion success?",
+   "cost_usd": 0.00057,
+   "seconds": 4.89,
+   "results": {
+    "earth": {
+     "pass": true,
+     "t": 6.07
+    },
+    "orbit": {
+     "pass": true,
+     "t": 6.06
+    }
+   }
+  }
+ ],
+ "pending": [],
+ "ledger": [
+  {
+   "stage": "label",
+   "model": "nvidia/Nemotron-3.5-Super-VL",
+   "prompt_tokens": 6523,
+   "completion_tokens": 790,
+   "cached_tokens": 2176,
+   "seconds": 3.82,
+   "usd": 0.00214566
+  },
+  {
+   "stage": "label",
+   "model": "nvidia/Nemotron-3.5-Super-VL",
+   "prompt_tokens": 7374,
+   "completion_tokens": 800,
+   "cached_tokens": 4352,
+   "seconds": 3.11,
+   "usd": 0.00188772
+  },
+  {
+   "stage": "compile",
+   "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+   "prompt_tokens": 3084,
+   "completion_tokens": 521,
+   "seconds": 3,
+   "usd": 0.00031008
+  },
+  {
+   "stage": "compile",
+   "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+   "prompt_tokens": 3137,
+   "completion_tokens": 373,
+   "seconds": 2.81,
+   "usd": 0.00027774
+  },
+  {
+   "stage": "compile",
+   "model": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B",
+   "prompt_tokens": 3555,
+   "completion_tokens": 331,
+   "seconds": 2.08,
+   "usd": 0.00029274
+  }
+ ],
+ "total_usd": 0.004914
+}

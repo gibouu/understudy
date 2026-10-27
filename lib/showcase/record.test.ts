@@ -121,6 +121,34 @@ describe.runIf(labelFiles.length > 0 && RECORD.length === 0)("the label-only rec
   });
 });
 
+describe.skipIf(RECORD.length > 0)("which run was kept (#152)", () => {
+  const chosen = files.map((f) => Session.parse(JSON.parse(readFileSync(path.join(DIR, f), "utf8")))).filter((s) => s.selection?.run !== undefined);
+  const passes = (s: Session) => s.iterations.at(-1)!.results.earth.pass && s.iterations.at(-1)!.results.orbit.pass;
+
+  it("every clip with kept runs says which one it shows", () => {
+    const dir = path.join(ROOT, "bench", "rerecord");
+    const archived = existsSync(dir) ? readdirSync(dir).filter((f) => !f.includes(".")) : [];
+    expect(archived.sort()).toEqual(chosen.map((s) => s.clip.name).sort());
+  });
+
+  it.each(chosen.map((s) => [s.clip.name, s] as const))("%s is the run it says, of the runs kept under bench/rerecord", (name, session) => {
+    const dir = path.join(ROOT, "bench", "rerecord", name);
+    const runs = readdirSync(dir).filter((f) => /^run-\d+\.json$/.test(f));
+    // every run is kept, so the count on the page can be checked
+    expect(runs.map((f) => Number(/\d+/.exec(f)![0])).sort((a, b) => a - b)).toEqual(Array.from({ length: session.selection!.runs }, (_, i) => i + 1));
+    const kept = Session.parse(JSON.parse(readFileSync(path.join(dir, `run-${session.selection!.run}.json`), "utf8")));
+    expect({ ...session, selection: undefined }).toEqual({ ...kept, selection: undefined });
+    for (const f of runs) {
+      const run = Session.parse(JSON.parse(readFileSync(path.join(dir, f), "utf8")));
+      expect(run.clip).toEqual(session.clip);
+      onRecordedModels(run.ledger, run.models);
+      // "the first that passes": every run before the kept one failed somewhere, and the kept one passes
+      const n = Number(/\d+/.exec(f)![0]);
+      if (session.selection!.kept.startsWith("the first that passes")) expect({ run: n, passes: passes(run) }).toEqual({ run: n, passes: n === session.selection!.run });
+    }
+  });
+});
+
 describe("the recorder's guards (no network)", () => {
   const sample = SAMPLES[0];
   const withKey = async <T,>(key: string | undefined, fn: () => Promise<T>) => {

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { usd, verdict } from "@/lib/showcase/format";
+import { selectionLine, usd, verdict } from "@/lib/showcase/format";
 import { recordings } from "@/lib/showcase/load";
 
 export const metadata: Metadata = { title: "Space showcase · Understudy" };
@@ -32,6 +32,7 @@ export default async function Space() {
                   <p className="text-sm text-muted">
                     {asks} question{asks === 1 ? "" : "s"} from the robot, {session.iterations.length} version{session.iterations.length === 1 ? "" : "s"} of its program; the last one {verdict(session)}. Model calls: {usd(session.total_usd)}.
                   </p>
+                  {selectionLine(session) && <p className="text-sm text-muted">{selectionLine(session)}</p>}
                   <span className="mt-auto self-start rounded-full bg-ink px-4 py-2 text-paper group-hover:bg-accent-text">Watch it</span>
                 </div>
               </Link>
