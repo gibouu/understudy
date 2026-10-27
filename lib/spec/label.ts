@@ -28,7 +28,7 @@ Rules:
 - anchor is the grasp moment of the first grasp.
 - hands is 2 when the person's two hands work together on the task, one passing, holding or catching for the other: for example tossing a ball from hand to hand, unscrewing a jar lid held in the other hand, tying a knot. Otherwise 1; a hand that only gestures while the other works does not count.
 - on_body is true when the task is done on the person's own body: for example putting on lip balm or hand cream, combing hair, buttoning the shirt they wear. Otherwise false.
-- one_arm, only when hands is 2 or on_body is true: one line saying how a single robot arm could do the same task, for example "toss the ball up and catch it in the same hand", "in orbit, push the ball across and catch it on the other side", "hold the jar against a stop and unscrew the lid", "apply the cream gently to another person's hand". Otherwise leave it out.
+- one_arm, only when hands is 2 or on_body is true: one line saying how a single robot arm, which has no second hand and no body of its own, could do the same task: what two hands share, its one gripper does alone; what the person does to their own body, the arm does to another person. For example "toss the ball up and catch it in the same hand", "in orbit, push the ball across and catch it on the other side", "hold the jar against a stop and unscrew the lid", "apply the cream gently to another person's hand". Otherwise leave it out.
 - source names the segment you saw it in, e.g. "vl#seg2".`;
 
 export const hintText = (hint: string) => `Context from the person who uploaded the clip: ${hint}`;
