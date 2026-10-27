@@ -188,6 +188,9 @@ describe("answers from own clips", () => {
     expect(a.value.steps.map((s) => s.step_id)).toEqual(["s1", "s2"]);
     expect(a.value.warnings).toEqual([]);
     expect(a.warnings.join(" ")).toMatch(/closed one place late/);
+    // Lightning again (#150): the key with the start of its value, "warnings[]"
+    const spelled = JSON.stringify({ spec_title: "t", steps: [step("s1"), step("s2"), "warnings[]"] });
+    expect(parseModelJson(spelled, Program, { normalize: normalizeProgram }).value.steps.map((s) => s.step_id)).toEqual(["s1", "s2"]);
     const held = JSON.stringify({ spec_title: "t", steps: [step("s1"), { warnings: ["scale unknown"] }] });
     expect(parseModelJson(held, Program, { normalize: normalizeProgram }).value).toMatchObject({ steps: [{ step_id: "s1" }], warnings: ["scale unknown"] });
   });

@@ -340,6 +340,37 @@ Each clip ran 4 times: twice with the line a person might type, twice with none,
 
 What is still open: 5 of 16 labels after (3 of 16 before) describe the task as a move and a release with no insert or place step, so the fit finds nothing to rehearse (issue #150). Spend for this section: US$0.10.
 
+## 15. Clips of your own: labels with nothing to rehearse
+
+After #149, a quarter of the labels of people's own clips still gave "nothing to rehearse" (issue #150): the fit keeps one insert or place step onto a named object, and those labels had none. #150 added two clips to section 14's four, made the same way from the samples: an 8 s portrait clip from `iss-glovebox-pipette` (1 to 9 s) and a 10 s landscape clip from `iss-fluid-bag-foam` (0 to 10 s). It labelled all six 4 times each on main (`own-clips-label-main150.json`), and read again every label kept since section 14: 104 in all, every raw answer in `bench/results/own-clips-label-*.json`.
+
+**What the labels without a place said.** Of the 14 among the 56 labels made with main's prompt:
+- 7 put the object down as a move onto a named object, then a release of it ("grasp the drink bag, move it to the work surface, release it");
+- 3 had a move that named no target ("grasp, move, release");
+- 2 never let go (moves only), and 2 were one step or a retract.
+
+The first kind is a place written in two steps, so the label already says where the object went and that the hand let go of it there.
+
+**The fix.**
+- `fitToBench` reads a move of an object onto another named object, followed by its release with no grasp between, as a place there, and says so in its warnings ("steps s2 and s3: a move onto work_surface, then a release, read as a place there"). The release's own target wins when it names another object. Labels that have an insert or place are fitted as before.
+- The fit takes the first insert or place onto another named object. One label inserted the bag "into itself" before placing it on the foam, which used to hide the place.
+- Either one outranks a gesture beside it, as a place already did.
+- A label prompt rule ("putting something down is one place or insert step, not a move and a release") was tried on 48 runs. It made Super VL write place more and release less, but it did not leave more labels rehearsable: 40 of 48 with the fit rule, against 49 of 56 without the prompt rule. So it was not kept.
+
+**Before → after, the same 104 labels fitted again** (`tests/bench/own-clips-replay.test.ts`):
+
+| Labels | Something to rehearse, main's fit | With #150's fit |
+|---|---|---|
+| Section 14's 16 runs before #149 | 13 | 15 |
+| Section 14's 16 runs after #149 | 11 | 14 |
+| Six clips × 4 on main (`main150`) | 18 | 20 |
+| The same, labelled with the prompt rule (`after150`, `final150`) | 37 of 48 | 40 of 48 |
+| All 104 | 79 (76%) | 89 (86%) |
+
+Live, labels of the same clip vary more from run to run than either change moves them. Three arms of 24 gave 18, 20 and 18 rehearsable, so only the same labels fitted twice show the fit's effect. The 15 that remain need the person: a move with no target, or a clip whose label never lets go. Asking "where does it go?" in the interview would cover them, but no ask slot holds an object today.
+
+The 72 compiles in these runs had 2 failures, both Lightning answers that went wrong: one wrote `"steps": [1]`, and one put the key `"warnings[]"` inside steps, the same slip as section 14 spelled differently. `normalizeProgram` now puts that one back too. Spend for this section: US$0.12.
+
 ## Reproduce
 
 Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend. Since 27 October the Nano and Super roles call their replacements (section 12): add `UNDERSTUDY_KEEP_RETIRED=1` to rerun a Nano or Super row while Token Factory still serves them, until 9 November 2026.
