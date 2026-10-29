@@ -203,6 +203,21 @@ describe("chipsFrom", () => {
     expect(one("Keep a gap of 0.3 cm around the barrel of the marker.", gap, 3)).toBe(true);
   });
 
+  it("reads a unit's case: symbols lower case only, a capital only on a spelled-out unit (#108)", () => {
+    const one = (text: string, slot: string, value: number) =>
+      chipsFrom([{ text, url: "https://a.org", title: "A" }], parse({ labels: { "0": "tolerance" }, numbers: [{ i: 0, slot, value }] }), slots).chips[0].slot !== undefined;
+    const gap = "objects[rack].pocket_clearance_mm";
+    expect(one("Keep the buffer at 2 mM or the marker ink will smear.", gap, 2)).toBe(false);
+    expect(one("Keep a gap of 2 MM around the barrel of the marker.", gap, 2)).toBe(false);
+    expect(one("Keep a gap of 0.2 CM around the barrel of the marker.", gap, 2)).toBe(false);
+    expect(one("Keep the stock at 0.002 M or the marker ink will smear.", gap, 2)).toBe(false);
+    expect(one("Keep a gap of 2 mm around the barrel of the marker.", gap, 2)).toBe(true);
+    expect(one("Keep a gap of 2 Millimetres around the barrel of the marker.", gap, 2)).toBe(true);
+    expect(one("Keep a gap of 2 millimeters around the barrel of the marker.", gap, 2)).toBe(true);
+    expect(one("Keep a gap of 2 MILLIMETRES around the barrel of the marker.", gap, 2)).toBe(false);
+    expect(one("Tilt the marker by at most 5 Degrees when it enters the slot.", "steps[s2].tolerances.tilt_deg", 5)).toBe(true);
+  });
+
   it("reads an unknown label as none and keeps the labels when a number is malformed", () => {
     const f = parse({ labels: { "0": "warning", "3": "precondition" }, numbers: [{ i: 1, slot: "x", value: null }] });
     expect(f.numbers).toEqual([]);

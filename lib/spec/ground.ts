@@ -249,9 +249,11 @@ export type GroundFilter = z.infer<typeof GroundFilter>;
  * with spaces ("1/2 mm", "1 / 2 mm", "−2 mm" are not 2 mm), and no exponent
  * ("1e2 mm"); a leading-dot decimal is read as one (".5 mm" is 0.5). After
  * the unit: no rate or power, even with spaces or in words ("2 mm/s",
- * "2 mm / s", "2 mm per second", "2 mm²").
+ * "2 mm / s", "2 mm per second", "2 mm²"). Unit case counts: symbols are lower
+ * case only ("2 mM" is a concentration, not 2 mm), and only a spelled-out unit
+ * may start with a capital ("2 Millimetres", "5 Degrees").
  */
-const QUANTITY = /(?<![\d.,])(?<!\d[\s  '’])(?<![/^\-–−]\s*)(?<!\d[eE][+-]?)(\d+(?:[.,]\d+)?|[.,]\d+)\s?(millimet(?:er|re)s?|mm|centimet(?:er|re)s?|cm|met(?:er|re)s?|m|inch(?:es)?|degrees?|deg|°)(?!\s*(?:[/²³^]|per\b)|[a-z\d])/gi;
+const QUANTITY = /(?<![\d.,])(?<!\d[\s  '’])(?<![/^\-–−]\s*)(?<!\d[eE][+-]?)(\d+(?:[.,]\d+)?|[.,]\d+)\s?([Mm]illimet(?:er|re)s?|mm|[Cc]entimet(?:er|re)s?|cm|[Mm]et(?:er|re)s?|m|[Ii]nch(?:es)?|[Dd]egrees?|deg|°)(?!\s*(?:[/²³^]|[Pp]er\b)|[A-Za-z\d])/g;
 
 /** Factor to the slot's unit for a unit written in a sentence, or undefined when they measure different things. */
 function factor(written: string, unit: string): number | undefined {

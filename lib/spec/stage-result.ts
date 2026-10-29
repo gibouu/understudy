@@ -20,7 +20,8 @@ export type StageResult<T> =
   | { status: "idle" }
   | { status: "running"; progress?: number; note?: string }
   | { status: "done"; value: T; warnings: string[]; ledger?: LedgerEntry[] }
-  | { status: "failed"; message: string; retryable: boolean };
+  /** a failure still reports the calls it paid for (#106) */
+  | { status: "failed"; message: string; retryable: boolean; ledger?: LedgerEntry[] };
 
 export const idle = <T>(): StageResult<T> => ({ status: "idle" });
 export const running = <T>(note?: string, progress?: number): StageResult<T> => ({
@@ -33,10 +34,11 @@ export const done = <T>(
   warnings: string[] = [],
   ledger?: LedgerEntry[],
 ): StageResult<T> => ({ status: "done", value, warnings, ledger });
-export const failed = <T>(message: string, retryable = true): StageResult<T> => ({
+export const failed = <T>(message: string, retryable = true, ledger?: LedgerEntry[]): StageResult<T> => ({
   status: "failed",
   message,
   retryable,
+  ...(ledger && ledger.length > 0 ? { ledger } : {}),
 });
 
 export const STAGES = [

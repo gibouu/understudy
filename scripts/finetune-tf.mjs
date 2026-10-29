@@ -78,6 +78,31 @@ const SCRIPT = "finetune-tf";
 export const FLOOR_USD = 15;
 /** a minute, in ms; the tests shrink it so the watchdog's deadline comes in a moment */
 const MINUTE_MS = Number(process.env.FINETUNE_TF_MINUTE_MS ?? 60_000);
+/** where an endpoint's watchdog writes; the tests point it into their temp dir, away from a real endpoint's log */
+const WATCHDOG_LOG = process.env.FINETUNE_TF_WATCHDOG_LOG || path.join(process.env.TMPDIR ?? os.tmpdir(), "understudy-ft-endpoint-watchdog.log");
+/**
+ * For the tests only: the process whose end stops a watchdog at once, deleting nothing, so a watchdog
+ * pointed at a test's mock server never outlives the test run (#157). It counts only against a loopback
+ * base URL: a stray variable in a shell can never stop the watchdog of a real, paid endpoint.
+ */
+const LOOPBACK = (() => {
+  try {
+    return ["127.0.0.1", "localhost", "[::1]"].includes(new URL(BASE_URL).hostname);
+  } catch {
+    return false;
+  }
+})();
+const OWNER = LOOPBACK ? Number(process.env.FINETUNE_TF_WATCHDOG_OWNER) || 0 : 0;
+const ownerGone = () => {
+  if (!OWNER) return false;
+  try {
+    process.kill(OWNER, 0);
+    return false;
+  } catch (e) {
+    return e.code !== "EPERM";
+  }
+};
+const ownerGoneNote = () => console.log(`${new Date().toISOString()} the process that started this watchdog (${OWNER}) is gone; the watchdog stops`);
 /**
  * LoRA settings: rank 16 and alpha 32 as on the AI Cloud route. Token Factory wants at least 131,072 tokens
  * a batch (batch size x context length; a 422 said so), so at the shortest context, 8,192, the batch is
@@ -398,7 +423,11 @@ async function main() {
   } else if (cmd === "endpoint-watchdog") {
     // everything it needs comes in its arguments: it acts on its own endpoint only, whatever the state file says later
     const [id, reservation, created, deadline, perHour] = args.slice(1);
-    while (Date.now() < Number(deadline)) await new Promise((r) => setTimeout(r, Math.min(20_000, Math.max(50, Number(deadline) - Date.now()))));
+    while (Date.now() < Number(deadline)) {
+      if (ownerGone()) return ownerGoneNote();
+      await new Promise((r) => setTimeout(r, Math.min(OWNER ? 250 : 20_000, Math.max(50, Number(deadline) - Date.now()))));
+    }
+    if (ownerGone()) return ownerGoneNote();
     // deleted by hand already: nothing to do (the state still names it, marked deleted, and its charge is settled);
     // a state it cannot read is no reason to skip the delete
     let now = null;
@@ -467,7 +496,7 @@ async function startEndpoint(s, ep) {
   try {
     let out = "ignore";
     try {
-      out = openSync(path.join(process.env.TMPDIR ?? os.tmpdir(), "understudy-ft-endpoint-watchdog.log"), "a");
+      out = openSync(WATCHDOG_LOG, "a");
     } catch {
       // no log is no reason to leave an endpoint without its watchdog
     }
@@ -504,14 +533,21 @@ const GIVE_UP_MINUTES = 360;
 async function deleteEndpoint(id) {
   const until = Date.now() + GIVE_UP_MINUTES * MINUTE_MS;
   for (;;) {
+    // checked right before each delete: an owner gone during the wait below sends no further call
+    if (ownerGone()) {
+      ownerGoneNote();
+      return false;
+    }
     const res = await fetch(`${API_ROOT}/v0/dedicated_endpoints/${id}`, { method: "DELETE", headers: auth() }).catch((e) => ({ ok: false, status: String(e) }));
     if (res.ok || res.status === 404) return true;
     if (Date.now() > until) {
       console.log(`${new Date().toISOString()} GAVE UP deleting endpoint ${id} after ${GIVE_UP_MINUTES} minutes of failures (last: ${res.status}): delete it by hand in the console`);
       return false;
     }
-    console.log(`${new Date().toISOString()} delete ${id}: HTTP ${res.status}, retrying in 30 s`);
-    await new Promise((r) => setTimeout(r, (30 * MINUTE_MS) / 60));
+    // 30 s, in the scaled minute the tests use: the line states the real wait
+    const wait = (30 * MINUTE_MS) / 60;
+    console.log(`${new Date().toISOString()} delete ${id}: HTTP ${res.status}, retrying in ${Number((wait / 1000).toFixed(3))} s`);
+    await new Promise((r) => setTimeout(r, wait));
   }
 }
 

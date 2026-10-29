@@ -35,7 +35,7 @@ export type CallOptions<T> = {
   check?: (value: T) => string[];
   /** reason before answering (the model's default); maxTokens then covers reasoning and answer */
   thinking?: boolean;
-  /** every billed call is pushed here as well, failed ones included (a failed result carries no ledger) */
+  /** every billed call is pushed here as well, failed ones included (a failed result carries the same ledger) */
   ledger?: LedgerEntry[];
 };
 
@@ -107,7 +107,7 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
           // a fix that does not parse: the first answer, problems and all, beats nothing
           if (checked) return done(checked.value, [...checked.warnings, `${o.role}: the corrected answer did not parse`], ledger);
           if (o.previous !== undefined) return done(o.previous, [`${o.role}: ${err.message}; previous value kept`], ledger);
-          return failed(`${o.role}: ${err.message}`);
+          return failed(`${o.role}: ${err.message}`, true, ledger);
         }
         messages.push({ role: "assistant", content: text }, { role: "user", content: `That answer was not usable (${err.message}).${o.shape ? ` The shape is ${o.shape}.` : ""} Return the whole answer again as one JSON object only.` });
       }
@@ -116,13 +116,13 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
     if (err instanceof NoBudget) {
       if (checked) return done(checked.value, [...checked.warnings, `${o.role}: the fix was not asked for (${err.message})`], ledger);
       if (o.previous !== undefined) return done(o.previous, [`${o.role}: ${err.message}; previous value kept`], ledger);
-      return failed(`${o.role}: ${err.message}`, false);
+      return failed(`${o.role}: ${err.message}`, false, ledger);
     }
-    // network, auth, rate limit: the SDK already retried what it could
+    // network, auth, rate limit: ask() already retried what it could
     const status = err instanceof OpenAI.APIError ? err.status : undefined;
     // a retired or unknown model: from the next request on, every route replays
     if (status === 404) notServed(model);
     if (checked) return done(checked.value, [...checked.warnings, `${o.role}: the fix was not returned (${errorText(err)})`.slice(0, 300)], ledger);
-    return failed(`${o.role}: ${errorText(err)}`.slice(0, 300), status === undefined || status === 429 || status >= 500);
+    return failed(`${o.role}: ${errorText(err)}`.slice(0, 300), status === undefined || status === 429 || status >= 500, ledger);
   }
 }

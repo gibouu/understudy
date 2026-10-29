@@ -118,6 +118,26 @@ export function heldOutCases(failing: Set<string>, cases: CaseDef[] = caseGrid()
   return out;
 }
 
+/** the case ids with at least one solvable failure in the saved runs: an expert pass, and a failure at iteration 0 */
+export function failingCases(results: SavedResults): Set<string> {
+  const failing = new Set<string>();
+  for (const arm of Object.values(results.arms)) for (const r of arm.runs) if (r.expert_pass && r.iterations[0] && !r.iterations[0].pass) failing.add(r.case_id);
+  return failing;
+}
+
+/**
+ * The split is frozen once published (docs/FINETUNE.md): a rebuild must hold out the same cases as
+ * bench/finetune/manifest.json, or it stops. A new arm that makes a case fail for the first time would
+ * otherwise move that case into the held-out set and change every file built from the split.
+ */
+export function checkFrozenSplit(test: string[], frozen: string[]): void {
+  const now = new Set(test);
+  const was = new Set(frozen);
+  const added = test.filter((id) => !was.has(id));
+  const dropped = frozen.filter((id) => !now.has(id));
+  if (added.length || dropped.length) throw new Error(`the held-out split changed from the manifest's (added: ${added.join(", ") || "none"}; dropped: ${dropped.join(", ") || "none"}): to move a frozen split on purpose, edit split.test_cases in bench/finetune/manifest.json first`);
+}
+
 /** the saved file's rounding (patch-loop.test.ts roundNumbers), to compare a replay with it */
 const round = (v: unknown) => (typeof v === "number" && !Number.isInteger(v) ? (Math.abs(v) >= 1 ? Math.round(v * 1000) / 1000 : Number(v.toPrecision(4))) : v);
 const asSaved = (o: unknown) => JSON.stringify(o, (_k, v) => round(v));
@@ -273,10 +293,9 @@ const sha = (s: string) => createHash("sha256").update(s).digest("hex");
  * them, by a hash of the prompt, go to validation (a prompt is on one side only). Preference pairs
  * join, for one prompt, a patch that passed with one that did not.
  */
-export function buildDataset(mj: MainModule, results: SavedResults, opts: { onRun?: (done: number, total: number) => void } = {}): Built {
-  const failing = new Set<string>();
-  for (const arm of Object.values(results.arms)) for (const r of arm.runs) if (r.expert_pass && r.iterations[0] && !r.iterations[0].pass) failing.add(r.case_id);
-  const test = heldOutCases(failing);
+export function buildDataset(mj: MainModule, results: SavedResults, opts: { onRun?: (done: number, total: number) => void; frozen?: string[] } = {}): Built {
+  const test = heldOutCases(failingCases(results));
+  if (opts.frozen) checkFrozenSplit(test, opts.frozen);
   const testSet = new Set(test);
   const arms: Record<string, { included: boolean; reason: string | null; runs: number; replayed: number; mismatched: Record<string, number> }> = {};
   const all: Example[] = [];
