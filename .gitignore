@@ -40,6 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# full call logs from live bench runs (scripts/call-log.mjs): the four fine-tune evaluation logs of #126
+# stay tracked as evidence; anything new is added on purpose, with git add -f
+/bench/calls/
+
 # second-model review outputs, never committed
 .codex-*
 

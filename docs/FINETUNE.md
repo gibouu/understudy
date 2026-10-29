@@ -80,7 +80,7 @@ Files (`bench/finetune/`, rebuilt by the command below, synthetic data only: no 
 | `pairs.jsonl` | 524 | `{"prompt":[system, user], "chosen":[assistant], "rejected":[assistant]}`, TRL's conversational preference format |
 | `manifest.json` | | the split, the SHA-256 of the source file and of each output, and the counts above |
 
-The manifest pins the source: `bench/results/patch-loop.json` gains arms (for example from #96), and a rebuild then changes only if a new arm is a Nemotron patcher.
+The manifest pins the source: `bench/results/patch-loop.json` gains arms (for example from #96), and a rebuild then changes only if a new arm is a Nemotron patcher. The held-out split is frozen too: the builder stops if the cases it would hold out differ from `split.test_cases` in the manifest (a new arm that makes a case fail for the first time would otherwise move it), and a check in the test suite holds every run to it.
 
 ## 3. Training and measurement plan
 
