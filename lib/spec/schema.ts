@@ -250,6 +250,32 @@ export const ProgramOp = z.discriminatedUnion("op", [
   }),
   /** Trace the gesture path of the step it is in with the point between the pads, then check each point was reached. */
   z.object({ op: z.literal("follow") }),
+  /**
+   * Let go of the held object while the gripper moves (#159): the arm winds back about `run_mm` and speeds up so the
+   * held object's centre passes where it is now at `velocity_mm_s` (world frame), the jaws let go there, the gripper
+   * keeps its speed until the object is off the pads, then brakes over `brake_mm`. From then on MuJoCo carries the
+   * object as a rigid body; there is no drag (lib/sim/toss.ts). Not in the compile prompt yet.
+   */
+  z.object({
+    op: z.literal("toss"),
+    velocity_mm_s: Vec3mm,
+    run_mm: z.number().positive().default(60),
+    brake_mm: z.number().positive().default(20),
+  }),
+  /**
+   * Catch `object`, tossed earlier in the program: the gripper goes where the object's predicted path (from its
+   * state as it came off the pads, and gravity) passes nearest `frame` + `offset_mm` (neither: where the gripper is
+   * now), holding it as it let go of it, and the jaws close to meet it there; it is held again if the jaws stop on it
+   * as they held it, the grasp's own check holding, within `window_s` of the predicted moment. A miss is not a
+   * failure by itself, as with grasp: the program's checks find out. Not in the compile prompt yet.
+   */
+  z.object({
+    op: z.literal("catch"),
+    object: z.string().min(1),
+    frame: z.string().min(1).optional(),
+    offset_mm: Vec3mm.optional(),
+    window_s: z.number().positive().default(0.3),
+  }),
   z.object({
     op: z.literal("wait_until"),
     predicate: Predicate,

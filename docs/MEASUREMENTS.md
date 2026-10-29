@@ -388,6 +388,27 @@ After #154, 15 of the 104 kept labels still had nothing to rehearse (section 15)
 
 Live, for the 12, on Nemotron 3.5 Lightning: the route asked where with no model, and after the answer Lightning compiled every one, asking next what counts as done. Answered with the recorder's defaults and rehearsed in node, before any Notes patch, 5 of the 12 pass on Earth and in orbit and 1 on Earth only. The other 6 fail as other clips do: a thin object the pads do not hold, a reach 10 mm too far, an object still settling. Notes patches those on the page. In only 2 of the 12 did the label name the real destination (the cartridge, the equipment tray), so for the other 10 the right answer is the bench. Spend: about US$0.02.
 
+## 17. A toss and a catch with one arm
+
+Issue #159, measured on 29 October 2026 in `tests/sim/toss.test.ts` (Node, MuJoCo 3.17, 5 ms step), raw rows in `bench/results/toss-catch.json`. Two ops are in the program schema, not yet in the compile prompt: `toss` lets go of the held object while the gripper moves, and MuJoCo carries it on as a rigid body (no drag: there is no air in the simulator); `catch` meets it on the path predicted from its own state as it came off the pads, and closes the jaws so they meet it there. A catch counts only when the jaws stop on the object within 0.05 rad of the angle they held it at, the grasp's own check (both jaws on it, the moving jaw settled) holding; nothing is welded otherwise.
+
+Hand-written programs, ten seeds each, the box's start moved by up to 3 mm on x and y (sensed):
+
+| World | Task | Caught | Wilson 95% |
+|---|---|---|---|
+| Earth (1 g) | a 20 x 20 x 50 mm box thrown straight up at 1.3 m/s asked, caught back in the same gripper | 2 of 10 | 6% to 51% |
+| Orbit (0 g) | a 20 x 30 x 40 mm box pushed across at 0.1 m/s from y = -90 mm, caught at y = +90 mm by the same arm (both points within its reach) | 0 of 10 | 0% to 28% |
+
+This is not a reliable catch, and the numbers say why:
+
+- The grasp before the throw misses on 2 Earth seeds and 3 orbit seeds out of 10: a 3 mm start error is enough for the jaws to close on an edge.
+- The SO-101's position servos, as modelled, top out near 4.8 rad/s unloaded (measured: a 1 rad step on each joint) and are torque-limited well before that. The toss is held to 4 rad/s per joint; the box comes off the pads at 0.86 to 0.95 m/s of the 1.3 asked, and the gripper has to turn at about 5.6 rad/s to throw it that fast, so the box tumbles as it flies.
+- Letting go takes time: the jaws squeeze the box, and for 40 ms after the weld comes off (Earth; up to 300 ms in orbit, where nothing pulls it off the fixed jaw) it rides on the pads. On Earth it leaves them with 76 to 115 mm/s sideways (across the jaws) and up to 62 mm/s along the fingers. The path is predicted from that moment, and it holds: 1.5 to 2 mm off when the jaws start to close, on every Earth seed.
+- On Earth the gripper cannot brake hard enough to fall far behind: the box rises only about 25 mm above where the jaws stop and falls back through them at 0.6 m/s. On the 6 Earth seeds the throw reached but the catch missed, the jaws did stop on the box with both pads touching, but 0.05 to 0.09 rad narrower than they had held it (the box turned in the jaws as it tumbled); the plain grasp check would have counted those. Two rollouts before that check was added "caught" the box resting on top of fully shut jaws, which is why it is there.
+- In orbit the path is straight and well predicted (off the pads at 99 to 102 mm/s, within 6 mm/s sideways, on 4 seeds), but the catch fails anyway: on 4 seeds the box is 17 to 48 mm off its predicted path by the time the jaws start to close (the gripper, coming down onto its path, has knocked it) and the jaws find no hold; on 2 it came off the pads in 40 ms instead of 230 to 300 ms and left at 143 to 147 mm/s, 15 to 22 mm/s downward, so it was past the far point before the arm could be there; on 1 the arm cannot hold the box's orientation at the catch point within 3 mm (6.4 mm off).
+
+A catch on Earth works on some seeds; in orbit none of the ten did. Left for later: a softer release (jaws that let go without the squeeze), a catch that rides down with the object instead of waiting for it, and a far-side fixture in place of one arm reaching both points.
+
 ## Reproduce
 
 Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend. Since 27 October the Nano and Super roles call their replacements (section 12): add `UNDERSTUDY_KEEP_RETIRED=1` to rerun a Nano or Super row while Token Factory still serves them, until 9 November 2026.
@@ -398,6 +419,10 @@ pnpm test
 
 ```bash
 MEASURE_WRITE=1 node_modules/.bin/vitest run tests/measure tests/sim/fluid.test.ts --reporter=verbose
+```
+
+```bash
+MEASURE_WRITE=1 node_modules/.bin/vitest run tests/sim/toss.test.ts --silent=false
 ```
 
 ```bash
