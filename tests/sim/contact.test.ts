@@ -7,27 +7,20 @@
  * front. Each seed moves the stand-in by up to 15 mm in x and y, 5 mm in z and 15° in yaw, and the applicator's block
  * by up to 5 mm in x and y; the program is told the true poses (sensed).
  */
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
-import type { MainModule, MjVFS } from "@mujoco/mujoco";
+import type { MainModule } from "@mujoco/mujoco";
 import { beforeAll, describe, expect, it } from "vitest";
 import type { Contacted } from "@/lib/sim/contact";
 import { environment, runToEnd, type Rollout } from "@/lib/sim/interpreter";
-import { park, SO101_XML, stageXml } from "@/lib/sim/so101";
+import { park, stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { onSurface, samplePath, support, type Vec3 } from "@/lib/sim/surface";
 import { CONTACT_FORCE_N, Program, ProgramOp, TaskSpec } from "@/lib/spec/schema";
 import { lintProgram, validateSpec } from "@/lib/spec/validate";
 
 let mujoco: MainModule;
-let vfs: MjVFS;
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+  mujoco = await loadSo101();
 }, 60_000);
 
 type StandIn = { shape: "box" | "sphere"; size_mm: [number, number, number]; xyz_mm: [number, number, number]; path: [number, number, number][] };
@@ -72,7 +65,7 @@ const PROGRAM = Program.parse({
 
 function rollout(spec: TaskSpec, gravity_g: number): Rollout {
   const env = environment(spec);
-  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g, graspable: env.graspable }), vfs);
+  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g, graspable: env.graspable }));
   const data = new mujoco.MjData(model);
   try {
     park(mujoco, model, data);
@@ -221,7 +214,7 @@ describe("the apply step and the contact op in the spec", () => {
   it("fails an apply step the program never makes contact for, whatever else it does", () => {
     const empty = Program.parse({ spec_title: PROGRAM.spec_title, steps: [{ step_id: "s1", ops: [] }] });
     const env = environment(contactSpec(BOX));
-    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 1, graspable: env.graspable }), vfs);
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 1, graspable: env.graspable }));
     const data = new mujoco.MjData(model);
     try {
       park(mujoco, model, data);
@@ -244,7 +237,7 @@ describe("the apply step and the contact op in the spec", () => {
   it("judges coverage on the surface where it really is: told a pose 5 mm off (blind), the path is not covered", () => {
     const spec = contactSpec(BOX);
     const env = environment(spec, { id: "x5", name: "x5", axis: "x_mm", offset: 5, object: "standin", gravity_g: 1, expected: "unknown", why: "" });
-    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 1, graspable: env.graspable }), vfs);
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 1, graspable: env.graspable }));
     const data = new mujoco.MjData(model);
     try {
       park(mujoco, model, data);
