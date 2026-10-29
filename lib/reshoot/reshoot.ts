@@ -85,12 +85,10 @@ export function fieldsOf(spec: TaskSpec): Field[] {
     const first = out.length;
     // the whole record or the whole list replaced (an answer, a hand edit) is recorded in the spec's own sources
     // under its id, its index or the list's name, perhaps several times over: any one from elsewhere wins
-    // a key that names no record now (one replaced and renamed since) may be this one: it counts for every record
+    // a key under the list that names no other record now (this one replaced, perhaps renamed since) counts for this one
     const records: { id: string }[] = spec[list];
-    const orphans = Object.keys(spec.sources).filter((k) => {
-      const m = new RegExp(`^${list}\\.([^.]+)$`).exec(k);
-      return m !== null && !records.some((r) => r.id === m[1]) && !(/^\d+$/.test(m[1]) && Number(m[1]) < records.length);
-    });
+    const another = (k: string) => records.some((r, j) => j !== i && (k === `${list}.${r.id}` || k === `${list}.${j}`));
+    const orphans = Object.keys(spec.sources).filter((k) => k.startsWith(`${list}.`) && !another(k));
     const overrides = [top(`${list}.${rec.id}`), top(`${list}.${i}`), top(list), ...orphans.map(top)].filter((x): x is string => x !== undefined);
     const replaced = overrides.find((x) => originOf(x) === "other") ?? overrides[0];
     const sourceOf = (leaf: string) => (Object.hasOwn(rec.sources, leaf) ? rec.sources[leaf] : undefined);

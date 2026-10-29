@@ -103,6 +103,8 @@ describe("the reshoot list's fields", () => {
     // replaced by hand and renamed: the key names no record now, so it counts for every one
     const renamed = { ...body.spec, objects: body.spec.objects.map((o) => (o.id === "obj2" ? { ...o, id: "renamed" } : o)), sources: { ...body.spec.sources, "objects.obj2": "user#edit" } };
     expect(fieldFor(renamed, fieldsOf(renamed), "objects[renamed].pocket_clearance_mm")).toMatchObject({ origin: "other", source: "user#edit" });
+    const dotted = { ...renamed, sources: { ...body.spec.sources, "objects.a.b": "user#edit" } };
+    expect(fieldFor(dotted, fieldsOf(dotted), "objects[renamed].pocket_clearance_mm")).toMatchObject({ origin: "other" });
     const list = { ...body.spec, sources: { ...body.spec.sources, steps: "default" } };
     expect(fieldFor(list, fieldsOf(list), "steps[s2].target")).toMatchObject({ origin: "other" });
   });
