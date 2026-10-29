@@ -8,7 +8,9 @@ import { usd, verdict } from "@/lib/showcase/format";
 import { modelLabel } from "@/lib/providers/models";
 import type { Call, Iteration, Run, Session } from "@/lib/showcase/session";
 import type { TaskSpec } from "@/lib/spec/schema";
+import type { SaboteurPlan } from "@/lib/saboteur/ask";
 import { ProgramView, type Failure } from "../../program-view";
+import { ScoreBars, ScoreboardHead, useScoreboard } from "./scoreboard";
 
 const Rehearsal = dynamic(() => import("../../rehearsal").then((m) => m.Rehearsal), {
   ssr: false,
@@ -115,8 +117,12 @@ export function Outcome({ run, spec }: { run: Run; spec: TaskSpec }) {
   );
 }
 
-export function Story({ sample, session }: { sample: Sample; session: Session }) {
+/** The scoreboard's twelve for this recording (app/space/[clip]/page.tsx), or why there are none. */
+export type ScoreboardPlan = { plan: SaboteurPlan; by?: string } | { plan: null; why: string };
+
+export function Story({ sample, session, scoreboard }: { sample: Sample; session: Session; scoreboard: ScoreboardPlan }) {
   const last = session.iterations.length - 1;
+  const board = useScoreboard(session, scoreboard.plan);
   const [pick, setPick] = useState(last);
   const [failure, setFailure] = useState<Failure | null>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -290,6 +296,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
       </div>
 
       <Step n={6} title="How it improved">
+        <ScoreboardHead plan={scoreboard.plan} by={scoreboard.plan ? scoreboard.by : undefined} why={scoreboard.plan ? undefined : scoreboard.why} busy={board.busy} ms={board.ms} ran={board.scores.length > 0} start={board.start} />
         <ol className="flex flex-col divide-y-2 divide-ink/15 border-y-2 border-ink/15">
           {session.iterations.map((x, i) => (
             <li key={i} className={`grid gap-3 py-4 md:grid-cols-[13rem_minmax(0,1fr)_11rem] md:gap-6 ${i === pick ? "bg-card" : ""}`}>
@@ -307,6 +314,7 @@ export function Story({ sample, session }: { sample: Sample; session: Session })
                   <br />
                   Orbit: <Outcome run={x.results.orbit} spec={x.spec} />
                 </p>
+                {scoreboard.plan && <ScoreBars score={board.scores[i]} scenarios={scoreboard.plan.scenarios.length} />}
                 {x.changes.length > 0 && (
                   <ul className="list-disc pl-5 text-neutral-700">
                     {x.changes.map((c) => (

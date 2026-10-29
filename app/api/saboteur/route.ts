@@ -6,16 +6,16 @@
  * they are not exactly twelve the grid can run; if they still are not, or
  * the call fails, the twelve are built from the spec with no model, so the
  * grid always runs. Replay (no key, ?replay=1, or no way past the spend
- * guard) answers from tests/fixtures/saboteur.json, the model's recorded
+ * guard) answers from tests/fixtures/saboteur.json (lib/saboteur/replay.ts), the model's recorded
  * reply for this task's title, checked against the spec posted now; with no
  * recording for it, from the spec. The live calls count against the
  * variants route's ceiling (lib/unlock/cap.ts): both are one patching-model
  * call per click below the rehearsal.
  */
 import { NextResponse } from "next/server";
-import recordings from "@/tests/fixtures/saboteur.json";
 import { tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
-import { askSaboteur, fromSpec, planOf, SaboteurReply, type SaboteurPlan } from "@/lib/saboteur/ask";
+import { askSaboteur, planOf, type SaboteurReply, type SaboteurPlan } from "@/lib/saboteur/ask";
+import { replayPlan as replay } from "@/lib/saboteur/replay";
 import { TaskSpec } from "@/lib/spec/schema";
 import { failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { budgetRefused, explain, liveGate } from "@/lib/unlock/check";
@@ -23,16 +23,6 @@ import { budgetRefused, explain, liveGate } from "@/lib/unlock/check";
 export const maxDuration = 60;
 /** what the model calls may take in all, the spend gate's model list (up to 8 s) before them */
 const DEADLINE_MS = 40_000;
-
-type Recording = { spec_title: string; result: StageResult<unknown> };
-
-function replay(spec: TaskSpec): StageResult<SaboteurPlan> {
-  const hit = (recordings as Recording[]).find((r) => r.spec_title === spec.title && r.result.status === "done");
-  if (!hit || hit.result.status !== "done") return fromSpec(spec, ["replay: no recorded scenarios for this task"]);
-  const reply = SaboteurReply.safeParse(hit.result.value);
-  if (!reply.success) return fromSpec(spec, ["replay: the recorded scenarios do not parse"]);
-  return planOf(spec, { status: "done", value: reply.data, warnings: hit.result.warnings, ledger: hit.result.ledger }, ["replay: recorded answer"]);
-}
 
 export async function POST(req: Request): Promise<NextResponse<StageResult<SaboteurPlan>>> {
   const body = await req.json().catch(() => null);
