@@ -80,6 +80,11 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
       // the most this request can cost is counted before it is made, the unusable answers too (lib/unlock/budget.ts)
       const hold = await reserve(model, promptTokensAtMost(messages), o.maxTokens);
       if (!hold.ok) throw new NoBudget(hold.why);
+      // cut while the reservation was made: nothing was sent, so nothing is held
+      if (o.signal?.aborted) {
+        await settle(hold, null);
+        throw new OpenAI.APIUserAbortError();
+      }
       try {
         res = await client.chat.completions.create(optional ? { ...params, response_format: { type: "json_object" } } : params, { maxRetries: 0, signal: o.signal });
         // an answer that does not say what it used keeps its whole reservation
@@ -97,6 +102,8 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
           return ask();
         }
         if (!(status === undefined || status === 408 || status === 429 || status >= 500) || sent >= attempts) throw err;
+        // cut while a 408 or 429 was settled: no pause, no other attempt
+        if (o.signal?.aborted) throw err;
         // the pause ends at the deadline too, and the next turn then stops
         await new Promise<void>((r) => {
           const end = () => {

@@ -231,6 +231,19 @@ describe("with a store", () => {
     expect(store.data.get(SPENT_KEY)).toBe(Math.ceil(usdOf(call(MODELS.nano, promptTokensAtMost([{ role: "user", content: "u" }]), 100))! * 1e6));
   });
 
+  it("gives back the reservation of a request cut before it was sent, and pauses for no retry once cut (#189)", async () => {
+    const store = fakeRedis();
+    const deadline = new AbortController();
+    let sent = 0;
+    const client = { chat: { completions: { create: async () => (sent++, { choices: [{ message: { content: '{"n":1}' } }] }) } } } as unknown as OpenAI;
+    const incr = store.data.set.bind(store.data);
+    // the deadline passes while the reservation is being made
+    store.data.set = (k, v) => (deadline.abort(), incr(k, v));
+    expect((await callModel(client, { role: "nano", user: "u", maxTokens: 100, schema: z.object({ n: z.number() }), signal: deadline.signal })).status).toBe("failed");
+    expect(sent).toBe(0);
+    expect(store.data.get(SPENT_KEY) ?? 0).toBe(0);
+  });
+
   it("keeps the whole reservation of an answer that does not say what it used", async () => {
     const store = fakeRedis();
     const client = { chat: { completions: { create: async () => ({ choices: [{ message: { content: '{"n":1}' } }] }) } } } as unknown as OpenAI;
