@@ -63,6 +63,8 @@ describe("1. insertion collision: iss-veggie-seed-film-2, blind, tray 6 mm off o
 
   it("is the recording's last version, which passes on the nominal bench", () => {
     expect(s.iterations.map((i) => i.source)).toEqual(["compile", "interview"]);
+    expect(spec.objects.find((o) => o.id === "obj2")!.size_mm).toEqual([40, 6, 40]);
+    expect(spec.objects.find((o) => o.id === "obj1")).toMatchObject({ pocket_clearance_mm: 10, sources: { pocket_clearance_mm: "interview#1" } });
     expect(last.results.earth.pass && last.results.orbit.pass).toBe(true);
   });
 
@@ -109,6 +111,12 @@ describe("2. unreachable target: iss-glovebox-pipette, the program after the ans
 
   it("fails at 1 g and 0 g on the lift, out of reach, as recorded", () => {
     expect(answered.source).toBe("interview");
+    expect(answered.spec.objects.find((o) => o.id === "pipette")!.size_mm).toEqual([25, 25, 40]);
+    expect(answered.spec.objects.find((o) => o.id === "cartridge")!.pocket_clearance_mm).toBe(10);
+    // what the answers set: the pocket's clearance, the success check and a tolerance, not the lift
+    expect(answered.spec.steps.find((x) => x.id === "s2")!.sources).toEqual({ success: "interview#1", "tolerances.clearance_mm": "interview#1" });
+    expect(answered.program.steps[0].ops[4]).toEqual({ op: "move_to", frame: "pipette", offset_mm: [0, 0, 50], approach: "top" });
+    expect(s.iterations[0].results.earth.why).toBe(answered.results.earth.why);
     const earth = rollout(engine, answered.spec, answered.program, "earth");
     const orbit = rollout(engine, answered.spec, answered.program, "orbit");
     expect(earth).toMatchObject({ pass: false, failed_step_id: "s1", failed_op: 4, failure_class: "embodiment_limit", why: "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm" });
@@ -122,6 +130,14 @@ describe("2. unreachable target: iss-glovebox-pipette, the program after the ans
     expect(patched.source).toBe("notes");
     expect(p).toMatchObject({ model: "nvidia/nemotron-3-super-120b-a12b", thinking: false, escalation: null, tokens: 1315, changes: [{ name: "s1.op4.z_mm", from: 50, to: 41.9 }], clamps: [] });
     expect(p.cost_usd).toBeCloseTo(0.00045, 5);
+    expect(s.ledger.filter((c) => c.stage === "notes")).toHaveLength(1);
+    // the kept run of four; each of the three before it ended after five patches without passing
+    expect(s.selection).toMatchObject({ runs: 4, run: 4 });
+    for (const n of [1, 2, 3]) {
+      const before = session(`bench/rerecord/iss-glovebox-pipette/run-${n}.json`);
+      expect(before.iterations.filter((i) => i.source === "notes")).toHaveLength(5);
+      expect(before.iterations.at(-1)!.results.earth.pass && before.iterations.at(-1)!.results.orbit.pass).toBe(false);
+    }
     expect(p.why).toBe("The pipette was out of reach by ~8.2 mm when trying to lift to z=50 mm, indicating the target height exceeds the arm's capability.");
     expect(p.expect).toBe("Lowering the lift target to z=41.9 mm will place the pipette within reach while keeping its bottom above the cartridge pocket floor.");
     expect(rollout(engine, patched.spec, patched.program, "earth").pass).toBe(true);
@@ -169,6 +185,7 @@ describe("3. wrong aperture: what the rehearsal can show of it", () => {
   it("recorded program, recorded scenario: in orbit the jaws close on a tilted piece without holding it", async () => {
     const s = session("public/showcase/dev-clip.json");
     const last = s.iterations.at(-1)!;
+    expect(last.spec.objects.find((o) => o.id === "obj2")).toMatchObject({ shape: "cylinder", size_mm: [40, 40, 40] });
     const sc = recordedScenario(last.spec, "obj2-tilt-x+10");
     expect(sc).toMatchObject({ name: "piece tilted 10 deg about x", axis: "tilt_deg", offset: 10, object: "obj2", expected: "unknown", why: "tilted cylinder may seat unevenly in microgravity" });
     const [orbitSensed, orbitBlind, earthSensed] = await batch(last.spec, last.program, [
