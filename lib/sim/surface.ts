@@ -114,23 +114,29 @@ export type Sample = {
 };
 
 /**
- * The path cut into samples at most SAMPLE_MM apart along the polyline (in the object's frame), each moved onto
- * the surface and placed in the world by the object's pose (centre m, row-major rotation). Arc length is measured
- * between the samples on the surface.
+ * The path cut into samples at most SAMPLE_MM apart on the surface (in the object's frame), each moved onto the
+ * surface and placed in the world by the object's pose (centre m, row-major rotation). The cut is made after the
+ * points are moved onto the surface: a segment drawn inside or far outside a curved primitive is halved until its
+ * projected pieces are short enough, so a path cannot be counted over fewer samples than the curve it traces. Arc
+ * length is measured between the samples on the surface.
  */
 export function samplePath(o: Pick<SpecObject, "shape" | "size_mm">, path: Vec3[], centre_m: Vec3, R: number[]): Sample[] {
   const local: Vec3[] = [];
+  const at = (p: Vec3) => onSurface(o, p).point;
+  /** the projected points after `a` up to `b`, halving until consecutive ones are within SAMPLE_MM */
+  const cut = (a: Vec3, b: Vec3, depth: number) => {
+    if (local.length > MAX_SAMPLES) return;
+    if (depth > 0 && norm(sub(at(a), at(b))) > SAMPLE_MM && norm(sub(a, b)) > 1e-9) {
+      const m = scale(add(a, b), 0.5);
+      cut(a, m, depth - 1);
+      cut(m, b, depth - 1);
+    } else local.push(b);
+  };
   for (let k = 0; k < path.length; k++) {
-    if (k === 0) {
-      local.push(path[0]);
-      continue;
-    }
-    const a = path[k - 1];
-    const b = path[k];
-    const n = Math.max(1, Math.ceil(norm(sub(b, a)) / SAMPLE_MM));
-    for (let i = 1; i <= n; i++) local.push(add(a, scale(sub(b, a), i / n)));
+    if (k === 0) local.push(path[0]);
+    else cut(path[k - 1], path[k], 40);
   }
-  if (local.length > MAX_SAMPLES) throw new Error(`the contact path is ${local.length} mm long; at most ${MAX_SAMPLES} mm can be followed in one step`);
+  if (local.length > MAX_SAMPLES) throw new Error(`the contact path is over ${MAX_SAMPLES} samples long; at most ${MAX_SAMPLES} mm can be followed in one step`);
   const out: Sample[] = [];
   for (const p of local) {
     const { point, normal } = onSurface(o, p);

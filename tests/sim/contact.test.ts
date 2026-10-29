@@ -161,9 +161,19 @@ describe("the geometry of a contact path (lib/sim/surface.ts)", () => {
   it("cuts a path into samples 1 mm apart on the surface, in the world", () => {
     const R = [1, 0, 0, 0, 1, 0, 0, 0, 1];
     const samples = samplePath(box, [[0, -10, 25], [0, 10, 25]], [0.3, 0, 0.025], R);
-    expect(samples).toHaveLength(21);
+    // halved until each piece is within 1 mm: 20 mm in 32 pieces
+    expect(samples).toHaveLength(33);
     expect(samples.at(-1)!.s_m).toBeCloseTo(0.02, 9);
     expect(samples[0].point.map((v) => Number(v.toFixed(6)))).toEqual([0.3, -0.01, 0.05]);
+  });
+  it("cuts after projecting: a path drawn near a sphere's centre is sampled as densely as the curve it traces", () => {
+    const R = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+    const sphere = { shape: "sphere" as const, size_mm: SPHERE.size_mm };
+    const full = samplePath(sphere, SPHERE.path, [0.32, 0.07, 0.08], R);
+    const small = samplePath(sphere, SPHERE.path.map((p) => p.map((v) => v / 100) as Vec3), [0.32, 0.07, 0.08], R);
+    expect(small.length).toBeGreaterThanOrEqual(full.length - 2);
+    expect(small.at(-1)!.s_m).toBeCloseTo(full.at(-1)!.s_m, 3);
+    for (const x of [full, small]) for (let k = 1; k < x.length; k++) expect(x[k].s_m - x[k - 1].s_m).toBeLessThanOrEqual(0.001 + 1e-9);
   });
   it("finds the point of a held primitive that meets a surface: an upright cylinder's cap, a tipped one's rim", () => {
     const I = [1, 0, 0, 0, 1, 0, 0, 0, 1];
@@ -208,6 +218,29 @@ describe("the apply step and the contact op in the spec", () => {
     const moved = TaskSpec.parse({ ...spec, steps: [{ id: "s1", verb: "move", object: "applicator", t_start_s: 0, t_end_s: 1 }] });
     expect(lintProgram(PROGRAM, moved)).toContain("steps[0] (move): contact applies along an apply step's contact path, and this step is not one");
   });
+  it("fails an apply step the program never makes contact for, whatever else it does", () => {
+    const empty = Program.parse({ spec_title: PROGRAM.spec_title, steps: [{ step_id: "s1", ops: [] }] });
+    const env = environment(contactSpec(BOX));
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 1, graspable: env.graspable }), vfs);
+    const data = new mujoco.MjData(model);
+    try {
+      park(mujoco, model, data);
+      const r = runToEnd({ mujoco, model, data }, env, empty, "sensed");
+      expect(r.pass).toBe(false);
+      expect(r.why).toContain("never made contact");
+    } finally {
+      data.delete();
+      model.delete();
+    }
+  });
+  it("measures the move to the stand-off too: a stand-in in the way of it fails the step", () => {
+    // a tall box the arm sweeps through on its way out to the path (found by the second-model review)
+    const tall: StandIn = { shape: "box", size_mm: [70, 200, 180], xyz_mm: [320, 110, 90], path: [[-10, 60, 90], [10, 0, 90], [-10, -60, 90]] };
+    const r = rollout(contactSpec(tall), 1);
+    expect(r.pass).toBe(false);
+    const c = r.contacted![0];
+    expect(c.peak_force_n > c.force_limit_n || c.arm_touched !== undefined).toBe(true);
+  }, 60_000);
   it("is additive: a scene with no apply step is built exactly as before", () => {
     const spec = TaskSpec.parse({ ...contactSpec(BOX), steps: [{ id: "s1", verb: "grasp", object: "applicator", t_start_s: 0, t_end_s: 1 }] });
     expect(environment(spec).worldbody).not.toContain("contact_");
@@ -245,11 +278,13 @@ const pinned = (s: ReturnType<typeof summary>) => ({
 });
 /**
  * Measured on 29 October 2026, not tuned to: on the sphere the force loop holds the mean near its 1 N target but the
- * peak reaches the 2 N limit, and on Earth three seeds of twenty go over it by 0.01 to 0.04 N, so they fail.
+ * peak goes over the 2 N limit on every seed (2.28 to 2.41 N), so the curved stand-in fails 0 of 20 at both gravities.
+ * (Before the path was cut after projection, its samples sat closer together and 17 and 20 of 20 passed: the margin
+ * on a curved surface is that thin.)
  */
 const PINNED: Record<string, ReturnType<typeof pinned>> = {
   "box 1 g": { pass: 20, wilson_pc: [84, 100], coverage_min_pc: 100, peak_max_n: 1.23, contact_s_mean: 9, approach_max_mm_s: 8, retreat_max_mm_s: 12 },
   "box 0 g": { pass: 20, wilson_pc: [84, 100], coverage_min_pc: 100, peak_max_n: 1.22, contact_s_mean: 9, approach_max_mm_s: 8, retreat_max_mm_s: 12 },
-  "sphere 1 g": { pass: 17, wilson_pc: [64, 95], coverage_min_pc: 95, peak_max_n: 2.04, contact_s_mean: 6, approach_max_mm_s: 9, retreat_max_mm_s: 10 },
-  "sphere 0 g": { pass: 20, wilson_pc: [84, 100], coverage_min_pc: 93, peak_max_n: 2, contact_s_mean: 6, approach_max_mm_s: 9, retreat_max_mm_s: 10 },
+  "sphere 1 g": { pass: 0, wilson_pc: [0, 16], coverage_min_pc: 94, peak_max_n: 2.41, contact_s_mean: 6, approach_max_mm_s: 9, retreat_max_mm_s: 10 },
+  "sphere 0 g": { pass: 0, wilson_pc: [0, 16], coverage_min_pc: 94, peak_max_n: 2.41, contact_s_mean: 6, approach_max_mm_s: 9, retreat_max_mm_s: 10 },
 };

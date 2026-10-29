@@ -121,10 +121,6 @@ export type ContactWorld<T> = {
   ctrl: () => Float64Array;
   /** one physics step */
   step: () => Generator<T, void>;
-  /** the arm's usual move to a joint pose, then settle */
-  moveArm: (q: number[]) => Generator<T, void>;
-  /** wait until the arm has arrived */
-  settle: () => Generator<T, void>;
   now: () => number;
   log: (line: string) => void;
 };
@@ -132,6 +128,11 @@ export type ContactWorld<T> = {
 export type ContactOutcome = { contacted?: Contacted; fail?: { why: string; failure_class?: "embodiment_limit" | "spec_gap" } };
 
 const ARM = 5;
+/** the interpreter's move: joint speed (rad/s), the shortest move (s), arrived below this joint speed (rad/s) or after SETTLE_S */
+const JOINT_SPEED = 1.0;
+const MIN_MOVE_S = 0.4;
+const ARRIVED_RAD_S = 0.05;
+const SETTLE_S = 1;
 
 /** What the contact op does for `step`, whose verb is apply and whose contact block names the surface and the path. */
 export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, ContactOutcome> {
@@ -273,201 +274,221 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
 
   // what MuJoCo says, every physics step
   const force = new mujoco.DoubleBuffer(6);
-  type Contacts = { get: (i: number) => { geom1: number; geom2: number; pos: unknown; delete?: () => void } | undefined; delete?: () => void };
-  let peak = 0;
-  let contact_s = 0;
-  let following = false;
-  let offMax = 0;
-  let offSum = 0;
-  let offN = 0;
-  let armTouched: string | undefined;
-  /** where the held object touched the surface in the last physics step, force-weighted, or null */
-  let lastAt: Vec3 | null = null;
-  const covered = new Array<boolean>(samples.length).fill(false);
-  const dt = (model.opt as { timestep: number }).timestep;
-  const read = () => {
-    let total = 0;
-    const at: Vec3 = [0, 0, 0];
-    // the contact list read afresh every step: a handle kept from before is the list of the step it was taken at
-    // and each copy it hands out freed: thousands of steps of them otherwise fill the wasm heap
-    const contacts = data.contact as unknown as Contacts;
-    try {
-      for (let i = 0; i < (data.ncon as number); i++) {
-        const k = contacts.get(i);
-        if (!k) continue;
-        try {
-          const [g1, g2] = [k.geom1, k.geom2];
-          const [b1, b2] = [geomBody[g1], geomBody[g2]];
-          if (b1 !== surfaceBody && b2 !== surfaceBody) continue;
-          const other = b1 === surfaceBody ? g2 : g1;
-          if (heldGeoms.has(other)) {
-            mujoco.mj_contactForce(model, data, i, force);
-            const fn = toNumbers(force.GetView())[0];
-            if (fn > 0) {
-              const p = toNumbers(k.pos);
-              for (let r = 0; r < 3; r++) at[r] += fn * p[r];
-              total += fn;
-            }
-          } else if (!isScene(geomBody[other]) && armTouched === undefined) armTouched = decodeName(names, bodyAdr[geomBody[other]]);
-        } finally {
-          k.delete?.();
+  // freed however the op ends, a run stopped half way included (the generator's return runs this finally)
+  try {
+    type Contacts = { get: (i: number) => { geom1: number; geom2: number; pos: unknown; delete?: () => void } | undefined; delete?: () => void };
+    let peak = 0;
+    let contact_s = 0;
+    let following = false;
+    let offMax = 0;
+    let offSum = 0;
+    let offN = 0;
+    let armTouched: string | undefined;
+    /** where the held object touched the surface in the last physics step, force-weighted, or null */
+    let lastAt: Vec3 | null = null;
+    const covered = new Array<boolean>(samples.length).fill(false);
+    const dt = (model.opt as { timestep: number }).timestep;
+    const read = () => {
+      let total = 0;
+      const at: Vec3 = [0, 0, 0];
+      // the contact list read afresh every step: a handle kept from before is the list of the step it was taken at
+      // and each copy it hands out freed: thousands of steps of them otherwise fill the wasm heap
+      const contacts = data.contact as unknown as Contacts;
+      try {
+        for (let i = 0; i < (data.ncon as number); i++) {
+          const k = contacts.get(i);
+          if (!k) continue;
+          try {
+            const [g1, g2] = [k.geom1, k.geom2];
+            const [b1, b2] = [geomBody[g1], geomBody[g2]];
+            if (b1 !== surfaceBody && b2 !== surfaceBody) continue;
+            const other = b1 === surfaceBody ? g2 : g1;
+            if (heldGeoms.has(other)) {
+              mujoco.mj_contactForce(model, data, i, force);
+              const fn = toNumbers(force.GetView())[0];
+              if (fn > 0) {
+                const p = toNumbers(k.pos);
+                for (let r = 0; r < 3; r++) at[r] += fn * p[r];
+                total += fn;
+              }
+            } else if (!isScene(geomBody[other]) && armTouched === undefined) armTouched = decodeName(names, bodyAdr[geomBody[other]]);
+          } finally {
+            k.delete?.();
+          }
+        }
+      } finally {
+        contacts.delete?.();
+      }
+      peak = Math.max(peak, total);
+      lastAt = null;
+      if (total >= TOUCH_N) {
+        contact_s += dt;
+        const p = at.map((v) => v / total) as Vec3;
+        lastAt = p;
+        const reach = c.reach_mm * MM;
+        let nearest = Infinity;
+        for (let j = 0; j < samples.length; j++) {
+          const q = samples[j].point;
+          const d = Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+          nearest = Math.min(nearest, d);
+          if (d <= reach) covered[j] = true;
+        }
+        if (following) {
+          offMax = Math.max(offMax, nearest);
+          offSum += nearest;
+          offN++;
         }
       }
-    } finally {
-      contacts.delete?.();
-    }
-    peak = Math.max(peak, total);
-    lastAt = null;
-    if (total >= TOUCH_N) {
-      contact_s += dt;
-      const p = at.map((v) => v / total) as Vec3;
-      lastAt = p;
-      const reach = c.reach_mm * MM;
-      let nearest = Infinity;
-      for (let j = 0; j < samples.length; j++) {
-        const q = samples[j].point;
-        const d = Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
-        nearest = Math.min(nearest, d);
-        if (d <= reach) covered[j] = true;
-      }
-      if (following) {
-        offMax = Math.max(offMax, nearest);
-        offSum += nearest;
-        offN++;
-      }
-    }
-    return total;
-  };
-  /** how far the held object's contact point is out from the surface at sample k, along its normal, measured */
-  const tipAt = (k: number): Vec3 => {
-    const c0 = vec(data.xpos, w.held.bodyId, 3);
-    const t = rot(vec(data.xmat, w.held.bodyId, 9), tipLocal[k]);
-    return [c0[0] + t[0], c0[1] + t[1], c0[2] + t[2]];
-  };
-  const gapAt = (k: number) => {
-    const n = samples[k].normal;
-    const tip = tipAt(k);
-    const q = samples[k].point;
-    return dot(n, [tip[0] - q[0], tip[1] - q[1], tip[2] - q[2]]);
-  };
-  function* tick() {
-    yield* w.step();
-    return read();
-  }
-
-  // how the grip holds the object against the first normal: its own z axis, a box's or a cylinder's height
-  const n0 = samples[0].normal;
-  const gripTilt = (Math.acos(Math.min(1, Math.abs(Rh0[2] * n0[0] + Rh0[5] * n0[1] + Rh0[8] * n0[2]))) * 180) / Math.PI;
-  const limit = c.force_n;
-  const target = TARGET_SHARE * limit;
-  const t0 = w.now();
-  w.log(`${t0.toFixed(2)} contact: ${heldObj.id} onto ${c.surface} along ${samples.length} mm of path, force limit ${limit} N (aiming at ${target.toFixed(2)} N)`);
-
-  // 1. the stand-off, at the usual speed; nothing should touch the surface on the way
-  yield* w.moveArm(onLine(first, STANDOFF_MM * MM));
-  read();
-
-  // 2. in along the normal, slower near the surface, until it touches
-  let depth = STANDOFF_MM * MM;
-  let approachPeak = 0;
-  let gap = gapAt(0);
-  let F = 0;
-  while (F < TOUCH_N) {
-    if (depth <= -PRESS_MAX_MM * MM) {
-      force.delete();
-      return { fail: { why: `contact: nothing touched ${c.surface} ${PRESS_MAX_MM} mm past where its surface should be: it is not where the program was told it is` } };
-    }
-    // slow from where the held object is measured to be within NEAR_MM of the surface, or is told it is
-    depth -= (Math.min(depth, gap) > SLOW_MM * MM ? APPROACH_MM_S : NEAR_MM_S) * MM * dt;
-    command(onLine(first, depth));
-    F = yield* tick();
-    const g = gapAt(0);
-    if (g > 0 && g <= NEAR_MM * MM) approachPeak = Math.max(approachPeak, (gap - g) / dt);
-    gap = g;
-  }
-  w.log(`${w.now().toFixed(2)} contact: touched ${c.surface} ${((t0 - w.now()) * -1).toFixed(2)} s after starting, ${(depth / MM).toFixed(1)} mm from where its surface should be`);
-
-  // 3. along the path, the depth moved by the force error each physics step
-  const length = samples.at(-1)!.s_m;
-  const tf = w.now();
-  following = true;
-  let s = 0;
-  let smooth = F;
-  let sum = 0;
-  let inContact = 0;
-  let side = 0;
-  let dwell = 0;
-  // the depth is carried over from the approach line onto the path's: both put the contact at the same point; at
-  // the end the arm stays DWELL_S on the last point, the loops still running, as the contact trails the command
-  while (s < length || dwell < DWELL_S) {
-    if (s < length) s = Math.min(length, s + PATH_MM_S * MM * dt);
-    else dwell += dt;
-    const err = smooth - target;
-    const rate = Math.max(-NEAR_MM_S, Math.min(NEAR_MM_S, GAIN_MM_S_N * err));
-    depth = Math.max(-PRESS_MAX_MM * MM, Math.min(NEAR_MM * MM, depth + rate * MM * dt));
-    // across the path: where the contact is measured to be against the path's point at s, integrated
-    if (lastAt) {
-      const k = sampleAt(s);
+      return total;
+    };
+    /** how far the held object's contact point is out from the surface at sample k, along its normal, measured */
+    const tipAt = (k: number): Vec3 => {
+      const c0 = vec(data.xpos, w.held.bodyId, 3);
+      const t = rot(vec(data.xmat, w.held.bodyId, 9), tipLocal[k]);
+      return [c0[0] + t[0], c0[1] + t[1], c0[2] + t[2]];
+    };
+    const gapAt = (k: number) => {
+      const n = samples[k].normal;
+      const tip = tipAt(k);
       const q = samples[k].point;
-      const off = dot(sides[k], [q[0] - lastAt[0], q[1] - lastAt[1], q[2] - lastAt[2]]);
-      side = Math.max(-SIDE_MAX_MM * MM, Math.min(SIDE_MAX_MM * MM, side + SIDE_GAIN_S * off * dt));
+      return dot(n, [tip[0] - q[0], tip[1] - q[1], tip[2] - q[2]]);
+    };
+    function* tick() {
+      yield* w.step();
+      return read();
     }
-    command(onPath(s, depth, side));
-    F = yield* tick();
-    smooth += (F - smooth) / SMOOTH;
-    if (F >= TOUCH_N) {
-      sum += F;
-      inContact++;
+    const armSpeed = () => Math.max(...Array.from(toNumbers(data.qvel)).slice(0, ARM).map(Math.abs));
+    /** wait until the arm has arrived, at most SETTLE_S, measuring every step */
+    function* settleHere() {
+      for (let t = 0; t < SETTLE_S; t += dt) {
+        yield* tick();
+        if (armSpeed() < ARRIVED_RAD_S) break;
+      }
     }
-  }
-  const follow_s = w.now() - tf;
-  following = false;
+    /** the interpreter's move (joints ramped at JOINT_SPEED, then settled), measuring every step: it may touch the surface on the way */
+    function* moveTo(q: number[]) {
+      const from = Array.from(w.ctrl().slice(0, ARM));
+      const span = Math.max(MIN_MOVE_S, Math.max(...q.map((v, i) => Math.abs(v - from[i]))) / JOINT_SPEED);
+      for (let t = 0; t < span; t += dt) {
+        command(from.map((v, i) => v + (q[i] - v) * (t / span)));
+        yield* tick();
+      }
+      command(q);
+      yield* settleHere();
+    }
 
-  // 4. off along the normal at the last point, slower near the surface, still shifted across the path as it ended
-  let retreatPeak = 0;
-  const k = samples.length - 1;
-  gap = gapAt(k);
-  const across = at0.at(-1)!.map((v, i) => (atSide.at(-1)![i] - v) / (LIN_MM * MM));
-  // the path's last pose is the last line's at the same depth and shift: no jump between them
-  while (depth < STANDOFF_MM * MM) {
-    depth = Math.min(STANDOFF_MM * MM, depth + (Math.min(depth, gap) < SLOW_MM * MM ? NEAR_MM_S : APPROACH_MM_S) * MM * dt);
-    command(onLine(last, depth).map((v, i) => v + across[i] * side));
-    yield* tick();
-    const g = gapAt(k);
-    if (g > 0 && g <= NEAR_MM * MM) retreatPeak = Math.max(retreatPeak, (g - gap) / dt);
-    gap = g;
-  }
-  yield* w.settle();
-  read();
-  force.delete();
+    // how the grip holds the object against the first normal: its own z axis, a box's or a cylinder's height
+    const n0 = samples[0].normal;
+    const gripTilt = (Math.acos(Math.min(1, Math.abs(Rh0[2] * n0[0] + Rh0[5] * n0[1] + Rh0[8] * n0[2]))) * 180) / Math.PI;
+    const limit = c.force_n;
+    const target = TARGET_SHARE * limit;
+    const t0 = w.now();
+    w.log(`${t0.toFixed(2)} contact: ${heldObj.id} onto ${c.surface} along ${samples.length} mm of path, force limit ${limit} N (aiming at ${target.toFixed(2)} N)`);
 
-  const n = covered.filter(Boolean).length;
-  const contacted: Contacted = {
-    step_id: step.id,
-    surface: c.surface,
-    samples: samples.length,
-    covered: n,
-    coverage: n / samples.length,
-    coverage_required: c.coverage_pc / 100,
-    reach_mm: c.reach_mm,
-    force_limit_n: limit,
-    force_target_n: target,
-    peak_force_n: peak,
-    mean_force_n: inContact ? sum / inContact : 0,
-    contact_s,
-    follow_s,
-    approach_peak_mm_s: approachPeak / MM,
-    retreat_peak_mm_s: retreatPeak / MM,
-    off_path_max_mm: offMax / MM,
-    off_path_mean_mm: offN ? offSum / offN / MM : 0,
-    grip_tilt_deg: gripTilt,
-    ...(armTouched ? { arm_touched: armTouched } : {}),
-  };
-  w.log(`${w.now().toFixed(2)} contact: ${describeContact(contacted)}`);
-  if (armTouched) return { contacted, fail: { why: `contact: the arm's ${armTouched} touched ${c.surface}; only the held ${heldObj.id} may` } };
-  if (peak > limit) return { contacted, fail: { why: `contact: pushed on ${c.surface} with up to ${peak.toFixed(2)} N, over the ${limit} N limit` } };
-  if (contacted.coverage < contacted.coverage_required) return { contacted, fail: { why: `contact: covered ${(100 * contacted.coverage).toFixed(0)}% of the path within ${c.reach_mm} mm, wanted ${c.coverage_pc}%` } };
-  return { contacted };
+    // 1. the stand-off, at the usual speed; nothing should touch the surface on the way
+    yield* moveTo(onLine(first, STANDOFF_MM * MM));
+
+    // 2. in along the normal, slower near the surface, until it touches
+    let depth = STANDOFF_MM * MM;
+    let approachPeak = 0;
+    let gap = gapAt(0);
+    let F = 0;
+    while (F < TOUCH_N) {
+      if (depth <= -PRESS_MAX_MM * MM) {
+        return { fail: { why: `contact: nothing touched ${c.surface} ${PRESS_MAX_MM} mm past where its surface should be: it is not where the program was told it is` } };
+      }
+      // slow from where the held object is measured to be within NEAR_MM of the surface, or is told it is
+      depth -= (Math.min(depth, gap) > SLOW_MM * MM ? APPROACH_MM_S : NEAR_MM_S) * MM * dt;
+      command(onLine(first, depth));
+      F = yield* tick();
+      const g = gapAt(0);
+      if (g > 0 && g <= NEAR_MM * MM) approachPeak = Math.max(approachPeak, (gap - g) / dt);
+      gap = g;
+    }
+    w.log(`${w.now().toFixed(2)} contact: touched ${c.surface} ${((t0 - w.now()) * -1).toFixed(2)} s after starting, ${(depth / MM).toFixed(1)} mm from where its surface should be`);
+
+    // 3. along the path, the depth moved by the force error each physics step
+    const length = samples.at(-1)!.s_m;
+    const tf = w.now();
+    following = true;
+    let s = 0;
+    let smooth = F;
+    let sum = 0;
+    let inContact = 0;
+    let side = 0;
+    let dwell = 0;
+    // the depth is carried over from the approach line onto the path's: both put the contact at the same point; at
+    // the end the arm stays DWELL_S on the last point, the loops still running, as the contact trails the command
+    while (s < length || dwell < DWELL_S) {
+      if (s < length) s = Math.min(length, s + PATH_MM_S * MM * dt);
+      else dwell += dt;
+      const err = smooth - target;
+      const rate = Math.max(-NEAR_MM_S, Math.min(NEAR_MM_S, GAIN_MM_S_N * err));
+      depth = Math.max(-PRESS_MAX_MM * MM, Math.min(NEAR_MM * MM, depth + rate * MM * dt));
+      // across the path: where the contact is measured to be against the path's point at s, integrated
+      if (lastAt) {
+        const k = sampleAt(s);
+        const q = samples[k].point;
+        const off = dot(sides[k], [q[0] - lastAt[0], q[1] - lastAt[1], q[2] - lastAt[2]]);
+        side = Math.max(-SIDE_MAX_MM * MM, Math.min(SIDE_MAX_MM * MM, side + SIDE_GAIN_S * off * dt));
+      }
+      command(onPath(s, depth, side));
+      F = yield* tick();
+      smooth += (F - smooth) / SMOOTH;
+      if (F >= TOUCH_N) {
+        sum += F;
+        inContact++;
+      }
+    }
+    const follow_s = w.now() - tf;
+    following = false;
+
+    // 4. off along the normal at the last point, slower near the surface, still shifted across the path as it ended
+    let retreatPeak = 0;
+    const k = samples.length - 1;
+    gap = gapAt(k);
+    const across = at0.at(-1)!.map((v, i) => (atSide.at(-1)![i] - v) / (LIN_MM * MM));
+    // the path's last pose is the last line's at the same depth and shift: no jump between them
+    while (depth < STANDOFF_MM * MM) {
+      depth = Math.min(STANDOFF_MM * MM, depth + (Math.min(depth, gap) < SLOW_MM * MM ? NEAR_MM_S : APPROACH_MM_S) * MM * dt);
+      command(onLine(last, depth).map((v, i) => v + across[i] * side));
+      yield* tick();
+      const g = gapAt(k);
+      if (g > 0 && g <= NEAR_MM * MM) retreatPeak = Math.max(retreatPeak, (g - gap) / dt);
+      gap = g;
+    }
+    yield* settleHere();
+
+    const n = covered.filter(Boolean).length;
+    const contacted: Contacted = {
+      step_id: step.id,
+      surface: c.surface,
+      samples: samples.length,
+      covered: n,
+      coverage: n / samples.length,
+      coverage_required: c.coverage_pc / 100,
+      reach_mm: c.reach_mm,
+      force_limit_n: limit,
+      force_target_n: target,
+      peak_force_n: peak,
+      mean_force_n: inContact ? sum / inContact : 0,
+      contact_s,
+      follow_s,
+      approach_peak_mm_s: approachPeak / MM,
+      retreat_peak_mm_s: retreatPeak / MM,
+      off_path_max_mm: offMax / MM,
+      off_path_mean_mm: offN ? offSum / offN / MM : 0,
+      grip_tilt_deg: gripTilt,
+      ...(armTouched ? { arm_touched: armTouched } : {}),
+    };
+    w.log(`${w.now().toFixed(2)} contact: ${describeContact(contacted)}`);
+    if (armTouched) return { contacted, fail: { why: `contact: the arm's ${armTouched} touched ${c.surface}; only the held ${heldObj.id} may` } };
+    if (peak > limit) return { contacted, fail: { why: `contact: pushed on ${c.surface} with up to ${peak.toFixed(2)} N, over the ${limit} N limit` } };
+    if (contacted.coverage < contacted.coverage_required) return { contacted, fail: { why: `contact: covered ${(100 * contacted.coverage).toFixed(0)}% of the path within ${c.reach_mm} mm, wanted ${c.coverage_pc}%` } };
+    return { contacted };
+  } finally {
+    force.delete();
+  }
 }
 
 class Reach extends Error {}

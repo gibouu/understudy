@@ -248,6 +248,10 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
     // every spec step of that id: a spec that repeats an id (validateSpec's error) cannot hide one's success
     const success = env.spec.steps.filter((x) => x.id === id).flatMap((x) => x.success);
     if (env.spec.steps.some((x) => x.id === id)) succeeded.add(id);
+    // an apply step's check is its contact, measured: a program that never made it cannot pass the step
+    if (env.spec.steps.some((x) => x.id === id && x.verb === "apply") && !contacted.some((c) => c.step_id === id)) {
+      return fail({ failed_step_id: id, failure_class: "spec_gap", why: `step ${id} applies along a contact path and the program never made contact; its op is {"op":"contact"}` });
+    }
     if (!success.length) return null;
     opIndex = undefined; // a step's success is no op of it
     try {
@@ -571,7 +575,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             if (!held) return fail({ failed_step_id: s.step_id, why: "contact: nothing is held" });
             const applyStep = env.spec.steps.find((x) => x.id === s.step_id);
             if (!applyStep) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `contact: no step ${s.step_id} in the spec` });
-            const out = yield* applyAlong({ mujoco, model, data, spec: env.spec, names: env.names, beliefs, held, ctrl, step, moveArm, settle, now: () => t, log: (line) => log.push(line) }, applyStep);
+            const out = yield* applyAlong({ mujoco, model, data, spec: env.spec, names: env.names, beliefs, held, ctrl, step, now: () => t, log: (line) => log.push(line) }, applyStep);
             if (out.contacted) contacted.push(out.contacted);
             if (out.fail) return fail({ failed_step_id: s.step_id, ...out.fail });
             break;
