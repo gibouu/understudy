@@ -7,10 +7,10 @@ import { SAMPLES, type Sample } from "@/lib/samples";
 import { formAnswers, recordedBy, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
 import { Session } from "@/lib/showcase/session";
 import { fitToBench, type Fit } from "@/lib/sim/fit";
-import { formFor, WAITING_NOTE, waitingProgram } from "@/lib/spec/answer";
+import { answerChange, asksOf, formFor, WAITING_NOTE, waitingProgram, type Ask } from "@/lib/spec/answer";
 import { applyChanges } from "@/lib/spec/apply";
 import { LINE_MAX, oneArmLine, scopeNotes, sentenceOf } from "@/lib/spec/confirm";
-import type { Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
+import type { Program, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { CONSENT_LINE } from "@/lib/keep/record";
 import { gateNote } from "@/lib/unlock/messages";
@@ -23,6 +23,7 @@ import { keep, keepCall, keeping, startSession } from "./keep";
 import { answeredBy, useModels, type Role } from "./models";
 import { ProgramView, type Failure } from "./program-view";
 import { Reshoot } from "./reshoot";
+import { AskField } from "./ask-field";
 import { Working } from "./working";
 
 const Rehearsal = dynamic(() => import("./rehearsal").then((m) => m.Rehearsal), {
@@ -48,9 +49,6 @@ const lines = (say: (role: Role) => string): Record<Exclude<Stage, "notes">, str
 type Clip = { blob: Blob; url: string; sample?: Sample; rec?: Session | null };
 type Box = "label" | "program";
 type Clock = { stage: Stage; at: number };
-
-type Ask = Extract<ProgramOp, { op: "ask" }>;
-const asksOf = (p: Program): Ask[] => p.steps.flatMap((s) => s.ops).filter((op): op is Ask => op.op === "ask");
 
 async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
   const at = keeping();
@@ -247,11 +245,8 @@ export function Flow() {
     if (!spec || program.status !== "done") return;
     const changes: SpecChange[] = [];
     for (const a of asks) {
-      const raw = answers[a.slot];
-      if (raw === undefined || raw === "") continue;
-      const form = formFor(spec, a.slot);
-      const value = form.kind === "success" ? form.options[Number(raw)].predicates : form.kind === "target" ? form.options[Number(raw)].target : Number(raw);
-      changes.push({ path: a.slot, value, source: `interview#${turn + 1}` });
+      const change = answerChange(spec, a.slot, answers[a.slot], `interview#${turn + 1}`);
+      if (change) changes.push(change);
     }
     if (changes.length === 0) return;
     keep("answers", { turn: turn + 1, asks, changes }, keeping());
@@ -565,43 +560,5 @@ function SpecSummary({ spec }: { spec: TaskSpec }) {
         ))}
       </ol>
     </div>
-  );
-}
-
-function AskField({ ask, spec, value, onChange }: { ask: Ask; spec: TaskSpec; value: string; onChange: (v: string) => void }) {
-  const form = formFor(spec, ask.slot);
-  // chips are buttons: inside a label, clicking the question would press the first one
-  const Root = form.kind === "target" ? "div" : "label";
-  return (
-    <Root className="flex flex-col gap-1 text-sm" {...(form.kind === "target" ? { role: "group", "aria-label": ask.question } : {})}>
-      <span>{ask.question}</span>
-      {ask.why && <span className="text-xs text-neutral-500">{ask.why}</span>}
-      {form.kind === "number" && (
-        <span className="flex items-center gap-2">
-          <input type="number" min={0} step="any" value={value} onChange={(e) => onChange(e.target.value)} className="w-28 rounded border px-2 py-1" />
-          {form.unit}
-        </span>
-      )}
-      {form.kind === "success" && (
-        <select value={value} onChange={(e) => onChange(e.target.value)} className="rounded border px-2 py-1">
-          <option value="">choose…</option>
-          {form.options.map((o, i) => (
-            <option key={o.label} value={i}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      )}
-      {form.kind === "target" && (
-        <span className="flex flex-wrap gap-2">
-          {form.options.map((o, i) => (
-            <button key={o.target.frame} type="button" aria-pressed={value === String(i)} onClick={() => onChange(String(i))} className={`rounded-full border px-3 py-1 ${value === String(i) ? "border-neutral-900 bg-neutral-900 text-white" : "hover:bg-neutral-50"}`}>
-              {o.label}
-            </button>
-          ))}
-        </span>
-      )}
-      {form.kind === "unsupported" && <span className="text-xs text-amber-700">This one can&apos;t be answered here yet ({ask.slot}).</span>}
-    </Root>
   );
 }

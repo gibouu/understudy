@@ -7,9 +7,12 @@
  */
 import { parsePath } from "./apply";
 import { isBenchSpot } from "./bench";
-import { AXES, type Predicate, type Program, type ProgramOp, type Step, type TaskSpec } from "./schema";
+import { AXES, type Predicate, type Program, type ProgramOp, type SpecChange, type Step, type TaskSpec } from "./schema";
 
 type Target = NonNullable<Step["target"]>;
+
+export type Ask = Extract<ProgramOp, { op: "ask" }>;
+export const asksOf = (p: Program): Ask[] => p.steps.flatMap((s) => s.ops).filter((op): op is Ask => op.op === "ask");
 
 
 export type AskForm =
@@ -143,4 +146,13 @@ export const WAITING_NOTE = "a place with nowhere to go yet: the program waits f
 export function waitingProgram(spec: TaskSpec): Program | null {
   if (!spec.steps.some((s) => !s.target && (s.verb === "place" || s.verb === "insert") && s.object !== undefined)) return null;
   return withRequiredAsks(spec, { spec_title: spec.title, steps: spec.steps.map((s) => ({ step_id: s.id, ops: [] })), warnings: [] }).program;
+}
+
+/** What the person picked or typed for one ask (an option's index, or a number, as the page keeps it) as the change it makes; null when nothing is given. */
+export function answerChange(spec: TaskSpec, slot: string, raw: string | undefined, source: string): SpecChange | null {
+  if (raw === undefined || raw === "") return null;
+  const form = formFor(spec, slot);
+  const value = form.kind === "success" ? form.options[Number(raw)]?.predicates : form.kind === "target" ? form.options[Number(raw)]?.target : form.kind === "number" ? Number(raw) : undefined;
+  if (value === undefined || (typeof value === "number" && !Number.isFinite(value))) return null;
+  return { path: slot, value, source };
 }
