@@ -7,9 +7,9 @@ Hackathon: Nebius x NVIDIA Global AI Hackathon. Submission closes Friday 30 Octo
 - Project name: Understudy
 - Tagline: Watch an astronaut do a task once, ask what the camera could not see, rehearse it on a simulated robot on Earth and in orbit, and fix what fails.
 - Track: Physical AI
-- Demo URL: (Vercel production URL)
+- Demo URL: https://understudy-rose.vercel.app
 - Repository: https://github.com/gibouu/understudy
-- Video: (public YouTube link, under three minutes)
+- Video: https://youtu.be/G0QQybVRwtQ (public, 2:57)
 - Built with: Nebius Token Factory, nvidia/Nemotron-3.5-Super-VL, nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B, nvidia/nemotron-3-super-120b-a12b, nvidia/Nemotron-3-Ultra-550b-a55b, nvidia/Nemotron-3_5-Lightning, Tavily, MuJoCo, MediaPipe, Next.js, Vercel, NASA public-domain footage
 - Pre-existing project: no
 - City: Paris
@@ -34,8 +34,6 @@ Checked against `main` on 27 October: the site has no Saboteur stage (no twelve-
 Outside this file: the thumbnail (`docs/submission/thumbnail.html`, and the `thumbnail.jpg` / `thumbnail.png` made from it) and the home page (`app/page.tsx`) now say only what the site does (the thumbnail: the NASA clip, the robot's question from its recording, the simulated arm rehearsing it at 0 g); a recorded session costs 1 to 7 calls, US$0.0007 to US$0.0059. "Approach: no fine-tuning" stays true of the site, but if the fine-tune answer of PR #136 goes into Devpost the two must agree.
 
 ## Description (what, why, how)
-
-Draft, to be finished on day five with the measured numbers:
 
 **What.** Understudy turns one clip of a person doing a hands-on task, an astronaut handling samples aboard a station or a technician at a bench, into a task specification checked with the person, a robot program rehearsed by a simulated SO-101 arm in the browser on Earth and in orbit, and, when the rehearsal fails, the patches the model wrote from the simulator's notes until it passed, up to five. It suggests similar tasks and rehearses them too, and the patches, the similar tasks and the recorded sessions show what their model calls cost. The 1-minute demo ends by downloading the rollouts it played as a LeRobot v2.1 skeleton in the layout GR00T reads (joint values, no video; format-valid, not training data). Next, not on the site yet: perturbation scenarios run blind and sensed for a perception budget per axis, and a reshoot list.
 
@@ -73,7 +71,7 @@ The concept and the research behind Understudy come from a month of internal wor
 
 ## Testing instructions for judges
 
-Chrome on a laptop. Open the demo URL. "Watch the 1-minute demo" plays one recorded NASA run step by step in under a minute, with the arm rehearsing live in the browser and no model call; its last step downloads that run as a LeRobot v2.1 skeleton in the layout Isaac-GR00T N1.7 reads: `meta/info.json`, `modality.json` and one parquet file per passing rollout, with joint states and actions in radians at 15 fps and no video, plus `QUALITY.md` and the run's spec, program, interview, versions and ledger. It is format-valid, not checked with GR00T's loader, and not training data. "Space showcase" plays recorded runs of NASA clips, with the arm rehearsing every version of the program in the browser and no model call. "Try it" runs a sample clip or one of your own through the stages: what the model saw, the robot's questions, the rehearsal on Earth and in orbit, the Notes patches when it fails, and similar tasks; a sample answers from its recording where it has one and live otherwise, and each section names the model that answered. With a sample, the answers given when it was recorded are filled in: click "Answer and recompile", then "Rehearse on Earth, then in orbit". Uploading your own clip needs the unlock code given in the submission (H.264 MP4, one person, fixed phone). A live call that Token Factory refuses shows as failed on the page; the space showcase never calls a model, so it works whatever the state of the credits.
+Chrome on a laptop. Open https://understudy-rose.vercel.app. "Watch the 1-minute demo" plays one recorded NASA run step by step in under a minute, with the arm rehearsing live in the browser and no model call; its last step downloads that run as a LeRobot v2.1 skeleton in the layout Isaac-GR00T N1.7 reads: `meta/info.json`, `modality.json` and one parquet file per passing rollout, with joint states and actions in radians at 15 fps and no video, plus `QUALITY.md` and the run's spec, program, interview, versions and ledger. It is format-valid, not checked with GR00T's loader, and not training data. "Space showcase" plays recorded runs of NASA clips, with the arm rehearsing every version of the program in the browser and no model call. "Try it" runs a sample clip or one of your own through the stages: what the model saw, the robot's questions, the rehearsal on Earth and in orbit, the Notes patches when it fails, and similar tasks; a sample answers from its recording where it has one and live otherwise, and each section names the model that answered. With a sample, the answers given when it was recorded are filled in: click "Answer and recompile", then "Rehearse on Earth, then in orbit". Uploading your own clip needs the unlock code given in the submission (H.264 MP4, one person, fixed phone). A live call that Token Factory refuses shows as failed on the page; the space showcase never calls a model, so it works whatever the state of the credits.
 
 ## Checklist (from spec v2, section 15)
 
@@ -100,7 +98,7 @@ Watch an astronaut do a task once, ask what the camera missed, rehearse it on a 
 
 - **Submitter type / organisation:** team; organisation "N/A" unless gib wants KUZOG named. **Country:** France. **Canada province:** N/A.
 - **Track:** Physical AI. **New or existing before 26 August 2026:** new (research began late September, code from 23 October).
-- **Repository:** https://github.com/gibouu/understudy. **Demo URL:** the Vercel production URL once Vercel Authentication is off.
+- **Repository:** https://github.com/gibouu/understudy. **Demo URL:** https://understudy-rose.vercel.app. **Video:** https://youtu.be/G0QQybVRwtQ.
 - **Models and why:** `nvidia/Nemotron-3.5-Super-VL` because it is the hosted NVIDIA model that takes video, and one call labels a whole clip (30 s = 5,024 input tokens); `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` for the compile step that runs after every answer and writes the robot's questions (1 s, cheap); `nvidia/nemotron-3-super-120b-a12b` for the patches and the similar tasks (reasoning only when the patch loop is stuck, 0.8 s with thinking off); `nvidia/Nemotron-3-Ultra-550b-a55b` for a patch loop stuck after two failed patches, live, because Super VL, in Super's place since 27 October, cannot think within the patch budget. Token Factory retires Nano and Super on 9 November, so live calls use `nvidia/Nemotron-3_5-Lightning` and `nvidia/Nemotron-3.5-Super-VL` in their place; the showcase recordings were made on Nano and Super.
 - **Output quality (1 to 10):** to rate on day five from the hero clip; day-one evidence: valid JSON in both JSON modes on every call once thinking is off.
 - **Approach:** out of the box, prompt-engineered, with structured output; no fine-tuning (no NVIDIA model is fine-tunable on Token Factory today).

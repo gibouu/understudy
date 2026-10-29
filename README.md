@@ -3,6 +3,8 @@
 <p align="center"><b>Watch a person do a task once. Ask them what the camera could not see. Rehearse it on a simulated robot, on Earth and in orbit, and fix what fails.</b></p>
 
 <p align="center">
+  <a href="https://understudy-rose.vercel.app"><b>Live demo</b></a> ·
+  <a href="https://youtu.be/G0QQybVRwtQ"><b>Video (2:57)</b></a> ·
   <a href="docs/SPEC.md">Spec</a> ·
   <a href="docs/PLAN.md">Plan</a> ·
   <a href="docs/LIMITATIONS.md">What it proves and does not</a> ·
@@ -12,7 +14,7 @@
 
 ---
 
-> **Status (27 October 2026):** the site does what the "Built" table below lists, on Nebius Token Factory, and answers from its recordings with no key, past the spend guard, or when Token Factory stops listing a model it calls. What is designed but not on the site yet is listed under "Next", with no date. The task board is the GitHub issues, tracker [#45](https://github.com/gibouu/understudy/issues/45). Built for the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/), Physical AI track.
+> **Status (29 October 2026):** the site at [understudy-rose.vercel.app](https://understudy-rose.vercel.app) does what the "Built" table below lists, on Nebius Token Factory, and answers from its recordings with no key, past the spend guard, or when Token Factory stops listing a model it calls. What is designed but not on the site yet is listed under "Next", with no date. The task board is the GitHub issues, tracker [#45](https://github.com/gibouu/understudy/issues/45). Built for the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/), Physical AI track.
 
 An understudy learns a role by watching the lead, then rehearses it on stage. Understudy does that for robots. One phone clip of a person doing a tabletop task goes in. A vision model says what it saw; a second model writes the robot's program and turns every number it would have to guess into a question for the person; a simulated arm rehearses the answered program on Earth and in orbit; and when a rehearsal fails, the simulator's notes go back to the model, which patches the program until it passes, up to five patches. The patches, the similar tasks and the recorded sessions show what their model calls cost.
 
@@ -41,7 +43,7 @@ Understudy was a month of internal research before it was a hackathon project. T
 
 ## What it does
 
-Three pages: the **1-minute demo** (`/demo`) walks through one recorded run step by step and ends with its export, **Try it** (`/try`) runs a sample clip or one of your own through the stages below, and the **space showcase** (`/space`) plays recorded runs of NASA clips with no model call.
+Three pages, linked from the home page (`/`): the **1-minute demo** (`/demo`) walks through one recorded run step by step and ends with its export, **Try it** (`/try`) runs a sample clip or one of your own through the stages below, and the **space showcase** (`/space`, one page per clip at `/space/<clip>`) plays recorded runs of NASA clips with no model call. Two pages are not linked from the menu: `/stage`, the rehearsal stage on its own (Earth, the Moon or orbit, an object to nudge), and `/watch`, a development page that runs MediaPipe on a sample clip.
 
 ### Built: on the site today
 
@@ -60,9 +62,9 @@ Three pages: the **1-minute demo** (`/demo`) walks through one recorded run step
 
 ### Next: designed, not on the site yet
 
-- **Saboteur:** twelve perturbation scenarios chosen from object symmetry and the tightest constraint, each run **blind** (nominal object pose) and **sensed** (perturbed pose known), giving the **perception budget**: per axis and per gravity, how much pose error the task survives without perception and with it. The simulator takes both modes; the site runs sensed only.
+- **Perturbation grid (the "saboteur" of the spec):** twelve perturbation scenarios chosen from object symmetry and the tightest constraint, each run **blind** (nominal object pose) and **sensed** (perturbed pose known), giving the **perception budget**: per axis and per gravity, how much pose error the task survives without perception and with it. The simulator takes both modes; the site runs sensed only.
 - **Scoreboard and playbook:** every version scored on the same 24 rollouts against a retarget-and-replay baseline ([#55](https://github.com/gibouu/understudy/issues/55)), and patches that fixed a failure carried to the next clip as rules ([#56](https://github.com/gibouu/understudy/issues/56)).
-- **Reshoot:** failure classes (spec gap, footage gap, embodiment limit, simulator artefact), a reshoot list and open risks, from Nemotron 3 Ultra.
+- **Reshoot list:** failure classes (spec gap, footage gap, embodiment limit, simulator artefact), a reshoot list and open risks, from Nemotron 3 Ultra.
 - **Export from Try it, with video:** Try it has no export, and the demo's export holds no video. The writer in [lib/export/](lib/export/) can add an MP4 per episode, and no export has been loaded by GR00T's loader yet.
 - **The Moon on Try it:** the Moon preset (0.1654 g) is in the contract and on the `/stage` page; Try it rehearses on Earth and in orbit.
 
@@ -74,12 +76,12 @@ Gravity is a scenario axis. The contract carries `gravity_g` on every rollout, a
 
 ## Which model does what, and why that tier
 
-| Model on Nebius Token Factory | Job | Why this tier |
-|---|---|---|
-| `nvidia/Nemotron-3.5-Super-VL` | watches the video proxy, labels segments, objects, sizes, symmetry | the hosted NVIDIA model that takes images and video |
-| `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` | compiles the spec to a program after every answer, with a question for every value it would guess; filters grounding; health probe | fast and cheap, called most often |
-| `nvidia/nemotron-3-super-120b-a12b` | proposes the Notes patches, thinking once the loop is stuck; suggests similar tasks | reasoning when it is needed, off when it is not |
-| `nvidia/Nemotron-3-Ultra-550b-a55b` | answers a stuck patch loop live, in place of a patcher that cannot think within the budget | the largest model, for the failures the cheap pass could not fix |
+| Job | In the recordings | Live, since 27 October | Why this tier |
+|---|---|---|---|
+| watches the video proxy, labels segments, objects, sizes, symmetry | `nvidia/Nemotron-3.5-Super-VL` | `nvidia/Nemotron-3.5-Super-VL` | the hosted NVIDIA model that takes images and video |
+| compiles the spec to a program after every answer, with a question for every value it would guess; filters grounding; health probe | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` | `nvidia/Nemotron-3_5-Lightning` | fast and cheap, called most often |
+| proposes the Notes patches; suggests similar tasks | `nvidia/nemotron-3-super-120b-a12b`, thinking once the loop is stuck | `nvidia/Nemotron-3.5-Super-VL`, thinking off | reasoning when it is needed, off when it is not |
+| answers a stuck patch loop (a patch that changes nothing, or two failed patches) | not in the recordings | `nvidia/Nemotron-3-Ultra-550b-a55b`, thinking off | Super VL cannot think within the patch budget, so the largest model takes the failures the cheap pass could not fix |
 
 Token Factory retires Nano and Super from Serverless on 9 November 2026 ([its notice](https://docs.tokenfactory.nebius.com/model-deprecations-november-2026)), before judging ends. The ISS examples are recordings made on Nano and Super; since 27 October a clip of your own runs on the replacements Token Factory names, `nvidia/Nemotron-3_5-Lightning` in Nano's place and `nvidia/Nemotron-3.5-Super-VL` in Super's, measured on the same benches (`docs/MEASUREMENTS.md` section 12). If Token Factory stops listing a model the routes call, every step replays its recording and says why.
 
@@ -116,7 +118,19 @@ pnpm dev                           # http://localhost:3000
 pnpm test && pnpm typecheck && pnpm lint
 ```
 
+Without `.env.local`, `pnpm dev` runs and `/api/health` answers `{"mode":"replay","reason":"no NEBIUS_API_KEY"}`: every stage answers from its recording. With a key and `UNDERSTUDY_UNLOCK_CODE` unset, local dev calls Token Factory without asking for the code. `pnpm test` takes two to four minutes (the rehearsal tests step MuJoCo) and never calls a model. The model IDs can be overridden from env (`UNDERSTUDY_MODEL_*` in `.env.example`); a retired ID is replaced by its successor unless `UNDERSTUDY_KEEP_RETIRED=1`.
+
 Credits for the hackathon: promo code `NEBIUS-DEVPOST-GLOBAL26` on Token Factory, plus the Nebius Builder Program (more Token Factory and Tavily credits). Both need a card on the account.
+
+## Testing instructions for judges
+
+Chrome on a laptop, at [understudy-rose.vercel.app](https://understudy-rose.vercel.app). No account and no key are needed.
+
+1. **Watch the 1-minute demo** (`/demo`): one recorded NASA run, step by step, with the arm rehearsing live in the browser and no model call. The last step downloads that run as a LeRobot v2.1 skeleton (joint values, no video; format-valid, not checked with GR00T's loader, not training data).
+2. **Space showcase** (`/space`): open a clip to see what the model saw, what the robot asked and how the program improved; the arm rehearses every version again in the browser. No model call, so it works whatever the state of the credits.
+3. **Try it** (`/try`): pick a sample clip. It answers from its recording where it has one and live otherwise, and each section names the model that answered. The answers given when it was recorded are filled in: click "Answer and recompile", then "Rehearse on Earth, then in orbit". When a rehearsal fails, the Notes patches appear one by one, with their price. Uploading a clip of your own needs the unlock code given in the submission (H.264 MP4, one person, fixed phone).
+
+A live call that Token Factory refuses shows as failed on the page.
 
 ## How it improves
 

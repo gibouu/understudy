@@ -1,6 +1,6 @@
 # Limitations and what the rehearsal does and does not prove
 
-**What a pass proves:** the clarified spec is executable by a scripted SO-101 program across the stated band in rigid-body physics with a geometric grasp, and the success criteria are computable; not that a learned policy would succeed or a real grasp holds. If Sunday's go/no-go fails, the stage becomes a kinematic replay and all physics claims are removed.
+**What a pass proves:** the clarified spec is executable by a scripted SO-101 program across the stated band in rigid-body physics with a geometric grasp, and the success criteria are computable; not that a learned policy would succeed or a real grasp holds.
 
 ## Honest limits
 
