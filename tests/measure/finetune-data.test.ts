@@ -9,7 +9,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { loadMujoco } from "./gravity-harness";
-import { armIncluded, buildDataset, chat, fnv1a, heldOutCases, mayBeRounded, metaLine, pairLine, replayRun, saved, type SavedIter, type SavedPatch, type SavedResults, type SavedRun, SPLIT_SALT } from "./finetune-data";
+import { armIncluded, buildDataset, chat, checkFrozenSplit, failingCases, fnv1a, heldOutCases, mayBeRounded, metaLine, pairLine, replayRun, saved, type SavedIter, type SavedPatch, type SavedResults, type SavedRun, SPLIT_SALT } from "./finetune-data";
 import { applyPatch, caseGrid, type Knobs, PROBES } from "./patch-probes";
 import { PATCH_SYSTEM } from "./patch-prompts";
 
@@ -17,6 +17,8 @@ const ROOT = process.cwd();
 const RESULTS = path.join(ROOT, "bench/results/patch-loop.json");
 const OUT = path.join(ROOT, "bench/finetune");
 const load = () => JSON.parse(readFileSync(RESULTS, "utf8")) as SavedResults;
+/** the published split (#119): every rebuild must hold out these cases */
+const frozenSplit = () => (JSON.parse(readFileSync(path.join(OUT, "manifest.json"), "utf8")) as { split: { test_cases: string[] } }).split.test_cases;
 
 describe("fine-tune dataset (no network)", () => {
   it("holds out whole cases, a third per task, at distinct gravities, the same every time", () => {
@@ -30,6 +32,13 @@ describe("fine-tune dataset (no network)", () => {
       expect(new Set(mine.map((id) => id.split("/")[1])).size).toBe(mine.length);
     }
     expect(fnv1a("")).toBe(0x811c9dc5);
+  });
+
+  it("holds out the manifest's cases, and refuses a split that moved (#119)", () => {
+    const frozen = frozenSplit();
+    expect(frozen.length).toBeGreaterThan(0);
+    expect(() => checkFrozenSplit(heldOutCases(failingCases(load())), frozen)).not.toThrow();
+    expect(() => checkFrozenSplit([...frozen.slice(1), "insert/earth/nominal"], frozen)).toThrow(/added: insert\/earth\/nominal; dropped: .+/);
   });
 
   it("flags saved numbers that may have been rounded on save, and only those", () => {
@@ -127,7 +136,7 @@ describe.skipIf(process.env.FINETUNE_BUILD !== "1")("fine-tune dataset (build)",
       const mj = await loadMujoco();
       const results = load();
       const t0 = performance.now();
-      const built = buildDataset(mj, results, { onRun: (k, n) => (k % 250 === 0 || k === n) && console.log(`  replayed ${k}/${n} runs`) });
+      const built = buildDataset(mj, results, { frozen: frozenSplit(), onRun: (k, n) => (k % 250 === 0 || k === n) && console.log(`  replayed ${k}/${n} runs`) });
       // no held-out case reaches training, validation or the pairs
       const test = new Set(built.test_cases);
       for (const e of [...built.train, ...built.val, ...built.pairs.map((p) => p.prompt)]) expect(test.has(e.case_id)).toBe(false);
