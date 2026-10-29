@@ -298,6 +298,8 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
     const read = () => {
       let total = 0;
       const at: Vec3 = [0, 0, 0];
+      /** each contact's own position: coverage is judged on these, never on their mean, which can lie between them */
+      const points: Vec3[] = [];
       // the contact list read afresh every step: a handle kept from before is the list of the step it was taken at
       // and each copy it hands out freed: thousands of steps of them otherwise fill the wasm heap
       const contacts = data.contact as unknown as Contacts;
@@ -314,9 +316,10 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
               mujoco.mj_contactForce(model, data, i, force);
               const fn = toNumbers(force.GetView())[0];
               if (fn > 0) {
-                const p = toNumbers(k.pos);
+                const p = Array.from(toNumbers(k.pos)).slice(0, 3) as Vec3;
                 for (let r = 0; r < 3; r++) at[r] += fn * p[r];
                 total += fn;
+                points.push(p);
               }
             } else if (!isScene(geomBody[other]) && armTouched === undefined) armTouched = decodeName(names, bodyAdr[geomBody[other]]);
           } finally {
@@ -330,15 +333,17 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
       lastAt = null;
       if (total >= TOUCH_N) {
         contact_s += dt;
-        const p = at.map((v) => v / total) as Vec3;
-        lastAt = p;
+        // the force-weighted mean steers the loop across the path; coverage counts each contact where it is
+        lastAt = at.map((v) => v / total) as Vec3;
         const reach = c.reach_mm * MM;
         let nearest = Infinity;
         for (let j = 0; j < truth.length; j++) {
           const q = truth[j].point;
-          const d = Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
-          nearest = Math.min(nearest, d);
-          if (d <= reach) covered[j] = true;
+          for (const p of points) {
+            const d = Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+            nearest = Math.min(nearest, d);
+            if (d <= reach) covered[j] = true;
+          }
         }
         if (following) {
           offMax = Math.max(offMax, nearest);

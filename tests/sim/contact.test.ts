@@ -262,6 +262,18 @@ describe("the apply step and the contact op in the spec", () => {
       model.delete();
     }
   }, 60_000);
+  it("counts each contact where it is: two rims astride an open stand-in do not cover the empty path between them", () => {
+    // found by the second-model review: a stand-in built as an open box, an applicator wider than its opening
+    const base = contactSpec({ ...BOX, size_mm: [24, 200, 50], path: [[0, -40, 25], [0, 40, 25]] });
+    const spec = TaskSpec.parse({
+      ...base,
+      objects: base.objects.map((o) => (o.id === "standin" ? { ...o, liquid_ml: 1 } : o.id === "applicator" ? { ...o, size_mm: [28, 28, 70] } : o)),
+      steps: base.steps.map((s) => ({ ...s, contact: { ...s.contact!, force_n: 10 } })),
+    });
+    const r = rollout(spec, 1);
+    expect(r.pass).toBe(false);
+    expect(r.contacted![0].coverage).toBeLessThan(0.9);
+  }, 60_000);
   it("is additive: a scene with no apply step is built exactly as before", () => {
     const spec = TaskSpec.parse({ ...contactSpec(BOX), steps: [{ id: "s1", verb: "grasp", object: "applicator", t_start_s: 0, t_end_s: 1 }] });
     expect(environment(spec).worldbody).not.toContain("contact_");
