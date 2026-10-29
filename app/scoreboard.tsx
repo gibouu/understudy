@@ -3,25 +3,38 @@
 import { useEffect, useRef, useState } from "react";
 import type { SaboteurPlan } from "@/lib/saboteur/ask";
 import { SCORE_WORLDS, scoreRollouts, tally, type ScoreWorld, type Tally } from "@/lib/saboteur/scoreboard";
-import type { Session } from "@/lib/showcase/session";
 import { SimClient } from "@/lib/sim/client";
-import { GRAVITIES } from "@/lib/spec/schema";
+import { GRAVITIES, type Program, type TaskSpec } from "@/lib/spec/schema";
 
 export type Score = Partial<Record<ScoreWorld, Tally & { done: number; error?: string }>>;
 
 /**
- * The scoreboard's runs (issue #55): every version of the recorded program, in order, on the same twelve scenarios
- * (`plan`, chosen for the last version's spec, `spec`), blind and sensed, on Earth and then in orbit, through the
- * headless batch in a worker of its own. Nothing runs until `start`; no model is called.
+ * The scoreboard's runs (issue #55): `programs` in order (the baseline, then every version of the program, recorded on
+ * /space or on this page on /try), each on the same twelve scenarios (`plan`, chosen for `spec`, the last version's),
+ * blind and sensed, on Earth and then in orbit, through the headless batch in a worker of its own. Nothing runs until
+ * `start`; no model is called. New scenarios or a new spec drop the bars of the old ones.
  */
-export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
+export function useScoreboard(spec: TaskSpec, programs: Program[], plan: SaboteurPlan | null) {
   const [scores, setScores] = useState<Score[]>([]);
-  const [busy, setBusy] = useState(false);
+  /** the spec and twelve a run is scoring: a run for older ones is cancelled below and does not hold the button */
+  const [busyFor, setBusyFor] = useState<{ spec: TaskSpec; plan: SaboteurPlan } | null>(null);
+  const busy = busyFor !== null && busyFor.spec === spec && busyFor.plan === plan;
   const [ms, setMs] = useState<number | null>(null);
   const client = useRef<SimClient | null>(null);
   const gen = useRef(0);
   /** a run is under way: its partial bars go with its worker */
   const live = useRef(false);
+  /** the spec and the twelve the bars were scored on: other ones (a new grid, an answer) show no bars until scored */
+  const [scored, setScored] = useState<{ spec: TaskSpec; plan: SaboteurPlan } | null>(null);
+  const current = scored?.spec === spec && scored.plan === plan;
+  // other twelve, or another spec: a run on its way is dropped with its worker, so the next click starts at once
+  useEffect(() => {
+    if (!live.current) return;
+    gen.current++;
+    live.current = false;
+    client.current?.dispose();
+    client.current = null;
+  }, [spec, plan]);
   // the worker goes when the page is hidden or left (an Activity keeps the state, not the worker): a run on its way is
   // dropped and the button comes back
   useEffect(
@@ -31,7 +44,7 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
       client.current = null;
       if (live.current) setScores([]);
       live.current = false;
-      setBusy(false);
+      setBusyFor(null);
     },
     [],
   );
@@ -39,22 +52,22 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
   async function start() {
     if (!plan || busy) return;
     const id = ++gen.current;
-    const spec = session.iterations[session.iterations.length - 1].spec;
     const n = plan.scenarios.length;
-    setBusy(true);
+    setBusyFor({ spec, plan });
     live.current = true;
     setMs(null);
     setScores([]);
+    setScored({ spec, plan });
     const sim = (client.current ??= new SimClient());
     const started = performance.now();
-    for (const [v, it] of session.iterations.entries()) {
+    for (const [v, program] of programs.entries()) {
       for (const world of SCORE_WORLDS) {
         const rollouts = scoreRollouts(plan.scenarios, world);
         const results: Parameters<typeof tally>[0] = rollouts.map(() => undefined);
         const put = (t: Score[ScoreWorld]) => id === gen.current && setScores((s) => Object.assign([...s], { [v]: { ...s[v], [world]: t } }));
         put({ ...tally(results, n), done: 0 });
         try {
-          await sim.batch(spec, it.program, rollouts, {
+          await sim.batch(spec, program, rollouts, {
             onResult: (r) => {
               results[r.index] = r;
               put({ ...tally(results, n), done: results.filter(Boolean).length });
@@ -67,7 +80,7 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
           sim.dispose();
           if (client.current === sim) client.current = null;
           live.current = false;
-          setBusy(false);
+          setBusyFor(null);
           return;
         }
         if (id !== gen.current) return;
@@ -75,10 +88,10 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
     }
     setMs(performance.now() - started);
     live.current = false;
-    setBusy(false);
+    setBusyFor(null);
   }
 
-  return { scores, busy, ms, start };
+  return { scores: current ? scores : [], busy, ms: current ? ms : null, start };
 }
 
 /** One version's bars: per world, sensed passes then blind passes stacked out of 24, one cell per rollout. */
@@ -119,7 +132,7 @@ export function ScoreboardHead({ plan, by, why, busy, ms, ran, start }: { plan: 
   return (
     <div className="flex max-w-3xl flex-col gap-2">
       <p className="text-[17px] leading-relaxed">
-        When it was recorded, each version below was rehearsed once per world, on its own spec. The scoreboard runs every version on the same twelve changes to the world, {plan.source === "model" ? `the ones ${by ?? "the patching model"} chose for this task when the perturbation grid was recorded` : "built from the spec with no model"}, each <b>blind</b> (the program is told the poses the spec has while the world is moved) and <b>sensed</b> (it is told where things really are), on Earth and in orbit: 24 rollouts per world per version, all on the last version’s spec, in your browser, with no model call.
+        When it was recorded, each version below was rehearsed once per world, on its own spec. The scoreboard runs every version on the same twelve changes to the world, {plan.source === "model" ? `the ones ${by ?? "the patching model"} chose for this task when the perturbation grid was recorded` : "built from the spec with no model"}, each <b>blind</b> (the program is told the poses the spec has while the world is moved) and <b>sensed</b> (it is told where things really are), on Earth and in orbit: 24 rollouts per world per version, all on the last version’s spec, in your browser, with no model call. Before them runs a <b>baseline</b>, “retarget and replay”: a program written by fixed rules from the label’s steps as fitted to the bench, with no model and no answers (take the object, carry it over the target, lower it, let go; no waits, no checks), scored the same way.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={start} disabled={busy} className="self-start rounded-full border-2 border-ink bg-ink px-4 py-1.5 text-paper disabled:opacity-40">
