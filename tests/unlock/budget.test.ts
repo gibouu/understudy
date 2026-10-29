@@ -210,6 +210,27 @@ describe("with a store", () => {
     expect(store.data.get(SPENT_KEY)).toBe(Math.ceil(usdOf(call(MODELS.nano, promptTokensAtMost([{ role: "user", content: "u" }]), 100))! * 1e6));
   });
 
+  it("keeps the reservation of a 400 the SDK made of a response cut at the deadline (#189)", async () => {
+    const store = fakeRedis();
+    const deadline = new AbortController();
+    let sent = 0;
+    const client = {
+      chat: {
+        completions: {
+          create: async () => {
+            sent++;
+            // the error body was cut short: the SDK still reports the status line it read
+            deadline.abort();
+            throw new OpenAI.BadRequestError(400, undefined, "400 status code (no body)", new Headers());
+          },
+        },
+      },
+    } as unknown as OpenAI;
+    expect((await callModel(client, { role: "nano", user: "u", maxTokens: 100, schema: z.object({ n: z.number() }), signal: deadline.signal })).status).toBe("failed");
+    expect(sent).toBe(1);
+    expect(store.data.get(SPENT_KEY)).toBe(Math.ceil(usdOf(call(MODELS.nano, promptTokensAtMost([{ role: "user", content: "u" }]), 100))! * 1e6));
+  });
+
   it("keeps the whole reservation of an answer that does not say what it used", async () => {
     const store = fakeRedis();
     const client = { chat: { completions: { create: async () => ({ choices: [{ message: { content: '{"n":1}' } }] }) } } } as unknown as OpenAI;

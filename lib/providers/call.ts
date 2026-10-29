@@ -87,10 +87,11 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
         break;
       } catch (err) {
         const status = err instanceof OpenAI.APIError ? err.status : undefined;
+        // cut at the deadline: the reservation stays, whatever status the SDK made of the cut (it can turn an error
+        // body cut short into a 4xx), and neither the 400 retry nor another attempt is made
+        if (o.signal?.aborted) throw err;
         // only a request Token Factory refused outright (4xx) is surely unbilled; a timeout or a 5xx keeps its reservation
         if (status !== undefined && status >= 400 && status < 500) await settle(hold, null);
-        // cut at the deadline (an abort has no status, so the reservation stays): neither the 400 retry nor another attempt
-        if (o.signal?.aborted) throw err;
         if (optional && status === 400) {
           optional = false;
           return ask();
@@ -98,8 +99,13 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
         if (!(status === undefined || status === 408 || status === 429 || status >= 500) || sent >= attempts) throw err;
         // the pause ends at the deadline too, and the next turn then stops
         await new Promise<void>((r) => {
-          const t = setTimeout(r, 500 * sent);
-          o.signal?.addEventListener("abort", () => (clearTimeout(t), r()), { once: true });
+          const end = () => {
+            clearTimeout(t);
+            o.signal?.removeEventListener("abort", end);
+            r();
+          };
+          const t = setTimeout(end, 500 * sent);
+          o.signal?.addEventListener("abort", end, { once: true });
         });
       }
     }
