@@ -50,7 +50,7 @@ export function focusOf(spec: TaskSpec): Focus | null {
     const target = into ? byId.get(into) : undefined;
     if (!object || !target || target.id === object.id) continue;
     const fixture = s.pour ? "pour" : s.target!.fixture;
-    const told = [s.tolerances.x_mm, s.tolerances.y_mm].filter((x): x is number => x !== undefined && x > 0);
+    const told = [s.tolerances.x_mm, s.tolerances.y_mm].filter((x): x is number => x !== undefined && x >= 0);
     const stated = told.length ? Math.min(...told) : undefined;
     // the geometry's own room, then a stated tolerance when it is tighter: the smallest constraint is the one to probe
     // compared raw, rounded only for display: a rounding must not pick the looser constraint

@@ -86,6 +86,10 @@ describe("the saboteur's twelve", () => {
     expect(focusOf(DEMO_SPEC)).toMatchObject({ object: { id: "film" }, target: { id: "pillow" }, fixture: "pocket", band_mm: 2.5 });
     const told = { ...DEMO_SPEC, steps: DEMO_SPEC.steps.map((s) => (s.id === "s2" ? { ...s, tolerances: { x_mm: 1.5 } } : s)) };
     expect(focusOf(told)?.band_mm).toBe(1.5);
+    // a stated 0 mm is the tightest of all (shown as 0.01 mm; the fallback still steps at least 1 mm)
+    const zero = { ...DEMO_SPEC, steps: DEMO_SPEC.steps.map((s) => (s.id === "s2" ? { ...s, tolerances: { x_mm: 0 } } : s)) };
+    expect(focusOf(zero)?.band_mm).toBe(0.01);
+    expect(forGrid(fallbackScenarios(zero))).toHaveLength(SCENARIO_COUNT);
     // a stated tolerance looser than the pocket does not widen the band: the geometry is the tighter constraint
     const loose = { ...DEMO_SPEC, steps: DEMO_SPEC.steps.map((s) => (s.id === "s2" ? { ...s, tolerances: { x_mm: 20, y_mm: 20 } } : s)) };
     expect(focusOf(loose)).toMatchObject({ band_mm: 2.5, band_from: "half the pocket's 5 mm clearance" });
