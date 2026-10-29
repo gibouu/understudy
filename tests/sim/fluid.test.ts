@@ -899,7 +899,7 @@ describe("liquid physics validations", () => {
       ["Tolerance 2 degrees. The surface is the top particle per 4 mm bin, fitted by least squares in its own frame (iterated 4 times)."],
     );
     for (const r of res) expect(Math.abs(r.deg - r.expected)).toBeLessThan(2);
-  }, 60_000);
+  }, 180_000); // about 60 s on a CI runner, 20 s alone on an M4 and 73 s under load: headroom, not a shorter run (#148)
 
   // e. MuJoCo tilts a cup over a hinge; the liquid pours into a fixed cup at 1 g, not at 0 g
   describe("e. coupling with MuJoCo", () => {
