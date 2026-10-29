@@ -52,7 +52,7 @@ function log(): TryLog {
   };
 }
 
-const base = { clip: { name: "iss-veggie-seed-film", sample: true, duration_s: 36 }, hint: "seed film", label: DEMO_SPEC, fit: ["fitted"], spec: DEMO_SPEC };
+const base = { clip: { name: "iss-veggie-seed-film", sample: true, duration_s: 36 }, hint: "seed film", label: DEMO_SPEC, labelWarnings: ["replay: recorded for another clip"], fit: ["fitted"], spec: DEMO_SPEC };
 
 describe("keepForSampling", () => {
   it("keeps exactly what sampleAt picks from the whole stream", () => {
@@ -90,6 +90,7 @@ describe("tryExport", () => {
     expect(episodes.map((e: { length: number }) => e.length)).toEqual([45, 38]);
     const versions = parseJson(files["understudy/versions.json"]);
     expect(versions.map((v: { results: { orbit: { pass: boolean } | null } }) => v.results.orbit?.pass)).toEqual([false, true]);
+    expect(parseJson(files["understudy/label.json"]).warnings).toEqual(["replay: recorded for another clip"]);
     const clip = parseJson(files["understudy/clip.json"]);
     expect(clip.source.licence).toBe("Public domain (work of NASA)");
     const md = text(files["lerobot/QUALITY.md"]);
@@ -129,8 +130,15 @@ describe("tryExport", () => {
     expect(text(unzipSync(zip)["lerobot/QUALITY.md"])).toContain("no camera ever filmed it");
   });
 
+  it("refuses a program that has passed in one world only on this page", async () => {
+    const l = log();
+    l.runs = l.runs.filter((r) => r.world === "earth");
+    expect(passingRuns(l, DEMO_PROGRAMS.hold_until_seated)).toEqual([]);
+    await expect(tryExport({ ...base, program: DEMO_PROGRAMS.hold_until_seated, log: l, grounding: null })).rejects.toThrow(/not passed on Earth and in orbit/);
+  });
+
   it("refuses a program with no passing rollout that kept its frames", async () => {
-    await expect(tryExport({ ...base, program: DEMO_PROGRAMS.release_early, log: { ...log(), runs: log().runs.map((r) => ({ ...r, frames: undefined })) }, grounding: null })).rejects.toThrow(/no passing rollout/);
+    await expect(tryExport({ ...base, program: DEMO_PROGRAMS.release_early, log: { ...log(), runs: log().runs.map((r) => ({ ...r, frames: undefined })) }, grounding: null })).rejects.toThrow(/not passed/);
   });
 
   it("gives each version the last result measured for it", () => {

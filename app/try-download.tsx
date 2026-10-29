@@ -16,7 +16,7 @@ type State = { paths: string[]; headline: string; bytes: number; noVideo?: strin
  * The video is drawn again from the simulator's frames and encoded with WebCodecs; a browser that cannot encode
  * H.264 or VP9 gets the zip without it, and the page says so.
  */
-export function TryDownload({ clip, hint, label, fit, spec, program: given, log, grounding }: Omit<TryExportInput, "program" | "video" | "log"> & { program: Program; log: TryLog; grounding: GroundingRecord | null; spec: TaskSpec }) {
+export function TryDownload({ clip, hint, label, labelWarnings, fit, spec, program: given, log, grounding }: Omit<TryExportInput, "program" | "video" | "log"> & { program: Program; log: TryLog; grounding: GroundingRecord | null; spec: TaskSpec }) {
   const program = usePassed(given);
   const [video, setVideo] = useState(true);
   const [state, setState] = useState<State>(null);
@@ -35,7 +35,7 @@ export function TryDownload({ clip, hint, label, fit, spec, program: given, log,
           noVideo = (err as Error).message;
         }
       }
-      const { zip, paths, quality } = await tryExport({ clip, hint, label, fit, spec, program, log, grounding, video: encoder ? { encoder, draw: (meta, frames) => drawFrames(meta, frames) } : undefined });
+      const { zip, paths, quality } = await tryExport({ clip, hint, label, labelWarnings, fit, spec, program, log, grounding, video: encoder ? { encoder, draw: (meta, frames) => drawFrames(meta, frames) } : undefined });
       const url = URL.createObjectURL(new Blob([zip.slice().buffer], { type: "application/zip" }));
       const a = document.createElement("a");
       a.href = url;

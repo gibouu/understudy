@@ -77,12 +77,16 @@ export const runOf = (r: Rollout): Run => ({
   t: Math.round(r.t * 1000) / 1000,
 });
 
-/** The last passing rollout of `program` in each world, Earth first: the episodes. Only runs that kept their frames. */
+/**
+ * The last passing rollout of `program` in each world, Earth first: the episodes. Only runs that kept their frames,
+ * and only when both worlds have one in this log: a pass remembered from before the log was reset does not count.
+ */
 export function passingRuns(log: TryLog, program: Program): TryRun[] {
   const out: TryRun[] = [];
   for (const world of ["earth", "orbit"] as const) {
     const r = log.runs.findLast((x) => x.program === program && x.world === world && x.result.pass && x.frames?.length && x.meta);
-    if (r) out.push(r);
+    if (!r) return [];
+    out.push(r);
   }
   return out;
 }
@@ -100,6 +104,8 @@ export type TryExportInput = {
   hint: string;
   /** what the model saw, before the fit, and what the fit said */
   label: TaskSpec | null;
+  /** what the label route said with it: a replay, a recording, a label from another clip */
+  labelWarnings: string[];
   fit: string[];
   /** the spec and program that passed on Earth and in orbit */
   spec: TaskSpec;
@@ -121,7 +127,7 @@ export function contentsOf(episodes: number, video: boolean, grounding: boolean)
     { path: "lerobot/meta/", what: "info.json, tasks.jsonl, episodes.jsonl, stats.json, episodes_stats.jsonl and modality.json, in the LeRobot v2.1 layout Isaac-GR00T N1.7 reads" },
     { path: "lerobot/QUALITY.md", what: "this report" },
     { path: "understudy/spec.json, program.json", what: "the task spec and the program that passed" },
-    { path: "understudy/label.json", what: "what the model saw in the clip, before the fit to the bench, and what the fit changed" },
+    { path: "understudy/label.json", what: "what the model saw in the clip, before the fit to the bench, what the label route said with it (a replay of a recording, possibly of another clip, says so here), and what the fit changed" },
     { path: "understudy/interview.json", what: "each round of questions the program asked and the answers given" },
     { path: "understudy/versions.json", what: "every version of the program on this page (compiles, recompiles, Notes patches) with what changed, each patch's model, tokens and price, and its last rehearsal result per world" },
     { path: "understudy/ledger.json", what: "the model calls the label, compile and Notes routes reported to this page, with tokens, seconds and price where known: live calls, and a replayed label's recorded calls. A compile taken from a sample's recording reports none here, and a replayed Notes patch may not; a patch's model, tokens and price are in versions.json" },
@@ -132,9 +138,9 @@ export function contentsOf(episodes: number, video: boolean, grounding: boolean)
 }
 
 /** The zip: throws when no passing rollout kept its frames. */
-export async function tryExport({ clip, hint, label, fit, spec, program, log, grounding, video }: TryExportInput): Promise<ExportResult> {
+export async function tryExport({ clip, hint, label, labelWarnings, fit, spec, program, log, grounding, video }: TryExportInput): Promise<ExportResult> {
   const runs = passingRuns(log, program);
-  if (runs.length === 0) throw new Error("no passing rollout of this program has been played on this page yet");
+  if (runs.length === 0) throw new Error("this program has not passed on Earth and in orbit on this page yet");
   const source = clip.sample ? clipSource(clip.name) : "upload";
   const task = instruction(spec);
   const episodes: EpisodeRecord[] = [];
@@ -168,7 +174,7 @@ export async function tryExport({ clip, hint, label, fit, spec, program, log, gr
         understudy: {
           spec,
           program,
-          label: { spec: label, fit },
+          label: { spec: label, warnings: labelWarnings, fit },
           interview: log.turns,
           versions: versionsWithResults(log),
           ledger: log.ledger,

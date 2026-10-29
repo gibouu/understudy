@@ -494,6 +494,7 @@ export function Flow() {
             clip={{ name: clip?.sample?.name ?? "upload", sample: Boolean(clip?.sample), duration_s: duration }}
             hint={hint}
             label={label.status === "done" ? label.value : null}
+            labelWarnings={label.status === "done" ? label.warnings : []}
             fit={fit?.warnings ?? []}
             spec={spec}
             program={program.value}
