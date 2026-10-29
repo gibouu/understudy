@@ -20,6 +20,8 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
   const [ms, setMs] = useState<number | null>(null);
   const client = useRef<SimClient | null>(null);
   const gen = useRef(0);
+  /** a run is under way: its partial bars go with its worker */
+  const live = useRef(false);
   // the worker goes when the page is hidden or left (an Activity keeps the state, not the worker): a run on its way is
   // dropped and the button comes back
   useEffect(
@@ -27,6 +29,8 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
       gen.current++;
       client.current?.dispose();
       client.current = null;
+      if (live.current) setScores([]);
+      live.current = false;
       setBusy(false);
     },
     [],
@@ -38,6 +42,7 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
     const spec = session.iterations[session.iterations.length - 1].spec;
     const n = plan.scenarios.length;
     setBusy(true);
+    live.current = true;
     setMs(null);
     setScores([]);
     const sim = (client.current ??= new SimClient());
@@ -61,6 +66,7 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
           put({ ...tally(results, n), done: results.filter(Boolean).length, error: (err as Error).message });
           sim.dispose();
           if (client.current === sim) client.current = null;
+          live.current = false;
           setBusy(false);
           return;
         }
@@ -68,6 +74,7 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
       }
     }
     setMs(performance.now() - started);
+    live.current = false;
     setBusy(false);
   }
 
