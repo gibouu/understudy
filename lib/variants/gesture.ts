@@ -15,12 +15,18 @@ import { MAX_VARIANTS, type NotYet } from "./parse";
 import type { Checked, Variant } from "./validate";
 
 /**
- * Slower: every point this many times later. The arm is held to 2 rad/s a joint (lib/sim/interpreter.ts
- * FOLLOW_JOINT_RAD_S) and already follows a quick path slower than the clip: iss-wave's at 0.46x. At 1.5x later
- * the arm would do the same as before; at 3x it follows the path at its own pace, about a quarter slower than the
- * task above. The card says at what speed the arm followed.
+ * Slower: this many times slower than the arm can follow the clip at all. The arm is held to 2 rad/s a joint
+ * (lib/sim/interpreter.ts FOLLOW_JOINT_RAD_S), so it already follows a quick path slower than the clip, and only
+ * a path slower than that changes what it does. How fast it can follow is worked out from the hand's speed, with
+ * no simulator here: FOLLOW_MM_S below. The card says at what speed the arm followed, against the clip.
  */
-export const SLOWER = 3;
+export const SLOWER = 1.5;
+/**
+ * The hand speed along the path (mm/s) the arm keeps up with under that cap, measured in the rehearsal: iss-wave's
+ * path peaks at 800 mm/s and was followed at 0.46x (370 mm/s), tests/sim/follow.test.ts's swing peaks at 1,484 mm/s
+ * and was followed at 0.26x (380 mm/s). Taken lower, so a slower path is slower than the arm's own pace.
+ */
+export const FOLLOW_MM_S = 300;
 /** Bigger: this many times as large, at most; smaller, when there is no room for bigger. */
 export const BIGGER = 1.5;
 export const SMALLER = 0.6;
@@ -51,6 +57,16 @@ export function timeScale(path: PathPoint[], k: number): PathPoint[] {
 }
 
 const span = (xs: number[]) => [Math.min(...xs), Math.max(...xs)] as const;
+
+/** The fastest the hand moves along a path between two points, mm/s. */
+export function peakSpeed(path: PathPoint[]): number {
+  return Math.max(0, ...path.slice(1).map((q, k) => Math.hypot(q.xyz_mm[0] - path[k].xyz_mm[0], q.xyz_mm[1] - path[k].xyz_mm[1], q.xyz_mm[2] - path[k].xyz_mm[2]) / (q.t_s - path[k].t_s)));
+}
+
+/** How many times later every point of a slower path is: SLOWER times what the arm needs to keep up, if it needs more time at all. */
+export function slowerFactor(paths: PathPoint[][]): number {
+  return Math.round(SLOWER * Math.max(1, ...paths.map((p) => peakSpeed(p) / FOLLOW_MM_S)) * 10) / 10;
+}
 
 /**
  * The path scaled by up to `k` about the centre of its extent in y and z,
@@ -126,10 +142,11 @@ function ideas(spec: TaskSpec): { ideas: Idea[]; not_yet: NotYet[] } {
       gesture: (g) => ({ ...g, path: mirrorPath(g.path), ...(g.hand ? { hand: g.hand === "left" ? ("right" as const) : ("left" as const) } : {}) }),
     });
   const long = Math.max(...steps.map((s) => s.gesture!.path.at(-1)!.t_s));
+  const slow = slowerFactor(steps.map((s) => s.gesture!.path));
   out.push({
     title: "Slower",
-    summary: `The same path at ${(1 / SLOWER).toFixed(2)}x the clip's speed: ${long.toFixed(1)} s becomes ${(long * SLOWER).toFixed(1)} s.`,
-    gesture: (g) => ({ ...g, path: timeScale(g.path, SLOWER) }),
+    summary: `The same path ${slow}x slower than the clip: ${long.toFixed(1)} s becomes ${(long * slow).toFixed(1)} s, slower than the arm can follow the clip itself.`,
+    gesture: (g) => ({ ...g, path: timeScale(g.path, slow) }),
   });
   const grow = Math.min(...steps.map((s) => sizeScale(s.gesture!.path, BIGGER).k));
   const box = `${Y1 - Y0} × ${Z1 - Z0} mm`;

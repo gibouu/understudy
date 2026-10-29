@@ -11,10 +11,10 @@ import { POST as variantsRoute } from "@/app/api/variants/route";
 import { baseOf } from "@/lib/showcase/prerun";
 import { loadEngine, rollout, type Engine } from "@/lib/showcase/rehearse";
 import { Session } from "@/lib/showcase/session";
-import { BOX_Y_MM, BOX_Z_MM, PLANE_X_MM } from "@/lib/sim/gesture";
+import { BOX_Y_MM, BOX_Z_MM, gestureProgram, PLANE_X_MM, scalePath, type HandSample } from "@/lib/sim/gesture";
 import type { PathPoint, Program, TaskSpec } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
-import { clipPace, GESTURE_VARIANTS_NOTE, gestureVariants, mirrorPath, sizeScale, SLOWER, timeScale } from "@/lib/variants/gesture";
+import { clipPace, GESTURE_VARIANTS_NOTE, gestureVariants, mirrorPath, peakSpeed, sizeScale, SLOWER, slowerFactor, timeScale } from "@/lib/variants/gesture";
 import { buildVariant, physicalKey, type Checked } from "@/lib/variants/validate";
 import { issBase } from "./harness";
 
@@ -107,7 +107,10 @@ describe("similar tasks of the iss-wave recording", () => {
     }
     const [mirror, slower] = variants;
     expect(mirror.spec.steps[0].gesture!.path).toEqual(mirrorPath(base.steps[0].gesture!.path));
-    expect(slower.spec.steps[0].gesture!.path.at(-1)!.t_s).toBeCloseTo(base.steps[0].gesture!.path.at(-1)!.t_s * SLOWER, 2);
+    const k = slowerFactor([base.steps[0].gesture!.path]);
+    // the wave peaks at 800 mm/s: the arm needs about 2.2 times the clip's time, and the slower one gets 1.5 times that
+    expect(k).toBe(4);
+    expect(slower.spec.steps[0].gesture!.path.at(-1)!.t_s).toBeCloseTo(base.steps[0].gesture!.path.at(-1)!.t_s * k, 2);
   });
 
   it("answers from /api/variants with no model, live or replayed, and a line gets no variant", async () => {
@@ -139,6 +142,19 @@ describe("similar tasks of the iss-wave recording", () => {
       }
     }
   }, 240_000);
+
+  it("slows a quicker path by more, so the arm still does it slower than the task above", () => {
+    // tests/sim/follow.test.ts's swing: twice a second, 12 cm either way; the arm follows it at 0.26x
+    const samples: HandSample[] = Array.from({ length: 41 }, (_, i) => ({ t_s: i / 10, x_m: 0.12 * Math.sin(4 * Math.PI * (i / 10)), y_m: -0.4 - 0.03 * Math.abs(Math.cos(4 * Math.PI * (i / 10))) }));
+    const swing = gestureSpec(scalePath(samples, 0.6).path);
+    expect(peakSpeed(swing.steps[0].gesture!.path)).toBeGreaterThan(1400);
+    const slower = gestureVariants(swing).variants.find((v) => v.title === "Slower")!;
+    const before = rollout(engine, swing, gestureProgram(swing)!, "earth");
+    const after = rollout(engine, slower.spec, gestureProgram(slower.spec)!, "earth");
+    expect(before.pass && after.pass).toBe(true);
+    expect(after.followed![0].speed).toBe(1);
+    expect(after.t).toBeGreaterThan(before.t * 1.15);
+  }, 120_000);
 
   it("never turns a task that puts an object somewhere into a gesture, nor lets one claim to wave", async () => {
     const iss = (await issBase()).spec;

@@ -592,8 +592,12 @@ function why(result?: WorldResult, pace: Record<string, number> = {}): string {
   if (!result || result === "running") return "";
   if ("error" in result) return result.error;
   // a gesture's only check is the path: say how closely the arm followed it, at what speed against the clip
-  const reach = result.followed?.map((f) => describeReach({ ...f, speed: f.speed * (pace[f.step_id] ?? 1) })).join("; ");
-  return result.pass ? (reach ? `${reach}, done in ${result.t.toFixed(1)} s` : `done in ${result.t.toFixed(1)} s`) : (result.why ?? "");
+  const said = (f: NonNullable<Rollout["followed"]>[number]) => describeReach({ ...f, speed: f.speed * (pace[f.step_id] ?? 1) });
+  const reach = result.followed?.map(said).join("; ");
+  if (result.pass) return reach ? `${reach}, done in ${result.t.toFixed(1)} s` : `done in ${result.t.toFixed(1)} s`;
+  // a path missed is said again at the clip's pace (lib/sim/interpreter.ts writes it against the path it was given)
+  const missed = result.followed?.find((f) => f.step_id === result.failed_step_id && f.missed.length > 0);
+  return missed && result.why?.startsWith("follow: ") ? `follow: ${said(missed)}` : (result.why ?? "");
 }
 
 /** One changed field in plain words: what it was, what it is in this variant. */
