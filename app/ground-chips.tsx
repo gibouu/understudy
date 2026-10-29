@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { groundingRecord, type GroundingRecord } from "@/lib/export/grounding";
 import { applyChanges } from "@/lib/spec/apply";
 import { chipChange, chipEffect, type Chip, type Grounding } from "@/lib/spec/ground";
@@ -42,6 +42,14 @@ export function GroundChips({ spec, busy, onSpec, onGrounding }: { spec: TaskSpe
   const [result, setResult] = useState<StageResult<Grounding>>(idle());
   const [added, setAdded] = useState<number[]>([]);
   const [note, setNote] = useState("");
+  /** a lookup that lands after the chips left the page (a new clip) must not reach that page's export */
+  const gone = useRef(false);
+  useEffect(() => {
+    gone.current = false;
+    return () => {
+      gone.current = true;
+    };
+  }, []);
 
   async function look() {
     setResult(running(`Tavily is searching and reading the top pages; ${say("nano")} keeps the sentences that name this task`));
@@ -50,10 +58,12 @@ export function GroundChips({ spec, busy, onSpec, onGrounding }: { spec: TaskSpe
       const res = await fetch("/api/ground", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ spec, ...liveAuth() }) });
       const r = (await res.json()) as StageResult<Grounding>;
       keepCall("/api/ground", { spec }, r, at);
+      if (gone.current) return;
       setResult(r);
       setAdded([]);
       onGrounding?.(groundingRecord(r, []));
     } catch (err) {
+      if (gone.current) return;
       setResult(failed((err as Error).message));
       onGrounding?.(null);
     }

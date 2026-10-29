@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { BatchResult } from "@/lib/sim/batch";
 import { SimClient } from "@/lib/sim/client";
 import type { SaboteurPlan } from "@/lib/saboteur/ask";
@@ -36,8 +36,10 @@ const offsetText = (s: Scenario) => `${s.offset > 0 ? "+" : "−"}${Math.abs(s.o
  * spec with no model), each run blind (the program is told the poses the spec has, the world is moved) and sensed
  * (it is told the true ones), on Earth and in orbit, through the headless batch (lib/sim/batch.ts) in a worker of
  * its own. It runs what passed the rehearsal of `program` in both worlds, a patch included (app/passed.ts); nothing until then.
+ * `onPlan` hears the twelve once they are chosen (null when none came), with the spec they were chosen for: the
+ * scoreboard below runs on them (app/try-scoreboard.tsx).
  */
-export function Saboteur({ spec, program: given }: { spec: TaskSpec; program: Program }) {
+export function Saboteur({ spec, program: given, onPlan }: { spec: TaskSpec; program: Program; onPlan?: (plan: SaboteurPlan | null, spec: TaskSpec) => void }) {
   const say = useModels();
   const program = usePassed(given);
   const [plan, setPlan] = useState<StageResult<SaboteurPlan>>(idle());
@@ -47,8 +49,11 @@ export function Saboteur({ spec, program: given }: { spec: TaskSpec; program: Pr
   /** bumped when the spec or the program changes, or the section goes: results on their way are dropped */
   const gen = useRef(0);
 
+  // a grid reset by a new spec or program: the scoreboard below loses its twelve too
+  const dropPlan = useEffectEvent(() => onPlan?.(null, spec));
   useEffect(() => {
     gen.current++;
+    dropPlan();
     setPlan(idle());
     setGrids({});
     setBusy(false);
@@ -69,9 +74,11 @@ export function Saboteur({ spec, program: given }: { spec: TaskSpec; program: Pr
     setBusy(true);
     setGrids({});
     setPlan(running(`${say("super")} is choosing twelve ways to perturb the world`));
+    onPlan?.(null, spec);
     const p = await post<SaboteurPlan>("/api/saboteur", { spec });
     if (id !== gen.current) return;
     setPlan(p);
+    onPlan?.(p.status === "done" ? p.value : null, spec);
     if (p.status !== "done") return setBusy(false);
     const client = (clientRef.current ??= new SimClient());
     const scenarios = p.value.scenarios;
