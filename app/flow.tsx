@@ -220,7 +220,13 @@ export function Flow() {
     // with the playbook on, an answer not made with it (a replay with no such recording, a failure) never beats the clip's recording
     const recorded = rules && !fresh && !madeWithPlaybook(r) && clip?.rec ? turnFor(clip.rec, next) : null;
     if (recorded && clip?.rec) {
-      setProgram(done(recorded.program, [PLAYBOOK_NOT_USED, recordedNote(clip.rec, "compile"), ...recorded.warnings]));
+      // a live request it replaced still cost what it cost (a replayed one cost nothing, and a sample's recording
+      // reports no calls); the recording is a version like any other, for the download and the scoreboard
+      const replayed = r.status === "done" && r.warnings.some((w) => w.startsWith("replay"));
+      paid("compile", !replayed && (r.status === "done" || r.status === "failed") ? r.ledger : undefined);
+      const shown = [PLAYBOOK_NOT_USED, recordedNote(clip.rec, "compile"), ...recorded.warnings];
+      version(source, next, recorded.program, shown, changes);
+      setProgram(done(recorded.program, shown));
       setProgramBy(recordedBy(clip.rec, "compile"));
       setAnswers(formAnswers(next, recorded));
       return;
