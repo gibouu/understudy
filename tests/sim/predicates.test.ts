@@ -1,11 +1,10 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { TUBE_SPEC } from "./tube-spec";
 import { environment, runToEnd } from "@/lib/sim/interpreter";
 import { evaluate } from "@/lib/sim/predicates";
-import { SO101_HOME, SO101_XML, stageXml } from "@/lib/sim/so101";
+import { SO101_HOME, stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { Predicate, Program } from "@/lib/spec/schema";
 
 const env = environment(TUBE_SPEC);
@@ -14,15 +13,9 @@ let model: MjModel;
 let data: MjData;
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  const vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
-  model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { graspable: env.graspable }), vfs);
+  mujoco = await loadSo101();
+  model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { graspable: env.graspable }));
   data = new mujoco.MjData(model);
-  vfs.delete();
 }, 60_000);
 afterAll(() => {
   data?.delete();

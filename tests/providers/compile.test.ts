@@ -1,23 +1,16 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
-import type { MainModule, MjVFS } from "@mujoco/mujoco";
+import type { MainModule } from "@mujoco/mujoco";
 import { beforeAll, describe, expect, it } from "vitest";
 import recordings from "@/tests/fixtures/compile.json";
 import { POST } from "@/app/api/compile/route";
 import { environment, runToEnd } from "@/lib/sim/interpreter";
-import { SO101_XML, stageXml } from "@/lib/sim/so101";
+import { stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { Program, TaskSpec } from "@/lib/spec/schema";
 
 let mujoco: MainModule;
-let vfs: MjVFS;
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+  mujoco = await loadSo101();
 }, 60_000);
 
 const [bare, answered] = recordings.map((r) => ({ spec: TaskSpec.parse(r.spec), program: Program.parse((r.result as { value: unknown }).value) }));
@@ -25,7 +18,7 @@ const asks = (p: Program) => p.steps.flatMap((s) => s.ops).filter((op) => op.op 
 
 function rollout(spec: TaskSpec, program: Program, gravity_g: number) {
   const env = environment(spec, { id: "t", name: "t", axis: "x_mm", offset: 0, object: spec.objects[0].id, expected: "unknown", why: "", gravity_g });
-  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: env.gravity_g, graspable: env.graspable }), vfs);
+  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: env.gravity_g, graspable: env.graspable }));
   const data = new mujoco.MjData(model);
   try {
     return runToEnd({ mujoco, model, data }, env, program, "sensed");
