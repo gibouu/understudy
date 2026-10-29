@@ -6,8 +6,8 @@
  * items for fields that came from the clip or from the person's answers, and
  * open risks (lib/reshoot/reshoot.ts); the reply is validated with zod and
  * its reshoot items checked against the spec's sources. `unlock` or
- * `sample_token` lets it go live (lib/unlock/check.ts; it counts against the
- * Notes route's live calls per minute, the stage it follows). Replay (no key,
+ * `sample_token` lets it go live (lib/unlock/check.ts; its own ceiling of live
+ * calls per minute in lib/unlock/cap.ts, #193). Replay (no key,
  * ?replay=1, or no way past the spend guard) answers from
  * tests/fixtures/reshoot.json: the list recorded for the same task.
  */
@@ -49,7 +49,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Resho
   const b = parsed.data;
   const outcome = finalOutcome(b);
   if (wantsReplay(req)) return NextResponse.json(replay(b, outcome));
-  const gate = await liveGate("notes", body);
+  const gate = await liveGate("reshoot", body);
   if (!gate.live) return NextResponse.json(explain(replay(b, outcome), gate));
   const base = tokenFactory({ timeout: 80_000, maxRetries: 0 });
   if (!base) return NextResponse.json(replay(b, outcome));

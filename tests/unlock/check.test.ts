@@ -135,6 +135,17 @@ describe("the gate on the routes after the label", () => {
 });
 
 describe("the ceiling on live calls per instance", () => {
+  it("gives the reshoot list and the grid their own ceilings, so neither uses up the patch loop's (#193)", () => {
+    vi.stubEnv("VERCEL_ENV", "preview");
+    const t = Date.now();
+    for (let i = 0; i < LIVE_PER_MINUTE.reshoot; i++) expect(takeLiveCall("reshoot", t)).toBe(true);
+    expect(takeLiveCall("reshoot", t + 1000)).toBe(false);
+    for (let i = 0; i < LIVE_PER_MINUTE.saboteur; i++) expect(takeLiveCall("saboteur", t)).toBe(true);
+    expect(takeLiveCall("saboteur", t + 1000)).toBe(false);
+    expect(takeLiveCall("notes", t + 1000)).toBe(true);
+    expect(takeLiveCall("variants", t + 1000)).toBe(true);
+  });
+
   it("is not counted outside a Vercel deployment", () => {
     for (let i = 0; i < 100; i++) expect(takeLiveCall("ground")).toBe(true);
   });
