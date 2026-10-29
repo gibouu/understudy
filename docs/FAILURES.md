@@ -47,7 +47,7 @@ This is the kept run of four (`bench/rerecord/iss-glovebox-pipette/`); in the th
 **There is no failing rollout for a wrong commanded aperture, because the rehearsal does not simulate one.** A `grasp` op carries `aperture_mm`, and the interpreter does not read it: the jaws close until both touch the object and the moving jaw has stopped, and then the object is welded to the gripper (`lib/sim/grasp.ts`; `lib/notes/knobs.ts` says the same, which is why the aperture is no patch knob). Two constructed cases, made on purpose for this page and asserted by the test:
 
 - the kept glovebox program with its grasp at 5 mm instead of 25 mm, for a 25 mm object: the rollout passes, at the same simulated time and with the same log apart from the grasp line;
-- the same program with the object made 120 mm on a side (and the cartridge 160 mm, so its pocket can still be built), where `lib/sim/so101.ts` says the jaws open to about 60 mm: "grasp pipette: held", and the rollout passes.
+- the same program with the object made 120 mm on a side (and the cartridge 160 mm, so its pocket can still be built): "grasp pipette: held", and the rollout passes. The gate asks that each jaw touch the object (`jawsTouch` in `lib/sim/grasp.ts`), not that the object be between them.
 
 So a grasp aperture in a program, whether the compiler wrote it or an answer gave it, is kept with the program and not checked by the rehearsal. The nearest failure the simulator does produce is a grasp that misses.
 
