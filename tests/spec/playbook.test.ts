@@ -21,7 +21,7 @@ describe("the seed playbook", () => {
       ["pocket-wait-still-orbit", "pocket", "notes#1", true],
       ["pocket-release-above-floor", "pocket", "notes#2", true],
       ["zone-settle-before-release", "zone", "bench#r2-playbook3.1", false],
-      ["pour-tilt-further", "pour", "bench#r2-playbook3.2", false],
+      ["pour-tilt-longer", "pour", "bench#r2-playbook3.2", false],
     ]);
     expect(new Set(PLAYBOOK.map((r) => r.id)).size).toBe(PLAYBOOK.length);
     expect(DEFAULT_ON).toEqual(["pocket-lift-reach", "zone-lift-reach", "pocket-wait-still-orbit", "pocket-release-above-floor"]);
@@ -53,6 +53,29 @@ describe("the seed playbook", () => {
   });
 });
 
+describe("the bench rules", () => {
+  type BenchRun = { probe: string; gravity: string; passed_at: number | null; iterations: { knobs: Record<string, unknown> }[] };
+  const bench = JSON.parse(readFileSync(path.join(process.cwd(), "bench", "results", "patch-loop.json"), "utf8")) as { arms: Record<string, { runs: BenchRun[]; playbook?: { from_runs: number } }> };
+  // the repairs r2-playbook3 was distilled from (tests/measure/patch-loop.test.ts distil): super-off, Earth and Mars, fixed by a patch
+  const fixes = bench.arms["super-off"].runs.filter((r) => (r.gravity === "earth" || r.gravity === "mars") && r.passed_at !== null && r.passed_at > 0);
+  const changed = (r: BenchRun) => Object.fromEntries(Object.entries(r.iterations[r.passed_at!].knobs).filter(([k, v]) => r.iterations[0].knobs[k] !== v));
+
+  it("count the repairs as the raw runs have them, not as the distillation summed them up", () => {
+    expect(fixes.length).toBe(bench.arms["r2-playbook3"].playbook!.from_runs);
+    const place = fixes.filter((r) => r.probe === "place").map(changed);
+    expect(place.length).toBe(7);
+    expect(place.every((c) => c.release_height_mm === 0)).toBe(true);
+    expect(place.filter((c) => c.release_speed_mm_s === 5 && c.wait_before_release_s === 2).length).toBe(4);
+    const pour = fixes.filter((r) => r.probe === "pour").map(changed);
+    expect(pour.length).toBe(9);
+    expect(pour.every((c) => typeof c.tilt_s === "number" && c.tilt_s >= 1.5 && c.tilt_s <= 4 && (c.target_offset_mm === 10 || c.target_offset_mm === 40))).toBe(true);
+    expect(pour.filter((c) => c.tilt_deg === 100).length).toBe(4);
+    expect(pour.filter((c) => c.strategy === "hold-and-wait").length).toBe(4);
+    expect(PLAYBOOK.find((r) => r.id === "zone-settle-before-release")!.evidence.change).toContain("in all 7 repairs");
+    expect(PLAYBOOK.find((r) => r.id === "pour-tilt-longer")!.evidence.change).toContain("in all 9 repairs; tilt_deg 90 → 100 in 4");
+  });
+});
+
 describe("matchRules", () => {
   const pipette = session("iss-glovebox-pipette").iterations[1].spec;
   const chess = session("dev-clip").iterations[1].spec;
@@ -61,11 +84,11 @@ describe("matchRules", () => {
   it("gives a spec only the rules of its own kind of task", () => {
     expect(matchRules(pipette, all).map((r) => r.id)).toEqual(["pocket-lift-reach", "pocket-wait-still-orbit", "pocket-release-above-floor"]);
     expect(matchRules(chess, all).map((r) => r.id)).toEqual(["zone-lift-reach", "zone-settle-before-release"]);
-    expect(matchRules(POUR_SPEC, all).map((r) => r.id)).toEqual(["pour-tilt-further"]);
+    expect(matchRules(POUR_SPEC, all).map((r) => r.id)).toEqual(["pour-tilt-longer"]);
   });
 
   it("keeps only the rules left on, and ignores an id it does not have", () => {
-    expect(matchRules(pipette, ["pocket-release-above-floor", "made-up", "pour-tilt-further"]).map((r) => r.id)).toEqual(["pocket-release-above-floor"]);
+    expect(matchRules(pipette, ["pocket-release-above-floor", "made-up", "pour-tilt-longer"]).map((r) => r.id)).toEqual(["pocket-release-above-floor"]);
     expect(matchRules(pipette, [])).toEqual([]);
   });
 
@@ -91,7 +114,7 @@ describe("the prompt and the citation", () => {
 
   it("cites only the rules it was given", () => {
     const rules = PLAYBOOK.slice(0, 2);
-    expect(citedRules(["pocket-lift-reach", "playbook#zone-lift-reach", "pour-tilt-further", 3], rules)).toEqual(["playbook#pocket-lift-reach", "playbook#zone-lift-reach"]);
+    expect(citedRules(["pocket-lift-reach", "playbook#zone-lift-reach", "pour-tilt-longer", 3], rules)).toEqual(["playbook#pocket-lift-reach", "playbook#zone-lift-reach"]);
     expect(citedRules("pocket-lift-reach", rules)).toEqual([]);
   });
 });

@@ -29,7 +29,7 @@ import { describe, expect, it, vi } from "vitest";
 import { loadEngine, rehearse } from "@/lib/showcase/rehearse";
 import { Session } from "@/lib/showcase/session";
 import { DEFAULT_ON, matchRules, PLAYBOOK, playbookSection } from "@/lib/spec/playbook";
-import { Program, type TaskSpec } from "@/lib/spec/schema";
+import { PlaybookProgram, type Program, type TaskSpec } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
 
 const ROOT = process.cwd();
@@ -149,7 +149,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("the playbook against a matched 
               continue;
             }
             if (job.arm === "own" && job.clip === "iss-glovebox-pipette" && !firstOwn.has("answered")) firstOwn.set("answered", { spec, playbook: rules.map((x) => x.id), result: r });
-            const program = Program.parse(r.value);
+            const program = PlaybookProgram.parse(r.value);
             const earth = rehearse(engine, spec, program, "earth");
             const orbit = rehearse(engine, spec, program, "orbit");
             rows.push({ ...job, ok: true, earth: earth.pass, orbit: orbit.pass, why: earth.pass ? orbit.why : earth.why, cited: program.playbook ?? [], calls: store.calls, usd: store.usd });

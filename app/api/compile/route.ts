@@ -20,7 +20,7 @@ import recordings from "@/tests/fixtures/compile.json";
 import { callModel } from "@/lib/providers/call";
 import { tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { normalizeProgram, resolveFixtureNames } from "@/lib/spec/normalize";
-import { AXES, PREDICATE_OPERANDS, Program, TaskSpec } from "@/lib/spec/schema";
+import { AXES, PlaybookProgram, PREDICATE_OPERANDS, Program, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type StageResult } from "@/lib/spec/stage-result";
 import { lintProgram, validateProgram } from "@/lib/spec/validate";
 import { canonicalSlot, valueAt } from "@/lib/spec/apply";
@@ -180,7 +180,8 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
         system: COMPILE_SYSTEM,
         user: `Task spec:\n${JSON.stringify(spec.data)}\n\nMoves for this spec:\n${geometry(spec.data)}${rules ? `\n\n${playbookSection(rules)}` : ""}`,
         maxTokens: 3000,
-        schema: Program,
+        // the playbook's answer has one more key; with it off the answer is parsed exactly as before
+        schema: rules ? PlaybookProgram : Program,
         shape: `{"spec_title":string,"steps":[{"step_id":string,"ops":[op, ...]}, ...],"warnings":[string]${rules ? `,"playbook":[rule id]` : ""}}: every entry of steps is an object with step_id and ops, and warnings is a key of the answer, after the closing bracket of steps`,
         normalize: normalizeProgram,
         check: (p) => lintProgram(resolveFixtureNames(p, spec.data).program, spec.data),

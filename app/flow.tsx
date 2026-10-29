@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { estimate, usual, type Stage } from "@/lib/estimate";
 import { SAMPLES, type Sample } from "@/lib/samples";
 import { formAnswers, recordedBy, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
@@ -79,7 +79,13 @@ export function Flow() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [turn, setTurn] = useState(0);
   const [notes, setNotes] = useState<string[]>([]);
-  const [failure, setFailure] = useState<Failure | null>(null);
+  const [failure, setFailureState] = useState<Failure | null>(null);
+  /** the failure on screen, read by a compile started from a callback that closed over an older render (the playbook narrows to it) */
+  const failureRef = useRef<Failure | null>(null);
+  const setFailure = useCallback((f: Failure | null) => {
+    failureRef.current = f;
+    setFailureState(f);
+  }, []);
   /** the playbook switch (#56), off unless turned on; a ref too, so a compile started by the switch reads the new state */
   const [playbook, setPlaybook] = useState(PLAYBOOK_OFF);
   const playbookRef = useRef(PLAYBOOK_OFF);
@@ -155,7 +161,7 @@ export function Flow() {
   async function compile(next: TaskSpec, previous?: Program, fresh = false) {
     const id = gen.current;
     // the playbook's rules for this spec, none with the switch off: then the request is the one from before it
-    const rules = playbookAsk(playbookRef.current, next, failure);
+    const rules = playbookAsk(playbookRef.current, next, failureRef.current);
     setFailure(null);
     const turn = !fresh && !rules && clip?.rec ? turnFor(clip.rec, next) : null;
     if (turn && clip?.rec) {

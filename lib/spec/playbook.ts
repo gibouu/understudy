@@ -7,8 +7,9 @@
  *
  * The seed set is written by hand from the recordings, with no model: every Notes patch in the space
  * showcase (public/showcase/<clip>.json) that turned a failing world into a passing one, or cleared the
- * failure it was made for, and the two rules the bench distilled (bench/results/patch-loop.json, arm
- * r2-playbook3). tests/spec/playbook.test.ts pins each showcase rule's evidence to its recording.
+ * failure it was made for, and the two tasks the bench distilled rules for (bench/results/patch-loop.json,
+ * arm r2-playbook3), their evidence counted from the super-off repairs that distillation was given, not
+ * from Super's own summary of them. tests/spec/playbook.test.ts pins every rule's evidence to its source.
  *
  * Off by default. With the switch on, /try sends the ids of the rules left on; /api/compile keeps those
  * that match the spec (matchRules) and puts them in Nano's user message (playbookSection).
@@ -121,29 +122,29 @@ export const PLAYBOOK: readonly Rule[] = [
     failure_class: "check_failed",
     axis: "z_mm",
     condition: "the object is placed upright while the base accelerates sideways, and topples when let go above the surface",
-    hint: "set the object down with its bottom on the zone's top (the listed move 1 mm above it, 1 mm lower), and wait until it is still before opening the gripper",
+    hint: "set the object down with its bottom on the zone's top (the listed move 1 mm above it, 1 mm lower) before opening the gripper; under a strong sideways push, also wait for it to be still before opening",
     evidence: {
-      clip: "bench: place probe (tests/measure/patch-probes.ts), Earth 1 g and Mars 0.379 g, vehicle acceleration 0.05 to 0.2 g",
-      change: "release_height_mm 0, release_speed_mm_s about 5, wait_before_release_s about 2",
+      clip: "bench: place probe (tests/measure/patch-probes.ts), Earth 1 g and Mars 0.379 g, sideways acceleration 0.05 or 0.2 g",
+      change: "release_height_mm 10 → 0 in all 7 repairs; under 0.2 g (4 of them) also release_speed_mm_s 20 → 5 and wait_before_release_s 0 → 2",
       before: "the naive place toppled",
-      after: "8 repairs passed",
+      after: "7 repairs passed (super-off arm, seeds 1 to 3)",
     },
     source: "bench#r2-playbook3.1",
     on: false,
     note: "learned on the bench's knob programs under a sideways acceleration that /try does not rehearse",
   },
   {
-    id: "pour-tilt-further",
+    id: "pour-tilt-longer",
     fixture: "pour",
     failure_class: "check_failed",
-    axis: "tilt_deg",
+    axis: null,
     condition: "beads are left in the source container after the tilt",
-    hint: "tilt the container to about 100° rather than 90°, over at least 1.5 s",
+    hint: "tilt for longer than the listed time (1.5 to 4 s rather than 1 s), and hold the tilt until the target is reached when it is farther away",
     evidence: {
-      clip: "bench: pour probe (tests/measure/patch-probes.ts), Earth 1 g and Mars 0.379 g, with and without a 30 mm target offset",
-      change: "tilt_deg about 100, tilt_s 1.5 to 4, target_offset_mm 10 to 40, hold-and-wait when the target was farther",
+      clip: "bench: pour probe (tests/measure/patch-probes.ts), Earth 1 g and Mars 0.379 g, with and without the target 30 mm farther",
+      change: "tilt_s 1 → 1.5 to 4 and target_offset_mm 0 → 10 (40 with the target farther) in all 9 repairs; tilt_deg 90 → 100 in 4; hold-and-wait in the 4 with the target farther",
       before: "beads left in the source",
-      after: "9 repairs passed",
+      after: "9 repairs passed (super-off arm, seeds 1 to 3)",
     },
     source: "bench#r2-playbook3.2",
     on: false,

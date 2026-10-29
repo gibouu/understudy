@@ -12,6 +12,7 @@ import { Session } from "@/lib/showcase/session";
 import { DEFAULT_ON, PLAYBOOK } from "@/lib/spec/playbook";
 
 const sent: unknown[] = [];
+let twoDrafts = false;
 const session = (clip: string) => Session.parse(JSON.parse(readFileSync(path.join(process.cwd(), "public", "showcase", `${clip}.json`), "utf8")));
 
 vi.mock("@/lib/providers/tokenfactory", async (original) => {
@@ -30,7 +31,9 @@ vi.mock("@/lib/providers/tokenfactory", async (original) => {
             // with the playbook on, the fake says it applied every rule it was given, and one it was not
             const given = [...args.messages[1].content.matchAll(/^- ([a-z-]+) \(learned on/gm)].map((m) => m[1]);
             const answer = given.length ? { ...program, playbook: [...given, "zone-lift-reach"] } : program;
-            return { choices: [{ message: { content: JSON.stringify(answer) } }], usage: { prompt_tokens: 10, completion_tokens: 3 } };
+            // two drafts that differ only in a playbook key: read as one program, as before the playbook
+            const content = twoDrafts ? `${JSON.stringify({ ...program, playbook: ["a"] })}\n${JSON.stringify({ ...program, playbook: ["b"] })}` : JSON.stringify(answer);
+            return { choices: [{ message: { content } }], usage: { prompt_tokens: 10, completion_tokens: 3 } };
           },
         },
       },
@@ -45,7 +48,7 @@ describe("the playbook switch off", () => {
     ["iss-glovebox-pipette", 1, "d1cbad7a06ab049312c0703995451547d5821a6d927c92206b143b7869e162f9", "136089731a63069dc0e89dcd0fdd6110516f596f74432d456beecd223792df62"],
     ["iss-veggie-seed-film", 1, "31f565e1037e4bd2e248b33d2ce960f5b48675b3f6e09e430508f8dede964ed6", "0dadfcb5233b898e7b906dc3e4539816f313627116e7aa509a553ba2b518dba6"],
   ] as const)("%s: the request and the answer are the ones from before the playbook", async (clip, i, request, reply) => {
-    for (const playbook of [undefined, { rules: [] }, { rules: ["zone-lift-reach", "pour-tilt-further"] }, { rules: [...DEFAULT_ON], failure: "spec_gap" }]) {
+    for (const playbook of [undefined, { rules: [] }, { rules: ["zone-lift-reach", "pour-tilt-longer"] }, { rules: [...DEFAULT_ON], failure: "spec_gap" }]) {
       const { ledger, ...rest } = await post(session(clip).iterations[i].spec, playbook);
       expect(ledger.length).toBeGreaterThan(0);
       expect(sha(sent), JSON.stringify(playbook)).toBe(request);
@@ -60,6 +63,20 @@ async function post(spec: unknown, playbook?: unknown) {
   const res = await POST(new Request("http://localhost/api/compile", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(playbook === undefined ? { spec } : { spec, playbook }) }));
   return res.json();
 }
+
+describe("the playbook switch off, an answer with a stray playbook key", () => {
+  it("is parsed as before the playbook: one call, the key dropped", async () => {
+    twoDrafts = true;
+    try {
+      const r = await post(session("iss-glovebox-pipette").iterations[1].spec);
+      expect(sent.length).toBe(1);
+      expect(r.status).toBe("done");
+      expect(r.value.playbook).toBeUndefined();
+    } finally {
+      twoDrafts = false;
+    }
+  });
+});
 
 describe("the playbook switch on", () => {
   it("sends only the rules of the spec's kind of task, and the program cites only those it was given", async () => {

@@ -26,7 +26,7 @@ export function playbookAsk(state: PlaybookState, spec: TaskSpec, failure: Failu
 /** The switch, and every rule with its evidence; a rule for another kind of task is shown greyed, and never sent. */
 export function Playbook({ spec, state, failure, busy, onChange, onRecompile }: { spec: TaskSpec; state: PlaybookState; failure: Failure | null; busy: boolean; onChange: (s: PlaybookState, recompile: boolean) => void; onRecompile: () => void }) {
   const kinds = kindsOf(spec);
-  const sent = new Set(state.on ? matchRules(spec, state.rules, seen(failure)).map((r) => r.id) : []);
+  const next = new Set(state.on ? matchRules(spec, state.rules, seen(failure)).map((r) => r.id) : []);
   return (
     <section className="rounded-xl border p-5" aria-label="Playbook">
       <label className="flex items-center gap-2 text-sm font-medium">
@@ -54,7 +54,7 @@ export function Playbook({ spec, state, failure, busy, onChange, onRecompile }: 
                     <span>
                       <span className="font-mono">playbook#{r.id}</span> · {r.fixture} · {r.failure_class.replace("_", " ")}
                       {r.axis ? ` · ${r.axis}` : ""}
-                      {sent.has(r.id) ? <span className="ml-1 text-emerald-700">sent with this spec</span> : !mine ? <span className="ml-1">not for this kind of task</span> : null}
+                      {next.has(r.id) ? <span className="ml-1 text-emerald-700">goes with the next compile</span> : !mine ? <span className="ml-1">not for this kind of task</span> : null}
                       <span className="block text-neutral-700">
                         When {r.condition}: {r.hint}.
                       </span>
