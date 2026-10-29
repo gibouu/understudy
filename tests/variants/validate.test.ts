@@ -209,6 +209,13 @@ describe("a variant of the ISS sample", () => {
     expect(why(build(["objects[obj1].pose", { xyz_mm: [0, 0, 35], yaw_deg: 90, frame: "obj2" }]))).toBe("");
   });
 
+  it("accepts a start lying across two adjacent rims of a pocket, at a corner, with its centre between them (#109)", () => {
+    // the 40 x 10 mm packet turned -30 degrees over the 50 x 20 mm opening: one end on the +x rim, the other on the +y rim
+    expect(why(build(["objects[obj1].pose", { xyz_mm: [20, 8, 35], yaw_deg: -30, frame: "obj2" }]))).toBe("");
+    // the same turn further from the corner: only the +y rim under it, so it tips in
+    expect(why(build(["objects[obj1].pose", { xyz_mm: [-5, 6, 35], yaw_deg: -30, frame: "obj2" }]))).toBe("seed film packet would start across the edge of Veggie plant pillow tray's pocket and tip in");
+  });
+
   it("finds the table under a raised fixture", () => {
     const r = build(["objects[obj2].pose", { xyz_mm: [175, 100, 60], yaw_deg: 0, frame: "world" }], ["objects[obj1].pose", { xyz_mm: [175, 100, 20], yaw_deg: 0, frame: "world" }]);
     expect(why(r)).toBe("");

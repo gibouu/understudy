@@ -158,6 +158,62 @@ function halfExtents(o: SpecObject, yaw: number, round: boolean): [number, numbe
   return [(c * a + s * b) / 2, (s * a + c * b) / 2];
 }
 
+type Pt = [number, number];
+/** The part of convex polygon `p` where n·x <= d (one Sutherland–Hodgman pass). */
+function clip(p: Pt[], n: Pt, d: number): Pt[] {
+  const side = (q: Pt) => n[0] * q[0] + n[1] * q[1] - d;
+  const out: Pt[] = [];
+  p.forEach((a, i) => {
+    const b = p[(i + 1) % p.length];
+    const [sa, sb] = [side(a), side(b)];
+    if (sa <= 0) out.push(a);
+    if (sa * sb < 0) out.push([a[0] + ((b[0] - a[0]) * sa) / (sa - sb), a[1] + ((b[1] - a[1]) * sa) / (sa - sb)]);
+  });
+  return out;
+}
+/** The convex hull of some points, counter-clockwise (monotone chain). */
+function hull(points: Pt[]): Pt[] {
+  const ps = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (ps.length < 3) return ps;
+  const cross = (o: Pt, a: Pt, b: Pt) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const half = (list: Pt[]) => {
+    const h: Pt[] = [];
+    for (const p of list) {
+      while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], p) <= 0) h.pop();
+      h.push(p);
+    }
+    return h.slice(0, -1);
+  };
+  return [...half(ps), ...half([...ps].reverse())];
+}
+/** Whether `q` lies inside counter-clockwise convex polygon `h`, at least `margin` from every edge. */
+function within(h: Pt[], q: Pt, margin: number): boolean {
+  if (h.length < 3) return false;
+  return h.every((a, i) => {
+    const b = h[(i + 1) % h.length];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    return len > 0 && ((b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0])) / len >= margin;
+  });
+}
+/** How far inside the outline of its rim contacts an object's centre must lie to stay put, mm. */
+const RIM_MARGIN_MM = 1;
+
+/**
+ * Whether an object lying on a hollow's rims stays there: its centre (lx, ly)
+ * within the outline of where its footprint `foot` touches the top of the
+ * fixture (`outer` across, the hollow `inner` across, all in the fixture's
+ * frame). Across two opposite rims, or a corner where two adjacent rims meet,
+ * the outline holds the centre; hanging on one rim, it does not.
+ */
+function restsOnRims(foot: Pt[], [lx, ly]: Pt, outer: [number, number], inner: [number, number]): boolean {
+  let top = foot;
+  for (const [n, d] of [[[1, 0], outer[0] / 2], [[-1, 0], outer[0] / 2], [[0, 1], outer[1] / 2], [[0, -1], outer[1] / 2]] as [Pt, number][]) top = clip(top, n, d);
+  // the top minus the opening: what lies past each of its four sides
+  const [ix, iy] = [inner[0] / 2, inner[1] / 2];
+  const contact = ([[[-1, 0], -ix], [[1, 0], -ix], [[0, -1], -iy], [[0, 1], -iy]] as [Pt, number][]).flatMap(([n, d]) => clip(top, n, d));
+  return within(hull(contact), [lx, ly], RIM_MARGIN_MM);
+}
+
 /**
  * The world must exist as posed: sizes the scene can build, every object
  * within the arm's reach and above the table, no two objects in the same
@@ -199,19 +255,27 @@ function geometryProblem(spec: TaskSpec): string | null {
   /**
    * Where `o` is against the opening of `f`'s hollow (a pocket, or an open
    * container's inside): centred over it, standing in it (its whole
-   * footprint, on or above the floor), or bridging it (past both opposite
-   * rims along one axis, so it lies on the two).
+   * footprint, on or above the floor), or bridging it (lying on its rims,
+   * two opposite ones or two that meet at a corner, with its centre inside
+   * where it touches them).
    */
   const opened = (o: SpecObject, f: SpecObject): { over: boolean; inside: boolean; bridge: boolean } => {
     const hollow = hollowOf(spec, f, containers);
     if (!hollow) return { over: false, inside: false, bridge: false };
     const [lx, ly] = localIn(f, o);
     const [ix, iy] = hollow.inner;
-    const [ex, ey] = halfExtents(o, world[o.id].yaw_deg - world[f.id].yaw_deg, round(o));
+    const yaw = world[o.id].yaw_deg - world[f.id].yaw_deg;
+    const [ex, ey] = halfExtents(o, yaw, round(o));
     const over = Math.abs(lx) <= ix / 2 && Math.abs(ly) <= iy / 2;
     const fits = Math.abs(lx) + ex <= ix / 2 + 0.5 && Math.abs(ly) + ey <= iy / 2 + 0.5;
-    const spans = (c: number, e: number, i: number) => c - e < -i / 2 && c + e > i / 2;
-    return { over, inside: over && fits && bottom(o) >= floorTop(f) - REST_MM, bridge: spans(lx, ex, ix) || spans(ly, ey, iy) };
+    return { over, inside: over && fits && bottom(o) >= floorTop(f) - REST_MM, bridge: over && !fits && restsOnRims(outline(o, yaw, [lx, ly]), [lx, ly], footprintMm(f), hollow.inner) };
+  };
+  /** `o`'s footprint as a polygon in another frame, turned `yaw` degrees against it and centred at `c` (a disc as a 32-gon). */
+  const outline = (o: SpecObject, yaw: number, [cx, cy]: Pt): Pt[] => {
+    const [a, b] = footprintMm(o);
+    if (round(o)) return Array.from({ length: 32 }, (_, k) => [cx + (a / 2) * Math.cos((k * Math.PI) / 16), cy + (a / 2) * Math.sin((k * Math.PI) / 16)] as Pt);
+    const [c, s] = [Math.cos(yaw * DEG), Math.sin(yaw * DEG)];
+    return ([[1, 1], [-1, 1], [-1, -1], [1, -1]] as Pt[]).map(([u, v]) => [cx + c * u * (a / 2) - s * v * (b / 2), cy + s * u * (a / 2) + c * v * (b / 2)] as Pt);
   };
   /** Whether the footprints of `a` and `b` overlap: separating axes for two boxes, the nearest point for a box and a disc, distance for two discs. */
   const footprintsOverlap = (a: SpecObject, b: SpecObject) => {
