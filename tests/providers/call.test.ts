@@ -82,6 +82,19 @@ describe("callModel", () => {
     expect(await callModel(fake(["no", "no"]).client, opts)).toMatchObject({ status: "failed" });
   });
 
+  it("reports the calls it paid for when it fails (#106)", async () => {
+    const twice = await callModel(fake(["no json", "still no json"]).client, opts);
+    expect(twice).toMatchObject({ status: "failed" });
+    expect(twice.status === "failed" && twice.ledger).toHaveLength(2);
+    expect(twice.status === "failed" && twice.ledger?.[1]).toMatchObject({ prompt_tokens: 10, completion_tokens: 5 });
+    // a call that never answered reported no usage to count; the one before it did
+    const dropped = await callModel(fake(["no json", new Error("socket hang up")]).client, opts);
+    expect(dropped.status === "failed" && dropped.ledger).toHaveLength(1);
+    const none = await callModel(fake([new Error("socket hang up")]).client, opts);
+    expect(none).toMatchObject({ status: "failed" });
+    expect(none).not.toHaveProperty("ledger");
+  });
+
   it("fails without retrying a second 400 or an auth error", async () => {
     expect(await callModel(fake([badRequest(), badRequest()]).client, opts)).toMatchObject({ status: "failed", retryable: false });
     const auth = new OpenAI.AuthenticationError(401, {}, "401", new Headers());
