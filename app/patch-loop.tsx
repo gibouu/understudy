@@ -9,6 +9,7 @@ import { failed, type StageResult } from "@/lib/spec/stage-result";
 import { usual } from "@/lib/estimate";
 import { gateNote } from "@/lib/unlock/messages";
 import { liveAuth } from "./capture";
+import { keep, keepCall, keeping } from "./keep";
 import { useLiveModels, useModels } from "./models";
 import { Working } from "./working";
 
@@ -61,6 +62,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
     onBusy(true);
     setIts([]);
     const history: Attempt[] = [];
+    const at = keeping();
     let current = program;
     let last = first;
     for (let n = 1; n <= MAX_PATCHES; n++) {
@@ -83,6 +85,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
       }
       if (id !== gen.current) return;
       update(n, { state: "done", runs });
+      keep("rehearsal", { patch: n, program: p.program, runs }, at);
       history.push({ set: p.set, thinking: p.thinking, clamps: p.clamps, rejected: p.rejected, outcome: outcomeLine(runs) });
       current = p.program;
       last = runs;
@@ -160,9 +163,12 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
 }
 
 async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
+  const at = keeping();
   try {
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...liveAuth(), ...(body as object) }) });
-    return (await res.json()) as StageResult<T>;
+    const r = (await res.json()) as StageResult<T>;
+    keepCall(url, body, r, at);
+    return r;
   } catch (err) {
     return failed((err as Error).message);
   }

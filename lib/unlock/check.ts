@@ -8,7 +8,9 @@
  * - anywhere, with the code in UNDERSTUDY_UNLOCK_CODE;
  * and only while the route has live calls left this minute (lib/unlock/cap.ts),
  * and while Token Factory lists the model of every role the routes call
- * (lib/providers/tokenfactory.ts). A model gone replays every step, whatever
+ * (lib/providers/tokenfactory.ts), and while the live budget has money left
+ * (lib/unlock/budget.ts): once it is spent, or cannot be read, every step
+ * replays, a label of a clip of your own included, since a code cannot help. A model gone replays every step, whatever
  * the pass, so a session replays from its recorded label on and its steps
  * still match. Each function instance reads the list on its own (every five
  * minutes), so for those few minutes a session can be live on one step and
@@ -31,8 +33,9 @@ import path from "node:path";
 import { liveModels, tokenFactory } from "@/lib/providers/tokenfactory";
 import { SAMPLES } from "@/lib/samples";
 import type { StageResult } from "@/lib/spec/stage-result";
+import { readBudget } from "./budget";
 import { takeLiveCall, type LiveRoute } from "./cap";
-import { LIVE_BUSY, LIVE_CLOSED, LIVE_EXPIRED, LIVE_NEEDS_PASS, LIVE_NO_SECRET, LIVE_RETIRED, LIVE_UNLISTED, LIVE_WRONG_CODE, UNLOCK_NEEDED, UNLOCK_WRONG } from "./messages";
+import { LIVE_BUSY, LIVE_CLOSED, LIVE_EXPIRED, LIVE_NEEDS_PASS, LIVE_NO_BUDGET, LIVE_NO_SECRET, LIVE_RETIRED, LIVE_SPENT, LIVE_UNLISTED, LIVE_WRONG_CODE, UNLOCK_NEEDED, UNLOCK_WRONG } from "./messages";
 import { readSampleToken, TOKEN_ENV, tokenSecret } from "./token";
 
 export const UNLOCK_ENV = "UNDERSTUDY_UNLOCK_CODE";
@@ -75,6 +78,12 @@ export async function liveGate(route: LiveRoute, pass: Pass): Promise<Gate> {
   const tf = tokenFactory({ timeout: 8_000, maxRetries: 0 });
   const models = tf && (await liveModels(tf));
   if (models && !models.ok) return { live: false, why: models.listed ? LIVE_RETIRED : LIVE_UNLISTED };
+  const budget = await readBudget();
+  if (budget.state === "spent") return { live: false, why: LIVE_SPENT };
+  if (budget.state === "unknown") {
+    console.warn(`unlock: ${budget.why}, so a ${route} call replays`);
+    return { live: false, why: LIVE_NO_BUDGET };
+  }
   const expected = process.env[UNLOCK_ENV]?.trim();
   const token = route === "label" ? "none" : readSampleToken(pass.sample_token);
   const sample = route === "label" ? Boolean(pass.clip_sha256 && (await samples()).has(pass.clip_sha256)) : token === "valid";
@@ -98,6 +107,13 @@ export async function liveGate(route: LiveRoute, pass: Pass): Promise<Gate> {
   if (!expected) return closed();
   if (typed(pass.unlock)) return { live: false, why: LIVE_WRONG_CODE };
   return { live: false, why: tokenSecret() ? LIVE_NEEDS_PASS : LIVE_NO_SECRET };
+}
+
+/** A model call the live budget turned away halfway (lib/providers/call.ts): the route answers from its recording instead, saying why. */
+export function budgetRefused(r: StageResult<unknown>): Gate | null {
+  if (r.status !== "failed") return null;
+  const why = [LIVE_SPENT, LIVE_NO_BUDGET].find((w) => r.message.includes(w));
+  return why ? { live: false, why } : null;
 }
 
 /** A replay the gate chose: its reason goes first, so the page shows why no model was asked. */

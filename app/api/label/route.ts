@@ -24,7 +24,7 @@ import { hintText, LABEL_PROMPT, tidyLabel } from "@/lib/spec/label";
 import { TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type StageResult } from "@/lib/spec/stage-result";
 import { validateSpec } from "@/lib/spec/validate";
-import { explain, liveGate } from "@/lib/unlock/check";
+import { budgetRefused, explain, liveGate } from "@/lib/unlock/check";
 import { sampleToken } from "@/lib/unlock/token";
 
 export const maxDuration = 60;
@@ -80,7 +80,10 @@ export async function POST(req: Request): Promise<NextResponse<Labelled>> {
     schema: TaskSpec,
     normalize: (raw) => tidyLabel(raw, duration),
   });
-  if (result.status !== "done") return NextResponse.json(result);
+  if (result.status !== "done") {
+    const refused = budgetRefused(result);
+    return NextResponse.json(refused ? explain(replay(sha), refused) : result);
+  }
   const spec: TaskSpec = { ...result.value, provenance: { label_input: "video", clip_sha256: sha, model: MODELS.vl } };
   const warnings = [...result.warnings, ...validateSpec(spec).map((i) => `${i.path}: ${i.message}`)];
   return NextResponse.json({ ...done(spec, warnings, result.ledger), sample_token: gate.sample ? sampleToken() : undefined });

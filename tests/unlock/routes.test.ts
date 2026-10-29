@@ -18,8 +18,10 @@ import { Program, TaskSpec } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
 import { forgetLiveCalls } from "@/lib/unlock/cap";
 import { UNLOCK_ENV } from "@/lib/unlock/check";
-import { gateNote, LIVE_CLOSED, LIVE_NEEDS_PASS, LIVE_RETIRED, LIVE_UNLISTED, UNLOCK_NEEDED } from "@/lib/unlock/messages";
+import { gateNote, LIVE_CLOSED, LIVE_NEEDS_PASS, LIVE_NO_BUDGET, LIVE_RETIRED, LIVE_SPENT, LIVE_UNLISTED, UNLOCK_NEEDED } from "@/lib/unlock/messages";
 import { readSampleToken, sampleToken, TOKEN_ENV } from "@/lib/unlock/token";
+import { SPENT_KEY } from "@/lib/unlock/budget";
+import { fakeRedis, type FakeRedis } from "@/tests/store/fake-redis";
 
 /**
  * Token Factory stand-in: every create() is counted; the vision model answers the recorded label. It lists
@@ -89,6 +91,8 @@ async function post(route: Route, body: object, query = ""): Promise<{ status: n
 /** what the page shows: the first warning of a replay, or the reason added to a failure */
 const why = (r: StageResult<unknown>) => (r.status === "done" ? r.warnings[0] : r.status === "failed" ? r.message : "");
 
+let store: FakeRedis;
+
 beforeEach(() => {
   vi.spyOn(console, "info").mockImplementation(() => {});
   vi.spyOn(console, "warn").mockImplementation(() => {});
@@ -103,6 +107,8 @@ beforeEach(() => {
       return new Response("{}", { status: 503 });
     }),
   );
+  // a deployment has its live budget's store (lib/unlock/budget.ts), with money left
+  store = fakeRedis();
   tf.label = JSON.stringify((labels[0].result as { value: unknown }).value);
   Object.assign(tf, { listed: Object.values(MODELS), lists: 0, listFails: false, refuse: "", models: [] });
   forgetModels();
@@ -194,6 +200,53 @@ describe("a session that starts from a sample clip, with no code, in production"
     for (const [route, body] of Object.entries(BODIES) as [Exclude<Route, "label">, object][]) {
       expect((await post(route, { ...body, sample_token: token })).live, route).toBe(true);
     }
+  });
+});
+
+describe("the live budget for judging (lib/unlock/budget.ts)", () => {
+  beforeEach(() => vi.stubEnv("VERCEL_ENV", "production"));
+
+  it("counts what each live call cost in the store", async () => {
+    expect((await post("compile", { ...BODIES.compile, unlock: "orbit" })).live).toBe(true);
+    expect(Number(store.data.get(SPENT_KEY))).toBeGreaterThan(0);
+  });
+
+  it("once spent, replays every route, a clip of your own and a sample session alike, and says why", async () => {
+    store.data.set(SPENT_KEY, 250_000_000);
+    const own = await post("label", { clip_sha256: ownSha, video, duration_s: 8, unlock: "orbit" });
+    expect(own).toMatchObject({ status: 200, live: false, json: { status: "done" } });
+    expect(why(own.json)).toBe(LIVE_SPENT);
+    for (const [route, body] of Object.entries(BODIES) as [Exclude<Route, "label">, object][]) {
+      const r = await post(route, { ...body, unlock: "orbit", sample_token: sampleToken() });
+      expect(r.live, route).toBe(false);
+      expect(why(r.json), route).toContain(LIVE_SPENT);
+    }
+  });
+
+  it("with the store unreachable, replays a clip of your own and says why", async () => {
+    store.down = true;
+    const r = await post("label", { clip_sha256: ownSha, video, duration_s: 8, unlock: "orbit" });
+    expect(r).toMatchObject({ status: 200, live: false, json: { status: "done" } });
+    expect(why(r.json)).toBe(LIVE_NO_BUDGET);
+  });
+
+  it("answers from the recording when the store refuses a reservation after the guard let the call through", async () => {
+    store.refuse = ["INCRBY"];
+    for (const [route, body] of [["compile", BODIES.compile], ["variants", BODIES.variants]] as const) {
+      const r = await post(route, { ...body, unlock: "orbit" });
+      expect(r.live, route).toBe(false);
+      expect(r.json.status, route).toBe("done");
+      expect(why(r.json), route).toContain(LIVE_NO_BUDGET);
+    }
+  });
+
+  it("never stops the samples' recordings, spent or unreachable", async () => {
+    store.data.set(SPENT_KEY, 250_000_000);
+    expect((await recordings()).length).toBeGreaterThan(0);
+    expect(await post("label", { clip_sha256: sampleSha, recorded: true })).toMatchObject({ status: 200, live: false, json: { status: "done" } });
+    store.down = true;
+    expect((await recordings()).length).toBeGreaterThan(0);
+    expect(await post("label", { clip_sha256: sampleSha, recorded: true })).toMatchObject({ status: 200, live: false, json: { status: "done" } });
   });
 });
 

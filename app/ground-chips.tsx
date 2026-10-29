@@ -7,6 +7,7 @@ import type { TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { gateNote } from "@/lib/unlock/messages";
 import { liveAuth } from "./capture";
+import { keepCall, keeping } from "./keep";
 import { answeredBy, useModels } from "./models";
 import { Pulse } from "./working";
 
@@ -41,9 +42,12 @@ export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: bool
 
   async function look() {
     setResult(running(`Tavily is searching and reading the top pages; ${say("nano")} keeps the sentences that name this task`));
+    const at = keeping();
     try {
       const res = await fetch("/api/ground", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ spec, ...liveAuth() }) });
-      setResult((await res.json()) as StageResult<Grounding>);
+      const r = (await res.json()) as StageResult<Grounding>;
+      keepCall("/api/ground", { spec }, r, at);
+      setResult(r);
     } catch (err) {
       setResult(failed((err as Error).message));
     }

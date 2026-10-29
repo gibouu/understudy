@@ -7,6 +7,7 @@ import { done, failed } from "@/lib/spec/stage-result";
 import { forgetLiveCalls, LIVE_PER_MINUTE, takeLiveCall } from "@/lib/unlock/cap";
 import { explain, liveGate, UNLOCK_ENV } from "@/lib/unlock/check";
 import { gateNote, isUnlockRefusal, LIVE_BUSY, LIVE_CLOSED, LIVE_EXPIRED, LIVE_NEEDS_PASS, LIVE_NO_SECRET, LIVE_WRONG_CODE, UNLOCK_NEEDED, UNLOCK_WRONG } from "@/lib/unlock/messages";
+import { fakeRedis } from "@/tests/store/fake-redis";
 import { readSampleToken, SAMPLE_TOKEN_TTL_S, sampleToken, TOKEN_ENV } from "@/lib/unlock/token";
 
 const sampleSha = createHash("sha256")
@@ -22,10 +23,13 @@ beforeEach(() => {
   vi.stubEnv(UNLOCK_ENV, "");
   vi.stubEnv(TOKEN_ENV, SECRET);
   forgetLiveCalls();
+  // a deployment has its live budget's store (lib/unlock/budget.ts), with money left
+  fakeRedis();
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 

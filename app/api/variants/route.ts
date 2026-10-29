@@ -23,7 +23,7 @@ import { askSuper, cleanRequest } from "@/lib/variants/ask";
 import { VariantReply } from "@/lib/variants/parse";
 import { MAX_REQUEST_CHARS } from "@/lib/variants/prompt";
 import { checkReply, type Checked } from "@/lib/variants/validate";
-import { explain, liveGate } from "@/lib/unlock/check";
+import { budgetRefused, explain, liveGate } from "@/lib/unlock/check";
 import { prerunVariants } from "@/lib/showcase/lookup";
 
 export const maxDuration = 60;
@@ -60,7 +60,10 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Check
   const client = gate?.live ? tokenFactory({ timeout: 25_000, maxRetries: 1 }) : null;
   // a failed answer still cost its calls: the page counts them from this
   const billed: LedgerEntry[] = [];
-  const result = client ? await askSuper(client, spec.data, request, billed) : explain(replay(spec.data, request), gate);
+  const asked = client ? await askSuper(client, spec.data, request, billed) : explain(replay(spec.data, request), gate);
+  // turned away by the live budget halfway: the recording answers, as if the guard had said so
+  const refused = budgetRefused(asked);
+  const result = refused ? explain(replay(spec.data, request), refused) : asked;
   if (result.status !== "done") return NextResponse.json({ ...result, ledger: billed });
   let checked: Checked;
   try {
