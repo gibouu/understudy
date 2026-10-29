@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
+import { modelLabel } from "@/lib/providers/models";
+import { replayPlan } from "@/lib/saboteur/replay";
+import { scoredSpec } from "@/lib/saboteur/scoreboard";
 import { recording, recordings } from "@/lib/showcase/load";
 import { Story } from "./story";
 
@@ -25,5 +28,11 @@ export default function ClipStory({ params }: PageProps<"/space/[clip]">) {
 async function Recorded({ params }: Pick<PageProps<"/space/[clip]">, "params">) {
   const r = await recording((await params).clip);
   if (!r) notFound();
-  return <Story sample={r.sample} session={r.session} />;
+  // the scoreboard's twelve, chosen here so the page ships them and not the recordings they come from
+  const plan = replayPlan(scoredSpec(r.session));
+  const scoreboard =
+    plan.status === "done"
+      ? { plan: plan.value, ...(plan.value.source === "model" && plan.ledger?.length ? { by: modelLabel(plan.ledger[plan.ledger.length - 1].model) } : {}) }
+      : { plan: null, why: plan.status === "failed" ? plan.message : "no scenarios" };
+  return <Story sample={r.sample} session={r.session} scoreboard={scoreboard} />;
 }
