@@ -92,7 +92,7 @@ describe("the baseline on the NASA samples, headless", () => {
     }
     const line: string[] = [];
     for (const world of SCORE_WORLDS) {
-      const out = await runBatch(engine.mujoco, (xml) => engine.mujoco.MjModel.from_xml_string(xml, engine.vfs), spec, b.program, scoreRollouts(plan.value.scenarios, world));
+      const out = await runBatch(engine.mujoco, (xml) => engine.mujoco.MjModel.from_xml_string(xml), spec, b.program, scoreRollouts(plan.value.scenarios, world));
       const t = tally(out, plan.value.scenarios.length);
       expect(t.errors, out.find((r) => r.error)?.error).toBe(0);
       line.push(`${world} blind ${t.blind}/12 sensed ${t.sensed}/12 (${t.blind + t.sensed}/24)`);
