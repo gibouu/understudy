@@ -7,11 +7,10 @@
  * public/showcase/<clip>.variants.json; lib/showcase/lookup.ts answers it.
  * lib/showcase/prerun.test.ts runs it.
  */
-import { existsSync, rmSync } from "node:fs";
-import path from "node:path";
 import type { Program } from "@/lib/spec/schema";
 import type { LedgerEntry } from "@/lib/spec/stage-result";
 import type { Checked } from "@/lib/variants/validate";
+import { remakePrerun } from "./lookup";
 import { live, post, priceOf } from "./record";
 import { VariantsRecording, type Session } from "./session";
 
@@ -27,10 +26,9 @@ export function baseOf(rec: Session) {
 
 const usd = (ledger: LedgerEntry[] = []) => ledger.reduce((t, e) => t + priceOf(e), 0);
 
-export async function prerunClip(root: string, rec: Session, log: (line: string) => void = () => {}): Promise<VariantsRecording> {
-  // an earlier pre-run would answer these very requests: the routes must go live
-  const out = path.join(root, "public", "showcase", `${rec.clip.name}.variants.json`);
-  if (existsSync(out)) rmSync(out);
+export async function prerunClip(rec: Session, log: (line: string) => void = () => {}): Promise<VariantsRecording> {
+  // an earlier pre-run would answer these very requests: the routes must go live (the file is replaced only on success)
+  remakePrerun(rec.clip.name);
   const { POST: variantsRoute } = await import("@/app/api/variants/route");
   const { POST: compileRoute } = await import("@/app/api/compile/route");
   const base = baseOf(rec);

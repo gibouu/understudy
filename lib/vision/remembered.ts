@@ -1,7 +1,8 @@
 /**
  * Labels of your own clips, kept in this browser (IndexedDB): the same clip
  * with the same line labels at once the next time, instead of waiting on
- * Super VL again. Only a live answer is kept; a replay is already instant.
+ * Super VL again. Only a live answer is kept, never a replay or a sample's
+ * token; a sample's own line answers from its recording anyway.
  * Storage can be missing or refused (a private window): every call then
  * does nothing and the label goes live, as before.
  */
@@ -12,7 +13,8 @@ import type { StageResult } from "@/lib/spec/stage-result";
 
 type Kept = { result: Extract<StageResult<TaskSpec>, { status: "done" }>; at: string };
 
-const key = (sha256: string, line: string) => `understudy:label:${sha256}:${line.trim().toLowerCase()}`;
+/** the line as sent, case and all: "part A" and "part a" can name different objects */
+const key = (sha256: string, line: string) => `understudy:label:${sha256}:${line.trim()}`;
 
 export async function rememberedLabel(sha256: string, line: string): Promise<StageResult<TaskSpec> | null> {
   try {
@@ -26,8 +28,10 @@ export async function rememberedLabel(sha256: string, line: string): Promise<Sta
 
 export async function rememberLabel(sha256: string, line: string, result: StageResult<TaskSpec>): Promise<void> {
   if (result.status !== "done" || result.warnings.some((w) => w.startsWith("replay"))) return;
+  // the label only: a sample token expires within the hour and is never kept (lib/unlock/token.ts)
+  const { value, warnings, ledger } = result;
   try {
-    await set(key(sha256, line), { result, at: new Date().toISOString() } satisfies Kept);
+    await set(key(sha256, line), { result: { status: "done", value, warnings, ledger }, at: new Date().toISOString() } satisfies Kept);
   } catch {
     // nowhere to keep it: the next run labels live
   }

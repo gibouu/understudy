@@ -180,7 +180,8 @@ export function Flow() {
     if (!labelled) {
       // a clip of your own labelled before, with the same line, answers from this browser (lib/vision/remembered.ts)
       const sha = await clipSha256(clip.blob).catch(() => null);
-      labelled = sha ? await rememberedLabel(sha, line) : null;
+      const mine = sha && !clip.sample ? sha : null;
+      labelled = mine ? await rememberedLabel(mine, line) : null;
       if (id !== gen.current) return;
       if (!labelled) {
         step("label", "proxy");
@@ -190,7 +191,7 @@ export function Flow() {
         step("label", "watch");
         labelled = await post<TaskSpec>("/api/label", { ...body, hint: line });
         if (id !== gen.current) return;
-        if (sha) void rememberLabel(sha, line, labelled);
+        if (mine) void rememberLabel(mine, line, labelled);
       }
     }
     keepSampleToken((labelled as { sample_token?: string }).sample_token);

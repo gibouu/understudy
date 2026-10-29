@@ -37,8 +37,10 @@ type Labelled = StageResult<TaskSpec> & { sample_token?: string };
 
 function replay(sha?: string): StageResult<TaskSpec> {
   const all = recordings as Recording[];
-  const exact = all.find((r) => r.clip_sha256 === sha);
-  if (exact) return exact.result;
+  const exact = all.find((r) => r.clip_sha256 === sha)?.result;
+  // a replay of this very clip still says it is one, so the page never takes it for a live answer
+  if (exact?.status === "done") return done(exact.value, ["replay: recorded answer for this clip", ...exact.warnings], exact.ledger);
+  if (exact) return exact;
   const first = all[0]?.result;
   if (first?.status === "done") return done(first.value, [...first.warnings, "replay: recorded for another clip"], first.ledger);
   return failed("no recorded label", false);

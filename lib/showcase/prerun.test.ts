@@ -34,7 +34,7 @@ describe.runIf(RECORD.length > 0)("pre-run the similar tasks (live, spends credi
       process.loadEnvFile(process.env.UNDERSTUDY_ENV_FILE ?? ".env.local");
       if (!process.env.NEBIUS_API_KEY) throw new Error("NEBIUS_API_KEY missing from the env file");
       const { prerunClip } = await import("./prerun");
-      const rec = await prerunClip(ROOT, session(name), (l) => console.log(l));
+      const rec = await prerunClip(session(name), (l) => console.log(l));
       writeFileSync(path.join(DIR, `${name}.variants.json`), `${JSON.stringify(rec, null, 2)}\n`);
     },
     300_000,

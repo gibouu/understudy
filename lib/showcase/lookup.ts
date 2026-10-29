@@ -94,11 +94,15 @@ function prerunAll(): Promise<VariantsRecording[]> {
   return prerun;
 }
 
+/** Clips whose pre-run is being made again (lib/showcase/prerun.ts): their old one must not answer. */
+const remaking = new Set<string>();
+export const remakePrerun = (clip: string) => remaking.add(clip);
+
 const prerunNote = (rec: VariantsRecording) => `${RECORDED}${recordedDay(rec.recorded_at)}, ahead of time for this sample`;
 
 /** The similar tasks suggested ahead of time for exactly this spec, numbered from 1, or null. */
 export async function prerunVariants<T>(spec: TaskSpec): Promise<StageResult<T> | null> {
-  const rec = (await prerunAll()).find((r) => same(r.spec, spec));
+  const rec = (await prerunAll()).find((r) => !remaking.has(r.clip.name) && same(r.spec, spec));
   if (!rec) return null;
   const { value, warnings, ledger } = rec.suggestions;
   return done(value as T, [prerunNote(rec), ...warnings], ledger as LedgerEntry[] | undefined);
@@ -107,6 +111,7 @@ export async function prerunVariants<T>(spec: TaskSpec): Promise<StageResult<T> 
 /** The program written ahead of time for exactly this similar task's spec, or null. */
 export async function prerunProgram(spec: TaskSpec): Promise<StageResult<Program> | null> {
   for (const rec of await prerunAll()) {
+    if (remaking.has(rec.clip.name)) continue;
     const hit = rec.programs.find((p) => same(p.spec, spec));
     if (hit) return done(hit.result.value as Program, [prerunNote(rec), ...hit.result.warnings], hit.result.ledger as LedgerEntry[] | undefined);
   }
