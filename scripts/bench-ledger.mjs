@@ -62,14 +62,13 @@ const ownerOf = (file) => {
     return null;
   }
 };
-/** a gate left by a process that died inside its few-millisecond section */
-const GATE_STALE_MS = 5_000;
 /**
  * Run `fn` holding `${lock}.gate`, the short lock under which a lock file may be removed. New holders only ever
  * create the lock file (O_EXCL, when it is absent), and the only removals, release and stale takeover, happen under
  * the gate with their check just before: so nothing can replace the lock between the check and the removal. A gate
- * older than GATE_STALE_MS is removed blindly; that reopens the race only for a process stalled that long inside a
- * section that takes microseconds.
+ * is never removed by anyone but its holder: guessing that one is abandoned is the race the gate exists to close. A
+ * process that dies inside its few-microsecond section leaves it behind; after LOCK_WAIT_MS the waiter gives up
+ * (release leaves its lock to go stale, a takeover finds the lock still busy) and the error names the file to remove.
  */
 function withGate(lock, fn) {
   const gate = `${lock}.gate`;
@@ -80,12 +79,7 @@ function withGate(lock, fn) {
       break;
     } catch (err) {
       if (err?.code !== "EEXIST") throw err;
-      try {
-        if (Date.now() - statSync(gate).mtimeMs > GATE_STALE_MS) unlinkSync(gate);
-      } catch {
-        // released between the two calls
-      }
-      if (Date.now() > deadline) return undefined; // give up: the lock is left as it is and goes stale
+      if (Date.now() > deadline) return undefined; // give up: the lock is left as it is
       sleepMs(1 + Math.floor(Math.random() * 3));
     }
   }
@@ -95,7 +89,7 @@ function withGate(lock, fn) {
     try {
       unlinkSync(gate);
     } catch {
-      // removed as stale by someone else
+      // already gone
     }
   }
 }
@@ -125,7 +119,7 @@ export function withFileLock(lock, fn, { waitMs = LOCK_WAIT_MS, staleMs = LOCK_S
       } catch {
         // the holder released it between our two calls: try again
       }
-      if (Date.now() > deadline) throw new Error(`lock ${lock} busy for ${waitMs / 1000} s`);
+      if (Date.now() > deadline) throw new Error(`lock ${lock} busy for ${waitMs / 1000} s${existsSync(`${lock}.gate`) ? ` (and ${lock}.gate is held: if no bench script is running, a crashed one left it; remove both)` : ""}`);
       sleepMs(2 + Math.floor(Math.random() * 8));
       continue;
     }

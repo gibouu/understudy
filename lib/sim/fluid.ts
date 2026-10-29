@@ -314,7 +314,7 @@ export class Fluid {
   private contactSolid = new Int32Array(0);
   /** first solid each particle touched this substep, and whether it needs the closing pass */
   private touched = new Int32Array(0);
-  /** (particle, solid) pairs whose carried contact plane already pushed the particle this substep (afterContact), as i * solids + sid */
+  /** (particle, solid) pairs where a rotating solid already placed the particle this substep, as i * solids + sid */
   private advanced = new Set<number>();
   private entangled = new Uint8Array(0);
   private contactNormal = new Float64Array(0);
@@ -1254,6 +1254,9 @@ export class Fluid {
     p[o] = wx; p[o + 1] = wy; p[o + 2] = wz;
     if (this.touched[i] === -1) this.touched[i] = sid;
     else if (this.touched[i] !== sid) this.entangled[i] = 1;
+    // a rotating solid that has placed the particle once this substep, by its end point or by a sweep: a later pass
+    // must not replay that solid's sweep as a first contact (afterContact)
+    if (s.angle > ROTATION_EPS) this.advanced.add(i * this.solids.length + sid);
     const cur = contactSolid[i];
     if (cur === sid) contactDepth[i] += depth;
     else if (cur === -1 || depth > contactDepth[i]) {
