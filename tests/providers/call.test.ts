@@ -87,7 +87,7 @@ describe("callModel", () => {
     expect(twice).toMatchObject({ status: "failed" });
     expect(twice.status === "failed" && twice.ledger).toHaveLength(2);
     expect(twice.status === "failed" && twice.ledger?.[1]).toMatchObject({ prompt_tokens: 10, completion_tokens: 5 });
-    // a call that never answered was not billed; the one before it was
+    // a call that never answered reported no usage to count; the one before it did
     const dropped = await callModel(fake(["no json", new Error("socket hang up")]).client, opts);
     expect(dropped.status === "failed" && dropped.ledger).toHaveLength(1);
     const none = await callModel(fake([new Error("socket hang up")]).client, opts);

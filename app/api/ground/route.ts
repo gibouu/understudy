@@ -103,12 +103,13 @@ async function ground(spec: TaskSpec, ledger: LedgerEntry[], warnings: string[],
     maxTokens: 200,
     schema: GroundFilter,
   });
+  // a failed answer still cost its calls (#106)
+  if (r.status === "done" || r.status === "failed") ledger.push(...(r.ledger ?? []));
   if (r.status !== "done") {
     // callModel's message can quote an SDK error, cut to a length the redaction no longer matches: say what happened in our words
     warnings.push(r.status === "failed" ? `nano: ${r.retryable ? "no answer (network, rate limit or timeout)" : "no usable answer"}` : "nano: no answer");
     return { query, pages: sources, chips: [] };
   }
-  ledger.push(...(r.ledger ?? []));
   const { chips, warnings: dropped } = chipsFrom(candidates, r.value, slots);
   warnings.push(...r.warnings, ...dropped);
   return { query, pages: sources, chips };
