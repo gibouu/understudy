@@ -8,13 +8,19 @@
  * spec, else the latest one with the same title. A spec of gestures alone has
  * nothing to guess: its program, a follow op per step, is written here with no
  * model, live or replayed alike.
+ *
+ * `playbook` (#56, off unless the page sends it): {rules, failure?}, the ids of the playbook rules the
+ * person left on and the failure of the last rehearsal on screen. The rules that match the spec
+ * (lib/spec/playbook.ts matchRules) go into the user message and the program says which it applied;
+ * replay then answers only from a recording made with the same rules. Without the key, or with no
+ * rule that matches, the request and the answer are the ones from before the playbook.
  */
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/compile.json";
 import { callModel } from "@/lib/providers/call";
 import { tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { normalizeProgram, resolveFixtureNames } from "@/lib/spec/normalize";
-import { AXES, PREDICATE_OPERANDS, Program, TaskSpec } from "@/lib/spec/schema";
+import { AXES, PlaybookProgram, PREDICATE_OPERANDS, Program, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type StageResult } from "@/lib/spec/stage-result";
 import { lintProgram, validateProgram } from "@/lib/spec/validate";
 import { canonicalSlot, valueAt } from "@/lib/spec/apply";
@@ -23,6 +29,8 @@ import { gestureProgram } from "@/lib/sim/gesture";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
 import { budgetRefused, explain, liveGate } from "@/lib/unlock/check";
 import { prerunProgram } from "@/lib/showcase/lookup";
+import { citedRules, matchRules, PLAYBOOK, playbookSection, WITHOUT_PLAYBOOK, type Rule } from "@/lib/spec/playbook";
+import { z } from "zod";
 
 export const maxDuration = 60;
 
@@ -119,10 +127,21 @@ function settled(spec: TaskSpec, slot: string): boolean {
   return v !== undefined && !(Array.isArray(v) && v.length === 0) && !(typeof v === "object" && v !== null && Object.keys(v).length === 0);
 }
 
-type Recording = { spec: unknown; result: StageResult<Program> };
+/** A recorded compile; `playbook` holds the ids of the rules it was given, absent for one made without the playbook. */
+type Recording = { spec: unknown; playbook?: string[]; result: StageResult<Program> };
 
-function replay(spec: TaskSpec): StageResult<Program> {
-  const all = recordings as Recording[];
+/** What the page sends with the switch on. */
+const PlaybookAsk = z.object({ rules: z.array(z.string()).max(50), failure: z.enum(["embodiment_limit", "check_failed", "spec_gap"]).optional() });
+
+const sameRules = (r: Recording, rules: readonly Rule[] | null) => (rules === null ? r.playbook === undefined : JSON.stringify(r.playbook) === JSON.stringify(rules.map((x) => x.id)));
+
+function replay(spec: TaskSpec, rules: readonly Rule[] | null = null): StageResult<Program> {
+  const all = (recordings as Recording[]).filter((r) => sameRules(r, rules));
+  if (rules && !all.some((r) => JSON.stringify(TaskSpec.parse(r.spec)) === JSON.stringify(spec))) {
+    // no compile recorded with these rules for this spec: the one without the playbook, said so
+    const off = replay(spec);
+    return off.status === "done" ? done(off.value, [...off.warnings, WITHOUT_PLAYBOOK], off.ledger) : off;
+  }
   const key = JSON.stringify(spec);
   const exact = all.find((r) => JSON.stringify(TaskSpec.parse(r.spec)) === key);
   if (exact) return exact.result;
@@ -143,8 +162,14 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   const waiting = waitingProgram(spec.data);
   if (waiting) return NextResponse.json(done(waiting, [WAITING_NOTE]));
 
-  // a sample's similar task, written ahead of time (lib/showcase/prerun.ts): no model, no wait
-  const pre = await prerunProgram(spec.data);
+  // the playbook rules for this spec, null with the switch off or none that match: then nothing below changes
+  const asking = body?.playbook === undefined ? null : PlaybookAsk.safeParse(body.playbook);
+  if (asking && !asking.success) return NextResponse.json(failed("invalid playbook: {rules: [rule id], failure?}", false), { status: 400 });
+  const matched = asking ? matchRules(spec.data, asking.data.rules, asking.data.failure) : [];
+  const rules = matched.length ? matched : null;
+
+  // a sample's similar task, written ahead of time (lib/showcase/prerun.ts): no model, no wait; not written with the playbook
+  const pre = rules ? null : await prerunProgram(spec.data);
   if (pre) return NextResponse.json(pre);
 
   const gate = wantsReplay(req) ? null : await liveGate("compile", body);
@@ -153,24 +178,34 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
     ? await callModel(client, {
         role: "nano",
         system: COMPILE_SYSTEM,
-        user: `Task spec:\n${JSON.stringify(spec.data)}\n\nMoves for this spec:\n${geometry(spec.data)}`,
+        user: `Task spec:\n${JSON.stringify(spec.data)}\n\nMoves for this spec:\n${geometry(spec.data)}${rules ? `\n\n${playbookSection(rules)}` : ""}`,
         maxTokens: 3000,
-        schema: Program,
-        shape: `{"spec_title":string,"steps":[{"step_id":string,"ops":[op, ...]}, ...],"warnings":[string]}: every entry of steps is an object with step_id and ops, and warnings is a key of the answer, after the closing bracket of steps`,
+        // the playbook's answer has one more key; with it off the answer is parsed exactly as before
+        schema: rules ? PlaybookProgram : Program,
+        shape: `{"spec_title":string,"steps":[{"step_id":string,"ops":[op, ...]}, ...],"warnings":[string]${rules ? `,"playbook":[rule id]` : ""}}: every entry of steps is an object with step_id and ops, and warnings is a key of the answer, after the closing bracket of steps`,
         normalize: normalizeProgram,
         check: (p) => lintProgram(resolveFixtureNames(p, spec.data).program, spec.data),
         previous,
       })
-    : explain(replay(spec.data), gate);
+    : explain(replay(spec.data, rules), gate);
   // turned away by the live budget halfway: the recording answers, as if the guard had said so
   const refused = budgetRefused(asked);
-  const result = refused ? explain(replay(spec.data), refused) : asked;
+  const result = refused ? explain(replay(spec.data, rules), refused) : asked;
   if (result.status !== "done") return NextResponse.json(result);
   const resolved = resolveFixtureNames(result.value, spec.data);
   const warnings = [...result.warnings, ...resolved.warnings];
+  // the rules it says it applied, among those it was given; nothing at all without the playbook. A kept
+  // previous program keeps what it said when it was compiled, under the rules it had then (any playbook rule), or says nothing
+  const { playbook: said, ...unsaid } = resolved.program;
+  const kept = previous !== undefined && result.warnings.some((w) => w.endsWith("previous value kept"));
+  const keptSaid = kept ? PlaybookProgram.safeParse(body.previous).data?.playbook : undefined;
+  // a replay of a compile made without the playbook never saw the rules: it says nothing about them
+  const unplaybooked = result.warnings.includes(WITHOUT_PLAYBOOK);
+  const cites = !rules || unplaybooked ? undefined : kept ? (keptSaid && citedRules(keptSaid, PLAYBOOK)) : citedRules(said, rules);
   const program: Program = {
-    ...resolved.program,
-    steps: resolved.program.steps.map((s) => ({
+    ...unsaid,
+    ...(cites ? { playbook: cites } : {}),
+    steps: unsaid.steps.map((s) => ({
       ...s,
       ops: s.ops
         .map((op) => (op.op === "ask" ? { ...op, slot: canonicalSlot(spec.data, op.slot) } : op))

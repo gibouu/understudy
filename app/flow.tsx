@@ -1,8 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { estimate, usual, type Stage } from "@/lib/estimate";
+import type { GroundingRecord } from "@/lib/export/grounding";
+import { emptyLog, runOf, withRun, type TryCall, type TryLog, type VersionSource } from "@/lib/export/try";
+import type { NotePatch } from "@/lib/notes/patch";
+import type { SaboteurPlan } from "@/lib/saboteur/ask";
 import { SAMPLES, type Sample } from "@/lib/samples";
 import { formAnswers, recordedBy, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
 import { Session } from "@/lib/showcase/session";
@@ -11,7 +15,7 @@ import { answerChange, asksOf, formFor, WAITING_NOTE, waitingProgram, type Ask }
 import { applyChanges } from "@/lib/spec/apply";
 import { LINE_MAX, oneArmLine, scopeNotes, sentenceOf } from "@/lib/spec/confirm";
 import type { Program, SpecChange, TaskSpec } from "@/lib/spec/schema";
-import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
+import { done, failed, idle, running, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { CONSENT_LINE } from "@/lib/keep/record";
 import { gateNote } from "@/lib/unlock/messages";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
@@ -22,6 +26,9 @@ import { GroundChips } from "./ground-chips";
 import { keep, keepCall, keeping, startSession } from "./keep";
 import { answeredBy, useModels, type Role } from "./models";
 import { ProgramView, type Failure } from "./program-view";
+import { Playbook, PLAYBOOK_OFF, playbookAsk } from "./playbook";
+import { madeWithPlaybook, PLAYBOOK_NOT_USED, playbookNote } from "@/lib/spec/playbook";
+import type { Traced } from "./rehearsal";
 import { Reshoot } from "./reshoot";
 import { AskField } from "./ask-field";
 import { Working } from "./working";
@@ -32,6 +39,8 @@ const Rehearsal = dynamic(() => import("./rehearsal").then((m) => m.Rehearsal), 
 });
 const Variants = dynamic(() => import("./variants").then((m) => m.Variants), { ssr: false });
 const Saboteur = dynamic(() => import("./saboteur").then((m) => m.Saboteur), { ssr: false });
+const TryDownload = dynamic(() => import("./try-download").then((m) => m.TryDownload), { ssr: false });
+const TryScoreboard = dynamic(() => import("./try-scoreboard").then((m) => m.TryScoreboard), { ssr: false });
 
 /** Nano asks about one gap per compile; past this many rounds the page stops asking. */
 const MAX_ROUNDS = 6;
@@ -78,7 +87,18 @@ export function Flow() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [turn, setTurn] = useState(0);
   const [notes, setNotes] = useState<string[]>([]);
-  const [failure, setFailure] = useState<Failure | null>(null);
+  const [failure, setFailureState] = useState<Failure | null>(null);
+  /** the failure on screen, read by a compile started from a callback that closed over an older render (the playbook narrows to it) */
+  const failureRef = useRef<Failure | null>(null);
+  const setFailure = useCallback((f: Failure | null) => {
+    failureRef.current = f;
+    setFailureState(f);
+  }, []);
+  /** the playbook switch (#56), off unless turned on; a ref too, so a compile started by the switch reads the new state */
+  const [playbook, setPlaybook] = useState(PLAYBOOK_OFF);
+  const playbookRef = useRef(PLAYBOOK_OFF);
+  /** bumped by every compile: a program swapped in at once (a recording, the switch turned off) gets a fresh rehearsal, not the last one's results */
+  const [compiles, setCompiles] = useState(0);
   /** a live label waiting for the person to confirm it (#158): the tracing notes its fit will carry */
   const [unconfirmed, setUnconfirmed] = useState<string[] | null>(null);
   /** the consent box for a clip of your own (#78): nothing is kept without it */
@@ -87,6 +107,14 @@ export function Flow() {
   const [kept, setKept] = useState<string | undefined>(undefined);
   /** the id the rehearsal on screen began under: a rollout that ends after the box changed is not kept */
   const rehearsalAt = useRef<string | undefined>(undefined);
+  /** what the page did with this clip, for the download (lib/export/try.ts): versions, rollouts, answers, model calls */
+  const [log, setLog] = useState<TryLog>(emptyLog);
+  /** the web lookup and the chips added from it, for grounding.json (#112); null until one finished */
+  const [grounding, setGrounding] = useState<GroundingRecord | null>(null);
+  /** the grid's twelve and the spec they were chosen for, for the scoreboard (#55) */
+  const [grid, setGrid] = useState<{ plan: SaboteurPlan; spec: TaskSpec } | null>(null);
+  /** the label as first fitted to the bench, before any answer: what the scoreboard's baseline is built from */
+  const [fitted, setFitted] = useState<TaskSpec | null>(null);
   const pick = useRef(0);
   // leaving /try ends the kept session: no other page asks for consent
   useEffect(() => () => void startSession(false), []);
@@ -106,6 +134,20 @@ export function Flow() {
     setNotes([]);
     setFailure(null);
     setUnconfirmed(null);
+    setLog(emptyLog());
+    setGrounding(null);
+    setGrid(null);
+    setFitted(null);
+  }
+
+  /** The calls a stage's answer paid for, into the log. */
+  function paid(stage: TryCall["stage"], ledger: LedgerEntry[] | undefined) {
+    if (ledger?.length) setLog((l) => ({ ...l, ledger: [...l.ledger, ...ledger.map((e) => ({ ...e, stage }))] }));
+  }
+
+  /** A new version of the program, into the log. */
+  function version(source: VersionSource, next: TaskSpec, p: Program, warnings: string[], changes: string[] = [], why = "") {
+    setLog((l) => ({ ...l, versions: [...l.versions, { source, spec: next, program: p, changes, why, warnings }] }));
   }
 
   function choose(blob: Blob, nextHint: string, sample?: Sample, rec?: Session | null) {
@@ -147,14 +189,18 @@ export function Flow() {
     else setProgram(running(note));
   }
 
-  /** `fresh`: ask Nano even when the recording has this spec ("Ask Nano again"). */
-  async function compile(next: TaskSpec, previous?: Program, fresh = false) {
+  /** `fresh`: ask Nano even when the recording has this spec ("Ask Nano again"). `source` and `changes` say why, for the log. */
+  async function compile(next: TaskSpec, previous?: Program, fresh = false, source: VersionSource = previous ? "recompile" : "compile", changes: string[] = []) {
     const id = gen.current;
+    // the playbook's rules for this spec, none with the switch off: then the request is the one from before it
+    const rules = playbookAsk(playbookRef.current, next, failureRef.current);
     setFailure(null);
-    const turn = !fresh && clip?.rec ? turnFor(clip.rec, next) : null;
+    setCompiles((n) => n + 1);
+    const turn = !fresh && !rules && clip?.rec ? turnFor(clip.rec, next) : null;
     if (turn && clip?.rec) {
       // the recording compiled exactly this spec: its program, and the answers given to its asks
       setProgram(done(turn.program, [recordedNote(clip.rec, "compile"), ...turn.warnings]));
+      version(source, next, turn.program, [recordedNote(clip.rec, "compile"), ...turn.warnings], changes);
       setProgramBy(recordedBy(clip.rec, "compile"));
       setAnswers(formAnswers(next, turn));
       return;
@@ -163,17 +209,28 @@ export function Flow() {
     const waitingNow = waitingProgram(next);
     if (waitingNow) {
       setProgram(done(waitingNow, [WAITING_NOTE]));
+      version(source, next, waitingNow, [WAITING_NOTE], changes);
       setProgramBy(undefined);
       setAnswers({});
       return;
     }
     step("program", "compile");
-    const r = await post<Program>("/api/compile", { spec: next, previous });
+    const r = await post<Program>("/api/compile", rules ? { spec: next, previous, playbook: rules } : { spec: next, previous });
     if (id !== gen.current) return;
+    // with the playbook on, an answer not made with it (a replay with no such recording, a failure) never beats the clip's recording
+    const recorded = rules && !fresh && !madeWithPlaybook(r) && clip?.rec ? turnFor(clip.rec, next) : null;
+    if (recorded && clip?.rec) {
+      setProgram(done(recorded.program, [PLAYBOOK_NOT_USED, recordedNote(clip.rec, "compile"), ...recorded.warnings]));
+      setProgramBy(recordedBy(clip.rec, "compile"));
+      setAnswers(formAnswers(next, recorded));
+      return;
+    }
     // the calls that failed are in the ledger, but the program shown is the one kept (lib/providers/call.ts)
     const kept = r.status === "done" && r.warnings.some((w) => w.endsWith("previous value kept"));
     if (!kept) setProgramBy(r.status === "done" ? answeredBy(r.ledger) : undefined);
     setProgram(r);
+    paid("compile", r.status === "done" || r.status === "failed" ? r.ledger : undefined);
+    if (r.status === "done") version(source, next, r.value, r.warnings, changes);
     setAnswers({});
   }
 
@@ -225,6 +282,7 @@ export function Flow() {
         });
     if (id !== gen.current) return;
     setLabel(r);
+    paid("label", r.status === "done" || r.status === "failed" ? r.ledger : undefined);
     if (r.status !== "done") return;
     // the recording's label plays at once; any other waits for the person to say it is what they did
     if (rec) await goOn(r.value, traced, rec);
@@ -237,6 +295,7 @@ export function Flow() {
     const f = rec ? { spec: rec.fit.spec, warnings: [...rec.fit.warnings] } : fitToBench(labelled);
     f.warnings.unshift(...traced);
     setFit(f);
+    setFitted(f.spec);
     setSpec(f.spec);
     await compile(f.spec);
   }
@@ -244,9 +303,11 @@ export function Flow() {
   async function answer(asks: Ask[]) {
     if (!spec || program.status !== "done") return;
     const changes: SpecChange[] = [];
+    const given: TryLog["turns"][number]["answers"] = [];
     for (const a of asks) {
       const change = answerChange(spec, a.slot, answers[a.slot], `interview#${turn + 1}`);
       if (change) changes.push(change);
+      if (change) given.push({ slot: a.slot, text: answers[a.slot], change });
     }
     if (changes.length === 0) return;
     keep("answers", { turn: turn + 1, asks, changes }, keeping());
@@ -262,8 +323,31 @@ export function Flow() {
     }
     setSpec(next);
     setTurn(turn + 1);
-    await compile(next, program.value);
+    setLog((l) => ({ ...l, turns: [...l.turns, { turn: turn + 1, asks: asks.map(({ slot, question, why }) => ({ slot, question, why })), answers: given }] }));
+    await compile(next, program.value, false, "interview", given.map((g) => `${g.change.path} = ${JSON.stringify(g.change.value)} (answer to ${g.slot})`));
   }
+
+  /** every rollout the stage played, a patch's included: a pass keeps its frames for the download */
+  const heard = useCallback(
+    ({ program: p, world, rollout, frames, meta }: Traced) => setLog((l) => withRun(l, { program: p, world, result: runOf(rollout), frames, meta })),
+    [],
+  );
+  /** a Notes patch: a version of its own, and the calls it paid for */
+  const specNow = useRef(spec);
+  useEffect(() => {
+    specNow.current = spec;
+  }, [spec]);
+  const patchHeard = useCallback((r: StageResult<NotePatch>) => {
+    const ledger = r.status === "done" || r.status === "failed" ? r.ledger : undefined;
+    setLog((l) => ({
+      ...l,
+      ledger: [...l.ledger, ...(ledger ?? []).map((e) => ({ ...e, stage: "notes" as const }))],
+      versions:
+        r.status === "done" && specNow.current
+          ? [...l.versions, { source: "notes" as const, spec: specNow.current, program: r.value.program, changes: r.value.noop ? ["no change"] : r.value.changes.map((c) => `${c.name}: ${c.from} -> ${c.to}`), why: r.value.why, warnings: r.warnings, patch: { model: r.value.model, thinking: r.value.thinking, tokens: r.value.tokens, cost_usd: r.value.cost_usd } }]
+          : l.versions,
+    }));
+  }, []);
 
   const asks = program.status === "done" ? asksOf(program.value) : [];
   /** a program of gestures alone is written by the compile route itself, with no model (lib/sim/gesture.ts) */
@@ -357,8 +441,9 @@ export function Flow() {
           busy={program.status === "running"}
           onSpec={(next) => {
             setSpec(next);
-            compile(next, program.status === "done" ? program.value : undefined);
+            compile(next, program.status === "done" ? program.value : undefined, false, "web", ["a web chip added to the spec"]);
           }}
+          onGrounding={setGrounding}
         />
       )}
 
@@ -373,6 +458,21 @@ export function Flow() {
             ))}
           </ul>
         </Section>
+      )}
+
+      {fit && spec && (
+        <Playbook
+          spec={spec}
+          state={playbook}
+          failure={failure}
+          busy={program.status === "running"}
+          onChange={(next, recompile) => {
+            playbookRef.current = next;
+            setPlaybook(next);
+            if (recompile && program.status !== "idle") compile(spec, program.status === "done" ? program.value : undefined);
+          }}
+          onRecompile={() => compile(spec, program.status === "done" ? program.value : undefined)}
+        />
       )}
 
       {program.status !== "idle" && spec && (
@@ -407,7 +507,7 @@ export function Flow() {
             </div>
           )}
           {program.status !== "running" && !waiting && (
-            <button className="self-start text-xs text-neutral-500 underline" onClick={() => compile(spec, program.status === "done" ? program.value : undefined, true)}>
+            <button className="self-start text-xs text-neutral-500 underline" onClick={() => compile(spec, program.status === "done" ? program.value : undefined, true, "recompile")}>
               Ask {say("nano")} again
             </button>
           )}
@@ -418,21 +518,41 @@ export function Flow() {
       {ready && program.status === "done" && (
         <Section n={5} title="Rehearse" model="MuJoCo WebAssembly · SO-101">
           {asks.length > 0 && <p className="text-sm text-amber-700">Some questions are still open: the rehearsal stops at the first one.</p>}
-          <Rehearsal spec={spec} program={program.value} onFail={setFailure} hint={hint} onRehearse={() => (rehearsalAt.current = keeping())} onRun={kept ? (world, rollout) => keep("rehearsal", { world, program: program.value, rollout }, rehearsalAt.current) : undefined} />
+          <Rehearsal key={compiles} spec={spec} program={program.value} onFail={setFailure} hint={hint} onRehearse={() => (rehearsalAt.current = keeping())} onRun={kept ? (world, rollout) => keep("rehearsal", { world, program: program.value, rollout }, rehearsalAt.current) : undefined} onTrace={heard} onPatch={patchHeard} />
         </Section>
       )}
 
       {ready && program.status === "done" && !spec.steps.some((s) => s.verb === "gesture") && (
         <Section n={6} title="Perturb the world" model="MuJoCo WebAssembly · headless batch">
-          <Saboteur spec={spec} program={program.value} />
+          <Saboteur spec={spec} program={program.value} onPlan={(plan, on) => setGrid(plan ? { plan, spec: on } : null)} />
+          <div className="mt-5 border-t pt-4">
+            <h3 className="mb-2 text-sm font-medium">Scoreboard: every version under perturbation</h3>
+            <TryScoreboard spec={spec} plan={grid?.spec === spec ? grid.plan : null} label={fitted} versions={log.versions} />
+          </div>
         </Section>
       )}
 
       {ready && program.status === "done" && <Reshoot spec={spec} program={program.value} />}
 
-      {ready && program.status === "done" && !spec.steps.some((s) => s.verb === "gesture") && (
+      {ready && program.status === "done" && (
         <Section n={7} title="Try a similar task">
           <Variants spec={spec} program={program.value} />
+        </Section>
+      )}
+
+      {ready && program.status === "done" && (
+        <Section n={8} title="Download the dataset" model="in your browser · LeRobot v2.1">
+          <TryDownload
+            clip={{ name: clip?.sample?.name ?? "upload", sample: Boolean(clip?.sample), duration_s: duration }}
+            hint={hint}
+            label={label.status === "done" ? label.value : null}
+            labelWarnings={label.status === "done" ? label.warnings : []}
+            fit={fit?.warnings ?? []}
+            spec={spec}
+            program={program.value}
+            log={log}
+            grounding={grounding}
+          />
         </Section>
       )}
     </div>
@@ -476,7 +596,10 @@ function Section({ n, title, model, children }: { n: number; title: string; mode
 function Status<T>({ result, clock, duration }: { result: StageResult<T>; clock: Clock; duration: number | null }) {
   if (result.status === "running") return <Working note={result.note ?? "working"} since={clock.at} usual={usual(clock.stage, duration)} />;
   if (result.status === "failed") return <p className="text-sm text-red-700">{result.message}</p>;
+  // with the playbook on, an answer made without it says so above everything else (lib/spec/playbook.ts)
+  const unused = result.status === "done" ? playbookNote(result.warnings) : undefined;
   const recorded = result.status === "done" ? recordedLine(result.warnings) : undefined;
+  if (unused) return <p className="mb-2 text-xs text-amber-700">{recorded ? `${unused}; ${recorded}` : unused}</p>;
   if (recorded) return <p className="mb-2 text-xs text-neutral-500">{recorded}</p>;
   if (result.status === "done" && result.warnings.some((w) => w.startsWith("replay"))) return <p className="mb-2 text-xs text-amber-700">{gateNote(result.warnings) ?? "replayed from a recording"}</p>;
   return null;

@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { armFrame, type TraceFrame } from "@/lib/export/trace";
+import { armFrame, EXPORT_FPS, keepForSampling, type TraceFrame } from "@/lib/export/trace";
 import type { WorldRun } from "@/lib/notes/note";
 import { SimClient } from "@/lib/sim/client";
 import { describeReach } from "@/lib/sim/gesture";
 import type { Rollout } from "@/lib/sim/interpreter";
-import type { Frame } from "@/lib/sim/protocol";
+import type { Frame, SimMeta } from "@/lib/sim/protocol";
+import type { NotePatch } from "@/lib/notes/patch";
+import type { StageResult } from "@/lib/spec/stage-result";
 import { StageRenderer } from "@/lib/sim/render";
 import { SETTING_NAMES, SETTING_WORLD, settingFor } from "@/lib/sim/settings";
 import { rehearsed } from "@/lib/reshoot/evidence";
@@ -22,6 +24,9 @@ const WORLDS: GravityName[] = ["earth", "orbit"];
 const SPEEDS = [1, 2, 4];
 
 type Row = { world: GravityName; result: Rollout | { error: string } | "running" };
+
+/** One rollout the stage played, for `onTrace`: a pass carries its simulator frames and the model's description. */
+export type Traced = { program: Program; world: GravityName; rollout: Rollout; frames?: Frame[]; meta?: SimMeta };
 
 /** What a rollout that followed a gesture path found, in words: a gesture's only check. */
 const reachOf = (r: Rollout) => r.followed?.map((f) => describeReach(f)).join("; ");
@@ -41,6 +46,9 @@ const liquidOf = (r: Rollout) => r.log.findLast((l) => l.includes(" liquid: "))?
  *
  * `onRun` hears every rollout the table shows, with the arm's joints at each frame of it (the export's episodes);
  * `onRehearse` hears a rehearsal start, so what `onRun` said before is stale.
+ * `onTrace` hears every rollout this stage plays, a patch's included, with the program it ran; a pass comes with the
+ * simulator frames, one per export frame at most, and the model's description (the Try it export, lib/export/try.ts).
+ * `onPatch` hears each answer of the Notes stage.
  * `guided` keeps only the button that rehearses in both worlds and leaves the results table out: a page that guides
  * the visitor says the results itself, from `onRun`.
  */
@@ -54,6 +62,8 @@ export function Rehearsal({
   speed: initialSpeed,
   onRun,
   onRehearse,
+  onTrace,
+  onPatch,
   guided = false,
 }: {
   spec: TaskSpec;
@@ -65,6 +75,8 @@ export function Rehearsal({
   speed?: number;
   onRun?: (world: GravityName, rollout: Rollout, trace: TraceFrame[]) => void;
   onRehearse?: () => void;
+  onTrace?: (run: Traced) => void;
+  onPatch?: (r: StageResult<NotePatch>) => void;
   guided?: boolean;
 }) {
   const stageRef = useRef<HTMLDivElement>(null);
@@ -183,7 +195,12 @@ export function Rehearsal({
     for (const world of worlds) {
       let result: Row["result"];
       const frames: TraceFrame[] = [];
-      const record = show && onRun ? (f: Frame) => client.meta && frames.push(armFrame(client.meta, f)) : undefined;
+      const kept: Frame[] = [];
+      const arm = show && onRun;
+      const record = arm || onTrace ? (f: Frame) => {
+        if (arm && client.meta) frames.push(armFrame(client.meta, f));
+        if (onTrace) keepForSampling(kept, f, EXPORT_FPS);
+      } : undefined;
       try {
         // a rollout homes only the arm: the objects go back where the spec has them too, in the run's own message
         result = await client.run(p, "sensed", "home", { reset: {}, gravityG: GRAVITIES[world] }, record);
@@ -191,6 +208,7 @@ export function Rehearsal({
         result = { error: (err as Error).message };
       }
       out.push({ world, result });
+      if (typeof result === "object" && !("error" in result)) onTrace?.({ program: p, world, rollout: result, ...(result.pass && client.meta ? { frames: kept, meta: client.meta } : {}) });
       // the stage now shows this rollout, a patch's included: the setting follows what it shows
       const won = typeof result === "object" && !("error" in result) && result.pass;
       setPassed((prev) => {
@@ -201,12 +219,12 @@ export function Rehearsal({
       setRows((rs) => rs.map((r) => (r.world === world ? { world, result } : r)));
       if (!("error" in result)) onRun?.(world, result, frames);
       if (!first && !("error" in result) && !result.pass && result.failed_step_id) {
-        first = { step_id: result.failed_step_id, op: result.failed_op, world, why: result.why };
+        first = { step_id: result.failed_step_id, op: result.failed_op, world, why: result.why, failure_class: result.failure_class };
         onFail(first);
       }
     }
     return out;
-  }, [onFail, onRun, program]);
+  }, [onFail, onRun, onTrace, program]);
 
   async function rehearse(worlds: GravityName[]) {
     if (!clientRef.current || busy || patching) return;
@@ -358,7 +376,7 @@ export function Rehearsal({
           </tbody>
         </table>
       )}
-      {notes && failing?.program === program && <PatchLoop key={failing.n} spec={spec} program={program} first={failing.runs} rehearse={rehearsePatch} onBusy={setPatching} />}
+      {notes && failing?.program === program && <PatchLoop key={failing.n} spec={spec} program={program} first={failing.runs} rehearse={rehearsePatch} onBusy={setPatching} onPatch={onPatch} />}
     </div>
   );
 }

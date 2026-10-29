@@ -1,0 +1,2097 @@
+{
+ "measurement": "playbook",
+ "generated_at": "2026-10-29T17:22:21.549Z",
+ "reproduce": "BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=<path to .env.local> PLAYBOOK_RUNS=8 node_modules/.bin/vitest run tests/measure/playbook.test.ts --reporter=verbose",
+ "conditions": {
+  "route": "app/api/compile/route.ts POST, unchanged; its client (vi.doMock of tokenFactory) guards and charges each call on the bench ledger, 60 s timeout, no SDK retry",
+  "model": "nvidia/Nemotron-3_5-Lightning",
+  "specs": "each clip's interview iteration spec in public/showcase/<clip>.json (every question answered as recorded)",
+  "rehearsal": "lib/showcase/rehearse.ts at 1 g and 0 g, nominal scene, no Notes patch; first try = passes in both",
+  "arms": "off: no playbook; loo: the default-on rules learned on the other clips; control: the loo request with its rules replaced by '(no rules)'; own: every default-on rule, the clip's own included",
+  "runs": 8
+ },
+ "summary": {
+  "iss-glovebox-pipette": {
+   "off": {
+    "runs": 8,
+    "both": 0,
+    "earth": 0,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {},
+    "usd": 0.002531
+   },
+   "control": {
+    "runs": 8,
+    "both": 0,
+    "earth": 0,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {},
+    "usd": 0.003563
+   },
+   "loo": {
+    "runs": 8,
+    "both": 0,
+    "earth": 0,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {
+     "playbook#pocket-wait-still-orbit": 6,
+     "playbook#pocket-release-above-floor": 6
+    },
+    "usd": 0.003883
+   },
+   "own": {
+    "runs": 8,
+    "both": 0,
+    "earth": 0,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {
+     "playbook#pocket-lift-reach": 7,
+     "playbook#pocket-wait-still-orbit": 6,
+     "playbook#pocket-release-above-floor": 8
+    },
+    "usd": 0.003376
+   }
+  },
+  "iss-veggie-seed-film": {
+   "off": {
+    "runs": 8,
+    "both": 0,
+    "earth": 8,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {},
+    "usd": 0.002722
+   },
+   "loo": {
+    "runs": 8,
+    "both": 0,
+    "earth": 6,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {},
+    "usd": 0.002579
+   },
+   "control": {
+    "runs": 8,
+    "both": 0,
+    "earth": 7,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {},
+    "usd": 0.003654
+   },
+   "own": {
+    "runs": 8,
+    "both": 4,
+    "earth": 5,
+    "orbit": 4,
+    "compiled": 8,
+    "cited": {
+     "playbook#pocket-lift-reach": 6,
+     "playbook#pocket-wait-still-orbit": 7,
+     "playbook#pocket-release-above-floor": 7
+    },
+    "usd": 0.004908
+   }
+  },
+  "iss-fluid-bag-foam": {
+   "off": {
+    "runs": 8,
+    "both": 8,
+    "earth": 8,
+    "orbit": 8,
+    "compiled": 8,
+    "cited": {},
+    "usd": 0.00227
+   },
+   "loo": {
+    "runs": 8,
+    "both": 0,
+    "earth": 8,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {
+     "playbook#pocket-lift-reach": 2,
+     "playbook#pocket-wait-still-orbit": 4,
+     "playbook#pocket-release-above-floor": 4
+    },
+    "usd": 0.002534
+   },
+   "own": {
+    "runs": 8,
+    "both": 0,
+    "earth": 8,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {
+     "playbook#pocket-wait-still-orbit": 6,
+     "playbook#pocket-release-above-floor": 6,
+     "playbook#pocket-lift-reach": 5
+    },
+    "usd": 0.002532
+   },
+   "control": {
+    "runs": 8,
+    "both": 6,
+    "earth": 6,
+    "orbit": 6,
+    "compiled": 8,
+    "cited": {},
+    "usd": 0.003344
+   }
+  },
+  "iss-veggie-seed-film-2": {
+   "off": {
+    "runs": 8,
+    "both": 0,
+    "earth": 8,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {},
+    "usd": 0.002487
+   },
+   "loo": {
+    "runs": 8,
+    "both": 0,
+    "earth": 0,
+    "orbit": 0,
+    "compiled": 7,
+    "cited": {
+     "playbook#pocket-lift-reach": 7,
+     "playbook#pocket-wait-still-orbit": 7,
+     "playbook#pocket-release-above-floor": 7
+    },
+    "usd": 0.003171
+   },
+   "control": {
+    "runs": 8,
+    "both": 0,
+    "earth": 5,
+    "orbit": 0,
+    "compiled": 5,
+    "cited": {},
+    "usd": 0.004134
+   },
+   "own": {
+    "runs": 8,
+    "both": 0,
+    "earth": 0,
+    "orbit": 0,
+    "compiled": 7,
+    "cited": {
+     "playbook#pocket-lift-reach": 6,
+     "playbook#pocket-wait-still-orbit": 6,
+     "playbook#pocket-release-above-floor": 6
+    },
+    "usd": 0.003048
+   }
+  },
+  "dev-clip": {
+   "off": {
+    "runs": 8,
+    "both": 0,
+    "earth": 0,
+    "orbit": 0,
+    "compiled": 8,
+    "cited": {},
+    "usd": 0.002237
+   },
+   "own": {
+    "runs": 8,
+    "both": 4,
+    "earth": 4,
+    "orbit": 4,
+    "compiled": 8,
+    "cited": {
+     "playbook#zone-lift-reach": 5
+    },
+    "usd": 0.003167
+   }
+  }
+ },
+ "rows": [
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "off",
+   "run": 1,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028698
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "control",
+   "run": 1,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029285999999999993
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "loo",
+   "run": 1,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006139799999999999
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "off",
+   "run": 2,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028698
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "own",
+   "run": 1,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "pipette is -4.6 mm above cartridge's floor",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00037752
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "loo",
+   "run": 2,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.0003606
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "own",
+   "run": 2,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "the spec's success for step s2 does not hold within 1 s of its last op: pipette is 31.5 mm from cartridge's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00038015999999999994
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "off",
+   "run": 3,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0005280599999999999
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "control",
+   "run": 2,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0007647599999999999
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "loo",
+   "run": 3,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00037643999999999997
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "control",
+   "run": 3,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029526
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "off",
+   "run": 4,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00027833999999999997
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "own",
+   "run": 3,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "pipette is 11.4 mm from cartridge's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00039336
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "loo",
+   "run": 4,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00032532
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "off",
+   "run": 5,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028985999999999997
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "control",
+   "run": 4,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0005545799999999999
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "own",
+   "run": 4,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "pipette is -4.2 mm above cartridge's floor",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00037967999999999997
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "control",
+   "run": 5,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029285999999999993
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "own",
+   "run": 5,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "unanswered: How far off-centre can the pipette land before it counts as missed?",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00037296
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "off",
+   "run": 6,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028698
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "loo",
+   "run": 5,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 2,
+   "usd": 0.0008032799999999999
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "control",
+   "run": 6,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029141999999999997
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "own",
+   "run": 6,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "the spec's success for step s2 does not hold within 1 s of its last op: pipette is 8.0 mm from cartridge's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.000312
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "loo",
+   "run": 6,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 2,
+   "usd": 0.0007468199999999999
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "off",
+   "run": 7,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028698
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "loo",
+   "run": 7,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.000327
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "off",
+   "run": 8,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028698
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "loo",
+   "run": 8,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00032963999999999997
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "own",
+   "run": 7,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "timed out after 3 s: pipette is 8.3 mm from cartridge's centre, not inside it",
+   "cited": [
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 2,
+   "usd": 0.00078156
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "control",
+   "run": 7,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0007805999999999999
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "control",
+   "run": 8,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to pipette + (0, 0, 50) mm from top: out of reach by 8.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029022
+  },
+  {
+   "clip": "iss-glovebox-pipette",
+   "arm": "own",
+   "run": 8,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "pipette is 9.6 mm from cartridge's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00037799999999999997
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "off",
+   "run": 1,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029345999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "loo",
+   "run": 1,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031007999999999996
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "off",
+   "run": 2,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029345999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "control",
+   "run": 1,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006274799999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "loo",
+   "run": 2,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 12.4 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00032087999999999995
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "own",
+   "run": 1,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "timed out after 1 s: the pads are not both on obj1",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 2,
+   "usd": 0.0008887799999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "own",
+   "run": 2,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "the spec's success for step s2 does not hold within 1 s of its last op: obj1 turning at 11.7°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00033983999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "off",
+   "run": 3,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029729999999999996
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "control",
+   "run": 2,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "timed out after 1 s: the pads are not both on obj1",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0007966799999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "loo",
+   "run": 3,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj1 is 14.3 mm from obj2's centre, not inside it",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00034439999999999997
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "control",
+   "run": 3,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00030413999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "off",
+   "run": 4,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029225999999999997
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "loo",
+   "run": 4,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00030623999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "own",
+   "run": 3,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 2,
+   "usd": 0.00080094
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "control",
+   "run": 4,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0007250999999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "own",
+   "run": 4,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "timed out after 1 s: the pads are not both on obj1",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 2,
+   "usd": 0.0008894999999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "off",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006601799999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "loo",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031007999999999996
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "control",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029933999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "off",
+   "run": 6,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029225999999999997
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "own",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.0003837599999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "loo",
+   "run": 6,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 9.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00032208
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "control",
+   "run": 6,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029933999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "own",
+   "run": 6,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00034512
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "off",
+   "run": 7,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029345999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "control",
+   "run": 7,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029933999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "loo",
+   "run": 7,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj1 is 5.2 mm from obj2's centre, not inside it",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.0003607199999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "off",
+   "run": 8,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00030233999999999995
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "loo",
+   "run": 8,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00030527999999999995
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "own",
+   "run": 7,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "timed out after 1 s: the pads are not both on obj1",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 2,
+   "usd": 0.0009327
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "control",
+   "run": 8,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj1 moving at 10.2 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00030413999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film",
+   "arm": "own",
+   "run": 8,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00032639999999999996
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "off",
+   "run": 1,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028007999999999993
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "loo",
+   "run": 1,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 8.3°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00032166
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "own",
+   "run": 1,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 44.2°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00031781999999999996
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "off",
+   "run": 2,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028344
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "control",
+   "run": 1,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006001799999999999
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "loo",
+   "run": 2,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 44.2°/s (still means under 5.7°/s)",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00030797999999999996
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "own",
+   "run": 2,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 44.2°/s (still means under 5.7°/s)",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031109999999999997
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "off",
+   "run": 3,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029783999999999995
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "control",
+   "run": 2,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to world + (0, 0, 0) mm from top: out of reach by 56.8 mm",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006407399999999999
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "loo",
+   "run": 3,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 44.2°/s (still means under 5.7°/s)",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031277999999999997
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "control",
+   "run": 3,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028428
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "off",
+   "run": 4,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028007999999999993
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "own",
+   "run": 3,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 44.2°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00031421999999999993
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "loo",
+   "run": 4,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 44.2°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00032765999999999996
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "control",
+   "run": 4,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028571999999999994
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "own",
+   "run": 4,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 8.3°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00031421999999999993
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "off",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028007999999999993
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "loo",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 8.3°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00032166
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "control",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00027563999999999996
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "own",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 42.7°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00033293999999999994
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "off",
+   "run": 6,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028007999999999993
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "loo",
+   "run": 6,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "the spec's success for step s2 does not hold within 1 s of its last op: obj2 is 4.7 mm above obj3's floor",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00030893999999999995
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "own",
+   "run": 6,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 8.3°/s (still means under 5.7°/s)",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031229999999999995
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "off",
+   "run": 7,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028007999999999993
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "control",
+   "run": 6,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "timed out after 1 s: the pads are not both on obj2",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006882599999999999
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "loo",
+   "run": 7,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 8.3°/s (still means under 5.7°/s)",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00032141999999999994
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "control",
+   "run": 7,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028307999999999995
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "own",
+   "run": 7,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 44.2°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00032261999999999997
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "off",
+   "run": 8,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.0002892
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "loo",
+   "run": 8,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 12.8°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00031085999999999993
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "control",
+   "run": 8,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028571999999999994
+  },
+  {
+   "clip": "iss-fluid-bag-foam",
+   "arm": "own",
+   "run": 8,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 5 s: obj2 turning at 8.3°/s (still means under 5.7°/s)",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00030678
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "off",
+   "run": 1,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031158
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "loo",
+   "run": 1,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 8.7 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00033947999999999997
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "control",
+   "run": 1,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029034
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "own",
+   "run": 1,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 13.6 mm from obj1's centre, not inside it",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00034139999999999995
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "off",
+   "run": 2,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031158
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "loo",
+   "run": 2,
+   "ok": false,
+   "earth": false,
+   "orbit": false,
+   "why": "nano: schema validation failed: steps.2: Invalid input: expected object, received array; steps.3: Invalid input: expected object, received string; steps.4: Invalid input: expected object, received array",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.00073464
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "own",
+   "run": 2,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "the spec's success for step s2 does not hold within 1 s of its last op: obj2 is 20.6 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00034068
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "control",
+   "run": 2,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006391799999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "off",
+   "run": 3,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031158
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "loo",
+   "run": 3,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 8.7 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00034811999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "control",
+   "run": 3,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.0003045
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "own",
+   "run": 3,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 8.6 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00034164
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "off",
+   "run": 4,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031158
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "loo",
+   "run": 4,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 8.6 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.0003702
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "own",
+   "run": 4,
+   "ok": false,
+   "earth": false,
+   "orbit": false,
+   "why": "nano: schema validation failed: steps.2: Invalid input: expected object, received string",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006693
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "off",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031158
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "control",
+   "run": 4,
+   "ok": false,
+   "earth": false,
+   "orbit": false,
+   "why": "nano: schema validation failed: steps.2: Invalid input: expected object, received string",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006864599999999998
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "loo",
+   "run": 5,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 9.1 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00033059999999999996
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "own",
+   "run": 5,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "the spec's success for step s2 does not hold within 1 s of its last op: obj2 is 9.6 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00033467999999999996
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "control",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006427199999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "off",
+   "run": 6,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031158
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "loo",
+   "run": 6,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 8.7 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.0003606
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "own",
+   "run": 6,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 8.7 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00034811999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "off",
+   "run": 7,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029885999999999997
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "control",
+   "run": 6,
+   "ok": false,
+   "earth": false,
+   "orbit": false,
+   "why": "nano: schema validation failed: steps.2.step_id: Invalid input: expected string, received undefined; steps.2.ops: Invalid input: expected array, received undefined",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.00062148
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "loo",
+   "run": 7,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 9.5 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00034811999999999994
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "own",
+   "run": 7,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 8.7 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00033348
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "off",
+   "run": 8,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00031613999999999996
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "control",
+   "run": 7,
+   "ok": false,
+   "earth": false,
+   "orbit": false,
+   "why": "nano: schema validation failed: steps.2: Invalid input: expected object, received string",
+   "cited": [],
+   "calls": 2,
+   "usd": 0.0006446399999999999
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "loo",
+   "run": 8,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 8.7 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.000339
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "control",
+   "run": 8,
+   "ok": true,
+   "earth": true,
+   "orbit": false,
+   "why": "timed out after 2 s: obj2 moving at 12.0 mm/s",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.0003045
+  },
+  {
+   "clip": "iss-veggie-seed-film-2",
+   "arm": "own",
+   "run": 8,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "obj2 is 8.7 mm from obj1's centre, not inside it",
+   "cited": [
+    "playbook#pocket-lift-reach",
+    "playbook#pocket-wait-still-orbit",
+    "playbook#pocket-release-above-floor"
+   ],
+   "calls": 1,
+   "usd": 0.00033924
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "off",
+   "run": 1,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00027738
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "off",
+   "run": 2,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028362
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "own",
+   "run": 2,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [
+    "playbook#zone-lift-reach"
+   ],
+   "calls": 1,
+   "usd": 0.00029561999999999996
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "own",
+   "run": 1,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to world + (200, -100, 30) mm from front: out of reach by 96.5 mm",
+   "cited": [
+    "playbook#zone-lift-reach"
+   ],
+   "calls": 2,
+   "usd": 0.0007894199999999999
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "off",
+   "run": 3,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00027738
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "own",
+   "run": 3,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028673999999999995
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "off",
+   "run": 4,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028362
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "off",
+   "run": 5,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00027738
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "own",
+   "run": 5,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [
+    "playbook#zone-lift-reach"
+   ],
+   "calls": 1,
+   "usd": 0.00029561999999999996
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "off",
+   "run": 6,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00027738
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "own",
+   "run": 4,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to world + (0, 0, 100) mm from top: out of reach by 239.2 mm",
+   "cited": [
+    "playbook#zone-lift-reach"
+   ],
+   "calls": 2,
+   "usd": 0.00062316
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "own",
+   "run": 6,
+   "ok": true,
+   "earth": true,
+   "orbit": true,
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028698
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "off",
+   "run": 7,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00028362
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "own",
+   "run": 7,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00029393999999999997
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "off",
+   "run": 8,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+   "cited": [],
+   "calls": 1,
+   "usd": 0.00027738
+  },
+  {
+   "clip": "dev-clip",
+   "arm": "own",
+   "run": 8,
+   "ok": true,
+   "earth": false,
+   "orbit": false,
+   "why": "move_to obj2 + (0, 0, 50) mm from top: out of reach by 11.1 mm",
+   "cited": [
+    "playbook#zone-lift-reach"
+   ],
+   "calls": 1,
+   "usd": 0.00029514
+  }
+ ]
+}

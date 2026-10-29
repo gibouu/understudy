@@ -12,7 +12,8 @@
  * recorded reply to the same request, for this task's title if there is one,
  * checked against the spec posted now. A sample's first suggestions, and the
  * program for each, were run ahead of time (lib/showcase/prerun.ts) and
- * answer at once.
+ * answer at once. A spec of gestures alone gets its similar tasks built from
+ * the traced path, with no model, live or replayed alike (lib/variants/gesture.ts).
  */
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/variants.json";
@@ -20,6 +21,7 @@ import { tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { TaskSpec } from "@/lib/spec/schema";
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { askSuper, cleanRequest } from "@/lib/variants/ask";
+import { GESTURE_VARIANTS_NOTE, gestureVariants, gesturesOnly } from "@/lib/variants/gesture";
 import { VariantReply } from "@/lib/variants/parse";
 import { MAX_REQUEST_CHARS } from "@/lib/variants/prompt";
 import { checkReply, type Checked } from "@/lib/variants/validate";
@@ -54,6 +56,10 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Check
   if (!request && first === 1) {
     const pre = await prerunVariants<Checked>(spec.data);
     if (pre) return NextResponse.json(pre);
+  }
+  if (gesturesOnly(spec.data)) {
+    if (!request) return NextResponse.json(done(gestureVariants(spec.data, first), [GESTURE_VARIANTS_NOTE]));
+    return NextResponse.json(done<Checked>({ variants: [], not_yet: [{ idea: request, why: "a gesture's similar tasks are built from its traced path; a line is not read for one yet" }] }, [GESTURE_VARIANTS_NOTE]));
   }
 
   const gate = wantsReplay(req) ? null : await liveGate("variants", body);
