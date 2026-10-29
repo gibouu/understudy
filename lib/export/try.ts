@@ -124,7 +124,7 @@ export function contentsOf(episodes: number, video: boolean, grounding: boolean)
     { path: "understudy/label.json", what: "what the model saw in the clip, before the fit to the bench, and what the fit changed" },
     { path: "understudy/interview.json", what: "each round of questions the program asked and the answers given" },
     { path: "understudy/versions.json", what: "every version of the program on this page (compiles, recompiles, Notes patches) with what changed, each patch's model, tokens and price, and its last rehearsal result per world" },
-    { path: "understudy/ledger.json", what: "the model calls this page made for the label, the compiles and the Notes patches, with tokens, seconds and price where known; a recording's calls when the page replayed one" },
+    { path: "understudy/ledger.json", what: "the model calls the label, compile and Notes routes reported to this page, with tokens, seconds and price where known: live calls, and a replayed label's recorded calls. A compile taken from a sample's recording reports none here, and a replayed Notes patch may not; a patch's model, tokens and price are in versions.json" },
     ...(grounding ? [{ path: "understudy/grounding.json", what: "the web lookup: the query, the pages read, each chip and whether it was added, every Tavily call with its request id and credits, and the filtering model's tokens" }] : []),
     { path: "understudy/clip.json", what: "the clip's name, length, the line typed about it, and its source and licence" },
     { path: "understudy/quality.json", what: "the numbers of this report" },

@@ -52,7 +52,7 @@ export function resample(run: TraceFrame[], fps: number): EpisodeFrame[] {
  * without holding every frame the worker posts.
  */
 export function keepForSampling<T extends { t: number }>(kept: T[], frame: T, fps: number): void {
-  const bucket = (t: number) => Math.ceil((t - kept[0].t) * fps - 1e-9);
+  const bucket = (t: number) => Math.ceil((t - kept[0].t - 1e-9) * fps);
   if (kept.length >= 2 && bucket(kept[kept.length - 1].t) === bucket(frame.t)) kept[kept.length - 1] = frame;
   else kept.push(frame);
 }

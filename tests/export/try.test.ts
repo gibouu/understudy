@@ -62,6 +62,11 @@ describe("keepForSampling", () => {
     }
   });
 
+  it("agrees with sampleAt on a frame a hair past a sample time", () => {
+    const all = [0, 1 / 15 + 1e-10, 0.08, 0.14].map((t) => ({ t }));
+    expect(sampleAt(kept(all as unknown as Frame[]), TRY_FPS)).toEqual(sampleAt(all, TRY_FPS));
+  });
+
   it("holds about one frame per sample", () => {
     expect(kept(posted(3, 0.002)).length).toBeLessThanOrEqual(3 * TRY_FPS + 2);
   });

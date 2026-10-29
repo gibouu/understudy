@@ -55,7 +55,7 @@ export function TryDownload({ clip, hint, label, fit, spec, program: given, log,
     <div className="flex flex-col gap-3 text-sm">
       <p className="text-neutral-700">
         {runs.length} passing rollout{runs.length === 1 ? "" : "s"} ({runs.map((r) => (r.world === "earth" ? "Earth, 1 g" : "orbit, 0 g")).join(" and ")}) of the program that passed, as LeRobot v2.1 episodes in the layout Isaac-GR00T N1.7 reads: the simulated arm&apos;s joint states and commands at 15 fps
-        {video ? ", and an MP4 of each, drawn again in your browser from the simulator's state on the bare bench" : ""}. Next to them: the task spec, the program, your answers, every version of the program on this page, the model calls it made{grounding ? ", the web lookup" : ""}, and where the clip comes from.
+        {video ? ", and an MP4 of each, drawn again in your browser from the simulator's state on the bare bench" : ""}. Next to them: the task spec, the program, your answers, every version of the program on this page, the model calls the routes reported{grounding ? ", the web lookup" : ""}, and where the clip comes from.
       </p>
       <p className="text-neutral-600">It is a format-valid skeleton of a scripted program in rigid-body simulation with a geometric grasp: not checked with GR00T&apos;s loader, and not training data. <span className="font-mono">QUALITY.md</span> in the zip says what each file holds.</p>
       <label className="flex items-center gap-2">
