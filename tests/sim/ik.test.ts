@@ -1,24 +1,17 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { dls, reachability, solveIk, type Approach } from "@/lib/sim/ik";
-import { SO101_TIP_SITE, SO101_XML, stageXml } from "@/lib/sim/so101";
+import { SO101_TIP_SITE, stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 
 let mujoco: MainModule;
 let model: MjModel;
 let data: MjData;
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  const vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
-  model = mujoco.MjModel.from_xml_string(stageXml(""), vfs);
+  mujoco = await loadSo101();
+  model = mujoco.MjModel.from_xml_string(stageXml(""));
   data = new mujoco.MjData(model);
-  vfs.delete();
 }, 60_000);
 afterAll(() => {
   data?.delete();

@@ -198,7 +198,7 @@ describe("the grid on the NASA samples, headless", () => {
     for (const [world, gravity_g] of [["earth", GRAVITIES.earth], ["orbit", GRAVITIES.orbit]] as const) {
       const rollouts: BatchRollout[] = plan.value.scenarios.flatMap((scenario) => MODES.map((mode) => ({ scenario, mode, gravity_g })));
       const started = performance.now();
-      const out = await runBatch(engine.mujoco, (xml) => engine.mujoco.MjModel.from_xml_string(xml, engine.vfs), spec, program, rollouts);
+      const out = await runBatch(engine.mujoco, (xml) => engine.mujoco.MjModel.from_xml_string(xml), spec, program, rollouts);
       const s = (performance.now() - started) / 1000;
       expect(out.every((r) => r.rollout), out.find((r) => r.error)?.error).toBe(true);
       const cells: Cell[] = out.map((r, i) => ({ scenario: rollouts[i].scenario!, mode: r.mode, pass: r.rollout!.pass }));

@@ -1,9 +1,8 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { TaskSpec, type Scenario } from "@/lib/spec/schema";
 import { apply, buildScene, layoutMissingPoses, matToQuat, mjcfName, perturb, SceneError, standaloneXml, WALL_M, worldPoses } from "@/lib/sim/scene";
-import { stageXml, SO101_XML } from "@/lib/sim/so101";
+import { stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 
 /** A free test tube above the table: the orbit demo for the gravity check. */
 function demoTubeXml(): string {
@@ -282,25 +281,19 @@ describe("the generated scene compiles in MuJoCo", () => {
     }
   }, 30_000);
   it("loads the full stage next to the arm even with ids that match arm bodies", async () => {
-    const { default: loadMujoco } = await import("@mujoco/mujoco");
-    const mujoco = await loadMujoco();
-    const dir = path.join(process.cwd(), "assets", "so101");
-    const vfs = new mujoco.MjVFS();
-    vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-    for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+    const mujoco = await loadSo101();
     const clash = TaskSpec.parse({
       ...spec,
       objects: [{ ...spec.objects[0], id: "gripper" }, { ...spec.objects[1], id: "base" }, { ...spec.objects[2], id: "a b" }, { ...spec.objects[2], id: "a_b" }],
       steps: [{ ...spec.steps[0], object: "gripper" }, { ...spec.steps[1], object: "gripper", target: { fixture: "pocket", frame: "base" } }],
     });
     const build = buildScene(clash);
-    const model = mujoco.MjModel.from_xml_string(stageXml(build.worldbody), vfs);
+    const model = mujoco.MjModel.from_xml_string(stageXml(build.worldbody));
     try {
       expect(model.nbody).toBeGreaterThan(8 + 4); // the arm's bodies plus ours
       expect(model.nq).toBe(6 + 7); // six arm joints plus one free joint
     } finally {
       model.delete();
-      vfs.delete();
     }
   }, 60_000);
 });

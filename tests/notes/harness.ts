@@ -3,9 +3,7 @@
  * fitted to the bench, the recorded compile, then the same 1 g / 0 g
  * rehearsal app/rehearsal.tsx runs (nominal scene, sensed, from home).
  */
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
-import type { MainModule, MjVFS } from "@mujoco/mujoco";
+import type { MainModule } from "@mujoco/mujoco";
 import labels from "@/tests/fixtures/label.json";
 import { POST as compile } from "@/app/api/compile/route";
 import { outcomeLine, type WorldRun } from "@/lib/notes/note";
@@ -14,32 +12,28 @@ import { fitToBench } from "@/lib/sim/fit";
 import { formFor } from "@/lib/spec/answer";
 import { applyChanges } from "@/lib/spec/apply";
 import { environment, runToEnd } from "@/lib/sim/interpreter";
-import { SO101_XML, stageXml } from "@/lib/sim/so101";
+import { stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { GRAVITIES, TaskSpec, type GravityName, type Program } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
 
 export const WORLDS: GravityName[] = ["earth", "orbit"];
 
-let sim: { mujoco: MainModule; vfs: MjVFS } | null = null;
+let sim: { mujoco: MainModule } | null = null;
 
 export async function loadSim() {
   if (sim) return sim;
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  const mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  const vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
-  sim = { mujoco, vfs };
+  const mujoco = await loadSo101();
+  sim = { mujoco };
   return sim;
 }
 
 export function rehearse(spec: TaskSpec, program: Program, worlds: GravityName[] = WORLDS): WorldRun[] {
   if (!sim) throw new Error("loadSim() first");
-  const { mujoco, vfs } = sim;
+  const { mujoco } = sim;
   const env = environment(spec);
   return worlds.map((world) => {
-    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: GRAVITIES[world], graspable: env.graspable }), vfs);
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: GRAVITIES[world], graspable: env.graspable }));
     const data = new mujoco.MjData(model);
     try {
       return { world, rollout: runToEnd({ mujoco, model, data }, env, program, "sensed") };

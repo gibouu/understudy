@@ -131,13 +131,13 @@ const TILT_PATH_DEG = 20;
 const TOSS_MIN_M_S = 0.01;
 /**
  * A toss asks no joint for more than this, rad/s: the SO-101's position servos as modelled (assets/so101, sts3215
- * class) top out near 4.8 rad/s unloaded (measured, docs/MEASUREMENTS.md section 17); a real servo may be slower.
+ * class) top out near 4.8 rad/s unloaded (measured, docs/MEASUREMENTS.md section 18); a real servo may be slower.
  */
 const TOSS_JOINT_RAD_S = 4;
 /**
  * After letting go the gripper keeps its speed until the object is off the pads (PART_MM from them), at most this
  * long, then brakes: braking with the pads still on it drags the object along (measured, docs/MEASUREMENTS.md
- * section 17). Its path is predicted from that moment.
+ * section 18). Its path is predicted from that moment.
  */
 const TOSS_PART_MAX_S = 0.3;
 /** the jaws let go no faster than pushes the object aside at this share of the toss's speed (TOSS_POP_SHARE x 1 m/s for a 1 m/s toss) */

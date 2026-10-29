@@ -26,6 +26,8 @@ import { GroundChips } from "./ground-chips";
 import { keep, keepCall, keeping, startSession } from "./keep";
 import { answeredBy, useModels, type Role } from "./models";
 import { ProgramView, type Failure } from "./program-view";
+import { Playbook, PLAYBOOK_OFF, playbookAsk } from "./playbook";
+import { madeWithPlaybook, PLAYBOOK_NOT_USED, playbookNote } from "@/lib/spec/playbook";
 import type { Traced } from "./rehearsal";
 import { Reshoot } from "./reshoot";
 import { AskField } from "./ask-field";
@@ -85,7 +87,18 @@ export function Flow() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [turn, setTurn] = useState(0);
   const [notes, setNotes] = useState<string[]>([]);
-  const [failure, setFailure] = useState<Failure | null>(null);
+  const [failure, setFailureState] = useState<Failure | null>(null);
+  /** the failure on screen, read by a compile started from a callback that closed over an older render (the playbook narrows to it) */
+  const failureRef = useRef<Failure | null>(null);
+  const setFailure = useCallback((f: Failure | null) => {
+    failureRef.current = f;
+    setFailureState(f);
+  }, []);
+  /** the playbook switch (#56), off unless turned on; a ref too, so a compile started by the switch reads the new state */
+  const [playbook, setPlaybook] = useState(PLAYBOOK_OFF);
+  const playbookRef = useRef(PLAYBOOK_OFF);
+  /** bumped by every compile: a program swapped in at once (a recording, the switch turned off) gets a fresh rehearsal, not the last one's results */
+  const [compiles, setCompiles] = useState(0);
   /** a live label waiting for the person to confirm it (#158): the tracing notes its fit will carry */
   const [unconfirmed, setUnconfirmed] = useState<string[] | null>(null);
   /** the consent box for a clip of your own (#78): nothing is kept without it */
@@ -179,8 +192,11 @@ export function Flow() {
   /** `fresh`: ask Nano even when the recording has this spec ("Ask Nano again"). `source` and `changes` say why, for the log. */
   async function compile(next: TaskSpec, previous?: Program, fresh = false, source: VersionSource = previous ? "recompile" : "compile", changes: string[] = []) {
     const id = gen.current;
+    // the playbook's rules for this spec, none with the switch off: then the request is the one from before it
+    const rules = playbookAsk(playbookRef.current, next, failureRef.current);
     setFailure(null);
-    const turn = !fresh && clip?.rec ? turnFor(clip.rec, next) : null;
+    setCompiles((n) => n + 1);
+    const turn = !fresh && !rules && clip?.rec ? turnFor(clip.rec, next) : null;
     if (turn && clip?.rec) {
       // the recording compiled exactly this spec: its program, and the answers given to its asks
       setProgram(done(turn.program, [recordedNote(clip.rec, "compile"), ...turn.warnings]));
@@ -199,8 +215,22 @@ export function Flow() {
       return;
     }
     step("program", "compile");
-    const r = await post<Program>("/api/compile", { spec: next, previous });
+    const r = await post<Program>("/api/compile", rules ? { spec: next, previous, playbook: rules } : { spec: next, previous });
     if (id !== gen.current) return;
+    // with the playbook on, an answer not made with it (a replay with no such recording, a failure) never beats the clip's recording
+    const recorded = rules && !fresh && !madeWithPlaybook(r) && clip?.rec ? turnFor(clip.rec, next) : null;
+    if (recorded && clip?.rec) {
+      // a live request it replaced still cost what it cost (a replayed one cost nothing, and a sample's recording
+      // reports no calls); the recording is a version like any other, for the download and the scoreboard
+      const replayed = r.status === "done" && r.warnings.some((w) => w.startsWith("replay"));
+      paid("compile", !replayed && (r.status === "done" || r.status === "failed") ? r.ledger : undefined);
+      const shown = [PLAYBOOK_NOT_USED, recordedNote(clip.rec, "compile"), ...recorded.warnings];
+      version(source, next, recorded.program, shown, changes);
+      setProgram(done(recorded.program, shown));
+      setProgramBy(recordedBy(clip.rec, "compile"));
+      setAnswers(formAnswers(next, recorded));
+      return;
+    }
     // the calls that failed are in the ledger, but the program shown is the one kept (lib/providers/call.ts)
     const kept = r.status === "done" && r.warnings.some((w) => w.endsWith("previous value kept"));
     if (!kept) setProgramBy(r.status === "done" ? answeredBy(r.ledger) : undefined);
@@ -436,6 +466,21 @@ export function Flow() {
         </Section>
       )}
 
+      {fit && spec && (
+        <Playbook
+          spec={spec}
+          state={playbook}
+          failure={failure}
+          busy={program.status === "running"}
+          onChange={(next, recompile) => {
+            playbookRef.current = next;
+            setPlaybook(next);
+            if (recompile && program.status !== "idle") compile(spec, program.status === "done" ? program.value : undefined);
+          }}
+          onRecompile={() => compile(spec, program.status === "done" ? program.value : undefined)}
+        />
+      )}
+
       {program.status !== "idle" && spec && (
         <Section n={4} title="Questions from the robot" model={gestures ? "no model: the arm follows the traced path" : waiting ? "no model: one question first" : (program.status === "done" && programBy) || say("nano")}>
           <Status result={program} clock={clock.program} duration={duration} />
@@ -479,7 +524,7 @@ export function Flow() {
       {ready && program.status === "done" && (
         <Section n={5} title="Rehearse" model="MuJoCo WebAssembly · SO-101">
           {asks.length > 0 && <p className="text-sm text-amber-700">Some questions are still open: the rehearsal stops at the first one.</p>}
-          <Rehearsal spec={spec} program={program.value} onFail={setFailure} hint={hint} onRehearse={() => (rehearsalAt.current = keeping())} onRun={kept ? (world, rollout) => keep("rehearsal", { world, program: program.value, rollout }, rehearsalAt.current) : undefined} onTrace={heard} onPatch={patchHeard} />
+          <Rehearsal key={compiles} spec={spec} program={program.value} onFail={setFailure} hint={hint} onRehearse={() => (rehearsalAt.current = keeping())} onRun={kept ? (world, rollout) => keep("rehearsal", { world, program: program.value, rollout }, rehearsalAt.current) : undefined} onTrace={heard} onPatch={patchHeard} />
         </Section>
       )}
 
@@ -557,7 +602,10 @@ function Section({ n, title, model, children }: { n: number; title: string; mode
 function Status<T>({ result, clock, duration }: { result: StageResult<T>; clock: Clock; duration: number | null }) {
   if (result.status === "running") return <Working note={result.note ?? "working"} since={clock.at} usual={usual(clock.stage, duration)} />;
   if (result.status === "failed") return <p className="text-sm text-red-700">{result.message}</p>;
+  // with the playbook on, an answer made without it says so above everything else (lib/spec/playbook.ts)
+  const unused = result.status === "done" ? playbookNote(result.warnings) : undefined;
   const recorded = result.status === "done" ? recordedLine(result.warnings) : undefined;
+  if (unused) return <p className="mb-2 text-xs text-amber-700">{recorded ? `${unused}; ${recorded}` : unused}</p>;
   if (recorded) return <p className="mb-2 text-xs text-neutral-500">{recorded}</p>;
   if (result.status === "done" && result.warnings.some((w) => w.startsWith("replay"))) return <p className="mb-2 text-xs text-amber-700">{gateNote(result.warnings) ?? "replayed from a recording"}</p>;
   return null;

@@ -11,7 +11,7 @@
  * pose error the saboteur's grid moves an object by. A catch counts only as the interpreter counts it: the jaws
  * stopped on the box within CATCH_JOINT_RAD of the angle they held it at, the grasp's own check holding. The counts
  * are pinned: the simulator is deterministic, so a change that moves them must say so in docs/MEASUREMENTS.md
- * section 17. MEASURE_WRITE=1 writes bench/results/toss-catch.json.
+ * section 18. MEASURE_WRITE=1 writes bench/results/toss-catch.json.
  */
 import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -152,7 +152,7 @@ function band(spec: (dx: number, dy: number) => TaskSpec, program: Program, grav
   });
 }
 
-/** measured on 29 October 2026 (docs/MEASUREMENTS.md section 17); a change that moves these says so there */
+/** measured on 29 October 2026 (docs/MEASUREMENTS.md section 18); a change that moves these says so there */
 const PINNED = { earth: 8, orbit: 0 };
 
 describe("a toss and a catch, measured over a band of seeds (#159)", () => {

@@ -219,7 +219,7 @@ export function Rehearsal({
       setRows((rs) => rs.map((r) => (r.world === world ? { world, result } : r)));
       if (!("error" in result)) onRun?.(world, result, frames);
       if (!first && !("error" in result) && !result.pass && result.failed_step_id) {
-        first = { step_id: result.failed_step_id, op: result.failed_op, world, why: result.why };
+        first = { step_id: result.failed_step_id, op: result.failed_op, world, why: result.why, failure_class: result.failure_class };
         onFail(first);
       }
     }

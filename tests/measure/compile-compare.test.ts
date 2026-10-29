@@ -27,11 +27,12 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { closeSync, existsSync, openSync, readFileSync, readdirSync, renameSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import type { MainModule, MjVFS } from "@mujoco/mujoco";
+import type { MainModule } from "@mujoco/mujoco";
 import { describe, expect, it, vi } from "vitest";
 import { fitToBench } from "@/lib/sim/fit";
 import { environment, runToEnd } from "@/lib/sim/interpreter";
-import { SO101_XML, stageXml } from "@/lib/sim/so101";
+import { stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { canonicalSlot, valueAt } from "@/lib/spec/apply";
 import { Program, TaskSpec } from "@/lib/spec/schema";
 import { validateProgram } from "@/lib/spec/validate";
@@ -82,14 +83,9 @@ function modelAsks(program: Program, warnings: string[]) {
 /** Did the model itself ask for a removed field (a zone's band counts on any of its axes)? */
 const covers = (spec: TaskSpec, slots: string[], field: string | undefined) => Boolean(field) && slots.some((s) => canonicalSlot(spec, s) === field || canonicalSlot(spec, s).startsWith(`${field}.`));
 
-async function loadSim(): Promise<{ mujoco: MainModule; vfs: MjVFS }> {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  const mujoco = await loadMujoco();
-  const dir = path.join(ROOT, "assets", "so101");
-  const vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
-  return { mujoco, vfs };
+async function loadSim(): Promise<{ mujoco: MainModule }> {
+  const mujoco = await loadSo101(ROOT);
+  return { mujoco };
 }
 
 /** Run `fn` holding an exclusive lock file (O_EXCL), waiting up to 2 min; a lock older than 1 min is a crashed writer's. */
@@ -119,9 +115,9 @@ function withFileLock<T>(lock: string, fn: () => T): T {
   }
 }
 
-function rehearse(sim: { mujoco: MainModule; vfs: MjVFS }, spec: TaskSpec, program: Program) {
+function rehearse(sim: { mujoco: MainModule }, spec: TaskSpec, program: Program) {
   const env = environment(spec);
-  const model = sim.mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: env.gravity_g, graspable: env.graspable }), sim.vfs);
+  const model = sim.mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: env.gravity_g, graspable: env.graspable }));
   const data = new sim.mujoco.MjData(model);
   try {
     const r = runToEnd({ mujoco: sim.mujoco, model, data }, env, program, "sensed");
@@ -152,7 +148,7 @@ describe("compile comparison (no network)", () => {
     const sim = await loadSim();
     for (const c of all.filter((x) => x.variant === "truth")) {
       const env = environment(c.spec);
-      const model = sim.mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 1, graspable: env.graspable }), sim.vfs);
+      const model = sim.mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 1, graspable: env.graspable }));
       model.delete();
     }
     const program = Program.parse({
