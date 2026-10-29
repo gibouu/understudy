@@ -237,10 +237,11 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   const succeeded = new Set<string>();
   /**
    * The spec's success predicates of step `id`, all holding at once, given SUCCESS_WAIT_S to come about (an object
-   * settling): the failure if they do not, else null. A step is checked once, at the first program step naming it.
+   * settling): the failure if they do not, else null. Checked after every program step naming it, so a repeat of a
+   * step cannot undo what the first one did.
    */
   function* successHolds(id: string, after: string): Generator<Tick, Rollout | null> {
-    const success = succeeded.has(id) ? [] : (env.spec.steps.find((x) => x.id === id)?.success ?? []);
+    const success = env.spec.steps.find((x) => x.id === id)?.success ?? [];
     if (env.spec.steps.some((x) => x.id === id)) succeeded.add(id);
     if (!success.length) return null;
     opIndex = undefined; // a step's success is no op of it

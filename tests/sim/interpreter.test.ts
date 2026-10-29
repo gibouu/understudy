@@ -150,6 +150,14 @@ describe("the spec's success, checked whatever the program asserts (#117)", () =
     expect({ step: r.failed_step_id, predicate: r.failed_predicate, op: r.failed_op }).toEqual({ step: "s2", predicate: success[0], op: undefined });
   }, 60_000);
 
+  it("a repeat of s2 that takes the film back out cannot pass on the first one's success", () => {
+    const [first, seat] = DEMO_PROGRAMS.hold_until_seated.steps;
+    const again = { step_id: "s2", ops: [{ op: "grasp", object: "film", aperture_mm: 6 }, { op: "move_to", frame: "film", offset_mm: [0, 0, 42] }] };
+    const r = rollout(Program.parse({ spec_title: spec.title, steps: [first, seat, again] }), "sensed", { gravity_g: 0 }, spec);
+    expect(r.pass, r.log.join("\n")).toBe(false);
+    expect({ step: r.failed_step_id, predicate: r.failed_predicate }).toEqual({ step: "s2", predicate: success[0] });
+  }, 60_000);
+
   it("the same program passes where the spec sets no success: the program's own checks were all there was", () => {
     const r = rollout(skipsInside, "sensed", { gravity_g: 0 });
     expect(r.pass, r.log.join("\n")).toBe(true);
