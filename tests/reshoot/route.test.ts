@@ -100,6 +100,9 @@ describe("the reshoot list's fields", () => {
     // replaced twice, under its id from an answer and under its index by hand: the hand edit counts
     const twice = { ...body.spec, sources: { ...body.spec.sources, "objects.obj2": "interview#1", "objects.1": "user#edit" } };
     expect(fieldFor(twice, fieldsOf(twice), "objects[obj2].pocket_clearance_mm")).toMatchObject({ origin: "other", source: "user#edit" });
+    // replaced by hand and renamed: the key names no record now, so it counts for every one
+    const renamed = { ...body.spec, objects: body.spec.objects.map((o) => (o.id === "obj2" ? { ...o, id: "renamed" } : o)), sources: { ...body.spec.sources, "objects.obj2": "user#edit" } };
+    expect(fieldFor(renamed, fieldsOf(renamed), "objects[renamed].pocket_clearance_mm")).toMatchObject({ origin: "other", source: "user#edit" });
     const list = { ...body.spec, sources: { ...body.spec.sources, steps: "default" } };
     expect(fieldFor(list, fieldsOf(list), "steps[s2].target")).toMatchObject({ origin: "other" });
   });
