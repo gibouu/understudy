@@ -20,11 +20,14 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
   const [ms, setMs] = useState<number | null>(null);
   const client = useRef<SimClient | null>(null);
   const gen = useRef(0);
+  // the worker goes when the page is hidden or left (an Activity keeps the state, not the worker): a run on its way is
+  // dropped and the button comes back
   useEffect(
     () => () => {
       gen.current++;
       client.current?.dispose();
       client.current = null;
+      setBusy(false);
     },
     [],
   );
@@ -53,7 +56,13 @@ export function useScoreboard(session: Session, plan: SaboteurPlan | null) {
             },
           });
         } catch (err) {
+          if (id !== gen.current) return;
+          // a worker that failed once answers nothing more: stop here, and the next click starts a fresh one
           put({ ...tally(results, n), done: results.filter(Boolean).length, error: (err as Error).message });
+          sim.dispose();
+          if (client.current === sim) client.current = null;
+          setBusy(false);
+          return;
         }
         if (id !== gen.current) return;
       }
