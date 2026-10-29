@@ -95,7 +95,8 @@ describe("matchRules", () => {
   it("narrows to the failure of the last rehearsal, when there is one", () => {
     expect(matchRules(pipette, all, "embodiment_limit").map((r) => r.id)).toEqual(["pocket-lift-reach"]);
     expect(matchRules(pipette, all, "check_failed").map((r) => r.id)).toEqual(["pocket-wait-still-orbit", "pocket-release-above-floor"]);
-    expect(matchRules(pipette, all, "spec_gap")).toEqual([]);
+    // a rehearsal stopped at an open question narrows nothing: the recompile after the answer gets every rule of its kind
+    expect(matchRules(pipette, all, "spec_gap")).toEqual(matchRules(pipette, all));
   });
 
   it("gives a gesture nothing", () => {

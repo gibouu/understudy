@@ -8,8 +8,11 @@ import type { Failure } from "./program-view";
 export type PlaybookState = { on: boolean; rules: string[] };
 export const PLAYBOOK_OFF: PlaybookState = { on: false, rules: [...DEFAULT_ON] };
 
-/** The failure of the last rehearsal on screen, as the playbook names it: a check that did not hold has no class. */
-const seen = (f: Failure | null): SeenFailure | undefined => (f ? (f.failure_class ?? "check_failed") : undefined);
+/**
+ * The failure of the last rehearsal on screen, as the playbook names it: a check that did not hold has no class.
+ * A spec gap (an open question) is no failure here: it would narrow the rules to none (lib/spec/playbook.ts matchRules).
+ */
+const seen = (f: Failure | null): SeenFailure | undefined => (!f || f.failure_class === "spec_gap" ? undefined : (f.failure_class ?? "check_failed"));
 
 /**
  * What /api/compile gets for the playbook: undefined with the switch off or no rule that matches, so the
@@ -34,7 +37,7 @@ export function Playbook({ spec, state, failure, busy, onChange, onRecompile }: 
         Use the playbook
       </label>
       <p className="mt-1 text-xs text-neutral-500">
-        Rules kept from Notes patches that fixed a failed rehearsal of another clip, and two the bench distilled. Each is text with its evidence, not a trained weight; a rule goes to the compiler only for its own kind of task{failure ? ", and only for the failure of the last rehearsal" : ""}. Measured on four NASA pocket clips, they do not carry over: with the rules learned on the other clips the first program passed at 1 g and 0 g in 0 of 32 compiles, against 6 of 32 for the same request with its rules taken out (docs/MEASUREMENTS.md, section 8).
+        Rules kept from Notes patches that fixed a failed rehearsal of another clip, and two the bench distilled. Each is text with its evidence, not a trained weight; a rule goes to the compiler only for its own kind of task{seen(failure) ? ", and only for the failure of the last rehearsal" : ""}. Measured on four NASA pocket clips, they do not carry over: with the rules learned on the other clips the first program passed at 1 g and 0 g in 0 of 32 compiles, against 6 of 32 for the same request with its rules taken out (docs/MEASUREMENTS.md, section 8).
       </p>
       {state.on && (
         <>

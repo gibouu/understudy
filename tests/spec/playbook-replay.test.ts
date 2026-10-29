@@ -39,7 +39,8 @@ describe("replay with the playbook", () => {
     const res = await post({ spec, playbook: { rules: [...DEFAULT_ON] } });
     expect(res.status).toBe("done");
     expect(res.warnings).toContain("replay: recorded without the playbook");
-    expect(res.value.playbook).toEqual([]);
+    // the model that wrote it never saw the rules: no claim either way
+    expect(res.value.playbook).toBeUndefined();
     expect({ ...Program.parse(res.value), playbook: undefined }).toEqual({ ...Program.parse(all[1].result.value), playbook: undefined });
   });
 

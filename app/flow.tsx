@@ -23,6 +23,7 @@ import { keep, keepCall, keeping, startSession } from "./keep";
 import { answeredBy, useModels, type Role } from "./models";
 import { ProgramView, type Failure } from "./program-view";
 import { Playbook, PLAYBOOK_OFF, playbookAsk } from "./playbook";
+import { madeWithPlaybook, PLAYBOOK_NOT_USED, playbookNote } from "@/lib/spec/playbook";
 import { Reshoot } from "./reshoot";
 import { AskField } from "./ask-field";
 import { Working } from "./working";
@@ -185,6 +186,14 @@ export function Flow() {
     step("program", "compile");
     const r = await post<Program>("/api/compile", rules ? { spec: next, previous, playbook: rules } : { spec: next, previous });
     if (id !== gen.current) return;
+    // with the playbook on, an answer not made with it (a replay with no such recording, a failure) never beats the clip's recording
+    const recorded = rules && !fresh && !madeWithPlaybook(r) && clip?.rec ? turnFor(clip.rec, next) : null;
+    if (recorded && clip?.rec) {
+      setProgram(done(recorded.program, [PLAYBOOK_NOT_USED, recordedNote(clip.rec, "compile"), ...recorded.warnings]));
+      setProgramBy(recordedBy(clip.rec, "compile"));
+      setAnswers(formAnswers(next, recorded));
+      return;
+    }
     // the calls that failed are in the ledger, but the program shown is the one kept (lib/providers/call.ts)
     const kept = r.status === "done" && r.warnings.some((w) => w.endsWith("previous value kept"));
     if (!kept) setProgramBy(r.status === "done" ? answeredBy(r.ledger) : undefined);
@@ -506,7 +515,10 @@ function Section({ n, title, model, children }: { n: number; title: string; mode
 function Status<T>({ result, clock, duration }: { result: StageResult<T>; clock: Clock; duration: number | null }) {
   if (result.status === "running") return <Working note={result.note ?? "working"} since={clock.at} usual={usual(clock.stage, duration)} />;
   if (result.status === "failed") return <p className="text-sm text-red-700">{result.message}</p>;
+  // with the playbook on, an answer made without it says so above everything else (lib/spec/playbook.ts)
+  const unused = result.status === "done" ? playbookNote(result.warnings) : undefined;
   const recorded = result.status === "done" ? recordedLine(result.warnings) : undefined;
+  if (unused) return <p className="mb-2 text-xs text-amber-700">{recorded ? `${unused}; ${recorded}` : unused}</p>;
   if (recorded) return <p className="mb-2 text-xs text-neutral-500">{recorded}</p>;
   if (result.status === "done" && result.warnings.some((w) => w.startsWith("replay"))) return <p className="mb-2 text-xs text-amber-700">{gateNote(result.warnings) ?? "replayed from a recording"}</p>;
   return null;

@@ -138,7 +138,7 @@ export const PLAYBOOK: readonly Rule[] = [
     fixture: "pour",
     failure_class: "check_failed",
     axis: null,
-    condition: "beads are left in the source container after the tilt",
+    condition: "some of what the container holds is left in it after the tilt (learned on the bench's bead pour; the site pours a particle liquid, which this rule was never tried on)",
     hint: "tilt for longer than the listed time (1.5 to 4 s rather than 1 s), and hold the tilt until the target is reached when it is farther away",
     evidence: {
       clip: "bench: pour probe (tests/measure/patch-probes.ts), Earth 1 g and Mars 0.379 g, with and without the target 30 mm farther",
@@ -167,13 +167,26 @@ export const DEFAULT_ON: readonly string[] = PLAYBOOK.filter((r) => r.on).map((r
 
 /**
  * The rules of the playbook named in `ids` that go to this spec: learned on a kind of task the spec has,
- * and, when the page saw a failure in its last rehearsal, made for that failure. In the playbook's order;
- * an id the playbook does not have is ignored, so a request cannot put text of its own in the prompt.
+ * and, when the page saw a failure in its last rehearsal, made for that failure. A spec gap (the rehearsal
+ * stopped at an open question, as it does before every answer) narrows nothing: no rule is for it, and the
+ * recompile after the answer is the one the rules are for. In the playbook's order; an id the playbook
+ * does not have is ignored, so a request cannot put text of its own in the prompt.
  */
 export function matchRules(spec: TaskSpec, ids: readonly string[], failure?: SeenFailure): Rule[] {
   const kinds = kindsOf(spec);
-  return PLAYBOOK.filter((r) => ids.includes(r.id) && kinds.has(r.fixture) && (failure === undefined || r.failure_class === failure));
+  const narrow = failure === "spec_gap" ? undefined : failure;
+  return PLAYBOOK.filter((r) => ids.includes(r.id) && kinds.has(r.fixture) && (narrow === undefined || r.failure_class === narrow));
 }
+
+/** The note a page shows when it plays a clip's recording instead: the route had no answer made with the playbook. */
+export const PLAYBOOK_NOT_USED = "replay: playbook not used: no compile with these rules could be made or replayed here, so this is the clip's recording, compiled without the playbook";
+/** The route's note on a replay of a compile recorded without the playbook, given in its place. */
+export const WITHOUT_PLAYBOOK = "replay: recorded without the playbook";
+/** The playbook note among a compile's warnings, in words for the page; undefined when there is none. */
+export const playbookNote = (warnings: string[]) => warnings.find((w) => w === PLAYBOOK_NOT_USED || w === WITHOUT_PLAYBOOK)?.slice("replay: ".length);
+
+/** Whether a compile's answer was made with the playbook: a program that cites (even none) was; a fallback or a failure was not. */
+export const madeWithPlaybook = (r: { status: string; value?: { playbook?: string[] } }) => r.status === "done" && r.value?.playbook !== undefined;
 
 /** A rule as the program cites it. */
 export const ref = (r: Rule | string) => `playbook#${typeof r === "string" ? r : r.id}`;

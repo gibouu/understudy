@@ -9,7 +9,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { Session } from "@/lib/showcase/session";
-import { DEFAULT_ON, PLAYBOOK } from "@/lib/spec/playbook";
+import { PLAYBOOK } from "@/lib/spec/playbook";
 
 const sent: unknown[] = [];
 let twoDrafts = false;
@@ -49,7 +49,7 @@ describe("the playbook switch off", () => {
     ["iss-glovebox-pipette", 1, "d1cbad7a06ab049312c0703995451547d5821a6d927c92206b143b7869e162f9", "136089731a63069dc0e89dcd0fdd6110516f596f74432d456beecd223792df62"],
     ["iss-veggie-seed-film", 1, "31f565e1037e4bd2e248b33d2ce960f5b48675b3f6e09e430508f8dede964ed6", "0dadfcb5233b898e7b906dc3e4539816f313627116e7aa509a553ba2b518dba6"],
   ] as const)("%s: the request and the answer are the ones from before the playbook", async (clip, i, request, reply) => {
-    for (const playbook of [undefined, { rules: [] }, { rules: ["zone-lift-reach", "pour-tilt-longer"] }, { rules: [...DEFAULT_ON], failure: "spec_gap" }]) {
+    for (const playbook of [undefined, { rules: [] }, { rules: ["zone-lift-reach", "pour-tilt-longer"] }, { rules: ["pocket-lift-reach", "zone-lift-reach"], failure: "check_failed" }]) {
       const { ledger, ...rest } = await post(session(clip).iterations[i].spec, playbook);
       expect(ledger.length).toBeGreaterThan(0);
       expect(sha(sent), JSON.stringify(playbook)).toBe(request);

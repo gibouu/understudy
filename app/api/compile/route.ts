@@ -29,7 +29,7 @@ import { gestureProgram } from "@/lib/sim/gesture";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
 import { budgetRefused, explain, liveGate } from "@/lib/unlock/check";
 import { prerunProgram } from "@/lib/showcase/lookup";
-import { citedRules, matchRules, PLAYBOOK, playbookSection, type Rule } from "@/lib/spec/playbook";
+import { citedRules, matchRules, PLAYBOOK, playbookSection, WITHOUT_PLAYBOOK, type Rule } from "@/lib/spec/playbook";
 import { z } from "zod";
 
 export const maxDuration = 60;
@@ -140,7 +140,7 @@ function replay(spec: TaskSpec, rules: readonly Rule[] | null = null): StageResu
   if (rules && !all.some((r) => JSON.stringify(TaskSpec.parse(r.spec)) === JSON.stringify(spec))) {
     // no compile recorded with these rules for this spec: the one without the playbook, said so
     const off = replay(spec);
-    return off.status === "done" ? done(off.value, [...off.warnings, "replay: recorded without the playbook"], off.ledger) : off;
+    return off.status === "done" ? done(off.value, [...off.warnings, WITHOUT_PLAYBOOK], off.ledger) : off;
   }
   const key = JSON.stringify(spec);
   const exact = all.find((r) => JSON.stringify(TaskSpec.parse(r.spec)) === key);
@@ -199,7 +199,9 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   const { playbook: said, ...unsaid } = resolved.program;
   const kept = previous !== undefined && result.warnings.some((w) => w.endsWith("previous value kept"));
   const keptSaid = kept ? PlaybookProgram.safeParse(body.previous).data?.playbook : undefined;
-  const cites = !rules ? undefined : kept ? (keptSaid && citedRules(keptSaid, PLAYBOOK)) : citedRules(said, rules);
+  // a replay of a compile made without the playbook never saw the rules: it says nothing about them
+  const unplaybooked = result.warnings.includes(WITHOUT_PLAYBOOK);
+  const cites = !rules || unplaybooked ? undefined : kept ? (keptSaid && citedRules(keptSaid, PLAYBOOK)) : citedRules(said, rules);
   const program: Program = {
     ...unsaid,
     ...(cites ? { playbook: cites } : {}),
