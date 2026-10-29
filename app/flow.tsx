@@ -225,8 +225,11 @@ export function Flow() {
       const replayed = r.status === "done" && r.warnings.some((w) => w.startsWith("replay"));
       paid("compile", !replayed && (r.status === "done" || r.status === "failed") ? r.ledger : undefined);
       const shown = [PLAYBOOK_NOT_USED, recordedNote(clip.rec, "compile"), ...recorded.warnings];
-      version(source, next, recorded.program, shown, changes);
-      setProgram(done(recorded.program, shown));
+      // a copy: the recording's own object may be the program an earlier rehearsal passed, and the download and
+      // the reshoot panel match runs by object, so they would show that pass for a program not yet rehearsed
+      const program = structuredClone(recorded.program);
+      version(source, next, program, shown, changes);
+      setProgram(done(program, shown));
       setProgramBy(recordedBy(clip.rec, "compile"));
       setAnswers(formAnswers(next, recorded));
       return;
