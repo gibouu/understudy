@@ -97,6 +97,9 @@ describe("the reshoot list's fields", () => {
     const rf = fieldsOf(replaced);
     expect(fieldFor(replaced, rf, "objects[obj2].pocket_clearance_mm")).toMatchObject({ origin: "other", source: "user#edit" });
     expect(fieldFor(replaced, rf, "objects[obj1].name")).toMatchObject({ origin: "video" });
+    // replaced twice, under its id from an answer and under its index by hand: the hand edit counts
+    const twice = { ...body.spec, sources: { ...body.spec.sources, "objects.obj2": "interview#1", "objects.1": "user#edit" } };
+    expect(fieldFor(twice, fieldsOf(twice), "objects[obj2].pocket_clearance_mm")).toMatchObject({ origin: "other", source: "user#edit" });
     const list = { ...body.spec, sources: { ...body.spec.sources, steps: "default" } };
     expect(fieldFor(list, fieldsOf(list), "steps[s2].target")).toMatchObject({ origin: "other" });
   });

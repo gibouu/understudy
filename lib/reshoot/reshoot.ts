@@ -84,7 +84,9 @@ export function fieldsOf(spec: TaskSpec): Field[] {
     const at = `${list}[${rec.id}]`;
     const first = out.length;
     // the whole record or the whole list replaced (an answer, a hand edit) is recorded in the spec's own sources
-    const replaced = top(`${list}.${rec.id}`) ?? top(`${list}.${i}`) ?? top(list);
+    // under its id, its index or the list's name, perhaps several times over: any one from elsewhere wins
+    const overrides = [top(`${list}.${rec.id}`), top(`${list}.${i}`), top(list)].filter((x): x is string => x !== undefined);
+    const replaced = overrides.find((x) => originOf(x) === "other") ?? overrides[0];
     const sourceOf = (leaf: string) => (Object.hasOwn(rec.sources, leaf) ? rec.sources[leaf] : undefined);
     for (const name of names) {
       const value = rec[name];
