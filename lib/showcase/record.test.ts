@@ -189,10 +189,10 @@ describe("the recorder's guards (no network)", () => {
     );
   });
 
-  it("stops before a call whose worst case is over the cap", async () => {
-    const { recordClip, worstUsd } = await import("./record");
+  it("stops before a stage whose cheapest request has no room under the cap", async () => {
+    const { recordClip, leastUsd } = await import("./record");
     await withModels(ORIGINALS, () => withKey("not-a-real-key", async () => {
-      await expect(recordClip({ root: ROOT, sample, engine, capUsd: worstUsd("label") / 2 })).rejects.toThrow(/over the US\$.* cap/);
+      await expect(recordClip({ root: ROOT, sample, engine, capUsd: leastUsd("label") / 2 })).rejects.toThrow(/label reserves at least US\$.* over the US\$.* cap/);
       await expect(recordClip({ root: ROOT, sample, engine, capUsd: 0 })).rejects.toThrow(/positive number/);
     }));
   });
@@ -209,14 +209,12 @@ describe("the recorder's guards (no network)", () => {
     await expect(notesHook()(patched.at(-1)!, patched, engine)).rejects.toThrow(/one clip's patches/);
   });
 
-  it("reserves at the price of the model the route will call, so an override cannot slip past the cap", async () => {
-    const { worstUsd } = await import("./record");
-    const nano = worstUsd("compile", "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B");
-    const ultra = worstUsd("compile", "nvidia/Nemotron-3-Ultra-550b-a55b");
-    expect(ultra).toBeGreaterThan(10 * nano);
-    expect(() => worstUsd("compile", "no/such-model")).toThrow(/no list price/);
-    // the route's own worst case on Ultra (2,119 prompt and 3,000 completion tokens) fits inside the reservation
-    expect(ultra).toBeGreaterThan(2_119 * 1e-6 + 3_000 * 3e-6);
+  it("prices a stage's cheapest request at the model the route will call, so an override cannot slip past the cap", async () => {
+    const { leastUsd } = await import("./record");
+    const nano = leastUsd("compile", "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B");
+    const ultra = leastUsd("compile", "nvidia/Nemotron-3-Ultra-550b-a55b");
+    expect(ultra).toBeGreaterThan(nano);
+    expect(() => leastUsd("compile", "no/such-model")).toThrow(/no list price/);
   });
 });
 
