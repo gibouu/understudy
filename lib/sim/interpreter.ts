@@ -150,7 +150,11 @@ const PART_MM = 0.5;
 const TOSS_SPIN_WEIGHTS = [100, 10, 1, 0.1, 0];
 /** as a toss lets go the jaws open this far past the angle they held at; a catch opens them as far, so its close is short */
 const TOSS_OPEN_RAD = 0.2;
-/** a catch plans the arm at this joint speed (the toss cap) to find the first moment it can be there, taking at least CATCH_MIN_MOVE_S */
+/**
+ * A catch plans the arm at this joint speed (the toss cap) to find the first moment it can be there, taking at least
+ * CATCH_MIN_MOVE_S. Only the plan uses it: the move itself is not capped, and when the point on the path is further
+ * from the arm than the point aimed at, it can ask a joint for more.
+ */
 const CATCH_JOINT_RAD_S = 4;
 const CATCH_MIN_MOVE_S = 0.02;
 /** the arm arrives this long before the jaws start to close, so it is still when they do */

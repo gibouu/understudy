@@ -297,13 +297,25 @@ export const Program = z.object({
   steps: z.array(z.object({ step_id: z.string().min(1), ops: z.array(ProgramOp) })),
   warnings: z.array(z.string()).default([]),
 });
+/** Ops the simulator runs from a hand-written program but the compile prompt does not offer (#159): a compiled answer naming one is unusable. */
+export const SIM_ONLY_OPS = ["toss", "catch"] as const;
+/**
+ * The ops a compiled answer may use: ProgramOp without SIM_ONLY_OPS, in the same order, so an answer that names one
+ * fails to parse exactly as an unknown op did before they existed (the route asks again).
+ */
+export const CompiledOp = z.discriminatedUnion(
+  "op",
+  ProgramOp.options.filter((o) => !(SIM_ONLY_OPS as readonly string[]).includes(o.shape.op.value)) as unknown as typeof ProgramOp.options,
+);
+/** A program as the compile route parses the model's answer: Program over CompiledOp. */
+export const CompiledProgram = Program.extend({ steps: z.array(z.object({ step_id: z.string().min(1), ops: z.array(CompiledOp) })) });
 /** `playbook`: the rules the compiler says it applied, as playbook#<id> (lib/spec/playbook.ts); only with the playbook on. */
 export type Program = z.infer<typeof Program> & { playbook?: string[] };
 /**
  * A program compiled with the playbook on: Program and the ids it says it applied. Only that compile parses
  * with it; Program strips the key, so with the playbook off the model's answer is read as before it existed.
  */
-export const PlaybookProgram = Program.extend({ playbook: z.array(z.string()).optional().catch(undefined) });
+export const PlaybookProgram = CompiledProgram.extend({ playbook: z.array(z.string()).optional().catch(undefined) });
 
 /** One field-level change, applied with `applyChanges`, which also records provenance. */
 export const SpecChange = z.object({
