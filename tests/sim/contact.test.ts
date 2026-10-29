@@ -241,6 +241,21 @@ describe("the apply step and the contact op in the spec", () => {
     const c = r.contacted![0];
     expect(c.peak_force_n > c.force_limit_n || c.arm_touched !== undefined).toBe(true);
   }, 60_000);
+  it("judges coverage on the surface where it really is: told a pose 5 mm off (blind), the path is not covered", () => {
+    const spec = contactSpec(BOX);
+    const env = environment(spec, { id: "x5", name: "x5", axis: "x_mm", offset: 5, object: "standin", gravity_g: 1, expected: "unknown", why: "" });
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 1, graspable: env.graspable }), vfs);
+    const data = new mujoco.MjData(model);
+    try {
+      park(mujoco, model, data);
+      const r = runToEnd({ mujoco, model, data }, env, PROGRAM, "blind");
+      expect(r.pass).toBe(false);
+      expect(r.contacted![0].coverage).toBeLessThan(0.9);
+    } finally {
+      data.delete();
+      model.delete();
+    }
+  }, 60_000);
   it("is additive: a scene with no apply step is built exactly as before", () => {
     const spec = TaskSpec.parse({ ...contactSpec(BOX), steps: [{ id: "s1", verb: "grasp", object: "applicator", t_start_s: 0, t_end_s: 1 }] });
     expect(environment(spec).worldbody).not.toContain("contact_");

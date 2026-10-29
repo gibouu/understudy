@@ -584,5 +584,11 @@ function ik(id: number, target: [number, number, number], approach: Approach, si
 function cancelRun(message: string) {
   if (!running) return;
   post({ type: "error", id: running.id, message: `program cancelled: ${message}` });
+  // returned, not dropped: an op holding wasm memory across steps frees it in its finally (lib/sim/contact.ts)
+  try {
+    running.it.return(undefined as never);
+  } catch {
+    // a run that cannot finish cleanly is gone either way
+  }
   running = null;
 }

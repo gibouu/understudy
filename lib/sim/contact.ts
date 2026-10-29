@@ -83,7 +83,7 @@ export type Contacted = {
   /** path samples, SAMPLE_MM apart, and how many had a contact within reach_mm */
   samples: number;
   covered: number;
-  /** covered / samples */
+  /** the share of the path's length (on the surface where MuJoCo has it) whose samples had a contact within reach_mm */
   coverage: number;
   coverage_required: number;
   reach_mm: number;
@@ -163,6 +163,13 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
   const names = Array.from(toNumbers(model.names));
   const bodyAdr = Array.from(toNumbers(model.name_bodyadr));
   const isScene = (b: number) => b === 0 || decodeName(names, bodyAdr[b]).startsWith(NAME_PREFIX);
+  // the path where the surface really is, from MuJoCo's own pose of it: what coverage is checked against, so a
+  // program told the wrong pose (blind) is judged on the real surface, not on the one it aimed at
+  const truth = samplePath(surface, c.path, Array.from(toNumbers(data.xpos)).slice(3 * surfaceBody, 3 * surfaceBody + 3) as Vec3, Array.from(toNumbers(data.xmat)).slice(9 * surfaceBody, 9 * surfaceBody + 9));
+  // each sample weighs the length of path it stands for (half of each piece next to it), so coverage is a share of
+  // the path's length, whatever its points' spacing or repeats
+  const weight = truth.map((x, k) => ((truth[Math.min(truth.length - 1, k + 1)].s_m - x.s_m) + (x.s_m - truth[Math.max(0, k - 1)].s_m)) / 2);
+  const totalWeight = weight.reduce((a, b) => a + b, 0);
   const heldGeoms = new Set(w.held.objectGeoms);
   const vec = (field: unknown, i: number, n: number) => Array.from(toNumbers(field)).slice(n * i, n * i + n);
 
@@ -327,8 +334,8 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
         lastAt = p;
         const reach = c.reach_mm * MM;
         let nearest = Infinity;
-        for (let j = 0; j < samples.length; j++) {
-          const q = samples[j].point;
+        for (let j = 0; j < truth.length; j++) {
+          const q = truth[j].point;
           const d = Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
           nearest = Math.min(nearest, d);
           if (d <= reach) covered[j] = true;
@@ -383,7 +390,7 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
     const limit = c.force_n;
     const target = TARGET_SHARE * limit;
     const t0 = w.now();
-    w.log(`${t0.toFixed(2)} contact: ${heldObj.id} onto ${c.surface} along ${samples.length} mm of path, force limit ${limit} N (aiming at ${target.toFixed(2)} N)`);
+    w.log(`${t0.toFixed(2)} contact: ${heldObj.id} onto ${c.surface} along ${(samples.at(-1)!.s_m / MM).toFixed(0)} mm of path (${samples.length} samples), force limit ${limit} N (aiming at ${target.toFixed(2)} N)`);
 
     // 1. the stand-off, at the usual speed; nothing should touch the surface on the way
     yield* moveTo(onLine(first, STANDOFF_MM * MM));
@@ -465,7 +472,7 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
       surface: c.surface,
       samples: samples.length,
       covered: n,
-      coverage: n / samples.length,
+      coverage: totalWeight > 0 ? weight.reduce((a, x, j) => a + (covered[j] ? x : 0), 0) / totalWeight : n / samples.length,
       coverage_required: c.coverage_pc / 100,
       reach_mm: c.reach_mm,
       force_limit_n: limit,
@@ -516,7 +523,7 @@ export function contactMarkers(spec: TaskSpec, frames: Record<string, WorldPose>
 /** One line for the log and the notes: what the contact did, measured. */
 export function describeContact(c: Contacted): string {
   return [
-    `${c.covered} of ${c.samples} path samples (${(100 * c.coverage).toFixed(0)}%) had a contact within ${c.reach_mm} mm`,
+    `${c.covered} of ${c.samples} path samples had a contact within ${c.reach_mm} mm (${(100 * c.coverage).toFixed(0)}% of its length)`,
     `peak force ${c.peak_force_n.toFixed(2)} N against a ${c.force_limit_n} N limit (mean ${c.mean_force_n.toFixed(2)} N while following, aiming at ${c.force_target_n.toFixed(2)} N)`,
     `${c.contact_s.toFixed(2)} s in contact over ${c.follow_s.toFixed(2)} s of path`,
     `contacts up to ${c.off_path_max_mm.toFixed(1)} mm off the path (mean ${c.off_path_mean_mm.toFixed(1)}), the held object ${c.grip_tilt_deg.toFixed(1)}° off the normal`,
