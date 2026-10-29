@@ -3,14 +3,14 @@
  * guards that keep a paid job from being started twice, charged twice, charged at zero by mistake, or
  * trained on data that is not the manifest's. No network, no spend.
  */
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 const run = promisify(execFile);
 type Job = { id: string; object: string; model: string; training_file: string; created_at: number; status: string; trained_tokens: number | null };
@@ -18,6 +18,9 @@ type Job = { id: string; object: string; model: string; training_file: string; c
 describe("Token Factory fine-tune job script (local stand-in)", () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), "finetune-tf-"));
   const env = { ...process.env, UNDERSTUDY_ENV_FILE: path.join(dir, "env"), BENCH_LEDGER_PATH: path.join(dir, "ledger.jsonl"), FINETUNE_TF_STATE: path.join(dir, "state.json"), FINETUNE_TF_BASE_URL: "" };
+  // a watchdog writes to the temp dir, never to a real endpoint's log, and stops once this test process is gone (#157)
+  const watchdogLog = path.join(dir, "watchdog.log");
+  Object.assign(env, { FINETUNE_TF_WATCHDOG_LOG: watchdogLog, FINETUNE_TF_WATCHDOG_OWNER: String(process.pid) });
   const jobs: Job[] = [];
   let failCreate: "no" | "lost-answer" | "rejected" = "no";
   const served: string[] = [];
@@ -96,7 +99,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
     env.FINETUNE_TF_BASE_URL = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1/`;
   });
-  // every watchdog the tests start is stopped at the end, whether or not it finished on its own
+  // every watchdog the tests start is stopped after its test, whether or not it finished on its own
   const watchdogs: number[] = [];
   const alive = (pid: number) => {
     try {
@@ -106,14 +109,27 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
       return false;
     }
   };
-  afterAll(() => {
+  // any process of its group (detached: the watchdog and, on a Mac, caffeinate)
+  const groupAlive = (pid: number) => {
+    try {
+      process.kill(-pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const stopWatchdogs = () => {
     for (const pid of watchdogs) {
       try {
-        process.kill(-pid, "SIGTERM"); // its process group: the watchdog and, on a Mac, caffeinate
+        process.kill(-pid, "SIGTERM");
       } catch {
         // gone already
       }
     }
+  };
+  afterEach(stopWatchdogs);
+  afterAll(() => {
+    stopWatchdogs();
     server.close();
   });
 
@@ -248,6 +264,26 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     await new Promise((r) => setTimeout(r, 2500)); // past B's deadline
     expect(alive(b.watchdog_pid)).toBe(false);
     expect(served.filter((x) => x === `DELETE /v0/dedicated_endpoints/${b.id}`)).toHaveLength(1);
+    // the refused deletes were logged in the temp dir, with the wait they really took (30 s at 100 ms a minute)
+    expect(readFileSync(watchdogLog, "utf8")).toContain(`delete ${ep.id}: HTTP 503, retrying in 0.05 s`);
+  }, 60_000);
+
+  it("a watchdog whose owner is gone stops at once and deletes nothing (#157)", async () => {
+    // a process that has already exited stands for a test run that was killed
+    const dead = await new Promise<number>((resolve) => {
+      const child = spawn(process.execPath, ["-e", ""]);
+      child.once("exit", () => resolve(child.pid!));
+    });
+    const orphan = { ...env, FINETUNE_TF_MINUTE_MS: "100", FINETUNE_TF_WATCHDOG_OWNER: String(dead) };
+    await run("node", ["scripts/finetune-tf.mjs", "endpoint-create", "--custom-weights-id", "w-5", "--minutes", "180"], { env: orphan, cwd: process.cwd() });
+    const ep = state().endpoint;
+    watchdogs.push(ep.watchdog_pid);
+    await new Promise((r) => setTimeout(r, 1500));
+    expect(groupAlive(ep.watchdog_pid)).toBe(false);
+    expect(endpoints.map((e) => e.id)).toContain(ep.id);
+    expect(readFileSync(watchdogLog, "utf8")).toContain(`(${dead}) is gone; the watchdog stops`);
+    await run("node", ["scripts/finetune-tf.mjs", "endpoint-delete"], { env: orphan, cwd: process.cwd() });
+    expect(endpoints).toHaveLength(0);
   }, 60_000);
 
   it("an endpoint create: a refusal gives the reservation back, a lost answer waits for adopt", async () => {
@@ -380,5 +416,13 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     await tf("create", ...q4, "--usd-per-mtok", "0.4", "--balance-usd", "60");
     expect(await fails("adopt", ...q8)).toMatch(/0 new jobs/);
     await tf("release", ...q8, "--confirm-no-job");
+  }, 60_000);
+
+  it("leaves no watchdog alive (#157)", async () => {
+    expect(watchdogs.length).toBeGreaterThan(0);
+    stopWatchdogs();
+    const until = Date.now() + 5000;
+    while (watchdogs.some(groupAlive) && Date.now() < until) await new Promise((r) => setTimeout(r, 100));
+    expect(watchdogs.filter(groupAlive)).toEqual([]);
   }, 60_000);
 });
