@@ -29,7 +29,7 @@ import { gestureProgram } from "@/lib/sim/gesture";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
 import { budgetRefused, explain, liveGate } from "@/lib/unlock/check";
 import { prerunProgram } from "@/lib/showcase/lookup";
-import { citedRules, matchRules, playbookSection, type Rule } from "@/lib/spec/playbook";
+import { citedRules, matchRules, PLAYBOOK, playbookSection, type Rule } from "@/lib/spec/playbook";
 import { z } from "zod";
 
 export const maxDuration = 60;
@@ -195,11 +195,11 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   const resolved = resolveFixtureNames(result.value, spec.data);
   const warnings = [...result.warnings, ...resolved.warnings];
   // the rules it says it applied, among those it was given; nothing at all without the playbook. A kept
-  // previous program keeps what it said when it was compiled (Program parsed it without), or says nothing
+  // previous program keeps what it said when it was compiled, under the rules it had then (any playbook rule), or says nothing
   const { playbook: said, ...unsaid } = resolved.program;
   const kept = previous !== undefined && result.warnings.some((w) => w.endsWith("previous value kept"));
   const keptSaid = kept ? PlaybookProgram.safeParse(body.previous).data?.playbook : undefined;
-  const cites = !rules ? undefined : kept ? (keptSaid && citedRules(keptSaid, rules)) : citedRules(said, rules);
+  const cites = !rules ? undefined : kept ? (keptSaid && citedRules(keptSaid, PLAYBOOK)) : citedRules(said, rules);
   const program: Program = {
     ...unsaid,
     ...(cites ? { playbook: cites } : {}),

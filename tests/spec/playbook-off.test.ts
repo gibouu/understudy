@@ -103,9 +103,10 @@ describe("the playbook switch on", () => {
     const previous = session("iss-glovebox-pipette").iterations[1].program;
     unusable = true;
     try {
-      const cited = await post2(spec, { rules: ["pocket-lift-reach"] }, { ...previous, playbook: ["playbook#pocket-lift-reach", "playbook#zone-lift-reach"] });
+      // compiled under other rules than the ones selected now: its own citations stay, an id the playbook lacks does not
+      const cited = await post2(spec, { rules: ["pocket-lift-reach"] }, { ...previous, playbook: ["playbook#pocket-release-above-floor", "playbook#made-up"] });
       expect(cited.warnings.some((w: string) => w.endsWith("previous value kept"))).toBe(true);
-      expect(cited.value.playbook).toEqual(["playbook#pocket-lift-reach"]);
+      expect(cited.value.playbook).toEqual(["playbook#pocket-release-above-floor"]);
       const silent = await post2(spec, { rules: ["pocket-lift-reach"] }, previous);
       expect(silent.warnings.some((w: string) => w.endsWith("previous value kept"))).toBe(true);
       expect(silent.value.playbook).toBeUndefined();
