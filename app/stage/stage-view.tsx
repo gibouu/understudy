@@ -256,10 +256,9 @@ export function StageView() {
     const g = gravityRef.current; // the latest pick, even one made in the same tick
     const label = `${name.replaceAll("_", " ")}, ${g} ${GRAVITIES[g]} g, seed ${seed}`;
     setRunNote(`${label}: running`);
-    client.reset(seed);
-    client.setGravity(GRAVITIES[g]);
     try {
-      const r = await client.run(POUR_PROGRAMS[name], "sensed", "home");
+      // reset and gravity ride in the run message: sent apart, a worker tick could fall between them and the start
+      const r = await client.run(POUR_PROGRAMS[name], "sensed", "home", { reset: { seed }, gravityG: GRAVITIES[g] });
       const where = r.log.findLast((l) => l.includes(" liquid: "))?.split(" liquid: ")[1];
       setRunNote(`${label}: ${r.pass ? "pass" : `fail${r.failed_step_id ? ` at ${r.failed_step_id}` : ""}, ${r.why}`} (${r.t.toFixed(1)} s)${where ? `. Liquid: ${where}.` : ""}`);
       setPoured(name);
