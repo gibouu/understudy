@@ -50,7 +50,7 @@
  * summary tables print at the end of every live run, over every arm in the file.
  * Without BENCH_LIVE a cheap unit test of the probes runs (no network).
  */
-import { existsSync, openSync, closeSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { fmt, loadMujoco, mdTable } from "./gravity-harness";
@@ -175,6 +175,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
         spent: (script?: string) => number;
         loadPrices: (models: string[], file?: string) => Record<string, { prompt: number; completion: number; cache_read: number | null }>;
         BudgetError: new (m: string) => Error;
+        withFileLock: <T>(lock: string, fn: () => T, o?: { waitMs?: number; staleMs?: number }) => T;
       };
       const cmp = (await import("../../scripts/compare-models.mjs")) as unknown as {
         COMPARATORS: Record<string, { short: string; off: Record<string, unknown>; on: Record<string, unknown> | null; always_reasons?: boolean; stands_in_for: string }>;
@@ -456,7 +457,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
        * processes: under an exclusive lock file, re-read, merge, write a temp file, rename it over.
        */
       const save = () =>
-        withFileLock(`${OUT}.lock`, () => {
+        ledger.withFileLock(`${OUT}.lock`, () => {
           refresh();
           file.generated_at = new Date().toISOString();
           file.summary = summarise(file);
@@ -465,7 +466,7 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
           const tmp = `${OUT}.${process.pid}.tmp`;
           writeFileSync(tmp, body);
           renameSync(tmp, OUT);
-        });
+        }, { waitMs: 120_000, staleMs: 60_000 });
 
       const only = (c: CaseDef) => !process.env.PATCH_ONLY || process.env.PATCH_ONLY.split(",").some((s) => c.id.includes(s));
       const cases = caseGrid().filter(only);
@@ -682,38 +683,6 @@ describe.skipIf(process.env.BENCH_LIVE !== "1")("patch loop (live, Token Factory
 });
 
 // --- helpers --------------------------------------------------------------------------
-/**
- * Run `fn` holding an exclusive lock file (created with O_EXCL). Waits up to `waitMs` for
- * another holder; a lock older than `staleMs` (a crashed writer: a save takes about a second)
- * is removed. Synchronous on purpose: the save it guards is synchronous too.
- */
-function withFileLock<T>(lock: string, fn: () => T, waitMs = 120_000, staleMs = 60_000): T {
-  const nap = new Int32Array(new SharedArrayBuffer(4));
-  const deadline = Date.now() + waitMs;
-  let fd: number | null = null;
-  while (fd === null) {
-    try {
-      fd = openSync(lock, "wx");
-      writeSync(fd, `${process.pid} ${new Date().toISOString()}\n`);
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== "EEXIST") throw e;
-      try {
-        if (Date.now() - statSync(lock).mtimeMs > staleMs) unlinkSync(lock);
-      } catch {
-        // the holder released it between the two calls
-      }
-      if (Date.now() > deadline) throw new Error(`could not take ${lock} within ${waitMs / 1000} s`);
-      Atomics.wait(nap, 0, 0, 50 + Math.random() * 100);
-    }
-  }
-  try {
-    return fn();
-  } finally {
-    closeSync(fd);
-    unlinkSync(lock);
-  }
-}
-
 /** numbers to 4 significant digits (3 decimals at 1 and above); keeps the file a few MB */
 const roundNumbers = (_k: string, v: unknown) => (typeof v === "number" && !Number.isInteger(v) ? (Math.abs(v) >= 1 ? Math.round(v * 1000) / 1000 : Number(v.toPrecision(4))) : v);
 

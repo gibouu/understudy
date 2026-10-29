@@ -607,6 +607,24 @@ describe("branch review regressions", () => {
     expect(Array.from(g.positions).every(Number.isFinite)).toBe(true);
     expect(g.closeUnresolved).toBeGreaterThan(0);
   });
+
+  it("7: a wedge between a plane and the world bounds gets the closing pass too", () => {
+    // the bounds face y >= 0 and a plane y <= x tan 10 deg: a 10 degree wedge opening toward +x
+    const a = (10 * Math.PI) / 180, r = 0.0005;
+    const n = [Math.sin(a), -Math.cos(a), 0];
+    const ax = [-n[1], n[0], 0];
+    const R = axisAngleToMat(ax, Math.acos(n[2]));
+    for (const substeps of [1, 4]) {
+      const f = create({ spacing: 0.001, substeps, ...quiet, iterations: 4, bounds: { min: [-1, 0, -1], max: [1, 1, 1] } });
+      f.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0, 0], rotation: R } });
+      f.addParticles([0.01, 0.0008, 0], [-1.2, 0, 0]);
+      f.step(1 / FPS);
+      const p = f.positions;
+      const pen = Math.max(0, r - (n[0] * p[0] + n[1] * p[1]), r - p[1]);
+      expect(pen).toBeLessThan(1e-9);
+      expect(f.closeUnresolved).toBe(0);
+    }
+  });
 });
 
 // ---------------------------------------------------------------- validations
