@@ -188,7 +188,7 @@ export function renderQualityMarkdown(
   lines.push("## Envelope per axis", "", "Sampled evidence: the largest offset that still passed and the smallest that failed, per side and per mode. A symmetric band exists only where both sides were sampled.", "");
   const axes = Object.entries(report.envelope_per_axis);
   if (axes.length === 0) {
-    lines.push("No perturbation scenarios were run.", "");
+    lines.push("No perturbation results are included in this export.", "");
   } else {
     lines.push("| axis | sensed | blind |", "|---|---|---|");
     for (const [axis, { sensed, blind }] of axes) {
