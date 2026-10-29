@@ -35,34 +35,33 @@ function recorderFor(media: MediaStream): MediaRecorder {
 
 /** `onPick`: called as a file is picked; returns where to hand the file once it reads, if the flow still wants it. */
 export function UploadClip({ onPick, disabled = false }: { onPick: () => (clip: File) => void; disabled?: boolean }) {
-  const [reading, setReading] = useState(false);
+  /** the pick being read, 0 when none */
+  const [reading, setReading] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
-  /** the latest `disabled`: consent withdrawn while a file is read drops it */
-  const disabledNow = useRef(disabled);
-  useEffect(() => {
-    disabledNow.current = disabled;
-  }, [disabled]);
   const pick = useRef(0);
+  // consent withdrawn (or the clip changed, which remounts this) drops a file still being read, even if consent comes back
+  useEffect(() => {
+    if (disabled) pick.current++;
+  }, [disabled]);
   useEffect(() => () => void pick.current++, []);
 
   async function picked(file: File) {
     const id = ++pick.current;
     const onClip = onPick();
     setProblem(null);
-    setReading(true);
+    setReading(id);
     const why = await clipProblem(file);
+    setReading((r) => (r === id ? 0 : r));
     if (id !== pick.current) return;
-    setReading(false);
-    if (disabledNow.current) return;
     if (why) setProblem(why);
     else onClip(file);
   }
 
-  const off = disabled || reading;
+  const off = disabled || reading > 0;
   return (
     <>
       <label className={`rounded border border-dashed px-3 py-1.5 text-sm ${off ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-neutral-50"}`}>
-        {reading ? "Reading the clip…" : "Upload a clip"}
+        {reading > 0 ? "Reading the clip…" : "Upload a clip"}
         <input
           type="file"
           accept={CLIP_ACCEPT}

@@ -16,11 +16,14 @@ export async function makeProxy(clip: Blob): Promise<Proxy> {
   const target = new BufferTarget();
   const conversion = await proxyConversion(input, target);
   const video = verdictOf(conversion);
-  if (video !== "ok") {
-    const codec = (await input.getPrimaryVideoTrack())?.codec ?? null;
-    throw new Error(problemOf({ bytes: clip.size, duration_s, codec, video }) ?? "this browser cannot make the H.264 copy of the clip");
+  const codec = async () => (await input.getPrimaryVideoTrack())?.codec ?? null;
+  if (video !== "ok") throw new Error(problemOf({ bytes: clip.size, duration_s, codec: await codec(), video }) ?? "this browser cannot make the H.264 copy of the clip");
+  try {
+    await conversion.execute();
+  } catch {
+    // the decoder said yes, then failed on the frames (a profile it cannot do, say): the same sentence as a refusal
+    throw new Error(problemOf({ bytes: clip.size, duration_s, codec: await codec(), video: "undecodable" }) ?? "this browser could not decode the clip");
   }
-  await conversion.execute();
   const bytes = new Uint8Array(target.buffer!);
   return {
     video: await dataUri(new Blob([bytes], { type: "video/mp4" })),

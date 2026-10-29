@@ -92,4 +92,37 @@ describe("an iPhone .MOV, as makeProxy's own conversion judges it (set up, not r
     webcodecs((codec) => !/^(hev1|hvc1)/.test(codec));
     await expect(makeProxy(fixture("hevc.mov"))).rejects.toThrow(/cannot decode HEVC.*Most Compatible/);
   });
+
+  it("a decoder that says yes, then fails on the frames: makeProxy says the same, not the decoder's bare error", async () => {
+    webcodecs(() => true);
+    const supported = (globalThis as unknown as { VideoDecoder: { isConfigSupported: unknown } }).VideoDecoder.isConfigSupported;
+    vi.stubGlobal(
+      "VideoDecoder",
+      class {
+        static isConfigSupported = supported;
+        state = "unconfigured";
+        decodeQueueSize = 0;
+        private fail: (e: Error) => void;
+        constructor(init: { error: (e: Error) => void }) {
+          this.fail = init.error;
+        }
+        addEventListener() {}
+        removeEventListener() {}
+        configure() {
+          this.state = "configured";
+        }
+        decode() {
+          queueMicrotask(() => this.fail(new Error("Decoding error.")));
+        }
+        flush() {
+          return Promise.reject(new Error("Decoding error."));
+        }
+        reset() {}
+        close() {
+          this.state = "closed";
+        }
+      },
+    );
+    await expect(makeProxy(fixture("hevc.mov"))).rejects.toThrow(/cannot decode HEVC.*Most Compatible/);
+  });
 });
