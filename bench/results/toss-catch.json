@@ -43,6 +43,7 @@
      },
      "parted": true,
      "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.3,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.32,
@@ -87,6 +88,7 @@
      },
      "parted": true,
      "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.3,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.325,
@@ -138,6 +140,7 @@
      },
      "parted": true,
      "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.2,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.315,
@@ -182,6 +185,7 @@
      },
      "parted": true,
      "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.3,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.295,
@@ -226,6 +230,7 @@
      },
      "parted": true,
      "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.2,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.415,
@@ -270,6 +275,7 @@
      },
      "parted": true,
      "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.3,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.3,
@@ -314,6 +320,7 @@
      },
      "parted": true,
      "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.3,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.295,
@@ -358,6 +365,7 @@
      },
      "parted": true,
      "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.2,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.315,
@@ -419,7 +427,8 @@
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 0.5
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.8
     }
    },
    {
@@ -451,7 +460,8 @@
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 0.5
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.8
     }
    },
    {
@@ -483,7 +493,8 @@
       ]
      },
      "parted": false,
-     "peak_joint_rad_s": 0.5
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.9
     }
    },
    {
@@ -523,6 +534,7 @@
      },
      "parted": true,
      "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.9,
      "catch": {
       "step_id": "s1",
       "t_predicted": 6.703,
@@ -566,7 +578,8 @@
       ]
      },
      "parted": false,
-     "peak_joint_rad_s": 0.5
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.9
     }
    },
    {
@@ -599,6 +612,7 @@
      },
      "parted": true,
      "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.8,
      "catch": {
       "step_id": "s1",
       "t_predicted": 6.949,
@@ -642,7 +656,8 @@
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 0.5
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.8
     }
    },
    {

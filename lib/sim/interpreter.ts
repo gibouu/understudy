@@ -655,6 +655,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
               release: { t: 0, xyz_mm: [0, 0, 0], v_mm_s: [0, 0, 0] },
               parted: false,
               peak_joint_rad_s: r1(peak),
+              measured_joint_rad_s: 0,
             };
             let hold = 0;
             let openRate = 0;
@@ -742,6 +743,8 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
                 );
               }
               yield* step();
+              // measured, not asked: the servo's lag put back can drive a joint past the cap the rates are held to
+              flight.measured_joint_rad_s = r1(Math.max(flight.measured_joint_rad_s, ...qvel().slice(0, ARM).map(Math.abs)));
             }
             break;
           }

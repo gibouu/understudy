@@ -32,6 +32,8 @@ export type Flight = {
   parted: boolean;
   /** the fastest any arm joint was asked to turn during the toss, run-up, coast and brake, rad/s (at most TOSS_JOINT_RAD_S) */
   peak_joint_rad_s: number;
+  /** the fastest any arm joint really turned during the toss, rad/s: the servo's lag correction on top of the rates can exceed the cap */
+  measured_joint_rad_s: number;
   catch?: {
     step_id: string;
     /** the moment the object was predicted at the catch point, s */
