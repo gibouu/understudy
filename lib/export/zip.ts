@@ -63,12 +63,12 @@ export type ExportOptions = BuildLeRobotOptions &
 export type ExportResult = { zip: Uint8Array; paths: string[]; quality: QualityReport };
 
 export async function buildExportZip(bundle: ExportBundle, options: ExportOptions = {}): Promise<ExportResult> {
-  const { video, jointUnits, ...qualityInput } = options;
+  const { video, jointUnits, source, ...qualityInput } = options;
   const { origin } = qualityInput;
   const rendered = Boolean(video);
   const lerobot = await buildLeRobot(bundle.episodes, { video });
   const quality = buildQualityReport({ episodes: bundle.episodes, ...qualityInput, rendered });
-  lerobot["QUALITY.md"] = encoder.encode(renderQualityMarkdown(quality, bundle.episodes, { jointUnits, origin, rendered }));
+  lerobot["QUALITY.md"] = encoder.encode(renderQualityMarkdown(quality, bundle.episodes, { jointUnits, origin, rendered, source }));
   const understudy = understudyFiles({ ...bundle.understudy, quality });
   const zip = zipTrees({ lerobot, understudy });
   const paths = [

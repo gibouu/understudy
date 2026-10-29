@@ -17,6 +17,6 @@ NASA's media are not copyrighted and may be used for informational and education
 
 - The NASA insignia, logotype and seal never appear in anything Understudy generates (thumbnails, renders, exports). The clip is shown as footage, nothing more.
 - An astronaut's likeness is not used to endorse anything. The clip is a demonstration input; nothing here implies that NASA or the crew endorse Understudy.
-- The source and credit stay attached: this table is the record, and the export writer will carry them in a `source` field (issue #61).
+- The source and credit stay attached: this table is the record, and the 1-minute demo's export carries them word for word, in `lerobot/QUALITY.md` and in a `source` field next to the clip in `understudy/recording.json` (`lib/export/source.ts`, issue #61).
 
 The clips are served at `/samples/<name>.mp4` by `app/samples/[name]/route.ts`.
