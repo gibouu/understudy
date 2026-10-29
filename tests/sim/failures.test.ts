@@ -171,7 +171,7 @@ describe("3. wrong aperture: what the rehearsal can show of it", () => {
     expect(narrow.log.filter((l) => !l.includes("grasp pipette"))).toEqual(as.log.filter((l) => !l.includes("grasp pipette")));
   }, 60_000);
 
-  it("constructed: a box 120 mm on a side is held and placed", () => {
+  it("constructed: a box 120 x 120 mm across and 40 mm tall is held and placed", () => {
     const s = session("public/showcase/iss-glovebox-pipette.json");
     const last = s.iterations.at(-1)!;
     const spec = structuredClone(last.spec);
