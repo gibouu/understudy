@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { BatchResult } from "@/lib/sim/batch";
 import { SimClient } from "@/lib/sim/client";
 import type { SaboteurPlan } from "@/lib/saboteur/ask";
@@ -49,8 +49,11 @@ export function Saboteur({ spec, program: given, onPlan }: { spec: TaskSpec; pro
   /** bumped when the spec or the program changes, or the section goes: results on their way are dropped */
   const gen = useRef(0);
 
+  // a grid reset by a new spec or program: the scoreboard below loses its twelve too
+  const dropPlan = useEffectEvent(() => onPlan?.(null, spec));
   useEffect(() => {
     gen.current++;
+    dropPlan();
     setPlan(idle());
     setGrids({});
     setBusy(false);
@@ -71,6 +74,7 @@ export function Saboteur({ spec, program: given, onPlan }: { spec: TaskSpec; pro
     setBusy(true);
     setGrids({});
     setPlan(running(`${say("super")} is choosing twelve ways to perturb the world`));
+    onPlan?.(null, spec);
     const p = await post<SaboteurPlan>("/api/saboteur", { spec });
     if (id !== gen.current) return;
     setPlan(p);

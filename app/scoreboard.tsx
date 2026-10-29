@@ -16,7 +16,9 @@ export type Score = Partial<Record<ScoreWorld, Tally & { done: number; error?: s
  */
 export function useScoreboard(spec: TaskSpec, programs: Program[], plan: SaboteurPlan | null) {
   const [scores, setScores] = useState<Score[]>([]);
-  const [busy, setBusy] = useState(false);
+  /** the spec and twelve a run is scoring: a run for older ones is cancelled below and does not hold the button */
+  const [busyFor, setBusyFor] = useState<{ spec: TaskSpec; plan: SaboteurPlan } | null>(null);
+  const busy = busyFor !== null && busyFor.spec === spec && busyFor.plan === plan;
   const [ms, setMs] = useState<number | null>(null);
   const client = useRef<SimClient | null>(null);
   const gen = useRef(0);
@@ -25,6 +27,14 @@ export function useScoreboard(spec: TaskSpec, programs: Program[], plan: Saboteu
   /** the spec and the twelve the bars were scored on: other ones (a new grid, an answer) show no bars until scored */
   const [scored, setScored] = useState<{ spec: TaskSpec; plan: SaboteurPlan } | null>(null);
   const current = scored?.spec === spec && scored.plan === plan;
+  // other twelve, or another spec: a run on its way is dropped with its worker, so the next click starts at once
+  useEffect(() => {
+    if (!live.current) return;
+    gen.current++;
+    live.current = false;
+    client.current?.dispose();
+    client.current = null;
+  }, [spec, plan]);
   // the worker goes when the page is hidden or left (an Activity keeps the state, not the worker): a run on its way is
   // dropped and the button comes back
   useEffect(
@@ -34,7 +44,7 @@ export function useScoreboard(spec: TaskSpec, programs: Program[], plan: Saboteu
       client.current = null;
       if (live.current) setScores([]);
       live.current = false;
-      setBusy(false);
+      setBusyFor(null);
     },
     [],
   );
@@ -43,7 +53,7 @@ export function useScoreboard(spec: TaskSpec, programs: Program[], plan: Saboteu
     if (!plan || busy) return;
     const id = ++gen.current;
     const n = plan.scenarios.length;
-    setBusy(true);
+    setBusyFor({ spec, plan });
     live.current = true;
     setMs(null);
     setScores([]);
@@ -70,7 +80,7 @@ export function useScoreboard(spec: TaskSpec, programs: Program[], plan: Saboteu
           sim.dispose();
           if (client.current === sim) client.current = null;
           live.current = false;
-          setBusy(false);
+          setBusyFor(null);
           return;
         }
         if (id !== gen.current) return;
@@ -78,7 +88,7 @@ export function useScoreboard(spec: TaskSpec, programs: Program[], plan: Saboteu
     }
     setMs(performance.now() - started);
     live.current = false;
-    setBusy(false);
+    setBusyFor(null);
   }
 
   return { scores: current ? scores : [], busy, ms: current ? ms : null, start };
