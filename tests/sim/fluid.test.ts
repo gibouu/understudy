@@ -404,6 +404,24 @@ describe("second review regressions", () => {
     expect(end[2] * (p[0] + 0.02) + end[5] * p[1] + end[8] * p[2]).toBeGreaterThanOrEqual(0.00005 - 1e-9);
   });
 
+  it("pushes of two moving planes are not replayed by later projection passes", () => {
+    // the same dip as above, from two planes at an angle: each pushes once, however many passes follow
+    const run = (iterations: number) => {
+      const f = create({ spacing: 0.0001, substeps: 1, gravity: [0, 0, 0], wallDensity: false, xsph: 0, cohesion: 0, iterations });
+      const tiltA = axisAngleToMat([1, 0, 0], 0.3);
+      const a = f.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0, 0] } });
+      const b = f.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0, 0], rotation: tiltA } });
+      f.addParticles([-0.02, 0, 0.00025]);
+      f.setSolidPose(a, { position: [-0.02, 0, 0], rotation: axisAngleToMat([0, 1, 0], 0.05) });
+      f.setSolidPose(b, { position: [-0.02, 0, 0], rotation: mul(axisAngleToMat([0, 1, 0], 0.05), tiltA) });
+      f.step(1 / FPS);
+      return Array.from(f.positions);
+    };
+    const once = run(0);
+    const again = run(4);
+    expect(Math.hypot(again[0] - once[0], again[1] - once[1], again[2] - once[2])).toBeLessThan(1e-9);
+  });
+
   it("R2-5 the corner overlap is computed for the positions the pressure solve is at", () => {
     type W = {
       x: Float64Array; p: Float64Array; wallRho: Float64Array; wallGrad: Float64Array;

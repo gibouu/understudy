@@ -314,8 +314,8 @@ export class Fluid {
   private contactSolid = new Int32Array(0);
   /** first solid each particle touched this substep, and whether it needs the closing pass */
   private touched = new Int32Array(0);
-  /** the rotating solid whose carried contact plane last pushed each particle this substep (afterContact), or -1 */
-  private advanced = new Int32Array(0);
+  /** (particle, solid) pairs whose carried contact plane already pushed the particle this substep (afterContact), as i * solids + sid */
+  private advanced = new Set<number>();
   private entangled = new Uint8Array(0);
   private contactNormal = new Float64Array(0);
   private contactDepth = new Float64Array(0);
@@ -476,7 +476,6 @@ export class Fluid {
     this.nbrCount = new Int32Array(cap);
     this.contactSolid = new Int32Array(cap);
     this.touched = new Int32Array(cap);
-    this.advanced = new Int32Array(cap);
     this.entangled = new Uint8Array(cap);
     this.contactNormal = new Float64Array(3 * cap);
     this.contactDepth = new Float64Array(cap);
@@ -698,7 +697,7 @@ export class Fluid {
     this.contactSolid.fill(-1, 0, n);
     this.contactDepth.fill(0, 0, n);
     this.touched.fill(-1, 0, n);
-    this.advanced.fill(-1, 0, n);
+    this.advanced.clear();
     this.entangled.fill(0, 0, n);
     this.collide();
     this.buildGrid(p);
@@ -1514,14 +1513,14 @@ export class Fluid {
     // carried plane (the plane went through it and out again). Only a later projection pass of the same substep,
     // after this solid has already pushed the particle, leaves an end point in front alone, so the pushes of
     // repeated passes do not add up.
-    const sid = this.solids.indexOf(s);
-    if (this.advanced[i] === sid) {
+    const pair = i * this.solids.length + this.solids.indexOf(s);
+    if (this.advanced.has(pair)) {
       const B = s.rotB, PB = s.posB;
       const dx = p[o] - PB[0], dy = p[o + 1] - PB[1], dz = p[o + 2] - PB[2];
       const ex = B[0] * dx + B[3] * dy + B[6] * dz, ey = B[1] * dx + B[4] * dy + B[7] * dz, ez = B[2] * dx + B[5] * dy + B[8] * dz;
       if ((ex - cx) * nx + (ey - cy) * ny + (ez - cz) * nz >= 0) return false;
     }
-    this.advanced[i] = sid;
+    this.advanced.add(pair);
     // no more than 3 degrees of turn, and no more than the particle's radius of relative travel (L bounds it), apart:
     // a surface that dips through the particle and back between two samples would otherwise not push it
     const M = Math.min(256, Math.max(1, Math.ceil((s.angle * (1 - t)) / ((3 * Math.PI) / 180)), Math.ceil(((1 - t) * L) / r)));

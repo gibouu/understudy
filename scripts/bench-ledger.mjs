@@ -21,7 +21,8 @@
 // guard() and reserve() run their check-and-append inside a cross-process lock: an exclusive-create
 // lock file next to the ledger (withFileLock: fs.openSync(path, "wx") with an owner token inside), retried
 // for up to 30 s, taken over when it is older than 10 s (critical sections take milliseconds; an old lock
-// means its holder died). Every line is appended under it, on a line of its own even after a torn tail. A
+// means its holder died; that removal and release both happen under a short gate, checked just before).
+// Every line is appended under it, on a line of its own even after a torn tail. A
 // charge() without a reservation settles the oldest open reservation of the same script, so callers
 // written against the first version of this file (guard, then charge) still settle what they reserved.
 //
@@ -34,7 +35,7 @@
 //   node scripts/bench-ledger.mjs --settle-stale 30     charges reservations older than 30 min at their estimate
 //   node scripts/bench-ledger.mjs --self-check          concurrency test on a temporary ledger (no network)
 import { spawn } from "node:child_process";
-import { appendFileSync, closeSync, existsSync, linkSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, renameSync, rmSync, statSync, unlinkSync, utimesSync, writeFileSync, writeSync } from "node:fs";
+import { appendFileSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, rmSync, statSync, unlinkSync, utimesSync, writeFileSync, writeSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -61,37 +62,49 @@ const ownerOf = (file) => {
     return null;
   }
 };
+/** a gate left by a process that died inside its few-millisecond section */
+const GATE_STALE_MS = 5_000;
 /**
- * Move `file` aside under a name of our own and remove it, unless keep(moved) says it is not ours to remove: then it
- * goes back (linkSync never overwrites, so a lock someone created meanwhile stands). Rename is atomic, so of two
- * processes moving the same lock only one gets it.
+ * Run `fn` holding `${lock}.gate`, the short lock under which a lock file may be removed. New holders only ever
+ * create the lock file (O_EXCL, when it is absent), and the only removals, release and stale takeover, happen under
+ * the gate with their check just before: so nothing can replace the lock between the check and the removal. A gate
+ * older than GATE_STALE_MS is removed blindly; that reopens the race only for a process stalled that long inside a
+ * section that takes microseconds.
  */
-function moveAside(file, token, keep) {
-  const aside = `${file}.${token}.aside`;
-  try {
-    renameSync(file, aside);
-  } catch {
-    return; // gone already: released, or taken over by someone else
-  }
-  if (!keep(aside)) {
+function withGate(lock, fn) {
+  const gate = `${lock}.gate`;
+  const deadline = Date.now() + LOCK_WAIT_MS;
+  for (;;) {
     try {
-      linkSync(aside, file);
-    } catch {
-      // a new holder created the lock meanwhile: theirs stands
+      closeSync(openSync(gate, "wx"));
+      break;
+    } catch (err) {
+      if (err?.code !== "EEXIST") throw err;
+      try {
+        if (Date.now() - statSync(gate).mtimeMs > GATE_STALE_MS) unlinkSync(gate);
+      } catch {
+        // released between the two calls
+      }
+      if (Date.now() > deadline) return undefined; // give up: the lock is left as it is and goes stale
+      sleepMs(1 + Math.floor(Math.random() * 3));
     }
   }
   try {
-    unlinkSync(aside);
-  } catch {
-    // nothing left to remove
+    return fn();
+  } finally {
+    try {
+      unlinkSync(gate);
+    } catch {
+      // removed as stale by someone else
+    }
   }
 }
+
 /**
  * Run `fn` holding the exclusive lock file `lock` (created with O_EXCL, an owner token inside). Waits up to
- * `waitMs`. A lock older than `staleMs` belonged to a process that died and is taken over: moved aside atomically,
- * and removed only if what was moved is still a stale lock (a fresh owner's lock that replaced it in between goes
- * back). Release removes the lock only while it holds our own token. Synchronous on purpose: the sections it
- * guards are too.
+ * `waitMs`. A lock older than `staleMs` belonged to a process that died and is removed, and release removes the
+ * lock only while it holds our own token; both under withGate, checked just before the removal. Synchronous on
+ * purpose: the sections it guards are too.
  */
 export function withFileLock(lock, fn, { waitMs = LOCK_WAIT_MS, staleMs = LOCK_STALE_MS } = {}) {
   mkdirSync(path.dirname(lock), { recursive: true });
@@ -104,7 +117,11 @@ export function withFileLock(lock, fn, { waitMs = LOCK_WAIT_MS, staleMs = LOCK_S
     } catch (err) {
       if (err?.code !== "EEXIST") throw err;
       try {
-        if (Date.now() - statSync(lock).mtimeMs > staleMs) moveAside(lock, token, (aside) => Date.now() - statSync(aside).mtimeMs > staleMs);
+        if (Date.now() - statSync(lock).mtimeMs > staleMs)
+          withGate(lock, () => {
+            // checked again under the gate: only a stale lock is removed, and nothing can replace it meanwhile
+            if (Date.now() - statSync(lock).mtimeMs > staleMs) unlinkSync(lock);
+          });
       } catch {
         // the holder released it between our two calls: try again
       }
@@ -121,7 +138,9 @@ export function withFileLock(lock, fn, { waitMs = LOCK_WAIT_MS, staleMs = LOCK_S
       return fn();
     } finally {
       // ours only while it holds our token: one taken over as stale belongs to someone else now
-      if (ownerOf(lock) === token) moveAside(lock, token, (aside) => ownerOf(aside) === token);
+      withGate(lock, () => {
+        if (ownerOf(lock) === token) unlinkSync(lock);
+      });
     }
   }
 }
