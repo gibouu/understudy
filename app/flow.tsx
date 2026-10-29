@@ -202,12 +202,14 @@ export function Flow() {
       if (id !== gen.current) return;
       if (!labelled) {
         step("label", "proxy");
-        // without a proxy the route can still answer from its recording of this clip
-        const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: sha ?? (await clipSha256(clip.blob)) }));
+        // without a proxy the route can still answer from its recording of this clip; else the reason there is no proxy is shown
+        const unproxied = { why: "" };
+        const body = await makeProxy(clip.blob).catch(async (err) => ((unproxied.why = (err as Error).message), { clip_sha256: sha ?? (await clipSha256(clip.blob)) }));
         if (id !== gen.current) return;
         step("label", "watch");
         labelled = await post<TaskSpec>("/api/label", { ...body, hint: line });
         if (id !== gen.current) return;
+        if (unproxied.why && labelled.status !== "done") labelled = failed(unproxied.why);
         if (mine) void rememberLabel(mine, line, labelled);
       }
     }
@@ -284,7 +286,17 @@ export function Flow() {
               {s.label}
             </button>
           ))}
-          <UploadClip key={clip?.url} disabled={!consent} onClip={(file) => choose(file, "")} />
+          <UploadClip
+            key={clip?.url}
+            disabled={!consent}
+            onPick={() => {
+              // the file being read is now the latest pick: a sample still loading must not replace it, nor it a later one
+              const id = ++pick.current;
+              return (file) => {
+                if (id === pick.current) choose(file, "");
+              };
+            }}
+          />
           <FilmYourself disabled={!consent} onClip={(take) => choose(take, "")} />
         </div>
         <label className="mt-3 flex items-start gap-2 text-sm text-neutral-700">

@@ -33,7 +33,8 @@ function recorderFor(media: MediaStream): MediaRecorder {
   return new MediaRecorder(media, options);
 }
 
-export function UploadClip({ onClip, disabled = false }: { onClip: (clip: File) => void; disabled?: boolean }) {
+/** `onPick`: called as a file is picked; returns where to hand the file once it reads, if the flow still wants it. */
+export function UploadClip({ onPick, disabled = false }: { onPick: () => (clip: File) => void; disabled?: boolean }) {
   const [reading, setReading] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   /** the latest `disabled`: consent withdrawn while a file is read drops it */
@@ -46,6 +47,7 @@ export function UploadClip({ onClip, disabled = false }: { onClip: (clip: File) 
 
   async function picked(file: File) {
     const id = ++pick.current;
+    const onClip = onPick();
     setProblem(null);
     setReading(true);
     const why = await clipProblem(file);
