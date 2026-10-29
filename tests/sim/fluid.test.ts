@@ -388,6 +388,22 @@ describe("second review regressions", () => {
     expect(end[2] * p[0] + end[5] * p[1] + end[8] * p[2]).toBeGreaterThanOrEqual(0.0005 - 1e-9);
   });
 
+  it("a moving plane that passes through a particle and out again within one substep still pushes it", () => {
+    // the plane z < 0 slides 2 cm along -x while turning 0.05 rad about y: the particle at x = -2 cm is in front of
+    // it at both ends of the substep but behind it in the middle (about 100 um in at half way)
+    const f = create({ spacing: 0.0001, substeps: 1, gravity: [0, 0, 0], wallDensity: false, xsph: 0, cohesion: 0, iterations: 0 });
+    const plane = f.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0, 0] } });
+    const p0 = [-0.02, 0, 0.00015];
+    f.addParticles(p0);
+    const end = axisAngleToMat([0, 1, 0], 0.05);
+    f.setSolidPose(plane, { position: [-0.02, 0, 0], rotation: end });
+    f.step(1 / FPS);
+    const p = f.positions;
+    // before the fix: left where it was, as if the plane had never reached it
+    expect(Math.hypot(p[0] - p0[0], p[1] - p0[1], p[2] - p0[2])).toBeGreaterThan(5e-5);
+    expect(end[2] * (p[0] + 0.02) + end[5] * p[1] + end[8] * p[2]).toBeGreaterThanOrEqual(0.00005 - 1e-9);
+  });
+
   it("R2-5 the corner overlap is computed for the positions the pressure solve is at", () => {
     type W = {
       x: Float64Array; p: Float64Array; wallRho: Float64Array; wallGrad: Float64Array;
@@ -606,6 +622,24 @@ describe("branch review regressions", () => {
     g.step(1 / FPS);
     expect(Array.from(g.positions).every(Number.isFinite)).toBe(true);
     expect(g.closeUnresolved).toBeGreaterThan(0);
+  });
+
+  it("7: a wedge between a plane and the world bounds gets the closing pass too", () => {
+    // the bounds face y >= 0 and a plane y <= x tan 10 deg: a 10 degree wedge opening toward +x
+    const a = (10 * Math.PI) / 180, r = 0.0005;
+    const n = [Math.sin(a), -Math.cos(a), 0];
+    const ax = [-n[1], n[0], 0];
+    const R = axisAngleToMat(ax, Math.acos(n[2]));
+    for (const substeps of [1, 4]) {
+      const f = create({ spacing: 0.001, substeps, ...quiet, iterations: 4, bounds: { min: [-1, 0, -1], max: [1, 1, 1] } });
+      f.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0, 0], rotation: R } });
+      f.addParticles([0.01, 0.0008, 0], [-1.2, 0, 0]);
+      f.step(1 / FPS);
+      const p = f.positions;
+      const pen = Math.max(0, r - (n[0] * p[0] + n[1] * p[1]), r - p[1]);
+      expect(pen).toBeLessThan(1e-9);
+      expect(f.closeUnresolved).toBe(0);
+    }
   });
 });
 
