@@ -63,7 +63,7 @@ describe("the scoreboard on the NASA samples, headless", () => {
     for (const [i, it] of s.iterations.entries()) {
       const t: Partial<Record<(typeof SCORE_WORLDS)[number], Tally>> = {};
       for (const world of SCORE_WORLDS) {
-        const out = await runBatch(engine.mujoco, (xml) => engine.mujoco.MjModel.from_xml_string(xml, engine.vfs), spec, it.program, scoreRollouts(scenarios, world));
+        const out = await runBatch(engine.mujoco, (xml) => engine.mujoco.MjModel.from_xml_string(xml), spec, it.program, scoreRollouts(scenarios, world));
         t[world] = tally(out, scenarios.length);
         passes.push(out.map((r) => r.rollout?.pass ?? false));
         expect(t[world]!.errors, out.find((r) => r.error)?.error).toBe(0);
@@ -73,7 +73,7 @@ describe("the scoreboard on the NASA samples, headless", () => {
     console.info(lines.join("\n"));
     // recomputed, never pinned: a change to the interpreter moves them. What must hold is that the same version on the
     // same twelve scores the same, rollout by rollout (the page re-runs exactly this in the browser)
-    const again = await runBatch(engine.mujoco, (xml) => engine.mujoco.MjModel.from_xml_string(xml, engine.vfs), spec, s.iterations.at(-1)!.program, scoreRollouts(scenarios, "orbit"));
+    const again = await runBatch(engine.mujoco, (xml) => engine.mujoco.MjModel.from_xml_string(xml), spec, s.iterations.at(-1)!.program, scoreRollouts(scenarios, "orbit"));
     expect(again.map((r) => r.rollout?.pass ?? false)).toEqual(passes.at(-1));
   }, 180_000);
 });
