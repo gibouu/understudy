@@ -14,12 +14,20 @@ import { Session } from "@/lib/showcase/session";
 import { BOX_Y_MM, BOX_Z_MM, PLANE_X_MM } from "@/lib/sim/gesture";
 import type { PathPoint, Program, TaskSpec } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
-import { GESTURE_VARIANTS_NOTE, gestureVariants, mirrorPath, sizeScale, SLOWER, timeScale } from "@/lib/variants/gesture";
+import { clipPace, GESTURE_VARIANTS_NOTE, gestureVariants, mirrorPath, sizeScale, SLOWER, timeScale } from "@/lib/variants/gesture";
 import { buildVariant, physicalKey, type Checked } from "@/lib/variants/validate";
 import { issBase } from "./harness";
 
 const pt = (t_s: number, y: number, z: number): PathPoint => ({ t_s, xyz_mm: [PLANE_X_MM, y, z] });
-const inBox = (p: PathPoint[]) => p.every(({ xyz_mm: [, y, z] }) => y >= BOX_Y_MM[0] - 0.05 && y <= BOX_Y_MM[1] + 0.05 && z >= BOX_Z_MM[0] - 0.05 && z <= BOX_Z_MM[1] + 0.05);
+const gestureSpec = (path: PathPoint[]): TaskSpec => ({
+  title: "a gesture",
+  summary: "",
+  objects: [],
+  steps: [{ id: "s1", verb: "gesture", gesture: { path, reach_mm: 5 }, via_points: [], preconditions: [], success: [], tolerances: {}, t_start_s: 0, t_end_s: 1, source: "vl#0", sources: {} }],
+  open_questions: [],
+  source: "vl#0",
+} as unknown as TaskSpec);
+const inBox =(p: PathPoint[]) => p.every(({ xyz_mm: [, y, z] }) => y >= BOX_Y_MM[0] - 0.05 && y <= BOX_Y_MM[1] + 0.05 && z >= BOX_Z_MM[0] - 0.05 && z <= BOX_Z_MM[1] + 0.05);
 
 describe("the path transforms", () => {
   const small = [pt(0, -40, 240), pt(0.5, 10, 260), pt(1, 30, 250)];
@@ -33,6 +41,25 @@ describe("the path transforms", () => {
     expect(timeScale(small, 1.5).map((p) => p.t_s)).toEqual([0, 0.75, 1.5]);
     expect(timeScale(small, 1.5).map((p) => p.xyz_mm)).toEqual(small.map((p) => p.xyz_mm));
     expect(() => timeScale(small, 0.5)).toThrow(/under 1/);
+    // times a tenth of a millisecond apart stay apart
+    const close = timeScale([pt(0, 0, 250), pt(0.0001, 1, 250), pt(1, 2, 250)], 3).map((p) => p.t_s);
+    expect(close[1]).toBeGreaterThan(close[0]);
+    expect(close[2]).toBeGreaterThan(close[1]);
+  });
+
+  it("offers nothing for a path where the hand did not move, and says why", () => {
+    const still = { ...gestureSpec([pt(0, 10, 250), pt(1, 10, 250)]) };
+    const r = gestureVariants(still);
+    expect(r.variants).toEqual([]);
+    expect(r.not_yet[0].why).toMatch(/hand moved/);
+    expect(gestureVariants(gestureSpec([pt(0, 10, 250)])).variants).toEqual([]);
+  });
+
+  it("says a slowed path's pace against the clip", () => {
+    const s = gestureSpec(small);
+    const slower = gestureVariants(s).variants.find((v) => v.title === "Slower")!;
+    expect(clipPace(s, slower.spec).s1).toBeCloseTo(1 / SLOWER, 6);
+    expect(clipPace(s, s).s1).toBe(1);
   });
 
   it("grows a path about its own centre, then shrinks and shifts it to stay in the box", () => {

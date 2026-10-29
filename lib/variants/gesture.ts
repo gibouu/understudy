@@ -44,10 +44,10 @@ export function mirrorPath(path: PathPoint[]): PathPoint[] {
   return path.map((p) => ({ t_s: p.t_s, xyz_mm: [p.xyz_mm[0], r1(2 * c - p.xyz_mm[1]), p.xyz_mm[2]] }));
 }
 
-/** Every point `k` times later (k >= 1 keeps the times moving forward at the millisecond). */
+/** Every point `k` times later, unrounded, so times that moved forward still do. */
 export function timeScale(path: PathPoint[], k: number): PathPoint[] {
   if (!(k >= 1)) throw new Error(`a time scale under 1 can run two points together: ${k}`);
-  return path.map((p) => ({ t_s: Math.round(p.t_s * k * 1000) / 1000, xyz_mm: p.xyz_mm }));
+  return path.map((p) => ({ t_s: p.t_s * k, xyz_mm: p.xyz_mm }));
 }
 
 const span = (xs: number[]) => [Math.min(...xs), Math.max(...xs)] as const;
@@ -88,11 +88,35 @@ export function gestureText(g: Gesture): string {
 
 type Idea = { title: string; summary: string; gesture: (g: Gesture) => Gesture };
 
+/** A step whose path the variants change: two points or more, and a hand that moved. */
+function moves(s: Step): boolean {
+  const path = s.gesture?.path ?? [];
+  if (s.verb !== "gesture" || path.length < 2) return false;
+  const [y0, y1] = span(path.map((p) => p.xyz_mm[1]));
+  const [z0, z1] = span(path.map((p) => p.xyz_mm[2]));
+  return y1 > y0 || z1 > z0;
+}
+
+/**
+ * How many times faster than the clip each step's path in `spec` is played, against the same step in `base`:
+ * a slower variant's 1/3. The rehearsal reports the speed it followed at against the path it was given; times
+ * this, the card says it against the clip.
+ */
+export function clipPace(base: TaskSpec, spec: TaskSpec): Record<string, number> {
+  return Object.fromEntries(
+    spec.steps.flatMap((s) => {
+      const [was, now] = [base.steps.find((b) => b.id === s.id)?.gesture?.path.at(-1)?.t_s, s.gesture?.path.at(-1)?.t_s];
+      return was && now ? [[s.id, was / now]] : [];
+    }),
+  );
+}
+
 /** The ideas for this spec's paths, and why one is not offered. */
 function ideas(spec: TaskSpec): { ideas: Idea[]; not_yet: NotYet[] } {
-  const steps = spec.steps.filter((s) => s.gesture && s.gesture.path.length >= 2);
+  const steps = spec.steps.filter(moves);
   const not_yet: NotYet[] = [];
   const out: Idea[] = [];
+  if (steps.length === 0) return { ideas: out, not_yet: [{ idea: "A similar gesture", why: "no traced path where the hand moved: there is nothing to mirror, slow or scale" }] };
   const own = steps.every((s) => mirrorPath(s.gesture!.path).every((p, i) => Math.abs(p.xyz_mm[1] - s.gesture!.path[i].xyz_mm[1]) <= SAME_MM));
   if (own) not_yet.push({ idea: "The other side", why: "the path is its own mirror image: on the other side the arm would do the same" });
   else
@@ -128,15 +152,12 @@ export function gestureVariants(base: TaskSpec, first = 1): Checked {
     spec.summary = idea.summary;
     const changes: SpecChange[] = [];
     for (const s of spec.steps) {
-      if (!s.gesture || s.gesture.path.length < 2) continue;
-      s.gesture = idea.gesture(s.gesture);
+      if (!moves(s)) continue;
+      s.gesture = idea.gesture(s.gesture!);
       s.sources = { ...s.sources, gesture: id };
       changes.push({ path: `steps[${s.id}].gesture`, value: s.gesture, source: id });
     }
-    const edits = base.steps.flatMap((b) => {
-      const after = spec.steps.find((s) => s.id === b.id)?.gesture;
-      return b.gesture && after ? [{ path: `steps[${b.id}].gesture`, before: b.gesture, after }] : [];
-    });
+    const edits = changes.map((c) => ({ path: c.path, before: base.steps.find((b) => `steps[${b.id}].gesture` === c.path)?.gesture, after: c.value }));
     return { id, title: idea.title, summary: idea.summary, changes, edits, spec, warnings: [] };
   });
   return { variants, not_yet };

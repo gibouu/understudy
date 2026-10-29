@@ -12,7 +12,7 @@ import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib
 import { answered, nextTurn } from "@/lib/variants/answer";
 import { costOf } from "@/lib/variants/cost";
 import { MAX_VARIANTS, type NotYet } from "@/lib/variants/parse";
-import { GESTURE_VARIANTS_NOTE, gestureText, gesturesOnly } from "@/lib/variants/gesture";
+import { clipPace, GESTURE_VARIANTS_NOTE, gestureText, gesturesOnly } from "@/lib/variants/gesture";
 import { pourOf } from "@/lib/variants/pour";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
 import { gateNote } from "@/lib/unlock/messages";
@@ -436,6 +436,8 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
   const cost = run && run.ledger.length ? costOf(run.ledger) : null;
   const pours = pourOf(v.spec) !== undefined;
   const built = gesturesOnly(v.spec);
+  /** a gesture variant's path may be slowed: the speed the arm followed at is said against the clip, not the path */
+  const pace = built ? clipPace(base, v.spec) : {};
   return (
     <li className={`rounded-lg border p-3 text-sm ${showing ? "border-[color:var(--accent,#b45309)]" : ""}`}>
       <div className="flex items-start justify-between gap-3">
@@ -481,7 +483,7 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
                       <Outcome result={run.worlds[w]} />
                     </td>
                     {pours && <td className="py-0.5 pr-3">{liquidIn(v.spec, run.worlds[w])}</td>}
-                    <td className="py-0.5 text-[color:var(--muted,#737373)]">{[why(run.worlds[w]), pours && liquidElsewhere(v.spec, run.worlds[w])].filter(Boolean).join("; ")}</td>
+                    <td className="py-0.5 text-[color:var(--muted,#737373)]">{[why(run.worlds[w], pace), pours && liquidElsewhere(v.spec, run.worlds[w])].filter(Boolean).join("; ")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -586,11 +588,11 @@ function liquidElsewhere(spec: TaskSpec, result?: WorldResult): string {
   return parts.join(", ");
 }
 
-function why(result?: WorldResult): string {
+function why(result?: WorldResult, pace: Record<string, number> = {}): string {
   if (!result || result === "running") return "";
   if ("error" in result) return result.error;
-  // a gesture's only check is the path: say how closely the arm followed it
-  const reach = result.followed?.map((f) => describeReach(f)).join("; ");
+  // a gesture's only check is the path: say how closely the arm followed it, at what speed against the clip
+  const reach = result.followed?.map((f) => describeReach({ ...f, speed: f.speed * (pace[f.step_id] ?? 1) })).join("; ");
   return result.pass ? (reach ? `${reach}, done in ${result.t.toFixed(1)} s` : `done in ${result.t.toFixed(1)} s`) : (result.why ?? "");
 }
 
