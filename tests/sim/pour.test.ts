@@ -1,27 +1,20 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
-import type { MainModule, MjVFS } from "@mujoco/mujoco";
+import type { MainModule } from "@mujoco/mujoco";
 import { beforeAll, describe, expect, it } from "vitest";
 import { DEMO_SPEC, POUR_PROGRAMS, POUR_SPEC } from "@/lib/sim/demo-spec";
 import { environment, run, runToEnd, type Environment } from "@/lib/sim/interpreter";
 import { Liquid, MAX_PARTICLES, planLiquid } from "@/lib/sim/liquid";
 import { buildScene, CONTAINER_WALL_M, SceneError } from "@/lib/sim/scene";
-import { park, SO101_XML, stageXml } from "@/lib/sim/so101";
+import { park, stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { PREDICATE_OPERANDS, Predicate, Program, ProgramOp, TaskSpec } from "@/lib/spec/schema";
 import { lintProgram, validateSpec } from "@/lib/spec/validate";
 import { formFor, withRequiredAsks } from "@/lib/spec/answer";
 import { rehearse } from "@/lib/showcase/rehearse";
 
 let mujoco: MainModule;
-let vfs: MjVFS;
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+  mujoco = await loadSo101();
 }, 60_000);
 
 /**
@@ -36,7 +29,7 @@ const OPS_SPEC = TaskSpec.parse({ ...POUR_SPEC, steps: POUR_SPEC.steps.map((s) =
  */
 function pour(program: Program, gravity_g: number, { spec = OPS_SPEC, seed = 1, after_s = 0 }: { spec?: TaskSpec; seed?: number; after_s?: number } = {}) {
   const env: Environment = environment(spec);
-  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g, graspable: env.graspable }), vfs);
+  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g, graspable: env.graspable }));
   const data = new mujoco.MjData(model);
   try {
     park(mujoco, model, data);
@@ -261,7 +254,7 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
    */
   function splitReturn(deg: number, mode: "whole" | "split" | "copy") {
     const env = environment(OPS_SPEC);
-    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }));
     const datas = [new mujoco.MjData(model)];
     try {
       park(mujoco, model, datas[0]);
@@ -320,7 +313,7 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
     };
     /** run `before` to the end, `stopped` for `steps` physics steps only (the stage's Stop), then turn it back */
     const scenario = (before: unknown[], stopped: unknown, steps: number) => {
-      const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
+      const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }));
       const data = new mujoco.MjData(model);
       try {
         park(mujoco, model, data);
@@ -363,7 +356,7 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
 
   it("does not mistake a cup leaning the other way at the same point for the path of its last tilt", () => {
     const env = environment(OPS_SPEC);
-    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }));
     const data = new mujoco.MjData(model);
     try {
       park(mujoco, model, data);
@@ -425,7 +418,7 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
   }, 60_000);
 
   it("rehearses with the liquid in the showcase's node rehearsal too, as on the page", () => {
-    const run = rehearse({ mujoco, vfs }, POUR_SPEC, POUR_PROGRAMS.pour, "earth");
+    const run = rehearse({ mujoco }, POUR_SPEC, POUR_PROGRAMS.pour, "earth");
     expect(run.pass, run.why).toBe(true);
   }, 60_000);
 

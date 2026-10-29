@@ -16,34 +16,29 @@
  * following a joint trajectory next to the demo scene.
  */
 import { execSync } from "node:child_process";
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { MainModule, MjData, MjModel, MjVFS } from "@mujoco/mujoco";
+import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MEASURE_SPEC as DEMO_SPEC } from "./measure-spec";
 import { IK_JOINTS, reachability, solveIk, type Approach, type IkResult } from "@/lib/sim/ik";
 import { sampleWaypoints } from "@/lib/sim/names";
 import type { Waypoint } from "@/lib/sim/protocol";
 import { buildScene, perturb, SceneError, type SceneBuild, type Vec3 } from "@/lib/sim/scene";
-import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE, SO101_XML, stageXml } from "@/lib/sim/so101";
+import { SO101_HOME, SO101_JOINT_NAMES, SO101_TIP_SITE, stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { APPROACHES, GRAVITIES, Scenario, type SpecObject } from "@/lib/spec/schema";
 
 let mujoco: MainModule;
-let vfs: MjVFS;
 let armModel: MjModel;
 let armData: MjData;
 let fkData: MjData;
 const loadavgAtStart = os.loadavg()[0];
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
-  armModel = mujoco.MjModel.from_xml_string(stageXml(""), vfs);
+  mujoco = await loadSo101();
+  armModel = mujoco.MjModel.from_xml_string(stageXml(""));
   armData = new mujoco.MjData(armModel);
   fkData = new mujoco.MjData(armModel);
 }, 60_000);
@@ -51,7 +46,6 @@ afterAll(() => {
   fkData?.delete();
   armData?.delete();
   armModel?.delete();
-  vfs?.delete();
 });
 
 // --- helpers -------------------------------------------------------------------
@@ -286,7 +280,7 @@ describe("arm measurements", () => {
 
   function compile(worldbody: string, gravity_g: number): { model: MjModel; ms: number } {
     const t0 = performance.now();
-    const model = mujoco.MjModel.from_xml_string(stageXml(worldbody, { gravity_g }), vfs);
+    const model = mujoco.MjModel.from_xml_string(stageXml(worldbody, { gravity_g }));
     return { model, ms: performance.now() - t0 };
   }
   /** Pocket opening + 50 mm, top, solved from home on a scratch MjData of `model`. */

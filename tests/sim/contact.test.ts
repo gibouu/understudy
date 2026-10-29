@@ -1,6 +1,6 @@
 /**
  * The contact op (lib/sim/contact.ts) on a person stand-in, measured: a band of seeds at 1 g and 0 g, a hand-written
- * program, the numbers pinned as docs/MEASUREMENTS.md section 17 reports them. `CONTACT_PRINT=1` prints the table.
+ * program, the numbers pinned as docs/MEASUREMENTS.md section 18 reports them. `CONTACT_PRINT=1` prints the table.
  *
  * The stand-ins are primitives with a size and nothing else: a box lying on the table (a forearm's size) and a
  * sphere on the table (a head's size). The applicator is a 16 x 70 mm cylinder standing on a block, gripped from the
@@ -248,7 +248,7 @@ describe("the apply step and the contact op in the spec", () => {
   });
 });
 
-describe("the contact op, measured on a band of seeds (docs/MEASUREMENTS.md section 17)", () => {
+describe("the contact op, measured on a band of seeds (docs/MEASUREMENTS.md section 18)", () => {
   const cells: Record<string, ReturnType<typeof summary>> = {};
   it.each([
     ["box", BOX, 1],
@@ -266,7 +266,7 @@ describe("the contact op, measured on a band of seeds (docs/MEASUREMENTS.md sect
   }, 120_000);
 });
 
-/** What section 17 reports, rounded as it reports it. */
+/** What section 18 reports, rounded as it reports it. */
 const pinned = (s: ReturnType<typeof summary>) => ({
   pass: s.pass,
   wilson_pc: s.wilson.map((x) => Math.round(100 * x)),

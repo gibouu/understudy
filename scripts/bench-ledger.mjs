@@ -19,8 +19,10 @@
 // until `node scripts/bench-ledger.mjs --settle-stale <minutes>` charges it at its estimate.
 //
 // guard() and reserve() run their check-and-append inside a cross-process lock: an exclusive-create
-// lock file next to the ledger (fs.openSync(path, "wx")), retried for up to 30 s, taken over when it
-// is older than 10 s (critical sections take milliseconds; an old lock means its holder died). A
+// lock file next to the ledger (withFileLock: fs.openSync(path, "wx") with an owner token inside), retried
+// for up to 30 s, taken over when it is older than 10 s (critical sections take milliseconds; an old lock
+// means its holder died; that removal and release both happen under a short gate, checked just before).
+// Every line is appended under it, on a line of its own even after a torn tail. A
 // charge() without a reservation settles the oldest open reservation of the same script, so callers
 // written against the first version of this file (guard, then charge) still settle what they reserved.
 //
@@ -33,7 +35,7 @@
 //   node scripts/bench-ledger.mjs --settle-stale 30     charges reservations older than 30 min at their estimate
 //   node scripts/bench-ledger.mjs --self-check          concurrency test on a temporary ledger (no network)
 import { spawn } from "node:child_process";
-import { appendFileSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, rmSync, statSync, unlinkSync, writeFileSync, writeSync } from "node:fs";
+import { appendFileSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, rmSync, statSync, unlinkSync, utimesSync, writeFileSync, writeSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,36 +53,118 @@ export class BudgetError extends Error {}
 
 // --- Lock -------------------------------------------------------------------------
 const sleepMs = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-function withLock(fn) {
-  mkdirSync(path.dirname(LEDGER), { recursive: true });
-  const deadline = Date.now() + LOCK_WAIT_MS;
+let lockSeq = 0;
+/** the first token of a lock file: who holds it */
+const ownerOf = (file) => {
+  try {
+    return readFileSync(file, "utf8").split(/\s/)[0];
+  } catch {
+    return null;
+  }
+};
+/**
+ * Run `fn` holding `${lock}.gate`, the short lock under which a lock file may be removed. New holders only ever
+ * create the lock file (O_EXCL, when it is absent), and the only removals, release and stale takeover, happen under
+ * the gate with their check just before: so nothing can replace the lock between the check and the removal. A gate
+ * is never removed by anyone but its holder: guessing that one is abandoned is the race the gate exists to close. A
+ * process that dies inside its few-microsecond section leaves it behind; after LOCK_WAIT_MS the waiter gives up
+ * (release leaves its lock to go stale, a takeover finds the lock still busy) and the error names the file to remove.
+ */
+function withGate(lock, fn, deadline = Date.now() + LOCK_WAIT_MS) {
+  const gate = `${lock}.gate`;
+  for (;;) {
+    try {
+      closeSync(openSync(gate, "wx"));
+      break;
+    } catch (err) {
+      if (err?.code !== "EEXIST") throw err;
+      if (Date.now() > deadline) return undefined; // give up: the lock is left as it is
+      sleepMs(1 + Math.floor(Math.random() * 3));
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    try {
+      unlinkSync(gate);
+    } catch {
+      // already gone
+    }
+  }
+}
+
+/**
+ * Run `fn` holding the exclusive lock file `lock` (created with O_EXCL, an owner token inside). Waits up to
+ * `waitMs`. A lock older than `staleMs` belonged to a process that died and is removed, and release removes the
+ * lock only while it holds our own token; both under withGate, checked just before the removal. Synchronous on
+ * purpose: the sections it guards are too.
+ */
+export function withFileLock(lock, fn, { waitMs = LOCK_WAIT_MS, staleMs = LOCK_STALE_MS } = {}) {
+  mkdirSync(path.dirname(lock), { recursive: true });
+  const token = `${process.pid}-${Date.now().toString(36)}-${(lockSeq++).toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const deadline = Date.now() + waitMs;
   for (;;) {
     let fd;
     try {
-      fd = openSync(LOCK, "wx");
+      fd = openSync(lock, "wx");
     } catch (err) {
       if (err?.code !== "EEXIST") throw err;
       try {
-        if (Date.now() - statSync(LOCK).mtimeMs > LOCK_STALE_MS) unlinkSync(LOCK);
+        if (Date.now() - statSync(lock).mtimeMs > staleMs)
+          withGate(
+            lock,
+            () => {
+              // checked again under the gate: only a stale lock is removed, and nothing can replace it meanwhile
+              if (Date.now() - statSync(lock).mtimeMs > staleMs) unlinkSync(lock);
+            },
+            deadline,
+          );
       } catch {
         // the holder released it between our two calls: try again
       }
-      if (Date.now() > deadline) throw new Error(`ledger lock ${LOCK} busy for ${LOCK_WAIT_MS / 1000} s`);
+      if (Date.now() > deadline) throw new Error(`lock ${lock} busy for ${waitMs / 1000} s${existsSync(`${lock}.gate`) ? ` (and ${lock}.gate is held: if no bench script is running, a crashed one left it; remove both)` : ""}`);
       sleepMs(2 + Math.floor(Math.random() * 8));
       continue;
     }
     try {
-      writeSync(fd, `${process.pid} ${new Date().toISOString()}\n`);
-      return fn();
+      writeSync(fd, `${token} ${new Date().toISOString()}\n`);
     } finally {
       closeSync(fd);
-      try {
-        unlinkSync(LOCK);
-      } catch {
-        // taken over as stale by someone else: nothing to release
-      }
+    }
+    try {
+      return fn();
+    } finally {
+      // ours only while it holds our token: one taken over as stale belongs to someone else now
+      withGate(lock, () => {
+        if (ownerOf(lock) === token) unlinkSync(lock);
+      });
     }
   }
+}
+const withLock = (fn) => withFileLock(LOCK, fn);
+
+/**
+ * Append one JSON line to the ledger (under the lock). A crash can leave a partial last line; the new entry then
+ * starts on a line of its own, so the torn line is skipped alone instead of taking the new entry with it.
+ */
+function appendEntry(entry) {
+  let torn = false;
+  try {
+    const st = statSync(LEDGER);
+    if (st.size > 0) {
+      const fd = openSync(LEDGER, "r");
+      try {
+        const b = Buffer.alloc(1);
+        readSync(fd, b, 0, 1, st.size - 1);
+        torn = b[0] !== 10;
+      } finally {
+        closeSync(fd);
+      }
+    }
+  } catch {
+    // no ledger yet
+  }
+  appendFileSync(LEDGER, (torn ? "\n" : "") + JSON.stringify(entry) + "\n");
 }
 
 // --- State: read the ledger incrementally (it is append-only) ---------------------------
@@ -191,7 +275,7 @@ export function reserve(estimate, { script, capUsd, capScripts, meta } = {}) {
       if (mine + est > Number(capUsd) + EPS) throw new BudgetError(`${group.join(" + ")} at $${mine.toFixed(4)} (charged plus reserved); the next call (up to $${est.toFixed(4)}) would pass the cap $${capUsd}`);
     }
     const id = `${process.pid}-${Date.now().toString(36)}-${(seq++).toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    appendFileSync(LEDGER, JSON.stringify({ t: new Date().toISOString(), type: "reserve", id, script: script ?? null, usd: Number(est.toFixed(8)), ...(meta ? { meta } : {}) }) + "\n");
+    appendEntry({ t: new Date().toISOString(), type: "reserve", id, script: script ?? null, usd: Number(est.toFixed(8)), ...(meta ? { meta } : {}) });
     refresh();
     return { id, script: script ?? null, usd: est };
   });
@@ -213,7 +297,7 @@ export function charge(script, usd, meta = {}, reservation) {
     let settles = reservation?.id ?? null;
     if (!settles) for (const [id, r] of state.open) if (r.script === script || r.script === null) { settles = id; break; }
     if (amount === 0 && !settles && !meta.keep) return;
-    appendFileSync(LEDGER, JSON.stringify({ t: new Date().toISOString(), script: String(script), usd: Number(amount.toFixed(8)), meta, ...(settles ? { settles } : {}) }) + "\n");
+    appendEntry({ t: new Date().toISOString(), script: String(script), usd: Number(amount.toFixed(8)), meta, ...(settles ? { settles } : {}) });
     refresh();
   });
 }
@@ -222,7 +306,7 @@ export function charge(script, usd, meta = {}, reservation) {
 export function release(reservation) {
   if (!reservation?.id) return;
   withLock(() => {
-    appendFileSync(LEDGER, JSON.stringify({ t: new Date().toISOString(), type: "release", id: reservation.id }) + "\n");
+    appendEntry({ t: new Date().toISOString(), type: "release", id: reservation.id });
     refresh();
   });
 }
@@ -230,7 +314,7 @@ export function release(reservation) {
 // --- Prices ---------------------------------------------------------------------------
 /**
  * List prices (USD per token) from tests/fixtures/models.json for the given model ids. Refuses
- * (throws) when one of them is missing or not a number, because its calls would be charged $0.
+ * (throws) when one of them is missing, not a number, or not above zero, because its calls would be charged $0.
  */
 export function loadPrices(models, file = path.join(ROOT, "tests/fixtures/models.json")) {
   const catalog = JSON.parse(readFileSync(file, "utf8"));
@@ -239,10 +323,12 @@ export function loadPrices(models, file = path.join(ROOT, "tests/fixtures/models
   for (const id of new Set(models)) {
     const m = catalog.models?.find((x) => x.id === id);
     const p = m && { prompt: Number(m.pricing?.prompt), completion: Number(m.pricing?.completion), cache_read: m.pricing?.input_cache_read == null ? null : Number(m.pricing.input_cache_read) };
-    if (!p || !Number.isFinite(p.prompt) || !Number.isFinite(p.completion) || (p.cache_read !== null && !Number.isFinite(p.cache_read))) missing.push(id);
+    // a price of 0 (or null, read as 0) or below would authorise and record its calls at $0
+    const priced = (x) => Number.isFinite(x) && x > 0;
+    if (!p || m.pricing?.prompt == null || m.pricing?.completion == null || !priced(p.prompt) || !priced(p.completion) || (p.cache_read !== null && !priced(p.cache_read))) missing.push(id);
     else prices[id] = p;
   }
-  if (missing.length) throw new Error(`no list price for ${missing.join(", ")} in ${path.relative(ROOT, file)} (fetched ${catalog.fetched ?? "?"}): refusing to run, its calls would be charged $0. Refresh the catalogue or fix the model id.`);
+  if (missing.length) throw new Error(`no positive list price for ${missing.join(", ")} in ${path.relative(ROOT, file)} (fetched ${catalog.fetched ?? "?"}): refusing to run, its calls would be charged $0. Refresh the catalogue or fix the model id.`);
   prices.fetched = catalog.fetched;
   return prices;
 }
@@ -348,6 +434,55 @@ async function selfCheck() {
     refused = /refusing to run/.test(e.message);
   }
   check("missing price refuses", refused, true);
+
+  // 7. zero, null and negative prices refuse too: their calls would pass any cap at $0
+  for (const [label, pricing] of [
+    ["zero", { prompt: "0", completion: "0.000001" }],
+    ["null", { prompt: null, completion: "0.000001" }],
+    ["negative", { prompt: "0.000001", completion: "-0.000001" }],
+    ["zero cache read", { prompt: "0.000001", completion: "0.000001", input_cache_read: "0" }],
+  ]) {
+    const cat = path.join(dir, `prices-${label.replace(/ /g, "-")}.json`);
+    writeFileSync(cat, JSON.stringify({ fetched: "x", models: [{ id: "m", pricing }] }));
+    let no = false;
+    try {
+      loadPrices(["m"], cat);
+    } catch (e) {
+      no = /refusing to run/.test(e.message);
+    }
+    check(`${label} price refuses`, no, true);
+  }
+
+  // 8. a crash left a torn last line: the next reservation must not be swallowed by it
+  const l8 = path.join(dir, "l8.jsonl");
+  writeFileSync(l8, JSON.stringify({ t: "x", script: "seed", usd: 0.5 }) + "\n" + '{"t":"x","type":"reserve","id":"torn","usd":');
+  check("torn tail, 12 concurrent reserve($0.10)", await race(l8, 1, 12, 0.1, "none"), 5);
+  const t8 = await totals(l8, 1);
+  check("  pending after the race ($)", Number(t8.pending.toFixed(4)), 0.5);
+
+  // 9. a stale lock (its holder died) is taken over, and the race behind it still counts exactly
+  const l9 = path.join(dir, "l9.jsonl");
+  writeFileSync(l9, JSON.stringify({ t: "x", script: "seed", usd: 0.5 }) + "\n");
+  writeFileSync(`${l9}.lock`, "dead-owner 2000-01-01T00:00:00Z\n");
+  const old = new Date(Date.now() - 60_000);
+  utimesSync(`${l9}.lock`, old, old);
+  check("stale lock, 12 concurrent reserve($0.10)", await race(l9, 1, 12, 0.1, "none"), 5);
+  check("  no lock left behind", existsSync(`${l9}.lock`), false);
+
+  // 10. a fresh lock is never removed by a waiter, and release leaves a lock that is not its own
+  const fresh = path.join(dir, "fresh.lock");
+  writeFileSync(fresh, "someone-else 2000-01-01T00:00:00Z\n");
+  let busy = false;
+  try {
+    withFileLock(fresh, () => {}, { waitMs: 200 });
+  } catch (e) {
+    busy = /busy/.test(e.message);
+  }
+  check("a fresh lock makes a waiter give up", busy, true);
+  check("  and is still the other owner's", readFileSync(fresh, "utf8").startsWith("someone-else "), true);
+  const mine = path.join(dir, "mine.lock");
+  withFileLock(mine, () => writeFileSync(mine, "new-owner x\n")); // as if taken over while we held it
+  check("release leaves a lock that holds another token", existsSync(mine) && readFileSync(mine, "utf8").startsWith("new-owner "), true);
 
   rmSync(dir, { recursive: true, force: true });
   const failed = results.filter((r) => !r.pass).length;
