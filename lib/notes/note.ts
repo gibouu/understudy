@@ -30,6 +30,8 @@ export function opText(op: ProgramOp): string {
       return "release";
     case "follow":
       return "follow the gesture path";
+    case "contact":
+      return "contact along the step's path";
     case "tilt":
       return `tilt ${op.deg}°${op.toward ? ` toward ${op.toward}` : ""} over ${op.seconds} s`;
     case "wait_until":

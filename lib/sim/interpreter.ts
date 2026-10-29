@@ -30,6 +30,7 @@ import { describeLiquid, planLiquid, type Liquid, type LiquidPlan, type LiquidWh
 import { toNumbers } from "./names";
 import { evaluate } from "./predicates";
 import { buildScene, footprintMm, heightMm, layoutMissingPoses, MM, perturb, type WorldPose } from "./scene";
+import { applyAlong, contactMarkers, type Contacted } from "./contact";
 import { GRIPPER_CLOSED, GRIPPER_OPEN, SO101_GRASP_SITE, SO101_HELD_SITE, SO101_HOME, SO101_JOINT_NAMES } from "./so101";
 
 export type Environment = {
@@ -67,6 +68,8 @@ export type Rollout = {
   liquid?: LiquidWhere;
   /** each gesture path the program followed: the only check a gesture has */
   followed?: Followed[];
+  /** each contact path the program applied the held object along, as MuJoCo measured it (lib/sim/contact.ts) */
+  contacted?: Contacted[];
 };
 
 /** `speed`: 1 at the clip's own pace, less when the arm followed slower (FOLLOW_JOINT_RAD_S) */
@@ -133,7 +136,7 @@ export function environment(spec: TaskSpec, scenario?: Scenario): Environment {
     const laid = layoutMissingPoses(spec).spec;
     const liquid = planLiquid(laid, nominal);
     return {
-      worldbody: `${nominal.worldbody}\n${markers}`,
+      worldbody: `${nominal.worldbody}\n${markers}${contactMarkers(laid, nominal.frames)}`,
       graspable: nominal.manipulated,
       gravity_g: 1,
       spec: laid,
@@ -147,7 +150,7 @@ export function environment(spec: TaskSpec, scenario?: Scenario): Environment {
   const world = buildScene(p.spec, p.tilts);
   const liquid = planLiquid(p.spec, world);
   return {
-    worldbody: `${world.worldbody}\n${markers}`,
+    worldbody: `${world.worldbody}\n${markers}${contactMarkers(p.spec, world.frames)}`,
     graspable: world.manipulated,
     gravity_g: p.gravity_g,
     spec: p.spec,
@@ -184,9 +187,10 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
     return { liquid: where };
   };
   const followed: Followed[] = [];
+  const contacted: Contacted[] = [];
   const fail = (r: Omit<Rollout, "pass" | "t" | "log">): Rollout => {
     log.push(`fail: ${r.why}`);
-    return { pass: false, ...(r.failed_step_id !== undefined && opIndex !== undefined ? { failed_op: opIndex } : {}), ...r, t, log, end: snapshot(sim, env, world(), held), ...liquidNow(), ...(followed.length ? { followed } : {}) };
+    return { pass: false, ...(r.failed_step_id !== undefined && opIndex !== undefined ? { failed_op: opIndex } : {}), ...r, t, log, end: snapshot(sim, env, world(), held), ...liquidNow(), ...(followed.length ? { followed } : {}), ...(contacted.length ? { contacted } : {}) };
   };
 
   /** ramp the arm joints to q, then wait until it has arrived */
@@ -562,6 +566,16 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             if (f.missed.length) return fail({ failed_step_id: s.step_id, failure_class: "embodiment_limit", why: `follow: ${describeReach(f)}` });
             break;
           }
+          case "contact": {
+            // the held object along the step's contact path, force-limited; all of it in lib/sim/contact.ts
+            if (!held) return fail({ failed_step_id: s.step_id, why: "contact: nothing is held" });
+            const applyStep = env.spec.steps.find((x) => x.id === s.step_id);
+            if (!applyStep) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `contact: no step ${s.step_id} in the spec` });
+            const out = yield* applyAlong({ mujoco, model, data, spec: env.spec, names: env.names, beliefs, held, ctrl, step, moveArm, settle, now: () => t, log: (line) => log.push(line) }, applyStep);
+            if (out.contacted) contacted.push(out.contacted);
+            if (out.fail) return fail({ failed_step_id: s.step_id, ...out.fail });
+            break;
+          }
           case "wait_until": {
             let c = evaluate(world(), op.predicate);
             for (let w = 0; !c.ok && w < op.timeout_s; w += dt) {
@@ -600,7 +614,7 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
       if (failed) return failed;
     }
   }
-  return { pass: true, t, log, end: snapshot(sim, env, world(), held), ...liquidNow(), ...(followed.length ? { followed } : {}) };
+  return { pass: true, t, log, end: snapshot(sim, env, world(), held), ...liquidNow(), ...(followed.length ? { followed } : {}), ...(contacted.length ? { contacted } : {}) };
 }
 
 /** Measured, never inferred: position, speed and seating of every manipulated object. A check that throws is left out. */

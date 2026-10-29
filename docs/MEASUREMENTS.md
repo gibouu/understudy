@@ -399,6 +399,23 @@ After #154, 15 of the 104 kept labels still had nothing to rehearse (section 15)
 
 Live, for the 12, on Nemotron 3.5 Lightning: the route asked where with no model, and after the answer Lightning compiled every one, asking next what counts as done. Answered with the recorder's defaults and rehearsed in node, before any Notes patch, 5 of the 12 pass on Earth and in orbit and 1 on Earth only. The other 6 fail as other clips do: a thin object the pads do not hold, a reach 10 mm too far, an object still settling. Notes patches those on the page. In only 2 of the 12 did the label name the real destination (the cartridge, the equipment tray), so for the other 10 the right answer is the bench. Spend: about US$0.02.
 
+## 17. Contact on a stand-in: force-limited following
+
+Issue #160: an on-body clip (lip balm, cream) rehearsed as the arm applying the held object to someone else, gently. There is no person in the simulation: the stand-in is a fixed primitive with a size (role `surface`), and the step is the new `apply` verb with a `contact` block (surface, path in the surface's frame, force limit, reach, coverage). The `contact` op (`lib/sim/contact.ts`) goes to a stand-off 30 mm out along the surface normal, comes in at 40 mm/s and from 25 mm out at 8 mm/s until MuJoCo reports a contact of at least 0.05 N, follows the path at 15 mm/s while a force loop moves the commanded depth by the error against half the limit and a second loop shifts the commanded point across the path by the measured distance from the contact to it, then leaves at 8 mm/s. Every number below is read from MuJoCo each 5 ms step: the normal force of every contact between the held object and the stand-in (`mj_contactForce`), where those contacts are, any contact between the arm itself and the stand-in, and the speed of the held object's contact point along the normal within 15 mm of the surface.
+
+Setup (`tests/sim/contact.test.ts`): the applicator is a 16 x 70 mm cylinder on a block, gripped from the front; the force limit is the default 2 N (a setting, not a safety figure), the reach 3 mm and the coverage wanted 90%. Two stand-ins: a 70 x 200 x 50 mm box on the table, the path an S of 129 mm across its top face, and a 160 mm sphere, the path a 91 mm arc over its top (27° from the top at its ends). Each of 20 seeds moves the stand-in by up to 15 mm in x and y, 5 mm in z and 15° in yaw, and the applicator's block by up to 5 mm; the program is told the true poses (sensed). One hand-written program, no model.
+
+| Stand-in, gravity | Pass | 95% Wilson | Coverage, lowest | Peak force, highest (limit 2 N) | Mean force while following | Time in contact, mean | Approach / retreat speed within 15 mm, highest |
+|---|---|---|---|---|---|---|---|
+| Box, 1 g | 20 of 20 | 84 to 100% | 100% | 1.23 N | 0.99 N | 9.0 s of 8.8 s of path | 8.2 / 11.7 mm/s |
+| Box, 0 g | 20 of 20 | 84 to 100% | 100% | 1.22 N | 0.99 N | 9.0 s | 8.4 / 12.0 mm/s |
+| Sphere, 1 g | 17 of 20 | 64 to 95% | 95% | 2.04 N | 0.97 N | 6.0 s of 5.8 s of path | 8.6 / 10.1 mm/s |
+| Sphere, 0 g | 20 of 20 | 84 to 100% | 93% | 2.00 N | 0.97 N | 6.0 s | 9.2 / 10.3 mm/s |
+
+The arm itself never touched a stand-in. On the flat face the force peaks at most 0.23 N above its 1 N target. On the sphere the mean holds at the target but the peak reaches the limit: on Earth three seeds of twenty go over it by 0.01 to 0.04 N and fail, and in orbit the highest peak is 2.00 N, just under. That is the result as measured, not tuned away: the loop that holds the force on a flat face is not enough to keep a curved one well under the limit, so on a curved stand-in this is a marginal pass at best. Time in contact is longer than the path because the contact starts on the approach and lasts through a 0.4 s dwell at the end.
+
+What it took, on the box as placed with no seed: before the loop across the path, the contact ran 2.6 to 4.5 mm off the path (the held object sits a few mm off its commanded pose under the contact's own push, and MuJoCo puts the contact of a tipped cap partway between its centre and its rim), and covered 39 to 41% within 3 mm. Without the slow zone starting 10 mm before the 15 mm where speed is measured, the approach crossed it at 40 mm/s, as a position actuator lags its command.
+
 ## Reproduce
 
 Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend. Since 27 October the Nano and Super roles call their replacements (section 12): add `UNDERSTUDY_KEEP_RETIRED=1` to rerun a Nano or Super row while Token Factory still serves them, until 9 November 2026.

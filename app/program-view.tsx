@@ -31,6 +31,8 @@ function line(op: ProgramOp, name: (id?: string) => string): string {
       return "open the gripper";
     case "follow":
       return "follow the hand's path traced from the clip with the point between the pads, point by point";
+    case "contact":
+      return "bring what it holds slowly onto the surface, keep it there along the path under the force limit, and take it off slowly";
     case "tilt":
       return op.deg === 0 ? `turn it back upright over ${op.seconds} s` : `tilt it ${op.deg}° toward ${op.toward ? `the ${name(op.toward)}` : "away from the robot"} over ${op.seconds} s`;
     case "wait_until":
