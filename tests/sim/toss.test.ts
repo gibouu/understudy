@@ -13,25 +13,19 @@
  * are pinned: the simulator is deterministic, so a change that moves them must say so in docs/MEASUREMENTS.md
  * section 18. MEASURE_WRITE=1 writes bench/results/toss-catch.json.
  */
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import path from "node:path";
-import type { MainModule, MjVFS } from "@mujoco/mujoco";
+import { mkdirSync, writeFileSync } from "node:fs";
+import type { MainModule } from "@mujoco/mujoco";
 import { beforeAll, describe, expect, it } from "vitest";
 import { environment, runToEnd, type Rollout } from "@/lib/sim/interpreter";
-import { park, SO101_XML, stageXml } from "@/lib/sim/so101";
+import { park, stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { nearestPass, predict, wilson, type Release } from "@/lib/sim/toss";
 import { Program, TaskSpec } from "@/lib/spec/schema";
 
 let mujoco: MainModule;
-let vfs: MjVFS;
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+  mujoco = await loadSo101();
 }, 60_000);
 
 describe("ballistic prediction (lib/sim/toss.ts)", () => {
@@ -130,7 +124,7 @@ function offsets(seed: number): [number, number] {
 
 function rollout(spec: TaskSpec, program: Program, gravity_g: number): Rollout {
   const env = environment(spec, { id: "t", name: "t", axis: "x_mm", offset: 0, object: "item", expected: "unknown", why: "", gravity_g });
-  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g, graspable: env.graspable }), vfs);
+  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g, graspable: env.graspable }));
   const data = new mujoco.MjData(model);
   try {
     park(mujoco, model, data);
