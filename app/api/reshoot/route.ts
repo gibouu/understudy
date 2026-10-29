@@ -20,18 +20,26 @@ import { checkReply, finalOutcome, MAX_TOKENS, normalizeReply, REPLY_SHAPE, THIN
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { explain, liveGate } from "@/lib/unlock/check";
 
-// one Ultra call (11 s measured with thinking on), re-asked once if it does not parse; the page stops waiting at 90 s
+// one Ultra call (11 to 40 s measured with thinking on), re-asked once if it does not parse; the page stops waiting at 90 s
 export const maxDuration = 120;
+/** The route answers by then whatever the model does, re-ask included: inside maxDuration. */
+const DEADLINE_MS = 100_000;
 
-type Recording = { spec_title: string; outcome: string; result: StageResult<Reshoot> };
+type Recording = { spec_title: string; outcome: string; program?: unknown; result: StageResult<Reshoot> };
 
-function replay(title: string, outcome: string): StageResult<Reshoot> {
-  const same = (recordings as Recording[]).filter((r) => r.spec_title === title && r.result.status === "done");
+/** The list recorded for this task, its reshoot items checked again against the spec posted now. */
+function replay(b: ReshootBody, outcome: string): StageResult<Reshoot> {
+  const same = (recordings as Recording[]).filter((r) => r.spec_title === b.spec.title && r.result.status === "done");
   const hit = same.find((r) => r.outcome === outcome) ?? same[0];
   // another task's list would cite another run's evidence: none is better
   if (!hit || hit.result.status !== "done") return failed("no recorded reshoot list for this task", false);
-  const note = hit.outcome === outcome ? [] : ["replay: recorded after a rehearsal with another outcome"];
-  return done(hit.result.value, ["replay: recorded reshoot list", ...note, ...hit.result.warnings], hit.result.ledger);
+  const v = hit.result.value;
+  const { reshoot, dropped } = checkReply(b.spec, { failure_classes: v.failure_classes, reshoot: v.reshoot, open_risks: v.open_risks });
+  const notes = [
+    ...(hit.outcome === outcome ? [] : ["replay: recorded after a rehearsal with another outcome"]),
+    ...(hit.program === undefined || JSON.stringify(hit.program) === JSON.stringify(b.program) ? [] : ["replay: recorded for another version of the program"]),
+  ];
+  return done({ ...v, reshoot, dropped: [...v.dropped, ...dropped] }, ["replay: recorded reshoot list", ...notes, ...hit.result.warnings, ...dropped.map((d) => `reshoot item dropped: ${d}`)], hit.result.ledger);
 }
 
 export async function POST(req: Request): Promise<NextResponse<StageResult<Reshoot>>> {
@@ -40,14 +48,21 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Resho
   if (!parsed.success) return NextResponse.json(failed(`invalid request: ${parsed.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`, false), { status: 400 });
   const b = parsed.data;
   const outcome = finalOutcome(b);
-  if (wantsReplay(req)) return NextResponse.json(replay(b.spec.title, outcome));
+  if (wantsReplay(req)) return NextResponse.json(replay(b, outcome));
   const gate = await liveGate("notes", body);
-  if (!gate.live) return NextResponse.json(explain(replay(b.spec.title, outcome), gate));
+  if (!gate.live) return NextResponse.json(explain(replay(b, outcome), gate));
   const client = tokenFactory({ timeout: 80_000, maxRetries: 0 });
-  if (!client) return NextResponse.json(replay(b.spec.title, outcome));
+  if (!client) return NextResponse.json(replay(b, outcome));
 
   const ledger: LedgerEntry[] = [];
-  const r = await callModel(client, { role: "ultra", system: RESHOOT_SYSTEM, user: reshootPrompt(b.spec, b), maxTokens: MAX_TOKENS, schema: ReshootReply, normalize: normalizeReply, shape: REPLY_SHAPE, thinking: THINKING, ledger });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<StageResult<ReshootReply>>((resolve) => {
+    timer = setTimeout(() => resolve(failed(`ultra: no usable answer within ${DEADLINE_MS / 1000} s`)), DEADLINE_MS);
+  });
+  const r = await Promise.race([
+    callModel(client, { role: "ultra", system: RESHOOT_SYSTEM, user: reshootPrompt(b.spec, b), maxTokens: MAX_TOKENS, schema: ReshootReply, normalize: normalizeReply, shape: REPLY_SHAPE, thinking: THINKING, ledger }),
+    late,
+  ]).finally(() => clearTimeout(timer));
   const costs = priced(ledger);
   const spent = costs.reduce((n, e) => n + (e.usd ?? 0), 0);
   if (r.status !== "done") return NextResponse.json(failed(`${r.status === "failed" ? r.message : "no answer"} (${costs.length} call${costs.length === 1 ? "" : "s"}, $${spent.toFixed(4)})`, r.status === "failed" && r.retryable));

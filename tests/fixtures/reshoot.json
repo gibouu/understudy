@@ -2,6 +2,106 @@
  {
   "spec_title": "ISS Veggie seed film placement into plant pillows",
   "outcome": "earth (1 g) PASS; orbit (0 g) PASS",
+  "program": {
+   "spec_title": "ISS Veggie seed film placement into plant pillows",
+   "steps": [
+    {
+     "step_id": "s1",
+     "ops": [
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        62
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        12
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "grasp",
+       "object": "obj1",
+       "aperture_mm": 10
+      },
+      {
+       "op": "wait_until",
+       "predicate": {
+        "kind": "contact_both_pads",
+        "object": "obj1"
+       },
+       "timeout_s": 1
+      },
+      {
+       "op": "move_to",
+       "frame": "obj1",
+       "offset_mm": [
+        0,
+        0,
+        50
+       ],
+       "approach": "top"
+      }
+     ]
+    },
+    {
+     "step_id": "s2",
+     "ops": [
+      {
+       "op": "move_to",
+       "frame": "obj2",
+       "offset_mm": [
+        0,
+        0,
+        55
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "move_to",
+       "frame": "obj2",
+       "offset_mm": [
+        0,
+        0,
+        36
+       ],
+       "approach": "top"
+      },
+      {
+       "op": "release"
+      },
+      {
+       "op": "wait_until",
+       "predicate": {
+        "kind": "object_still",
+        "object": "obj1"
+       },
+       "timeout_s": 2
+      },
+      {
+       "op": "assert",
+       "predicate": {
+        "kind": "inside_zone",
+        "object": "obj1",
+        "target": "obj2"
+       }
+      }
+     ]
+    }
+   ],
+   "warnings": [
+    "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+   ]
+  },
   "seconds": 18.295,
   "result": {
    "status": "done",

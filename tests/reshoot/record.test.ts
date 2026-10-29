@@ -32,6 +32,6 @@ describe.skipIf(process.env.RESHOOT_RECORD !== "1")("record the reshoot list (li
     expect(result.status).toBe("done");
     if (result.status !== "done") return;
     ledger.charge("reshoot-record", result.value.cost_usd, { model: result.value.model, tokens: result.value.tokens, seconds });
-    writeFileSync(path.join(process.cwd(), "tests/fixtures/reshoot.json"), `${JSON.stringify([{ spec_title: spec.title, outcome: result.value.outcome, seconds, result }], null, 1)}\n`);
+    writeFileSync(path.join(process.cwd(), "tests/fixtures/reshoot.json"), `${JSON.stringify([{ spec_title: spec.title, outcome: result.value.outcome, program, seconds, result }], null, 1)}\n`);
   }, 200_000);
 });

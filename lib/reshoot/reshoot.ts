@@ -62,22 +62,45 @@ function shown(v: unknown): string {
   return text.length > 120 ? `${text.slice(0, 117)}...` : text;
 }
 
-/** Every filled field of the spec's objects and steps with its source: a field's own entry in `sources`, else its record's `source`. */
+const FORBIDDEN = new Set(["__proto__", "constructor", "prototype"]);
+
+/** The value at `parts` below `node`, through own properties only; undefined when any part does not resolve. */
+function ownAt(node: unknown, parts: string[]): unknown {
+  for (const k of parts) {
+    if (FORBIDDEN.has(k) || node === null || typeof node !== "object" || !Object.hasOwn(node, k)) return undefined;
+    node = (node as Record<string, unknown>)[k];
+  }
+  return node;
+}
+
+/**
+ * Every filled field of the spec's objects and steps with its source: a field's own entry in `sources`, else its
+ * record's `source`. Via-points carry a source each, so each is listed on its own, never the list as a whole.
+ */
 export function fieldsOf(spec: TaskSpec): Field[] {
   const out: Field[] = [];
   const add = (list: "objects" | "steps", rec: { id: string; source: string; sources: Record<string, string> } & Record<string, unknown>, names: readonly string[]) => {
+    const at = `${list}[${rec.id}]`;
+    const sourceOf = (leaf: string) => (Object.hasOwn(rec.sources, leaf) ? rec.sources[leaf] : undefined);
     for (const name of names) {
       const value = rec[name];
       if (empty(value)) continue;
-      const source = rec.sources[name] ?? rec.source;
-      out.push({ path: `${list}[${rec.id}].${name}`, source, origin: originOf(source), value: shown(value) });
+      if (name === "via_points") {
+        (value as { source: string }[]).forEach((v, i) => {
+          const source = sourceOf(`via_points.${i}`) ?? v.source;
+          out.push({ path: `${at}.via_points.${i}`, source, origin: originOf(source), value: shown(v) });
+        });
+        continue;
+      }
+      const source = sourceOf(name) ?? rec.source;
+      out.push({ path: `${at}.${name}`, source, origin: originOf(source), value: shown(value) });
     }
     // fields changed later (an answer, a hand edit) carry their own source, under a leaf path
     for (const [leaf, source] of Object.entries(rec.sources)) {
-      if (names.includes(leaf)) continue;
-      const value = leaf.split(".").reduce<unknown>((node, k) => (node && typeof node === "object" ? (node as Record<string, unknown>)[k] : undefined), rec);
+      if (out.some((f) => f.path === `${at}.${leaf}`)) continue;
+      const value = ownAt(rec, leaf.split("."));
       if (value === undefined) continue;
-      out.push({ path: `${list}[${rec.id}].${leaf}`, source, origin: originOf(source), value: shown(value) });
+      out.push({ path: `${at}.${leaf}`, source, origin: originOf(source), value: shown(value) });
     }
   };
   for (const o of spec.objects) add("objects", o as never, OBJECT_FIELDS);
@@ -85,10 +108,21 @@ export function fieldsOf(spec: TaskSpec): Field[] {
   return out;
 }
 
-/** The listed field a path names: itself, or the deepest listed field it lies inside (`pose.xyz_mm` inside `pose`). */
+/**
+ * The listed field a path names: itself, or the deepest listed field it lies inside (`pose.xyz_mm` inside `pose`),
+ * and only when the whole path exists in the spec. A part below the path that came from anywhere else (a default
+ * via-point inside a step labelled from the clip) makes the whole path ineligible: it is not all from the clip or
+ * an answer.
+ */
 export function fieldFor(spec: TaskSpec, fields: Field[], path: string): Field | undefined {
   const parts = parsePath(canonicalSlot(spec, path.trim()));
-  const key = (ps: string[]) => (ps.length < 2 ? ps.join(".") : `${ps[0]}[${ps[1]}]${ps.length > 2 ? `.${ps.slice(2).join(".")}` : ""}`);
+  if (parts.length < 3 || parts.some((p) => FORBIDDEN.has(p))) return undefined;
+  const list = parts[0] === "objects" ? spec.objects : parts[0] === "steps" ? spec.steps : null;
+  const rec = list?.find((r) => r.id === parts[1]);
+  if (!rec || ownAt(rec, parts.slice(2)) === undefined) return undefined;
+  const key = (ps: string[]) => `${ps[0]}[${ps[1]}].${ps.slice(2).join(".")}`;
+  const whole = key(parts);
+  if (fields.some((f) => f.path.startsWith(`${whole}.`) && f.origin === "other")) return undefined;
   for (let n = parts.length; n >= 3; n--) {
     const hit = fields.find((f) => f.path === key(parts.slice(0, n)));
     if (hit) return hit;

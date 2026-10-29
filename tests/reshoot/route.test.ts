@@ -7,7 +7,7 @@ import { issSample, loadSim } from "../notes/harness";
 import { issEvidence } from "./harness";
 
 /** Token Factory stand-in: each create() answers the next reply and records what was sent. */
-const tf = vi.hoisted(() => ({ replies: [] as string[], sent: [] as Record<string, unknown>[] }));
+const tf = vi.hoisted(() => ({ replies: [] as string[], sent: [] as Record<string, unknown>[], hang: false }));
 vi.mock("@/lib/providers/tokenfactory", async (original) => {
   const real = await original<typeof import("@/lib/providers/tokenfactory")>();
   return {
@@ -19,6 +19,7 @@ vi.mock("@/lib/providers/tokenfactory", async (original) => {
         completions: {
           create: async (params: Record<string, unknown>) => {
             tf.sent.push(params);
+            if (tf.hang) return new Promise(() => {});
             return { choices: [{ message: { content: tf.replies.shift() } }], usage: { prompt_tokens: 2000, completion_tokens: 600 } };
           },
         },
@@ -57,6 +58,25 @@ describe("the reshoot list's fields", () => {
     expect(fieldFor(body.spec, fields, "objects[nope].size_mm")).toBeUndefined();
   });
 
+  it("never lets a part from elsewhere, a path that does not exist, or a prototype key through", () => {
+    const s2 = body.spec.steps.find((s) => s.id === "s2")!;
+    const spec = {
+      ...body.spec,
+      steps: body.spec.steps.map((s) =>
+        s.id === "s2"
+          ? { ...s, via_points: [{ frame: "obj2", xyz_mm: [0, 0, 30] as [number, number, number], source: "default" }], sources: { ...s2.sources, "pose.__proto__": "interview#1", constructor: "interview#2", "nope.leaf": "interview#3" } }
+          : s,
+      ),
+    };
+    const fields = fieldsOf(spec);
+    // a default via-point inside a step labelled from the clip is judged by its own source
+    expect(fieldFor(spec, fields, "steps[s2].via_points.0.xyz_mm")).toMatchObject({ origin: "other", source: "default" });
+    expect(fields.some((f) => /__proto__|constructor|nope/.test(f.path))).toBe(false);
+    expect(fieldFor(spec, fields, "steps[s2].__proto__")).toBeUndefined();
+    expect(fieldFor(spec, fields, "steps[s2].constructor")).toBeUndefined();
+    expect(fieldFor(spec, fields, "objects[obj2].pose.nonexistent")).toBeUndefined();
+  });
+
   it("puts the run, the patches and the final outcome in the prompt", () => {
     const p = reshootPrompt(body.spec, body);
     expect(p).toContain("orbit (0 g): FAIL");
@@ -85,6 +105,12 @@ describe("POST /api/reshoot", () => {
     const { result } = await post(changed, "http://test/api/reshoot?replay=1");
     expect(result).toMatchObject({ status: "done" });
     expect((result as { warnings: string[] }).warnings).toContain("replay: recorded after a rehearsal with another outcome");
+    // the recorded items are checked again against the spec posted now: fields from elsewhere drop out
+    const refit = { ...body, program: { ...body.program, spec_title: "x" }, spec: { ...body.spec, objects: body.spec.objects.map((o) => ({ ...o, source: "fit", sources: {} })), steps: body.spec.steps.map((s) => ({ ...s, source: "default", sources: {} })) } };
+    const again = (await post(refit, "http://test/api/reshoot?replay=1")).result as Extract<StageResult<Reshoot>, { status: "done" }>;
+    expect(again.value.reshoot).toEqual([]);
+    expect(again.value.dropped.length).toBeGreaterThan(0);
+    expect(again.warnings).toContain("replay: recorded for another version of the program");
     const other = { ...body, spec: { ...body.spec, title: "something else" } };
     expect((await post(other, "http://test/api/reshoot?replay=1")).result).toMatchObject({ status: "failed", message: "no recorded reshoot list for this task" });
   });
@@ -122,6 +148,22 @@ describe("POST /api/reshoot", () => {
     expect(tf.sent).toHaveLength(2);
     expect(result).toMatchObject({ status: "failed" });
     expect((result as { message: string }).message).toMatch(/\(2 calls, \$0\.\d{4}\)$/);
+  });
+
+  it("answers within its deadline when the model never does", async () => {
+    tf.sent.length = 0;
+    tf.hang = true;
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const pending = post(body);
+      await vi.advanceTimersByTimeAsync(100_000);
+      const { result } = await pending;
+      expect(result).toMatchObject({ status: "failed" });
+      expect((result as { message: string }).message).toContain("no usable answer within 100 s");
+    } finally {
+      vi.useRealTimers();
+      tf.hang = false;
+    }
   });
 
   it("replays behind the spend guard, and says why", async () => {

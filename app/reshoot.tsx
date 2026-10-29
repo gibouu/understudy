@@ -66,7 +66,10 @@ export function Reshoot({ spec, program }: { spec: TaskSpec; program: Program })
       <p className="text-sm text-neutral-600">
         {say("ultra")} reads what the simulator measured{ev.patches.length ? ` and the ${ev.patches.length} patch${ev.patches.length > 1 ? "es" : ""} tried` : ""}, says why each failure happened (a gap in the spec, a gap in the footage, a limit of the arm, or the simulator itself), what to film or ask again for the fields that came from the clip or from your answers, and what this rehearsal does not cover.
       </p>
-      <p className="mt-1 text-xs text-neutral-500">Written for: {finalOutcome(ev)}</p>
+      <p className="mt-1 text-xs text-neutral-500">
+        {list ? `Written for: ${list.outcome}` : `The run now: ${finalOutcome(ev)}`}
+        {list && list.outcome !== finalOutcome(ev) ? `; the run now: ${finalOutcome(ev)}` : ""}
+      </p>
       <div className="mt-3">
         <button className="rounded bg-neutral-900 px-3 py-1.5 text-sm text-white disabled:opacity-40" disabled={result.status === "running"} onClick={() => ask(ev)}>
           {list || result.status === "failed" ? "Ask again" : "Write the reshoot list"}
@@ -82,6 +85,14 @@ export function Reshoot({ spec, program }: { spec: TaskSpec; program: Program })
       {list && (
         <div className="mt-4 flex flex-col gap-4 text-sm">
           {replayed && <p className="text-xs text-amber-700">{replayed}</p>}
+          {result.status === "done" &&
+            result.warnings
+              .filter((w) => w.startsWith("replay: recorded after") || w.startsWith("replay: recorded for another"))
+              .map((w) => (
+                <p key={w} className="text-xs text-amber-700">
+                  {w.replace("replay: ", "Replayed: ")}
+                </p>
+              ))}
           <div>
             <p className="font-medium">Why it failed</p>
             {list.failure_classes.length === 0 ? (
