@@ -15,7 +15,7 @@ import { VIDEO_HEIGHT, VIDEO_WIDTH, type DrawnFrames } from "./video";
 export function drawFrames(meta: SimMeta, frames: Frame[], { width = VIDEO_WIDTH, height = VIDEO_HEIGHT } = {}): DrawnFrames & { dispose(): void } {
   let stage: { renderer: StageRenderer; box: HTMLDivElement; ctx: CanvasRenderingContext2D; out: HTMLCanvasElement } | null = null;
   const dispose = () => {
-    stage?.renderer.dispose();
+    stage?.renderer.dispose({ loseContext: true }); // a context per episode would otherwise outlive the export
     stage?.box.remove();
     stage = null;
   };
