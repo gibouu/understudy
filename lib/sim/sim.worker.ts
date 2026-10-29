@@ -11,6 +11,7 @@
  * running is refused.
  */
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
+import { runBatch } from "./batch";
 import { graspIndex, isAttached, type Grasp } from "./grasp";
 import { solveIk, type Approach } from "./ik";
 import { environment, forgetTilt, run, type Environment, type Rollout, type Tick } from "./interpreter";
@@ -133,6 +134,9 @@ ctx.onmessage = async (e) => {
       case "ik":
         ik(msg.id, msg.target, msg.approach, msg.site);
         break;
+      case "batch":
+        await batch(msg);
+        break;
       case "run": {
         if (!runtime) throw new Error("model not loaded");
         cancelRun("a newer program replaced it");
@@ -228,6 +232,27 @@ async function load(id: number, mujocoBase: string, assetBase: string, env: Envi
     if (data) data.delete(); // only on failure: a partial allocation
     if (model) model.delete();
   }
+}
+
+/**
+ * Rollouts as fast as they run, on models of their own: the stage's runtime is not touched. Between two rollouts the
+ * worker answers its other messages, and the stage's clock is moved past the time the batch took, so a paced run in
+ * this worker carries on instead of counting that time as dropped.
+ */
+async function batch(msg: Extract<ToWorker, { type: "batch" }>) {
+  const mujoco = await engine(msg.mujocoBase);
+  await so101(mujoco, msg.assetBase);
+  const started = performance.now();
+  await runBatch(mujoco, (xml) => mujoco.MjModel.from_xml_string(xml), msg.spec, msg.program, msg.rollouts, {
+    sample_s: msg.sample_s,
+    between: () => {
+      lastWall = performance.now();
+      return new Promise<void>((resolve) => setTimeout(resolve, 0));
+    },
+    onResult: (result) => post({ type: "batchResult", id: msg.id, result }),
+  });
+  lastWall = performance.now();
+  post({ type: "batch", id: msg.id, ms: performance.now() - started });
 }
 
 /** Mesh bundle first (one gzipped request, decompressed here), per-file fallback. */

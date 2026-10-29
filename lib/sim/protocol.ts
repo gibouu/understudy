@@ -4,6 +4,7 @@
  * an answer carry an `id` so errors reach the right caller.
  */
 import type { Mode, Program, Scenario, TaskSpec } from "@/lib/spec/schema";
+import type { BatchResult, BatchRollout } from "./batch";
 import type { Approach, IkResult } from "./ik";
 import type { Rollout } from "./interpreter";
 import type { LiquidWhere } from "./liquid";
@@ -99,7 +100,12 @@ export type ToWorker =
    * run a program at the stage's speed; `from: "here"` continues from the current state instead of home; `reset` and
    * `gravityG` set the scene up first, in the same message, so no physics step comes between them and the run
    */
-  | { type: "run"; id: number; program: Program; mode: Mode; from?: "home" | "here"; reset?: { seed?: number }; gravityG?: number };
+  | { type: "run"; id: number; program: Program; mode: Mode; from?: "home" | "here"; reset?: { seed?: number }; gravityG?: number }
+  /**
+   * run `program` once per entry of `rollouts`, unpaced, each from home on a fresh MjData of its own world
+   * (lib/sim/batch.ts); the stage's model, its run and its pace are left alone, and no load is needed first
+   */
+  | { type: "batch"; id: number; mujocoBase: string; assetBase: string; spec: TaskSpec; program: Program; rollouts: BatchRollout[]; sample_s?: number };
 
 export type FromWorker =
   | { type: "status"; message: string; progress?: number }
@@ -108,4 +114,8 @@ export type FromWorker =
   | { type: "jacobian"; id: number; site: string; nv: number; jacp: Float64Array; jacr: Float64Array }
   | { type: "ik"; id: number; result: IkResult }
   | { type: "run"; id: number; result: Rollout }
+  /** one rollout of a batch, as it finishes */
+  | { type: "batchResult"; id: number; result: BatchResult }
+  /** the batch is over, every result sent before this; `ms` of wall clock in all */
+  | { type: "batch"; id: number; ms: number }
   | { type: "error"; id?: number; message: string };
