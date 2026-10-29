@@ -22,6 +22,7 @@ import { GroundChips } from "./ground-chips";
 import { keep, keepCall, keeping, startSession } from "./keep";
 import { answeredBy, useModels, type Role } from "./models";
 import { ProgramView, type Failure } from "./program-view";
+import { Reshoot } from "./reshoot";
 import { Working } from "./working";
 
 const Rehearsal = dynamic(() => import("./rehearsal").then((m) => m.Rehearsal), {
@@ -422,6 +423,8 @@ export function Flow() {
           <Rehearsal spec={spec} program={program.value} onFail={setFailure} hint={hint} onRehearse={() => (rehearsalAt.current = keeping())} onRun={kept ? (world, rollout) => keep("rehearsal", { world, program: program.value, rollout }, rehearsalAt.current) : undefined} />
         </Section>
       )}
+
+      {ready && program.status === "done" && <Reshoot spec={spec} program={program.value} />}
 
       {ready && program.status === "done" && !spec.steps.some((s) => s.verb === "gesture") && (
         <Section n={6} title="Try a similar task">

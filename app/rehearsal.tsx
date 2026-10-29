@@ -9,6 +9,7 @@ import type { Rollout } from "@/lib/sim/interpreter";
 import type { Frame } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { SETTING_NAMES, SETTING_WORLD, settingFor } from "@/lib/sim/settings";
+import { rehearsed } from "@/lib/reshoot/evidence";
 import { PatchLoop } from "./patch-loop";
 import { SettingNote, SettingSwitch, type Shown } from "./setting-switch";
 import type { Failure } from "./program-view";
@@ -214,6 +215,7 @@ export function Rehearsal({
     onFail(null);
     const out = await play(program, worlds, true);
     const runs = out.flatMap(({ world, result }) => (typeof result === "object" && !("error" in result) ? [{ world, rollout: result }] : []));
+    if (notes && runs.length === WORLDS.length && worlds.length === WORLDS.length) rehearsed(program, runs);
     // a spec gap (an unanswered question, an unknown object) is the interview's to fix, not a patch's; a gesture's
     // program is its path, so there is nothing for a patch to change
     if (!gesture && worlds.length === WORLDS.length && runs.length === WORLDS.length && runs.some((r) => !r.rollout.pass) && runs.every((r) => r.rollout.pass || r.rollout.failure_class !== "spec_gap")) {

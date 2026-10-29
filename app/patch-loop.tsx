@@ -8,10 +8,14 @@ import { GRAVITIES, type Program, type TaskSpec } from "@/lib/spec/schema";
 import { failed, type StageResult } from "@/lib/spec/stage-result";
 import { usual } from "@/lib/estimate";
 import { gateNote } from "@/lib/unlock/messages";
+import { patched, patchesRestarted } from "@/lib/reshoot/evidence";
 import { liveAuth } from "./capture";
 import { keep, keepCall, keeping } from "./keep";
 import { useLiveModels, useModels } from "./models";
 import { Working } from "./working";
+
+/** A patch's changes in one line, as the list below shows them. */
+const changeText = (p: NotePatch) => (p.noop ? "no change" : p.changes.map((c) => `${c.name}: ${c.from} → ${c.to}`).join(", "));
 
 /** `replayed`: what the patch line says when it came from a recording, the spend guard's reason when that is why */
 /** `stuck`: the loop had escalated when this patch was asked, so the deeper patcher answers it */
@@ -61,6 +65,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
     setBusy(true);
     onBusy(true);
     setIts([]);
+    patchesRestarted(program);
     const history: Attempt[] = [];
     const at = keeping();
     let current = program;
@@ -86,6 +91,7 @@ export function PatchLoop({ spec, program, first, rehearse, onBusy, onPatch, dis
       if (id !== gen.current) return;
       update(n, { state: "done", runs });
       keep("rehearsal", { patch: n, program: p.program, runs }, at);
+      patched(program, { n, changes: changeText(p).slice(0, 400), why: p.why.slice(0, 400), outcome: outcomeLine(runs).slice(0, 1000) });
       history.push({ set: p.set, thinking: p.thinking, clamps: p.clamps, rejected: p.rejected, outcome: outcomeLine(runs) });
       current = p.program;
       last = runs;
