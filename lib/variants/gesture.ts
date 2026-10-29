@@ -22,11 +22,13 @@ import type { Checked, Variant } from "./validate";
  */
 export const SLOWER = 1.5;
 /**
- * The hand speed along the path (mm/s) the arm keeps up with under that cap, measured in the rehearsal: iss-wave's
- * path peaks at 800 mm/s and was followed at 0.46x (370 mm/s), tests/sim/follow.test.ts's swing peaks at 1,484 mm/s
- * and was followed at 0.26x (380 mm/s). Taken lower, so a slower path is slower than the arm's own pace.
+ * The hand speed along the path (mm/s) the arm keeps up with under that cap, measured in the rehearsal: side to
+ * side about 375 (iss-wave's path peaks at 800 mm/s and was followed at 0.46x, tests/sim/follow.test.ts's swing
+ * at 1,484 mm/s and 0.26x), up and down low in the box about 180 (a rise of 0.2 m in 0.3 s peaks at 282 mm/s and
+ * was followed at 0.63x). The lower one, with some room: the joints, not the hand, set the cap, so this is an
+ * estimate, and the card says when the arm was still held back (heldBack).
  */
-export const FOLLOW_MM_S = 300;
+export const FOLLOW_MM_S = 170;
 /** Bigger: this many times as large, at most; smaller, when there is no room for bigger. */
 export const BIGGER = 1.5;
 export const SMALLER = 0.6;
@@ -91,6 +93,9 @@ export function sizeScale(path: PathPoint[], k: number): { path: PathPoint[]; k:
 }
 
 type Gesture = NonNullable<Step["gesture"]>;
+
+/** The steps of a rollout whose path the arm still followed slower than it was given: the joint cap held it back. */
+export const heldBack = (followed: { step_id: string; speed: number }[] = []) => followed.filter((f) => f.speed < 0.995).map((f) => f.step_id);
 
 /** A gesture in words, for the card: its points, how long, how wide and high, and where its middle is. */
 export function gestureText(g: Gesture): string {

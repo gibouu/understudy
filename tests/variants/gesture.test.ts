@@ -108,8 +108,8 @@ describe("similar tasks of the iss-wave recording", () => {
     const [mirror, slower] = variants;
     expect(mirror.spec.steps[0].gesture!.path).toEqual(mirrorPath(base.steps[0].gesture!.path));
     const k = slowerFactor([base.steps[0].gesture!.path]);
-    // the wave peaks at 800 mm/s: the arm needs about 2.2 times the clip's time, and the slower one gets 1.5 times that
-    expect(k).toBe(4);
+    // the wave peaks at 800 mm/s: 1.5 times the 4.7 the cap estimate asks for
+    expect(k).toBe(7.1);
     expect(slower.spec.steps[0].gesture!.path.at(-1)!.t_s).toBeCloseTo(base.steps[0].gesture!.path.at(-1)!.t_s * k, 2);
   });
 
@@ -143,17 +143,23 @@ describe("similar tasks of the iss-wave recording", () => {
     }
   }, 240_000);
 
-  it("slows a quicker path by more, so the arm still does it slower than the task above", () => {
+  it("slows a path the arm is held back on until it is not: side to side, and up and down low in the box", () => {
     // tests/sim/follow.test.ts's swing: twice a second, 12 cm either way; the arm follows it at 0.26x
-    const samples: HandSample[] = Array.from({ length: 41 }, (_, i) => ({ t_s: i / 10, x_m: 0.12 * Math.sin(4 * Math.PI * (i / 10)), y_m: -0.4 - 0.03 * Math.abs(Math.cos(4 * Math.PI * (i / 10))) }));
-    const swing = gestureSpec(scalePath(samples, 0.6).path);
-    expect(peakSpeed(swing.steps[0].gesture!.path)).toBeGreaterThan(1400);
-    const slower = gestureVariants(swing).variants.find((v) => v.title === "Slower")!;
-    const before = rollout(engine, swing, gestureProgram(swing)!, "earth");
-    const after = rollout(engine, slower.spec, gestureProgram(slower.spec)!, "earth");
-    expect(before.pass && after.pass).toBe(true);
-    expect(after.followed![0].speed).toBe(1);
-    expect(after.t).toBeGreaterThan(before.t * 1.15);
+    const swing: HandSample[] = Array.from({ length: 41 }, (_, i) => ({ t_s: i / 10, x_m: 0.12 * Math.sin(4 * Math.PI * (i / 10)), y_m: -0.4 - 0.03 * Math.abs(Math.cos(4 * Math.PI * (i / 10))) }));
+    // a rise of 0.2 m and back in 0.6 s at 30 fps, which the arm follows at 0.63x
+    const rise: HandSample[] = Array.from({ length: 19 }, (_, k) => ({ t_s: k / 30, x_m: 0, y_m: 0.2 * (1 - Math.abs(k - 9) / 9) }));
+    for (const samples of [swing, rise]) {
+      const spec = gestureSpec(scalePath(samples, 0.6).path);
+      const slower = gestureVariants(spec).variants.find((v) => v.title === "Slower")!;
+      const before = rollout(engine, spec, gestureProgram(spec)!, "earth");
+      const after = rollout(engine, slower.spec, gestureProgram(slower.spec)!, "earth");
+      expect(before.pass && after.pass).toBe(true);
+      expect(before.followed![0].speed).toBeLessThan(0.7);
+      // the arm follows the slower path at its own pace: slower than it could follow the clip
+      expect(after.followed![0].speed).toBe(1);
+      expect(after.t).toBeGreaterThan(before.t);
+    }
+    expect(peakSpeed(scalePath(swing, 0.6).path)).toBeGreaterThan(1400);
   }, 120_000);
 
   it("never turns a task that puts an object somewhere into a gesture, nor lets one claim to wave", async () => {

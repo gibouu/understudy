@@ -12,7 +12,7 @@ import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib
 import { answered, nextTurn } from "@/lib/variants/answer";
 import { costOf } from "@/lib/variants/cost";
 import { MAX_VARIANTS, type NotYet } from "@/lib/variants/parse";
-import { clipPace, GESTURE_VARIANTS_NOTE, gestureText, gesturesOnly } from "@/lib/variants/gesture";
+import { clipPace, GESTURE_VARIANTS_NOTE, gestureText, gesturesOnly, heldBack } from "@/lib/variants/gesture";
 import { pourOf } from "@/lib/variants/pour";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
 import { gateNote } from "@/lib/unlock/messages";
@@ -488,6 +488,9 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
                 ))}
               </tbody>
             </table>
+          )}
+          {built && v.title === "Slower" && WORLDS.some((w) => { const r = run.worlds[w]; return r && r !== "running" && !("error" in r) && heldBack(r.followed).length > 0; }) && (
+            <p className="text-xs text-amber-700">The arm was still held to its joint speed on this path, so it may follow it no slower than the task above: compare the speed it followed at with the rehearsal above.</p>
           )}
           {cost && (
             <p className="mt-1 text-xs text-[color:var(--muted,#737373)]">
