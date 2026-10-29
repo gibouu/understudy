@@ -137,16 +137,23 @@ export type QualityMarkdownOptions = {
   rendered?: boolean;
   /** where the clip came from (#61): a sample's source and licence, or "upload"; the section is left out when unknown */
   source?: ClipSource;
+  /** what the zip holds, file by file (or folder by folder), said under "What this export holds" */
+  contents?: { path: string; what: string }[];
 };
 
 /** QUALITY.md, written next to the dataset. */
 export function renderQualityMarkdown(
   report: QualityReport,
   episodes: EpisodeRecord[],
-  { origin = "rehearsal", rendered = false, jointUnits = ORIGIN_TEXT[origin].units, source }: QualityMarkdownOptions = {},
+  { origin = "rehearsal", rendered = false, jointUnits = ORIGIN_TEXT[origin].units, source, contents }: QualityMarkdownOptions = {},
 ): string {
   const lines: string[] = ["# Quality report", "", `**${report.headline}.**`, ""];
   if (source !== undefined) lines.push(...sourceMarkdown(source));
+  if (contents?.length) {
+    lines.push("## What this export holds", "");
+    for (const c of contents) lines.push(`- \`${c.path}\`: ${c.what}`);
+    lines.push("");
+  }
 
   lines.push(
     `${originText(origin, rendered).how} They fill the LeRobot v2.1 layout Isaac-GR00T reads, to show the format; they are not demonstrations to train a policy on.`,
