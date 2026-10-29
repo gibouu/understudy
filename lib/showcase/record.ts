@@ -14,9 +14,13 @@
  *   notes      POST /api/notes through notesHook(), while the last program fails in a
  *              world and not on a spec gap, up to MAX_PATCHES; each patch rehearsed again
  *
- * Every call is priced at list prices, and the run stops before any call
- * whose worst case (worstUsd), added to the worst cases of the calls before
- * it, would take the clip over `capUsd`.
+ * Every call is priced at list prices, and the clip never reserves more
+ * than `capUsd`: every request a route sends is reserved before it is sent
+ * (lib/unlock/budget.ts, under a ceiling of the recorder's own), from that
+ * request itself, so its real prompt, a re-ask's appended answer, each SDK
+ * retry and the resend after a 400 all count. A request with no room is not
+ * sent and the recording stops; so does a stage whose cheapest request
+ * (leastUsd) has no room left, before it starts.
  * lib/showcase/record.test.ts runs it.
  */
 import { createHash } from "node:crypto";
@@ -33,7 +37,8 @@ import type { Program, ProgramOp, TaskSpec } from "@/lib/spec/schema";
 import type { LedgerEntry, StageResult } from "@/lib/spec/stage-result";
 import { knobsOf, type Applied } from "@/lib/notes/knobs";
 import { outcomeLine } from "@/lib/notes/note";
-import { MAX_PATCHES, type Attempt, type NotePatch } from "@/lib/notes/patch";
+import { MAX_PATCHES, MAX_TOKENS_OFF, type Attempt, type NotePatch } from "@/lib/notes/patch";
+import { underCeiling, type Ceiling } from "@/lib/unlock/budget";
 import { UNLOCK_ENV } from "@/lib/unlock/check";
 import { answerFor, CLIP_ANSWERS, DEFAULT_ANSWERS, slotWords } from "./answers";
 import { rehearseAll, rollouts, summary, type Engine } from "./rehearse";
@@ -43,26 +48,20 @@ import { LabelRecording, RECORDED_ON, Session, type Answer, type Call, type Iter
 export const MAX_ROUNDS = 6;
 
 /**
- * The calls one route can bill, as (prompt tokens, max_tokens) per call: a
- * generous prompt, and every attempt callModel can make (a second answer when
- * the first does not parse or fails its check), each sent twice where the
- * route lets the SDK retry once (compile, notes). Notes is #28's route: a
- * cheap patch (800 tokens) and, once stuck, a thinking one (4,096). A request
- * the SDK retries after a timeout may have been billed without its usage ever
- * arriving, so the cap holds the sum of these reservations, not the ledger's.
- * Not reserved: a retry answered 400 (callModel then sends once more without
- * its optional parameters), and prompts over 8,000 tokens (a fitted spec and
- * its program are about 3,000 characters).
+ * The smallest answer budget (max_tokens) of each route's requests, and the model it calls: every
+ * request's reservation counts at least its whole answer budget, so a stage is not started when
+ * even that has no room. Notes is #28's route: its cheap patch (MAX_TOKENS_OFF); Super thinking
+ * or Ultra only costs more. What a stage really reserves is counted request by request, as it runs.
  */
-export const WORST_CALLS = {
-  label: { role: "vl", calls: [[12_000, 3_000], [12_000, 3_000]] },
-  compile: { role: "nano", calls: Array<[number, number]>(4).fill([8_000, 3_000]) },
-  notes: { role: "super", calls: [...Array<[number, number]>(4).fill([8_000, 800]), ...Array<[number, number]>(4).fill([8_000, 4_096])] },
-} as const satisfies Record<string, { role: ModelRole; calls: readonly (readonly [number, number])[] }>;
+export const LEAST_ANSWER = {
+  label: { role: "vl", max_tokens: 3_000 },
+  compile: { role: "nano", max_tokens: 3_000 },
+  notes: { role: "super", max_tokens: MAX_TOKENS_OFF },
+} as const satisfies Record<string, { role: ModelRole; max_tokens: number }>;
 
-/** The most a route call can cost, reserved before it is made, at the list price of the model it will use (env overrides included). */
-export function worstUsd(stage: keyof typeof WORST_CALLS, model: string = MODELS[WORST_CALLS[stage].role]): number {
-  return sum(WORST_CALLS[stage].calls.map(([prompt_tokens, completion_tokens]) => priceOf({ model, prompt_tokens, completion_tokens, seconds: 0 })));
+/** The least any request of a stage reserves, at the list price of the model it will use (env overrides included). */
+export function leastUsd(stage: keyof typeof LEAST_ANSWER, model: string = MODELS[LEAST_ANSWER[stage].role]): number {
+  return priceOf({ model, prompt_tokens: 0, completion_tokens: LEAST_ANSWER[stage].max_tokens, seconds: 0 });
 }
 
 /**
@@ -210,22 +209,38 @@ export function notesHook(): NotesHook {
 /** The models the routes call, as recorded with every clip: Nano and Super leave Token Factory serverless on 9 Nov 2026. */
 export const recordedModels = (): Models => ({ vl: MODELS.vl, nano: MODELS.nano, super: MODELS.super });
 
-export async function recordClip({ root, sample, engine, capUsd, notes, traced, log = () => {} }: RecordOptions): Promise<Session | LabelRecording> {
+export async function recordClip(o: RecordOptions): Promise<Session | LabelRecording> {
+  if (!(o.capUsd > 0)) throw new Error(`the cap must be a positive number of US dollars, not ${o.capUsd}`);
+  const ceiling: Ceiling = { cap_usd: o.capUsd, held_micro: 0 };
+  try {
+    const recorded = await underCeiling(ceiling, () => record(o, ceiling));
+    // a request refused for room that the route answered all the same (a previous program kept, a replay)
+    if (ceiling.refused) throw new Error(ceiling.refused);
+    return recorded;
+  } catch (err) {
+    // a refused request surfaces in the routes as a replay or a failed stage: say what really stopped it
+    if (ceiling.refused) throw new Error(ceiling.refused, { cause: err });
+    throw err;
+  }
+}
+
+async function record({ root, sample, engine, capUsd, notes, traced, log = () => {} }: RecordOptions, ceiling: Ceiling): Promise<Session | LabelRecording> {
   const { POST: labelRoute } = await import("@/app/api/label/route");
   const { POST: compileRoute } = await import("@/app/api/compile/route");
   // with no key every route answers from its fixtures, some with no replay warning: never record those
   if (!process.env.NEBIUS_API_KEY) throw new Error("NEBIUS_API_KEY is not set: the routes would answer from their replay fixtures");
-  if (!(capUsd > 0)) throw new Error(`the cap must be a positive number of US dollars, not ${capUsd}`);
   const set = recordedModels();
   const wrong = (["vl", "nano", "super"] as const).filter((r) => set[r] !== { vl: RECORDED_ON.label, nano: RECORDED_ON.compile, super: RECORDED_ON.notes }[r]);
   if (wrong.length) throw new Error(`the routes would call ${wrong.map((r) => `${r}=${set[r]}`).join(", ")}: showcase recordings are made on ${Object.values(RECORDED_ON).join(", ")} (UNDERSTUDY_KEEP_RETIRED=1 while Token Factory serves them)`);
   const ledger: Call[] = [];
-  /** what the calls so far could have billed, seen or not */
-  let reserved = 0;
-  /** stop before a call whose worst case would take the clip over its cap */
-  const guard = (next: string, worst: number) => {
-    if (reserved + worst > capUsd) throw new Error(`US$${reserved.toFixed(4)} reserved so far; ${next} could cost up to US$${worst.toFixed(4)}, over the US$${capUsd} cap`);
-    reserved += worst;
+  /** stop before a stage whose cheapest request has no room left; what each request may bill is held as it is sent */
+  const guard = (next: string, least: number) => {
+    const held = ceiling.held_micro / 1e6;
+    if (held + least > capUsd) throw new Error(`US$${held.toFixed(4)} reserved so far; ${next} reserves at least US$${least.toFixed(4)}, over the US$${capUsd} cap`);
+  };
+  /** a request refused for room stops the recording at once, whatever the route made of it */
+  const stop = () => {
+    if (ceiling.refused) throw new Error(ceiling.refused);
   };
 
   const file = path.join(root, "samples", `${sample.name}.mp4`);
@@ -242,10 +257,12 @@ export async function recordClip({ root, sample, engine, capUsd, notes, traced, 
     fit = { spec: traced.fit.spec, warnings: [...traced.fit.warnings] };
     log(`${sample.name}: the label recorded on ${recorded_at}, traced by ${traced.by}`);
   } else {
-    guard("label", worstUsd("label"));
+    guard("label", leastUsd("label"));
     const { video, duration_s } = proxy(file);
     log(`${sample.name}: proxy ${Math.round(video.length / 1024)} kB, ${duration_s.toFixed(1)} s`);
-    const label = live(await post<TaskSpec>(labelRoute as Handler, "/api/label", { video, duration_s, hint: sample.hint, clip_sha256: sha256 }), "label");
+    const answered = await post<TaskSpec>(labelRoute as Handler, "/api/label", { video, duration_s, hint: sample.hint, clip_sha256: sha256 });
+    stop();
+    const label = live(answered, "label");
     const labelCalls = calls("label", label.ledger);
     ledger.push(...labelCalls);
     log(`label: "${label.value.title}", ${label.value.objects.length} objects, ${label.value.steps.length} steps`);
@@ -267,9 +284,11 @@ export async function recordClip({ root, sample, engine, capUsd, notes, traced, 
   let given: Answer[] = [];
   let asked: Ask[] = [];
   for (let turn = 0; ; turn++) {
-    guard(`compile ${turn}`, worstUsd("compile"));
+    guard(`compile ${turn}`, leastUsd("compile"));
+    const compiled = await post<Program>(compileRoute as Handler, "/api/compile", { spec, previous });
+    stop();
     // a spec of gestures alone is compiled by the route itself (lib/sim/gesture.ts), with no model
-    const r = live(await post<Program>(compileRoute as Handler, "/api/compile", { spec, previous }), `compile ${turn}`, !gesturesOnly(spec));
+    const r = live(compiled, `compile ${turn}`, !gesturesOnly(spec));
     const cost = calls("compile", r.ledger);
     ledger.push(...cost);
     const program = r.value;
@@ -307,8 +326,9 @@ export async function recordClip({ root, sample, engine, capUsd, notes, traced, 
   const fails = (it: Iteration) => [it.results.earth, it.results.orbit].some((x) => !x.pass) && [it.results.earth, it.results.orbit].every((x) => x.pass || x.failure_class !== "spec_gap");
   // the page has no Notes stage for a gesture: its path is its only check (app/rehearsal.tsx)
   for (let n = 0; notes && !gesturesOnly(spec) && n < MAX_PATCHES && fails(iterations.at(-1)!); n++) {
-    guard(`notes patch ${n + 1}`, worstUsd("notes"));
+    guard(`notes patch ${n + 1}`, leastUsd("notes"));
     const patched = await notes(iterations.at(-1)!, iterations, engine);
+    stop();
     if (!patched) break;
     ledger.push(...patched.calls);
     iterations.push(patched.iteration);
