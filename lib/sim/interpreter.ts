@@ -93,6 +93,8 @@ const MIN_MOVE_S = 0.4;
 /** a move has arrived once the arm is slower than this, or after SETTLE_S */
 const ARRIVED_RAD_S = 0.05;
 const SETTLE_S = 1;
+/** the spec's success predicates of a step, checked after its last op, may take this long to hold (an object settling) */
+const SUCCESS_WAIT_S = 1;
 const RELEASE_S = 0.3;
 const CLOSE_RAD_S = 0.6;
 const SQUARE_RAD = (3 * Math.PI) / 180;
@@ -553,6 +555,28 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
         }
       } catch (err) {
         return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `${op.op}: ${(err as Error).message}` });
+      }
+    }
+    // a rollout passes only where the spec's success holds at the end of each step, whatever the program checked
+    // itself (#117), given SUCCESS_WAIT_S to come about; a single op continued from here on /stage is a poke at the
+    // scene, not a rehearsal of the step
+    if (from === "home") {
+      opIndex = undefined;
+      const success = env.spec.steps.find((x) => x.id === s.step_id)?.success ?? [];
+      if (success.length) {
+        try {
+          // all at once: a check that held while waiting for another one does not count
+          let checks = success.map((p) => evaluate(world(), p));
+          for (let w = 0; checks.some((c) => !c.ok) && w < SUCCESS_WAIT_S; w += dt) {
+            yield* step();
+            checks = success.map((p) => evaluate(world(), p));
+          }
+          for (const [k, c] of checks.entries()) log.push(`${t.toFixed(2)} the spec's success ${success[k].kind}: ${c.why}`);
+          const k = checks.findIndex((c) => !c.ok);
+          if (k >= 0) return fail({ failed_step_id: s.step_id, failed_predicate: success[k], why: `the spec's success for step ${s.step_id} does not hold within ${SUCCESS_WAIT_S} s of its last op: ${checks[k].why}` });
+        } catch (err) {
+          return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `the spec's success: ${(err as Error).message}` });
+        }
       }
     }
   }
