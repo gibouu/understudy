@@ -83,9 +83,9 @@ export function planOf(spec: TaskSpec, result: StageResult<SaboteurReply>, extra
   return done({ scenarios, source: "model", focus: focusJson(focus) }, [...extra, ...result.warnings], ledger);
 }
 
-/** `ledger` receives every billed call, the ones of a failed answer included. */
-export async function askSaboteur(client: OpenAI, spec: TaskSpec, ledger: LedgerEntry[] = []): Promise<StageResult<SaboteurReply>> {
+/** `ledger` receives every billed call, the ones of a failed answer included; `signal` stops the calls at the route's deadline. */
+export async function askSaboteur(client: OpenAI, spec: TaskSpec, ledger: LedgerEntry[] = [], signal?: AbortSignal): Promise<StageResult<SaboteurReply>> {
   const focus = focusOf(spec);
   if (!focus) return failed("nothing to perturb", false);
-  return callModel(client, { ...saboteurCall(spec, focus), ledger });
+  return callModel(client, { ...saboteurCall(spec, focus), ledger, signal });
 }

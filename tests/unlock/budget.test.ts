@@ -5,7 +5,7 @@
  * the store cannot be read on a deployment. The store is faked
  * (tests/store/fake-redis.ts) and so is Token Factory: nothing here spends.
  */
-import type OpenAI from "openai";
+import OpenAI from "openai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { callModel } from "@/lib/providers/call";
@@ -185,6 +185,63 @@ describe("with a store", () => {
     expect(r.status).toBe("done");
     const held = Math.ceil(usdOf(call(MODELS.nano, promptTokensAtMost([{ role: "user", content: "u" }]), 100))! * 1e6);
     expect(store.data.get(SPENT_KEY)).toBe(held + Math.ceil(usdOf(call(MODELS.nano, 10, 5))! * 1e6));
+  });
+
+  it("keeps the reservation of a request cut at the deadline, and reserves nothing after it (#189)", async () => {
+    const store = fakeRedis();
+    const deadline = new AbortController();
+    let sent = 0;
+    const client = {
+      maxRetries: 2,
+      chat: {
+        completions: {
+          create: (_p: unknown, o: { signal?: AbortSignal }) => {
+            sent++;
+            return new Promise((_resolve, reject) => o.signal?.addEventListener("abort", () => reject(new OpenAI.APIUserAbortError()), { once: true }));
+          },
+        },
+      },
+    } as unknown as OpenAI;
+    const answer = callModel(client, { role: "nano", user: "u", maxTokens: 100, schema: z.object({ n: z.number() }), signal: deadline.signal });
+    await vi.waitFor(() => expect(sent).toBe(1));
+    deadline.abort();
+    expect((await answer).status).toBe("failed");
+    expect(sent).toBe(1);
+    expect(store.data.get(SPENT_KEY)).toBe(Math.ceil(usdOf(call(MODELS.nano, promptTokensAtMost([{ role: "user", content: "u" }]), 100))! * 1e6));
+  });
+
+  it("keeps the reservation of a 400 the SDK made of a response cut at the deadline (#189)", async () => {
+    const store = fakeRedis();
+    const deadline = new AbortController();
+    let sent = 0;
+    const client = {
+      chat: {
+        completions: {
+          create: async () => {
+            sent++;
+            // the error body was cut short: the SDK still reports the status line it read
+            deadline.abort();
+            throw new OpenAI.BadRequestError(400, undefined, "400 status code (no body)", new Headers());
+          },
+        },
+      },
+    } as unknown as OpenAI;
+    expect((await callModel(client, { role: "nano", user: "u", maxTokens: 100, schema: z.object({ n: z.number() }), signal: deadline.signal })).status).toBe("failed");
+    expect(sent).toBe(1);
+    expect(store.data.get(SPENT_KEY)).toBe(Math.ceil(usdOf(call(MODELS.nano, promptTokensAtMost([{ role: "user", content: "u" }]), 100))! * 1e6));
+  });
+
+  it("gives back the reservation of a request cut before it was sent, and pauses for no retry once cut (#189)", async () => {
+    const store = fakeRedis();
+    const deadline = new AbortController();
+    let sent = 0;
+    const client = { chat: { completions: { create: async () => (sent++, { choices: [{ message: { content: '{"n":1}' } }] }) } } } as unknown as OpenAI;
+    const incr = store.data.set.bind(store.data);
+    // the deadline passes while the reservation is being made
+    store.data.set = (k, v) => (deadline.abort(), incr(k, v));
+    expect((await callModel(client, { role: "nano", user: "u", maxTokens: 100, schema: z.object({ n: z.number() }), signal: deadline.signal })).status).toBe("failed");
+    expect(sent).toBe(0);
+    expect(store.data.get(SPENT_KEY) ?? 0).toBe(0);
   });
 
   it("keeps the whole reservation of an answer that does not say what it used", async () => {
