@@ -420,7 +420,42 @@ Passes out of 24 per gravity. On the pipette and the chess clip the baseline sto
 node_modules/.bin/vitest run tests/saboteur/baseline.test.ts tests/saboteur/scoreboard.test.ts --silent=false
 ```
 
-## 18. Contact on a stand-in: force-limited following
+## 18. A toss and a catch with one arm
+
+Issue #159, measured on 29 October 2026 in `tests/sim/toss.test.ts` (Node, MuJoCo 3.17, 5 ms step). The raw rows are in `bench/results/toss-catch.json`. Two ops are in the program schema but not yet in the compile prompt:
+
+- `toss` lets go of the held object while the gripper moves. MuJoCo then carries it on as a rigid body, with no drag, since the simulator has no air.
+- `catch` meets the object on the path predicted from its own state as it came off the pads, and closes the jaws so they meet it there.
+
+A catch counts only when four things hold: the object came off the pads, nothing of the gripper touches it as the jaws start to close, the jaws then stop on it within 0.05 rad of the angle they held it at, and the grasp's own check holds (both jaws on it, the moving jaw settled). Nothing is welded otherwise.
+
+Hand-written programs, ten seeds each, the box's start moved by up to 3 mm on x and y (sensed):
+
+| World | Task | Caught | Wilson 95% |
+|---|---|---|---|
+| Earth (1 g) | a 20 x 20 x 50 mm box thrown straight up at 1.3 m/s asked, caught back in the same gripper | 8 of 10 | 49% to 94% |
+| Orbit (0 g) | a 20 x 30 x 40 mm box pushed across at 0.1 m/s from y = -90 mm, caught at y = +90 mm by the same arm (both points within its reach) | 0 of 10 | 0% to 28% |
+
+On Earth, every box that was thrown was caught. The two misses are the grasp before the throw closing on an edge, from a 3 mm start error.
+
+- **How the throw goes.** The modelled position servos top out near 4.8 rad/s unloaded (measured with a 1 rad step on each joint), and the toss asks no joint for more than 4 rad/s through the run-up, the coast and the brake. With the servo's lag put back on top, the joints really turn at up to 4.2 to 4.3 rad/s (measured, `measured_joint_rad_s`). The box comes off the pads at 0.91 to 0.92 m/s of the 1.3 asked, tumbling, because the gripper has to turn to throw it that fast.
+- **Letting go.** For 40 to 50 ms after the weld comes off the box still rides on the squeezed pads. It leaves them with 76 to 115 mm/s sideways (across the jaws) and up to 62 mm/s along the fingers.
+- **The catch.** The path is predicted from that moment and holds: 1.5 mm off when the jaws start to close, on every seed. The gripper overshoots: it stops about 12 mm above the top of the box's flight (312 mm against a 300 mm apex on seed 2), so the box never rises above the jaws. The catch then brings the gripper down onto the predicted path near the top of the flight, and the jaws hold the box 0.06 to 0.135 s after the predicted moment. It is a short toss: the box touches nothing for only about 75 ms (seed 7, from leaving the pads to the first pad touching it again) and rises about 43 mm from where it left them (0.92 m/s squared over 2 g).
+- **This result is fragile.** Before the coast and the brake rates were held to 4 rad/s (they asked the elbow for up to 5 rad/s), the same programs caught 2 of 10. On 6 others the jaws stopped on the box with both pads touching, but 0.05 to 0.09 rad narrower than they had held it, which the angle check rejects. Two rollouts earlier still "caught" the box resting on top of fully shut jaws, which is why that check is there. Treat 8 of 10 as one setting of a scripted throw, not a property of the arm.
+
+In orbit none of the ten was caught:
+
+- 3 grasps missed before the throw.
+- On 2 seeds the box never came off the pads within 0.3 s. Nothing pulls it off the fixed jaw, and the catch refuses an object that never flew.
+- On 2 it came off in 40 ms instead of 220 to 300 ms and left at 143 to 147 mm/s, 15 to 22 mm/s downward, so it was past the far point before the arm could get there.
+- On 2 it was 42 and 48 mm off its predicted path by the time the jaws were to close, because the gripper coming down onto its path had knocked it, and the jaws found no hold.
+- On 1 the arm could not hold the box's orientation at the catch point within 3 mm (it was 6.4 mm off).
+
+Where the box does leave cleanly, its straight path is well predicted: it leaves at 99 to 102 mm/s with under 6 mm/s sideways.
+
+Left for later: a softer release (jaws that let go without the squeeze), a catch that comes in along the path instead of down onto it, and a far-side fixture in place of one arm reaching both points.
+
+## 19. Contact on a stand-in: force-limited following
 
 Issue #160: an on-body clip (lip balm, cream) rehearsed as the arm applying the held object to someone else, gently. There is no person in the simulation: the stand-in is a fixed primitive with a size (role `surface`), and the step is the new `apply` verb with a `contact` block (surface, path in the surface's frame, force limit, reach, coverage). The `contact` op (`lib/sim/contact.ts`) goes to a stand-off 30 mm out along the surface normal, comes in at 40 mm/s and from 25 mm out at 8 mm/s until MuJoCo reports a contact of at least 0.05 N, follows the path at 15 mm/s while a force loop moves the commanded depth by the error against half the limit and a second loop shifts the commanded point across the path by the measured distance from the contact to it, then leaves at 8 mm/s. Every number below is read from MuJoCo each 5 ms step: the normal force of every contact between the held object and the stand-in (`mj_contactForce`), where those contacts are, any contact between the arm itself and the stand-in, and the speed of the held object's contact point along the normal within 15 mm of the surface.
 
@@ -447,6 +482,10 @@ pnpm test
 
 ```bash
 MEASURE_WRITE=1 node_modules/.bin/vitest run tests/measure tests/sim/fluid.test.ts --reporter=verbose
+```
+
+```bash
+MEASURE_WRITE=1 node_modules/.bin/vitest run tests/sim/toss.test.ts --silent=false
 ```
 
 ```bash

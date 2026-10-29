@@ -32,6 +32,10 @@ export function opText(op: ProgramOp): string {
       return "follow the gesture path";
     case "contact":
       return "contact along the step's path";
+    case "toss":
+      return `toss at (${op.velocity_mm_s.join(", ")}) mm/s over a ${op.run_mm} mm run-up`;
+    case "catch":
+      return `catch ${op.object}${op.frame === undefined && op.offset_mm === undefined ? " where the gripper is" : ` near ${op.frame ?? "world"} (${(op.offset_mm ?? [0, 0, 0]).join(", ")}) mm`}`;
     case "tilt":
       return `tilt ${op.deg}°${op.toward ? ` toward ${op.toward}` : ""} over ${op.seconds} s`;
     case "wait_until":

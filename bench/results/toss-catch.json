@@ -1,0 +1,672 @@
+{
+ "earth": {
+  "caught": 8,
+  "of": 10,
+  "wilson95": [
+   0.49015684672072335,
+   0.9433190520193067
+  ],
+  "rows": [
+   {
+    "seed": 1,
+    "dx": 0.8,
+    "dy": -3,
+    "caught": false,
+    "why": "toss: nothing is held"
+   },
+   {
+    "seed": 2,
+    "dx": 1.4,
+    "dy": -1.1,
+    "caught": true,
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      0,
+      1300
+     ],
+     "let_go_t": 5.16,
+     "release": {
+      "t": 5.2,
+      "xyz_mm": [
+       243.5,
+       -2.7,
+       256.7
+      ],
+      "v_mm_s": [
+       56.5,
+       -84.4,
+       920
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.3,
+     "catch": {
+      "step_id": "s1",
+      "t_predicted": 5.32,
+      "xyz_mm": [
+       250.3,
+       -12.8,
+       296.5
+      ],
+      "aim_off_mm": 24.7,
+      "predicted_off_mm": 1.5,
+      "held": true,
+      "held_after_s": 0.06
+     }
+    }
+   },
+   {
+    "seed": 3,
+    "dx": 1.3,
+    "dy": -2.8,
+    "caught": true,
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      0,
+      1300
+     ],
+     "let_go_t": 5.165,
+     "release": {
+      "t": 5.205,
+      "xyz_mm": [
+       243.2,
+       -2.4,
+       256.9
+      ],
+      "v_mm_s": [
+       49.7,
+       -76.1,
+       910
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.3,
+     "catch": {
+      "step_id": "s1",
+      "t_predicted": 5.325,
+      "xyz_mm": [
+       249.2,
+       -11.6,
+       295.4
+      ],
+      "aim_off_mm": 24.1,
+      "predicted_off_mm": 1.5,
+      "held": true,
+      "held_after_s": 0.135
+     }
+    }
+   },
+   {
+    "seed": 4,
+    "dx": 2.5,
+    "dy": -1,
+    "caught": false,
+    "why": "toss: nothing is held"
+   },
+   {
+    "seed": 5,
+    "dx": 1.1,
+    "dy": 1.6,
+    "caught": true,
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      0,
+      1300
+     ],
+     "let_go_t": 5.155,
+     "release": {
+      "t": 5.195,
+      "xyz_mm": [
+       243.6,
+       -2.4,
+       256.4
+      ],
+      "v_mm_s": [
+       59.5,
+       -83.3,
+       917.4
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.2,
+     "catch": {
+      "step_id": "s1",
+      "t_predicted": 5.315,
+      "xyz_mm": [
+       250.8,
+       -12.4,
+       295.8
+      ],
+      "aim_off_mm": 24.8,
+      "predicted_off_mm": 1.5,
+      "held": true,
+      "held_after_s": 0.065
+     }
+    }
+   },
+   {
+    "seed": 6,
+    "dx": 0.2,
+    "dy": -3,
+    "caught": true,
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      0,
+      1300
+     ],
+     "let_go_t": 5.135,
+     "release": {
+      "t": 5.175,
+      "xyz_mm": [
+       243.5,
+       -2.6,
+       256.7
+      ],
+      "v_mm_s": [
+       57.3,
+       -84.2,
+       920.6
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.3,
+     "catch": {
+      "step_id": "s1",
+      "t_predicted": 5.295,
+      "xyz_mm": [
+       250.3,
+       -12.7,
+       296.6
+      ],
+      "aim_off_mm": 24.7,
+      "predicted_off_mm": 1.5,
+      "held": true,
+      "held_after_s": 0.065
+     }
+    }
+   },
+   {
+    "seed": 7,
+    "dx": -2.9,
+    "dy": -2.6,
+    "caught": true,
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      0,
+      1300
+     ],
+     "let_go_t": 5.245,
+     "release": {
+      "t": 5.295,
+      "xyz_mm": [
+       240.8,
+       -3.8,
+       266.1
+      ],
+      "v_mm_s": [
+       4.6,
+       -114.5,
+       906.4
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.2,
+     "catch": {
+      "step_id": "s1",
+      "t_predicted": 5.415,
+      "xyz_mm": [
+       241.3,
+       -17.5,
+       304.2
+      ],
+      "aim_off_mm": 23.2,
+      "predicted_off_mm": 1.5,
+      "held": true,
+      "held_after_s": 0.06
+     }
+    }
+   },
+   {
+    "seed": 8,
+    "dx": -2.1,
+    "dy": 0.8,
+    "caught": true,
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      0,
+      1300
+     ],
+     "let_go_t": 5.14,
+     "release": {
+      "t": 5.18,
+      "xyz_mm": [
+       243.1,
+       -2.7,
+       257.1
+      ],
+      "v_mm_s": [
+       53.4,
+       -84.9,
+       921.7
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.3,
+     "catch": {
+      "step_id": "s1",
+      "t_predicted": 5.3,
+      "xyz_mm": [
+       249.5,
+       -12.9,
+       297.1
+      ],
+      "aim_off_mm": 24.2,
+      "predicted_off_mm": 1.5,
+      "held": true,
+      "held_after_s": 0.12
+     }
+    }
+   },
+   {
+    "seed": 9,
+    "dx": -1.8,
+    "dy": 2.1,
+    "caught": true,
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      0,
+      1300
+     ],
+     "let_go_t": 5.135,
+     "release": {
+      "t": 5.175,
+      "xyz_mm": [
+       243.5,
+       -2.6,
+       256.5
+      ],
+      "v_mm_s": [
+       58.9,
+       -84.3,
+       918.3
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.3,
+     "catch": {
+      "step_id": "s1",
+      "t_predicted": 5.295,
+      "xyz_mm": [
+       250.6,
+       -12.7,
+       296
+      ],
+      "aim_off_mm": 25.1,
+      "predicted_off_mm": 1.5,
+      "held": true,
+      "held_after_s": 0.065
+     }
+    }
+   },
+   {
+    "seed": 10,
+    "dx": 0,
+    "dy": 2.5,
+    "caught": true,
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      0,
+      1300
+     ],
+     "let_go_t": 5.155,
+     "release": {
+      "t": 5.195,
+      "xyz_mm": [
+       243.1,
+       -2.4,
+       256.1
+      ],
+      "v_mm_s": [
+       61.9,
+       -83.2,
+       913
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 4,
+     "measured_joint_rad_s": 4.2,
+     "catch": {
+      "step_id": "s1",
+      "t_predicted": 5.315,
+      "xyz_mm": [
+       250.6,
+       -12.4,
+       295
+      ],
+      "aim_off_mm": 24.9,
+      "predicted_off_mm": 1.5,
+      "held": true,
+      "held_after_s": 0.065
+     }
+    }
+   }
+  ]
+ },
+ "orbit": {
+  "caught": 0,
+  "of": 10,
+  "wilson95": [
+   0,
+   0.2775401687666166
+  ],
+  "rows": [
+   {
+    "seed": 1,
+    "dx": 0.8,
+    "dy": -3,
+    "caught": false,
+    "why": "toss: nothing is held"
+   },
+   {
+    "seed": 2,
+    "dx": 1.4,
+    "dy": -1.1,
+    "caught": false,
+    "why": "catch: once the arm can be there, item's predicted path passes 119 mm from world + (200, 90, 50) mm at the nearest (at most 30 mm)",
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      100,
+      0
+     ],
+     "let_go_t": 4.78,
+     "release": {
+      "t": 4.82,
+      "xyz_mm": [
+       199.5,
+       -84.4,
+       49.2
+      ],
+      "v_mm_s": [
+       -6.8,
+       147,
+       -14.7
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.8
+    }
+   },
+   {
+    "seed": 3,
+    "dx": 1.3,
+    "dy": -2.8,
+    "caught": false,
+    "why": "catch: the arm cannot meet item on its path near world + (200, 90, 50) mm as it let go of it (off by 6.4 mm, 2° in tilt, turned 0° aside)",
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      100,
+      0
+     ],
+     "let_go_t": 5.3,
+     "release": {
+      "t": 5.525,
+      "xyz_mm": [
+       200.5,
+       -67.3,
+       49.7
+      ],
+      "v_mm_s": [
+       4.8,
+       100.2,
+       -0.3
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.8
+    }
+   },
+   {
+    "seed": 4,
+    "dx": 2.5,
+    "dy": -1,
+    "caught": false,
+    "why": "catch: item never came off the pads after the toss, so there is nothing to catch",
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      100,
+      0
+     ],
+     "let_go_t": 4.94,
+     "release": {
+      "t": 5.24,
+      "xyz_mm": [
+       201.2,
+       -57.6,
+       49.6
+      ],
+      "v_mm_s": [
+       2.1,
+       101.4,
+       0.8
+      ]
+     },
+     "parted": false,
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.9
+    }
+   },
+   {
+    "seed": 5,
+    "dx": 1.1,
+    "dy": 1.6,
+    "caught": false,
+    "why": "toss: nothing is held"
+   },
+   {
+    "seed": 6,
+    "dx": 0.2,
+    "dy": -3,
+    "caught": false,
+    "why": "timed out after 0.5 s: the pads are not both on item",
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      100,
+      0
+     ],
+     "let_go_t": 4.83,
+     "release": {
+      "t": 5.11,
+      "xyz_mm": [
+       201.3,
+       -60.5,
+       50.4
+      ],
+      "v_mm_s": [
+       5.8,
+       101.6,
+       2.2
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.9,
+     "catch": {
+      "step_id": "s1",
+      "t_predicted": 6.703,
+      "xyz_mm": [
+       210.6,
+       101.4,
+       53.8
+      ],
+      "aim_off_mm": 16,
+      "predicted_off_mm": 41.9,
+      "held": false
+     }
+    }
+   },
+   {
+    "seed": 7,
+    "dx": -2.9,
+    "dy": -2.6,
+    "caught": false,
+    "why": "catch: item never came off the pads after the toss, so there is nothing to catch",
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      100,
+      0
+     ],
+     "let_go_t": 5.015,
+     "release": {
+      "t": 5.315,
+      "xyz_mm": [
+       201,
+       -60,
+       49.8
+      ],
+      "v_mm_s": [
+       3.7,
+       99.4,
+       -0.3
+      ]
+     },
+     "parted": false,
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.9
+    }
+   },
+   {
+    "seed": 8,
+    "dx": -2.1,
+    "dy": 0.8,
+    "caught": false,
+    "why": "timed out after 0.5 s: the pads are not both on item",
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      100,
+      0
+     ],
+     "let_go_t": 5.14,
+     "release": {
+      "t": 5.41,
+      "xyz_mm": [
+       200.5,
+       -62.8,
+       49.7
+      ],
+      "v_mm_s": [
+       5.7,
+       98.8,
+       -0.1
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.8,
+     "catch": {
+      "step_id": "s1",
+      "t_predicted": 6.949,
+      "xyz_mm": [
+       209.2,
+       89.3,
+       49.5
+      ],
+      "aim_off_mm": 9.3,
+      "predicted_off_mm": 47.9,
+      "held": false
+     }
+    }
+   },
+   {
+    "seed": 9,
+    "dx": -1.8,
+    "dy": 2.1,
+    "caught": false,
+    "why": "catch: once the arm can be there, item's predicted path passes 122 mm from world + (200, 90, 50) mm at the nearest (at most 30 mm)",
+    "flight": {
+     "step_id": "s1",
+     "object": "item",
+     "asked_mm_s": [
+      0,
+      100,
+      0
+     ],
+     "let_go_t": 4.99,
+     "release": {
+      "t": 5.03,
+      "xyz_mm": [
+       199.3,
+       -84.5,
+       48.9
+      ],
+      "v_mm_s": [
+       -6.5,
+       142.8,
+       -21.5
+      ]
+     },
+     "parted": true,
+     "peak_joint_rad_s": 0.5,
+     "measured_joint_rad_s": 0.8
+    }
+   },
+   {
+    "seed": 10,
+    "dx": 0,
+    "dy": 2.5,
+    "caught": false,
+    "why": "toss: nothing is held"
+   }
+  ]
+ }
+}
