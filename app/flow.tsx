@@ -89,6 +89,8 @@ export function Flow() {
   /** the playbook switch (#56), off unless turned on; a ref too, so a compile started by the switch reads the new state */
   const [playbook, setPlaybook] = useState(PLAYBOOK_OFF);
   const playbookRef = useRef(PLAYBOOK_OFF);
+  /** bumped by every compile: a program swapped in at once (a recording, the switch turned off) gets a fresh rehearsal, not the last one's results */
+  const [compiles, setCompiles] = useState(0);
   /** a live label waiting for the person to confirm it (#158): the tracing notes its fit will carry */
   const [unconfirmed, setUnconfirmed] = useState<string[] | null>(null);
   /** the consent box for a clip of your own (#78): nothing is kept without it */
@@ -163,6 +165,7 @@ export function Flow() {
     // the playbook's rules for this spec, none with the switch off: then the request is the one from before it
     const rules = playbookAsk(playbookRef.current, next, failureRef.current);
     setFailure(null);
+    setCompiles((n) => n + 1);
     const turn = !fresh && !rules && clip?.rec ? turnFor(clip.rec, next) : null;
     if (turn && clip?.rec) {
       // the recording compiled exactly this spec: its program, and the answers given to its asks
@@ -445,7 +448,7 @@ export function Flow() {
       {ready && program.status === "done" && (
         <Section n={5} title="Rehearse" model="MuJoCo WebAssembly · SO-101">
           {asks.length > 0 && <p className="text-sm text-amber-700">Some questions are still open: the rehearsal stops at the first one.</p>}
-          <Rehearsal spec={spec} program={program.value} onFail={setFailure} hint={hint} onRehearse={() => (rehearsalAt.current = keeping())} onRun={kept ? (world, rollout) => keep("rehearsal", { world, program: program.value, rollout }, rehearsalAt.current) : undefined} />
+          <Rehearsal key={compiles} spec={spec} program={program.value} onFail={setFailure} hint={hint} onRehearse={() => (rehearsalAt.current = keeping())} onRun={kept ? (world, rollout) => keep("rehearsal", { world, program: program.value, rollout }, rehearsalAt.current) : undefined} />
         </Section>
       )}
 

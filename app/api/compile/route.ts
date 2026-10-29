@@ -194,11 +194,15 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   if (result.status !== "done") return NextResponse.json(result);
   const resolved = resolveFixtureNames(result.value, spec.data);
   const warnings = [...result.warnings, ...resolved.warnings];
-  // the rules it says it applied, among those it was given; nothing at all without the playbook
+  // the rules it says it applied, among those it was given; nothing at all without the playbook. A kept
+  // previous program keeps what it said when it was compiled (Program parsed it without), or says nothing
   const { playbook: said, ...unsaid } = resolved.program;
+  const kept = previous !== undefined && result.warnings.some((w) => w.endsWith("previous value kept"));
+  const keptSaid = kept ? PlaybookProgram.safeParse(body.previous).data?.playbook : undefined;
+  const cites = !rules ? undefined : kept ? (keptSaid && citedRules(keptSaid, rules)) : citedRules(said, rules);
   const program: Program = {
     ...unsaid,
-    ...(rules ? { playbook: citedRules(said, rules) } : {}),
+    ...(cites ? { playbook: cites } : {}),
     steps: unsaid.steps.map((s) => ({
       ...s,
       ops: s.ops

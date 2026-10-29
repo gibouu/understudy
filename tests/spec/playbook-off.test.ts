@@ -13,6 +13,7 @@ import { DEFAULT_ON, PLAYBOOK } from "@/lib/spec/playbook";
 
 const sent: unknown[] = [];
 let twoDrafts = false;
+let unusable = false;
 const session = (clip: string) => Session.parse(JSON.parse(readFileSync(path.join(process.cwd(), "public", "showcase", `${clip}.json`), "utf8")));
 
 vi.mock("@/lib/providers/tokenfactory", async (original) => {
@@ -32,7 +33,7 @@ vi.mock("@/lib/providers/tokenfactory", async (original) => {
             const given = [...args.messages[1].content.matchAll(/^- ([a-z-]+) \(learned on/gm)].map((m) => m[1]);
             const answer = given.length ? { ...program, playbook: [...given, "zone-lift-reach"] } : program;
             // two drafts that differ only in a playbook key: read as one program, as before the playbook
-            const content = twoDrafts ? `${JSON.stringify({ ...program, playbook: ["a"] })}\n${JSON.stringify({ ...program, playbook: ["b"] })}` : JSON.stringify(answer);
+            const content = unusable ? "not a program" : twoDrafts ? `${JSON.stringify({ ...program, playbook: ["a"] })}\n${JSON.stringify({ ...program, playbook: ["b"] })}` : JSON.stringify(answer);
             return { choices: [{ message: { content } }], usage: { prompt_tokens: 10, completion_tokens: 3 } };
           },
         },
@@ -64,6 +65,13 @@ async function post(spec: unknown, playbook?: unknown) {
   return res.json();
 }
 
+async function post2(spec: unknown, playbook: unknown, previous: unknown) {
+  const { POST } = await import("@/app/api/compile/route");
+  sent.length = 0;
+  const res = await POST(new Request("http://localhost/api/compile", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ spec, previous, playbook }) }));
+  return res.json();
+}
+
 describe("the playbook switch off, an answer with a stray playbook key", () => {
   it("is parsed as before the playbook: one call, the key dropped", async () => {
     twoDrafts = true;
@@ -88,6 +96,22 @@ describe("the playbook switch on", () => {
     expect(user).not.toMatch(/zone-|pour-/);
     expect(r.status).toBe("done");
     expect(r.value.playbook).toEqual(["playbook#pocket-lift-reach", "playbook#pocket-wait-still-orbit", "playbook#pocket-release-above-floor"]);
+  });
+
+  it("keeps what a kept previous program said it applied, and says nothing for one compiled without the playbook", async () => {
+    const spec = session("iss-glovebox-pipette").iterations[1].spec;
+    const previous = session("iss-glovebox-pipette").iterations[1].program;
+    unusable = true;
+    try {
+      const cited = await post2(spec, { rules: ["pocket-lift-reach"] }, { ...previous, playbook: ["playbook#pocket-lift-reach", "playbook#zone-lift-reach"] });
+      expect(cited.warnings.some((w: string) => w.endsWith("previous value kept"))).toBe(true);
+      expect(cited.value.playbook).toEqual(["playbook#pocket-lift-reach"]);
+      const silent = await post2(spec, { rules: ["pocket-lift-reach"] }, previous);
+      expect(silent.warnings.some((w: string) => w.endsWith("previous value kept"))).toBe(true);
+      expect(silent.value.playbook).toBeUndefined();
+    } finally {
+      unusable = false;
+    }
   });
 
   it("refuses a playbook that is not a list of rule ids", async () => {
