@@ -129,7 +129,7 @@ export function ScoreboardHead({ plan, by, why, busy, ms, ran, start }: { plan: 
       </div>
       {ran && (
         <p className="text-sm text-muted">
-          Dark: sensed passes; light: blind passes. A version that scores lower than the one before it is shown as it scored. Rigid-body physics with a geometric grasp: this measures how much error a scripted program tolerates, not what a learned policy or a real arm would do.
+          Dark: sensed passes; light: blind passes. A version that scores lower than the one before it is shown as it scored. A version that still asks a question, or reaches for a pose the arm cannot, fails every rollout at that point, as it did when recorded: its 0 of 24 says the program never got past that line, not that it lost to the perturbations. Rigid-body physics with a geometric grasp: this measures how much error a scripted program tolerates, not what a learned policy or a real arm would do.
         </p>
       )}
     </div>
