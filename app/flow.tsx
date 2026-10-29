@@ -209,7 +209,9 @@ export function Flow() {
         step("label", "watch");
         labelled = await post<TaskSpec>("/api/label", { ...body, hint: line });
         if (id !== gen.current) return;
-        if (unproxied.why && labelled.status !== "done") labelled = failed(unproxied.why);
+        // only a recording of this very clip stands in for the missing proxy (app/api/label/route.ts replay)
+        const thisClip = labelled.status === "done" && labelled.warnings.includes("replay: recorded answer for this clip");
+        if (unproxied.why && !thisClip) labelled = failed(unproxied.why);
         if (mine) void rememberLabel(mine, line, labelled);
       }
     }
