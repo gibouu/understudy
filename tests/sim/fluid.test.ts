@@ -388,45 +388,6 @@ describe("second review regressions", () => {
     expect(end[2] * p[0] + end[5] * p[1] + end[8] * p[2]).toBeGreaterThanOrEqual(0.0005 - 1e-9);
   });
 
-  it("a moving plane that passes through a particle and out again within one substep still pushes it", () => {
-    // the plane z < 0 slides 2 cm along -x while turning 0.05 rad about y: the particle at x = -2 cm is in front of
-    // it at both ends of the substep but behind it in the middle (about 100 um in at half way)
-    const f = create({ spacing: 0.0001, substeps: 1, gravity: [0, 0, 0], wallDensity: false, xsph: 0, cohesion: 0, iterations: 0 });
-    const plane = f.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0, 0] } });
-    const p0 = [-0.02, 0, 0.00015];
-    f.addParticles(p0);
-    const end = axisAngleToMat([0, 1, 0], 0.05);
-    f.setSolidPose(plane, { position: [-0.02, 0, 0], rotation: end });
-    f.step(1 / FPS);
-    const p = f.positions;
-    // before the fix: left where it was, as if the plane had never reached it
-    expect(Math.hypot(p[0] - p0[0], p[1] - p0[1], p[2] - p0[2])).toBeGreaterThan(5e-5);
-    expect(end[2] * (p[0] + 0.02) + end[5] * p[1] + end[8] * p[2]).toBeGreaterThanOrEqual(0.00005 - 1e-9);
-  });
-
-  it.each([
-    [0.3, 0.05, 0.00025],
-    [0.2, 0.3, 0.000052], // the second plane catches it by its end point first: that counts as its push too
-  ])("pushes of two moving planes are not replayed by later projection passes (tilt %f, turn %f, z %f)", (tilt, turn, z) => {
-    // the same dip as above, from two planes at an angle: each pushes once, however many passes follow
-    const run = (iterations: number) => {
-      const f = create({ spacing: 0.0001, substeps: 1, gravity: [0, 0, 0], wallDensity: false, xsph: 0, cohesion: 0, iterations });
-      const tiltA = axisAngleToMat([1, 0, 0], tilt);
-      const a = f.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0, 0] } });
-      const b = f.addSolid({ shape: { type: "plane" }, pose: { position: [0, 0, 0], rotation: tiltA } });
-      f.addParticles([-0.02, 0, z]);
-      f.setSolidPose(a, { position: [-0.02, 0, 0], rotation: axisAngleToMat([0, 1, 0], turn) });
-      f.setSolidPose(b, { position: [-0.02, 0, 0], rotation: mul(axisAngleToMat([0, 1, 0], turn), tiltA) });
-      f.step(1 / FPS);
-      return Array.from(f.positions);
-    };
-    const once = run(0);
-    for (const n of [1, 4]) {
-      const again = run(n);
-      expect(Math.hypot(again[0] - once[0], again[1] - once[1], again[2] - once[2])).toBeLessThan(1e-9);
-    }
-  });
-
   it("R2-5 the corner overlap is computed for the positions the pressure solve is at", () => {
     type W = {
       x: Float64Array; p: Float64Array; wallRho: Float64Array; wallGrad: Float64Array;

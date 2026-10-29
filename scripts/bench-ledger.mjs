@@ -70,9 +70,8 @@ const ownerOf = (file) => {
  * process that dies inside its few-microsecond section leaves it behind; after LOCK_WAIT_MS the waiter gives up
  * (release leaves its lock to go stale, a takeover finds the lock still busy) and the error names the file to remove.
  */
-function withGate(lock, fn) {
+function withGate(lock, fn, deadline = Date.now() + LOCK_WAIT_MS) {
   const gate = `${lock}.gate`;
-  const deadline = Date.now() + LOCK_WAIT_MS;
   for (;;) {
     try {
       closeSync(openSync(gate, "wx"));
@@ -112,10 +111,14 @@ export function withFileLock(lock, fn, { waitMs = LOCK_WAIT_MS, staleMs = LOCK_S
       if (err?.code !== "EEXIST") throw err;
       try {
         if (Date.now() - statSync(lock).mtimeMs > staleMs)
-          withGate(lock, () => {
-            // checked again under the gate: only a stale lock is removed, and nothing can replace it meanwhile
-            if (Date.now() - statSync(lock).mtimeMs > staleMs) unlinkSync(lock);
-          });
+          withGate(
+            lock,
+            () => {
+              // checked again under the gate: only a stale lock is removed, and nothing can replace it meanwhile
+              if (Date.now() - statSync(lock).mtimeMs > staleMs) unlinkSync(lock);
+            },
+            deadline,
+          );
       } catch {
         // the holder released it between our two calls: try again
       }

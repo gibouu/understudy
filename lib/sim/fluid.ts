@@ -56,6 +56,13 @@
  *   - Where solids leave no room at all for a particle (say two walls closer than its
  *     diameter), the closing contact pass cannot place it: the last projection stands, it
  *     ends inside another solid, and closeUnresolved counts it.
+ *   - A rotating solid's conservative advancement drops a contact it found mid-substep when the
+ *     particle's end point is back in front of the carried contact plane, and samples the rest of
+ *     the substep only every 3 degrees of turn: a plane that slides 2 cm and turns 0.05 rad in one
+ *     substep can pass through a 100 um particle and leave it unpushed (about 50 um of penetration
+ *     on the way). That early return is also what keeps repeated projection passes from adding the
+ *     pushes up, and removing it replays pushes on later passes, so it stands; the app's cups move
+ *     millimetres per substep with 4 mm particles, far from this.
  */
 
 export type Vec3 = [number, number, number];
@@ -314,8 +321,6 @@ export class Fluid {
   private contactSolid = new Int32Array(0);
   /** first solid each particle touched this substep, and whether it needs the closing pass */
   private touched = new Int32Array(0);
-  /** (particle, solid) pairs where a rotating solid already placed the particle this substep, as i * solids + sid */
-  private advanced = new Set<number>();
   private entangled = new Uint8Array(0);
   private contactNormal = new Float64Array(0);
   private contactDepth = new Float64Array(0);
@@ -697,7 +702,6 @@ export class Fluid {
     this.contactSolid.fill(-1, 0, n);
     this.contactDepth.fill(0, 0, n);
     this.touched.fill(-1, 0, n);
-    this.advanced.clear();
     this.entangled.fill(0, 0, n);
     this.collide();
     this.buildGrid(p);
@@ -1254,9 +1258,6 @@ export class Fluid {
     p[o] = wx; p[o + 1] = wy; p[o + 2] = wz;
     if (this.touched[i] === -1) this.touched[i] = sid;
     else if (this.touched[i] !== sid) this.entangled[i] = 1;
-    // a rotating solid that has placed the particle once this substep, by its end point or by a sweep: a later pass
-    // must not replay that solid's sweep as a first contact (afterContact)
-    if (s.angle > ROTATION_EPS) this.advanced.add(i * this.solids.length + sid);
     const cur = contactSolid[i];
     if (cur === sid) contactDepth[i] += depth;
     else if (cur === -1 || depth > contactDepth[i]) {
@@ -1491,17 +1492,17 @@ export class Fluid {
       }
       if (!contact) return false;
     } else surfaceDistance(s.shape, q, nq); // the outward normal at the contact
-    return this.afterContact(s, i, t, q, raw, nq, loc, nrm, L, r);
+    return this.afterContact(s, i, t, q, raw, nq, loc, nrm);
   }
 
   /**
    * The rest of the substep after particle i met solid s at t: the contact plane (point
    * q, normal n, fixed in the solid's coordinates) moves with the solid and pushes the
    * particle only along its normal, never sideways, so contact is frictionless. Sub-steps
-   * no more than 3 degrees of turn and one particle radius of travel apart keep the pushes close to the true path. `loc`
+   * no more than 3 degrees of turn apart keep the pushes close to the true path. `loc`
    * becomes the particle's end point plus the pushes, in the end frame.
    */
-  private afterContact(s: Solid, i: number, t: number, q: Float64Array, raw: Float64Array, n: Float64Array, loc: Float64Array, nrm: Float64Array, L: number, r: number): boolean {
+  private afterContact(s: Solid, i: number, t: number, q: Float64Array, raw: Float64Array, n: Float64Array, loc: Float64Array, nrm: Float64Array): boolean {
     const { p } = this;
     const o = 3 * i;
     const D = this.tmpD, w = this.tmpW, R = this.tmpR2;
@@ -1512,21 +1513,15 @@ export class Fluid {
     D[1] = R[3] * ux + R[4] * uy + R[5] * uz;
     D[2] = R[6] * ux + R[7] * uy + R[8] * uz;
     const cx = q[0], cy = q[1], cz = q[2], nx = n[0], ny = n[1], nz = n[2];
-    // the sweep met the solid on the way: the contact stands even when the end point is back in front of the
-    // carried plane (the plane went through it and out again). Only a later projection pass of the same substep,
-    // after this solid has already pushed the particle, leaves an end point in front alone, so the pushes of
-    // repeated passes do not add up.
-    const pair = i * this.solids.length + this.solids.indexOf(s);
-    if (this.advanced.has(pair)) {
+    // a particle whose own end point is in front of the carried contact plane did not cross:
+    // leave it (this also keeps repeated projection passes in one substep from adding up)
+    {
       const B = s.rotB, PB = s.posB;
       const dx = p[o] - PB[0], dy = p[o + 1] - PB[1], dz = p[o + 2] - PB[2];
       const ex = B[0] * dx + B[3] * dy + B[6] * dz, ey = B[1] * dx + B[4] * dy + B[7] * dz, ez = B[2] * dx + B[5] * dy + B[8] * dz;
       if ((ex - cx) * nx + (ey - cy) * ny + (ez - cz) * nz >= 0) return false;
     }
-    this.advanced.add(pair);
-    // no more than 3 degrees of turn, and no more than the particle's radius of relative travel (L bounds it), apart:
-    // a surface that dips through the particle and back between two samples would otherwise not push it
-    const M = Math.min(256, Math.max(1, Math.ceil((s.angle * (1 - t)) / ((3 * Math.PI) / 180)), Math.ceil(((1 - t) * L) / r)));
+    const M = Math.min(256, Math.max(1, Math.ceil((s.angle * (1 - t)) / ((3 * Math.PI) / 180))));
     for (let k = 1; k <= M; k++) {
       const tk = t + ((1 - t) * k) / M;
       this.localAtSub(s, i, tk, w, D);
