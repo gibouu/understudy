@@ -118,7 +118,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
   const spent = costs.reduce((n, e) => n + (e.usd ?? 0), 0);
   if (r.status !== "done" || !applied) {
     const message = r.status === "failed" ? r.message : "the patch could not be applied";
-    return NextResponse.json(failed(`${message} (${costs.length} call${costs.length === 1 ? "" : "s"}, $${spent.toFixed(4)})`, r.status === "failed" ? r.retryable : false));
+    return NextResponse.json(failed(`${message} (${costs.length} call${costs.length === 1 ? "" : "s"}, $${spent.toFixed(4)})`, r.status === "failed" ? r.retryable : false, costs));
   }
 
   const before = new Set(lintProgram(program, spec));
