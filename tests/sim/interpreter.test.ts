@@ -139,6 +139,17 @@ describe("the spec's success, checked whatever the program asserts (#117)", () =
     expect(r.end?.find((e) => e.object === "film")?.seated?.ok).toBe(false);
   }, 60_000);
 
+  it.each([
+    ["no steps at all", []],
+    ["only s1", [pick]],
+    ["the release under an unknown step", [pick, { ...skipsInside.steps[1], step_id: "ghost" }]],
+    ["the release under s1 again", [pick, { ...skipsInside.steps[1], step_id: "s1" }]],
+  ])("a program that leaves out s2 cannot skip its success: %s", (_, steps) => {
+    const r = rollout(Program.parse({ spec_title: spec.title, steps }), "sensed", { gravity_g: 0 }, spec);
+    expect(r.pass, r.log.join("\n")).toBe(false);
+    expect({ step: r.failed_step_id, predicate: r.failed_predicate, op: r.failed_op }).toEqual({ step: "s2", predicate: success[0], op: undefined });
+  }, 60_000);
+
   it("the same program passes where the spec sets no success: the program's own checks were all there was", () => {
     const r = rollout(skipsInside, "sensed", { gravity_g: 0 });
     expect(r.pass, r.log.join("\n")).toBe(true);
