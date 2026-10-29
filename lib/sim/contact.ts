@@ -100,7 +100,7 @@ export type Contacted = {
   /** the fastest the held object's contact point moved along the normal within NEAR_MM of the surface, measured */
   approach_peak_mm_s: number;
   retreat_peak_mm_s: number;
-  /** the furthest and the mean distance, mm, from a contact while following to the nearest sample of the path */
+  /** the furthest and the mean distance, mm, from each contact while following to its nearest sample of the path */
   off_path_max_mm: number;
   off_path_mean_mm: number;
   /** the held object's axis from the surface normal at the first point, degrees, as gripped */
@@ -336,19 +336,20 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
         // the force-weighted mean steers the loop across the path; coverage counts each contact where it is
         lastAt = at.map((v) => v / total) as Vec3;
         const reach = c.reach_mm * MM;
-        let nearest = Infinity;
-        for (let j = 0; j < truth.length; j++) {
-          const q = truth[j].point;
-          for (const p of points) {
+        for (const p of points) {
+          // each contact's own distance to the path: a near one never hides a far one
+          let nearest = Infinity;
+          for (let j = 0; j < truth.length; j++) {
+            const q = truth[j].point;
             const d = Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
             nearest = Math.min(nearest, d);
             if (d <= reach) covered[j] = true;
           }
-        }
-        if (following) {
-          offMax = Math.max(offMax, nearest);
-          offSum += nearest;
-          offN++;
+          if (following) {
+            offMax = Math.max(offMax, nearest);
+            offSum += nearest;
+            offN++;
+          }
         }
       }
       return total;
