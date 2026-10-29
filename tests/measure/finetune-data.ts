@@ -135,7 +135,7 @@ export function checkFrozenSplit(test: string[], frozen: string[]): void {
   const was = new Set(frozen);
   const added = test.filter((id) => !was.has(id));
   const dropped = frozen.filter((id) => !now.has(id));
-  if (added.length || dropped.length) throw new Error(`the held-out split changed from the manifest's (added: ${added.join(", ") || "none"}; dropped: ${dropped.join(", ") || "none"}): a frozen split is rebuilt only on purpose, with a new salt`);
+  if (added.length || dropped.length) throw new Error(`the held-out split changed from the manifest's (added: ${added.join(", ") || "none"}; dropped: ${dropped.join(", ") || "none"}): to move a frozen split on purpose, edit split.test_cases in bench/finetune/manifest.json first`);
 }
 
 /** the saved file's rounding (patch-loop.test.ts roundNumbers), to compare a replay with it */
