@@ -354,10 +354,11 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
       const t = rot(vec(data.xmat, w.held.bodyId, 9), tipLocal[k]);
       return [c0[0] + t[0], c0[1] + t[1], c0[2] + t[2]];
     };
+    // against the surface where MuJoCo has it, so a program told the wrong pose is slowed and judged by the real one
     const gapAt = (k: number) => {
-      const n = samples[k].normal;
+      const n = truth[k].normal;
       const tip = tipAt(k);
-      const q = samples[k].point;
+      const q = truth[k].point;
       return dot(n, [tip[0] - q[0], tip[1] - q[1], tip[2] - q[2]]);
     };
     function* tick() {
@@ -373,15 +374,28 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
       }
     }
     /** the interpreter's move (joints ramped at JOINT_SPEED, then settled), measuring every step: it may touch the surface on the way */
+    let approachPeak = 0;
     function* moveTo(q: number[]) {
       const from = Array.from(w.ctrl().slice(0, ARM));
       const span = Math.max(MIN_MOVE_S, Math.max(...q.map((v, i) => Math.abs(v - from[i]))) / JOINT_SPEED);
+      // the approach speed is measured on this move too: a stand-off that ends nearer the real surface than NEAR_MM counts
+      let g0 = gapAt(0);
+      const watch = () => {
+        const g = gapAt(0);
+        if (g > 0 && g <= NEAR_MM * MM) approachPeak = Math.max(approachPeak, (g0 - g) / dt);
+        g0 = g;
+      };
       for (let t = 0; t < span; t += dt) {
         command(from.map((v, i) => v + (q[i] - v) * (t / span)));
         yield* tick();
+        watch();
       }
       command(q);
-      yield* settleHere();
+      for (let t = 0; t < SETTLE_S; t += dt) {
+        yield* tick();
+        watch();
+        if (armSpeed() < ARRIVED_RAD_S) break;
+      }
     }
 
     // how the grip holds the object against the first normal: its own z axis, a box's or a cylinder's height
@@ -397,7 +411,6 @@ export function* applyAlong<T>(w: ContactWorld<T>, step: Step): Generator<T, Con
 
     // 2. in along the normal, slower near the surface, until it touches
     let depth = STANDOFF_MM * MM;
-    let approachPeak = 0;
     let gap = gapAt(0);
     let F = 0;
     while (F < TOUCH_N) {

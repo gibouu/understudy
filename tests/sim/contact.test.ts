@@ -249,6 +249,19 @@ describe("the apply step and the contact op in the spec", () => {
       model.delete();
     }
   }, 60_000);
+  it("slows down near the surface where it really is: told it is 10 mm lower (blind), the approach is still slow within 15 mm", () => {
+    const env = environment(contactSpec(BOX), { id: "z10", name: "z10", axis: "z_mm", offset: 10, object: "standin", gravity_g: 1, expected: "unknown", why: "" });
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 1, graspable: env.graspable }));
+    const data = new mujoco.MjData(model);
+    try {
+      park(mujoco, model, data);
+      const r = runToEnd({ mujoco, model, data }, env, PROGRAM, "blind");
+      expect(r.contacted![0].approach_peak_mm_s).toBeLessThan(12);
+    } finally {
+      data.delete();
+      model.delete();
+    }
+  }, 60_000);
   it("is additive: a scene with no apply step is built exactly as before", () => {
     const spec = TaskSpec.parse({ ...contactSpec(BOX), steps: [{ id: "s1", verb: "grasp", object: "applicator", t_start_s: 0, t_end_s: 1 }] });
     expect(environment(spec).worldbody).not.toContain("contact_");
@@ -293,6 +306,6 @@ const pinned = (s: ReturnType<typeof summary>) => ({
 const PINNED: Record<string, ReturnType<typeof pinned>> = {
   "box 1 g": { pass: 20, wilson_pc: [84, 100], coverage_min_pc: 100, peak_max_n: 1.23, contact_s_mean: 9, approach_max_mm_s: 8, retreat_max_mm_s: 12 },
   "box 0 g": { pass: 20, wilson_pc: [84, 100], coverage_min_pc: 100, peak_max_n: 1.22, contact_s_mean: 9, approach_max_mm_s: 8, retreat_max_mm_s: 12 },
-  "sphere 1 g": { pass: 0, wilson_pc: [0, 16], coverage_min_pc: 94, peak_max_n: 2.41, contact_s_mean: 6, approach_max_mm_s: 9, retreat_max_mm_s: 10 },
-  "sphere 0 g": { pass: 0, wilson_pc: [0, 16], coverage_min_pc: 94, peak_max_n: 2.41, contact_s_mean: 6, approach_max_mm_s: 9, retreat_max_mm_s: 10 },
+  "sphere 1 g": { pass: 0, wilson_pc: [0, 16], coverage_min_pc: 94, peak_max_n: 2.41, contact_s_mean: 6, approach_max_mm_s: 13, retreat_max_mm_s: 10 },
+  "sphere 0 g": { pass: 0, wilson_pc: [0, 16], coverage_min_pc: 94, peak_max_n: 2.41, contact_s_mean: 6, approach_max_mm_s: 14, retreat_max_mm_s: 10 },
 };
