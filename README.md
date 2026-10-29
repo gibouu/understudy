@@ -70,6 +70,7 @@ Three pages, linked from the home page (`/`): the **1-minute demo** (`/demo`) wa
 - **The scoreboard in the export:** the scoreboard's passes (baseline and versions) are not written into the Try it export yet.
 - **The demo's export with video, and GR00T's loader:** the 1-minute demo's export still holds no video (Try it's does), and no export has been loaded by GR00T's loader yet.
 - **The Moon on Try it:** the Moon preset (0.1654 g) is in the contract and on the `/stage` page; Try it rehearses on Earth and in orbit.
+- **In the simulator only, measured:** toss, catch and contact: three ops the rehearsal runs from hand-written programs; the compile route refuses them, so no clip reaches them yet. A box tossed up is caught again in the same gripper 8 of 10 times on Earth; pushed across in orbit, it is caught 0 of 10 times; the held object follows a path on a rigid stand-in under a 2 N force limit 20 of 20 times on a flat one, at 1 g and 0 g, and 0 of 20 on a curved one, where the peak reaches 2.41 N ([MEASUREMENTS](docs/MEASUREMENTS.md), sections 18 and 19; [LIMITATIONS](docs/LIMITATIONS.md)).
 
 Task-agnostic by construction: the code never names a task. The sample clips are NASA public-domain footage from the ISS, in [samples/](samples/README.md): an astronaut placing seed film into the plant pillows of the station's Veggie facility (the hero clip, filmed in microgravity), a second seed film clip, a pipette into a sample cartridge in a glovebox, a drink bag squeezed into foam, a chess match, and a wave.
 

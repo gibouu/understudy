@@ -17,9 +17,8 @@ The submitted text is this file as it was on `main` on 29 October. Field by fiel
 - **Additional info:** "Models and why" now uses the timings and token count in MEASUREMENTS (sections 6 and 13) instead of the earlier drafts' figures; "Approach" takes the #119 wording on fine-tuning; "Output quality" evidence now comes from MEASUREMENTS sections 12 and 14; "Tavily" says the Try it export writes `grounding.json`.
 - **Not Devpost fields, updated here too:** the slide table's learning row (the playbook is on the site and does not carry over), and the checklist's Tavily line.
 
-<!-- if #159 lands (toss and catch): add one line to "What it does" and drop it from "What's next", in README's wording, with its MEASUREMENTS section. -->
-<!-- if #160 lands (contact task): same. -->
-<!-- if simulator fixes land (#214 / #77, scene and IK; #218 / #81, ledger and liquid): re-check the scoreboard and baseline numbers below against README before pasting. -->
+- **What it does, one more bullet:** "In the simulator, not on the site yet": the toss and catch (#159) and contact on a stand-in (#160), with their measured rates, negative ones included. **What's next** names what they lack.
+- The scoreboard and baseline numbers below are the ones after the scene fix of #214 (six counts moved by one or two); they match README and MEASUREMENTS section 17.
 
 ## Fields
 
@@ -51,8 +50,7 @@ One phone clip of a person doing a hands-on task (an astronaut handling samples 
 - **Export.** Once the program passes in both worlds, Try it downloads the run as a LeRobot v2.1 skeleton (joint states and actions at 15 fps) with, by default, one 480x360 MP4 per episode drawn again from the simulator state: a picture of the simulation, never footage. <!-- README, Built: Download the dataset; LIMITATIONS, Simulated versus real --> The 1-minute demo ends with the same skeleton, joint values only. Both are format-valid, not checked with GR00T's loader, and not training data.
 
 The space showcase replays recorded NASA runs with no model call; a recorded session cost 1 to 7 calls, $0.0007 to $0.0059. <!-- README, "Why" table -->
-<!-- if #159 lands: one bullet, README's wording. -->
-<!-- if #160 lands: one bullet, README's wording. -->
+- **In the simulator, not on the site yet.** Toss, catch and contact: three ops the rehearsal runs from hand-written programs; the compile route refuses them, so no clip reaches them yet. A box tossed up is caught again in the same gripper 8 of 10 times on Earth; pushed across in orbit, it is caught 0 of 10 times; the held object follows a path on a rigid stand-in under a 2 N force limit 20 of 20 times on a flat one, at 1 g and 0 g, and 0 of 20 on a curved one, where the peak reaches 2.41 N. <!-- README, Next; MEASUREMENTS §18, §19 -->
 
 ## How we built it
 
@@ -91,8 +89,7 @@ Nemotron 3.5 Super VL watches a 480 px proxy of the clip and labels steps, objec
 - The answers as tolerance bands. <!-- LIMITATIONS, Honest limits -->
 - A grasp that reads the commanded opening, so a wrong aperture can fail. <!-- FAILURES, case 3 -->
 - Playbook rules that carry over, measured against the same matched control.
-<!-- if #159 does not land: gib may name the toss and catch here. -->
-<!-- if #160 does not land: gib may name the contact task here. -->
+- A label that reaches the toss, catch and contact ops; a catch that works in orbit; contact that stays under the limit on a curved surface. <!-- MEASUREMENTS §18, §19 -->
 
 ## Testing instructions for judges
 
