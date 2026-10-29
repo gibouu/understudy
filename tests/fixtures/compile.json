@@ -2590,431 +2590,8 @@
  {
   "spec": {
    "version": 1,
-   "title": "cup into bowl: Bigger bowl",
-   "summary": "The arm pours the same water into a wider 90 mm bowl beside the cup.",
-   "objects": [
-    {
-     "id": "block",
-     "name": "block",
-     "shape": "box",
-     "size_mm": [
-      60,
-      60,
-      46
-     ],
-     "symmetry": "none",
-     "role": "surface",
-     "pose": {
-      "xyz_mm": [
-       300,
-       0,
-       23
-      ],
-      "yaw_deg": 0,
-      "frame": "world"
-     },
-     "confidence": 0.5,
-     "source": "demo",
-     "sources": {}
-    },
-    {
-     "id": "cup",
-     "name": "cup",
-     "shape": "box",
-     "size_mm": [
-      48,
-      48,
-      54
-     ],
-     "symmetry": "none",
-     "role": "manipulated",
-     "pose": {
-      "xyz_mm": [
-       300,
-       0,
-       73
-      ],
-      "yaw_deg": 0,
-      "frame": "world"
-     },
-     "liquid_ml": 38,
-     "confidence": 0.5,
-     "source": "demo",
-     "sources": {}
-    },
-    {
-     "id": "bowl",
-     "name": "bowl",
-     "shape": "box",
-     "size_mm": [
-      90,
-      90,
-      40
-     ],
-     "symmetry": "none",
-     "role": "fixture",
-     "pose": {
-      "xyz_mm": [
-       300,
-       91,
-       20
-      ],
-      "yaw_deg": 0,
-      "frame": "world"
-     },
-     "confidence": 0.5,
-     "source": "demo",
-     "sources": {
-      "size_mm": "variant#1",
-      "pose": "fit"
-     }
-    }
-   ],
-   "steps": [
-    {
-     "id": "s1",
-     "verb": "pour",
-     "object": "cup",
-     "via_points": [],
-     "preconditions": [],
-     "success": [
-      {
-       "kind": "liquid_inside",
-       "object": "cup",
-       "target": "bowl",
-       "value": 90
-      }
-     ],
-     "tolerances": {},
-     "pour": {
-      "into": "bowl",
-      "tilt_deg": 120,
-      "tilt_s": 1.5
-     },
-     "t_start_s": 0,
-     "t_end_s": 4,
-     "source": "demo",
-     "sources": {}
-    }
-   ],
-   "warnings": [],
-   "open_questions": [],
-   "sources": {
-    "title": "variant#1",
-    "summary": "variant#1"
-   }
-  },
-  "result": {
-   "status": "done",
-   "value": {
-    "spec_title": "cup into bowl: Bigger bowl",
-    "steps": [
-     {
-      "step_id": "s1",
-      "ops": [
-       {
-        "op": "move_to",
-        "frame": "cup",
-        "offset_mm": [
-         0,
-         0,
-         50
-        ],
-        "approach": "front"
-       },
-       {
-        "op": "move_to",
-        "frame": "cup",
-        "offset_mm": [
-         0,
-         0,
-         0
-        ],
-        "approach": "front"
-       },
-       {
-        "op": "grasp",
-        "object": "cup",
-        "aperture_mm": 48
-       },
-       {
-        "op": "tilt",
-        "deg": 120,
-        "toward": "bowl",
-        "seconds": 1.5
-       },
-       {
-        "op": "wait_until",
-        "predicate": {
-         "kind": "liquid_inside",
-         "object": "cup",
-         "target": "bowl",
-         "value": 90
-        },
-        "timeout_s": 3
-       },
-       {
-        "op": "tilt",
-        "deg": 0,
-        "seconds": 1.5
-       },
-       {
-        "op": "release"
-       },
-       {
-        "op": "move_to",
-        "frame": "cup",
-        "offset_mm": [
-         0,
-         0,
-         50
-        ],
-        "approach": "front"
-       },
-       {
-        "op": "assert",
-        "predicate": {
-         "kind": "liquid_inside",
-         "object": "cup",
-         "target": "bowl",
-         "value": 90
-        }
-       }
-      ]
-     }
-    ],
-    "warnings": []
-   },
-   "warnings": [],
-   "ledger": [
-    {
-     "model": "nvidia/Nemotron-3_5-Lightning",
-     "prompt_tokens": 2910,
-     "completion_tokens": 535,
-     "seconds": 2.12
-    },
-    {
-     "model": "nvidia/Nemotron-3_5-Lightning",
-     "prompt_tokens": 3496,
-     "completion_tokens": 308,
-     "seconds": 1.33
-    }
-   ]
-  }
- },
- {
-  "spec": {
-   "version": 1,
-   "title": "cup into bowl: Bowl on a shelf",
-   "summary": "The bowl stands 30 mm higher on a shelf, closer to the cup’s rim.",
-   "objects": [
-    {
-     "id": "block",
-     "name": "block",
-     "shape": "box",
-     "size_mm": [
-      60,
-      60,
-      46
-     ],
-     "symmetry": "none",
-     "role": "surface",
-     "pose": {
-      "xyz_mm": [
-       300,
-       0,
-       23
-      ],
-      "yaw_deg": 0,
-      "frame": "world"
-     },
-     "confidence": 0.5,
-     "source": "demo",
-     "sources": {}
-    },
-    {
-     "id": "cup",
-     "name": "cup",
-     "shape": "box",
-     "size_mm": [
-      48,
-      48,
-      54
-     ],
-     "symmetry": "none",
-     "role": "manipulated",
-     "pose": {
-      "xyz_mm": [
-       300,
-       0,
-       73
-      ],
-      "yaw_deg": 0,
-      "frame": "world"
-     },
-     "liquid_ml": 38,
-     "confidence": 0.5,
-     "source": "demo",
-     "sources": {}
-    },
-    {
-     "id": "bowl",
-     "name": "bowl",
-     "shape": "box",
-     "size_mm": [
-      68,
-      68,
-      40
-     ],
-     "symmetry": "none",
-     "role": "fixture",
-     "pose": {
-      "xyz_mm": [
-       300,
-       80,
-       30
-      ],
-      "yaw_deg": 0,
-      "frame": "world"
-     },
-     "confidence": 0.5,
-     "source": "demo",
-     "sources": {
-      "pose": "variant#2"
-     }
-    }
-   ],
-   "steps": [
-    {
-     "id": "s1",
-     "verb": "pour",
-     "object": "cup",
-     "via_points": [],
-     "preconditions": [],
-     "success": [
-      {
-       "kind": "liquid_inside",
-       "object": "cup",
-       "target": "bowl",
-       "value": 90
-      }
-     ],
-     "tolerances": {},
-     "pour": {
-      "into": "bowl",
-      "tilt_deg": 120,
-      "tilt_s": 1.5
-     },
-     "t_start_s": 0,
-     "t_end_s": 4,
-     "source": "demo",
-     "sources": {}
-    }
-   ],
-   "warnings": [],
-   "open_questions": [],
-   "sources": {
-    "title": "variant#2",
-    "summary": "variant#2"
-   }
-  },
-  "result": {
-   "status": "done",
-   "value": {
-    "spec_title": "cup into bowl: Bowl on a shelf",
-    "steps": [
-     {
-      "step_id": "s1",
-      "ops": [
-       {
-        "op": "move_to",
-        "frame": "cup",
-        "offset_mm": [
-         0,
-         0,
-         50
-        ],
-        "approach": "front"
-       },
-       {
-        "op": "move_to",
-        "frame": "cup",
-        "offset_mm": [
-         0,
-         0,
-         0
-        ],
-        "approach": "front"
-       },
-       {
-        "op": "grasp",
-        "object": "cup",
-        "aperture_mm": 48
-       },
-       {
-        "op": "tilt",
-        "deg": 120,
-        "toward": "bowl",
-        "seconds": 1.5
-       },
-       {
-        "op": "wait_until",
-        "predicate": {
-         "kind": "liquid_inside",
-         "object": "cup",
-         "target": "bowl",
-         "value": 90
-        },
-        "timeout_s": 3
-       },
-       {
-        "op": "tilt",
-        "deg": 0,
-        "seconds": 1.5
-       },
-       {
-        "op": "release"
-       },
-       {
-        "op": "move_to",
-        "frame": "cup",
-        "offset_mm": [
-         0,
-         0,
-         50
-        ],
-        "approach": "front"
-       },
-       {
-        "op": "assert",
-        "predicate": {
-         "kind": "liquid_inside",
-         "object": "cup",
-         "target": "bowl",
-         "value": 90
-        }
-       }
-      ]
-     }
-    ],
-    "warnings": []
-   },
-   "warnings": [],
-   "ledger": [
-    {
-     "model": "nvidia/Nemotron-3_5-Lightning",
-     "prompt_tokens": 2906,
-     "completion_tokens": 309,
-     "seconds": 1.231
-    }
-   ]
-  }
- },
- {
-  "spec": {
-   "version": 1,
    "title": "cup into bowl: Pour it back",
-   "summary": "The water starts in the bowl and the arm pours it back into the cup.",
+   "summary": "The water starts in the bowl and the arm pours it into the cup.",
    "objects": [
     {
      "id": "block",
@@ -3063,8 +2640,8 @@
      "confidence": 0.5,
      "source": "demo",
      "sources": {
-      "role": "variant#3",
-      "liquid_ml": "variant#3",
+      "role": "variant#1",
+      "liquid_ml": "variant#1",
       "pose": "fit"
      }
     },
@@ -3092,8 +2669,8 @@
      "confidence": 0.5,
      "source": "demo",
      "sources": {
-      "role": "variant#3",
-      "liquid_ml": "variant#3",
+      "role": "variant#1",
+      "liquid_ml": "variant#1",
       "size_mm": "fit",
       "pose": "fit"
      }
@@ -3124,17 +2701,17 @@
      "t_end_s": 4,
      "source": "demo",
      "sources": {
-      "object": "variant#3",
-      "pour": "variant#3",
-      "success": "variant#3"
+      "object": "variant#1",
+      "pour": "variant#1",
+      "success": "variant#1"
      }
     }
    ],
    "warnings": [],
    "open_questions": [],
    "sources": {
-    "title": "variant#3",
-    "summary": "variant#3"
+    "title": "variant#1",
+    "summary": "variant#1"
    }
   },
   "result": {
@@ -3222,9 +2799,9 @@
    "ledger": [
     {
      "model": "nvidia/Nemotron-3_5-Lightning",
-     "prompt_tokens": 2958,
+     "prompt_tokens": 2957,
      "completion_tokens": 311,
-     "seconds": 1.621
+     "seconds": 1.258
     }
    ]
   }
@@ -3232,8 +2809,217 @@
  {
   "spec": {
    "version": 1,
-   "title": "cup into bowl: Tighter transfer",
-   "summary": "The arm must get 95 percent of the water into the bowl instead of 90.",
+   "title": "cup into bowl: Bigger bowl",
+   "summary": "The bowl is 100 mm wide, giving the stream a larger opening to land in.",
+   "objects": [
+    {
+     "id": "block",
+     "name": "block",
+     "shape": "box",
+     "size_mm": [
+      60,
+      60,
+      46
+     ],
+     "symmetry": "none",
+     "role": "surface",
+     "pose": {
+      "xyz_mm": [
+       300,
+       0,
+       23
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.5,
+     "source": "demo",
+     "sources": {}
+    },
+    {
+     "id": "cup",
+     "name": "cup",
+     "shape": "box",
+     "size_mm": [
+      48,
+      48,
+      54
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       300,
+       0,
+       73
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "liquid_ml": 38,
+     "confidence": 0.5,
+     "source": "demo",
+     "sources": {}
+    },
+    {
+     "id": "bowl",
+     "name": "bowl",
+     "shape": "box",
+     "size_mm": [
+      100,
+      100,
+      40
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       300,
+       96,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.5,
+     "source": "demo",
+     "sources": {
+      "size_mm": "variant#2",
+      "pose": "fit"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "pour",
+     "object": "cup",
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "liquid_inside",
+       "object": "cup",
+       "target": "bowl",
+       "value": 90
+      }
+     ],
+     "tolerances": {},
+     "pour": {
+      "into": "bowl",
+      "tilt_deg": 120,
+      "tilt_s": 1.5
+     },
+     "t_start_s": 0,
+     "t_end_s": 4,
+     "source": "demo",
+     "sources": {}
+    }
+   ],
+   "warnings": [],
+   "open_questions": [],
+   "sources": {
+    "title": "variant#2",
+    "summary": "variant#2"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "cup into bowl: Bigger bowl",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "cup",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "front"
+       },
+       {
+        "op": "move_to",
+        "frame": "cup",
+        "offset_mm": [
+         0,
+         0,
+         0
+        ],
+        "approach": "front"
+       },
+       {
+        "op": "grasp",
+        "object": "cup",
+        "aperture_mm": 48
+       },
+       {
+        "op": "tilt",
+        "deg": 120,
+        "toward": "bowl",
+        "seconds": 1.5
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "liquid_inside",
+         "object": "cup",
+         "target": "bowl",
+         "value": 90
+        },
+        "timeout_s": 3
+       },
+       {
+        "op": "tilt",
+        "deg": 0,
+        "seconds": 1.5
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "move_to",
+        "frame": "cup",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "front"
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "liquid_inside",
+         "object": "cup",
+         "target": "bowl",
+         "value": 90
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": []
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/Nemotron-3_5-Lightning",
+     "prompt_tokens": 2913,
+     "completion_tokens": 308,
+     "seconds": 1.426
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "cup into bowl: Bowl on a shelf",
+   "summary": "The bowl stands 20 mm higher, closing the gap to the cup's rim.",
    "objects": [
     {
      "id": "block",
@@ -3299,14 +3085,16 @@
       "xyz_mm": [
        300,
        80,
-       20
+       40
       ],
       "yaw_deg": 0,
       "frame": "world"
      },
      "confidence": 0.5,
      "source": "demo",
-     "sources": {}
+     "sources": {
+      "pose": "variant#3"
+     }
     }
    ],
    "steps": [
@@ -3321,7 +3109,7 @@
        "kind": "liquid_inside",
        "object": "cup",
        "target": "bowl",
-       "value": 95
+       "value": 90
       }
      ],
      "tolerances": {},
@@ -3333,22 +3121,20 @@
      "t_start_s": 0,
      "t_end_s": 4,
      "source": "demo",
-     "sources": {
-      "success": "variant#4"
-     }
+     "sources": {}
     }
    ],
    "warnings": [],
    "open_questions": [],
    "sources": {
-    "title": "variant#4",
-    "summary": "variant#4"
+    "title": "variant#3",
+    "summary": "variant#3"
    }
   },
   "result": {
    "status": "done",
    "value": {
-    "spec_title": "cup into bowl: Tighter transfer",
+    "spec_title": "cup into bowl: Bowl on a shelf",
     "steps": [
      {
       "step_id": "s1",
@@ -3390,7 +3176,7 @@
          "kind": "liquid_inside",
          "object": "cup",
          "target": "bowl",
-         "value": 95
+         "value": 90
         },
         "timeout_s": 3
        },
@@ -3418,7 +3204,7 @@
          "kind": "liquid_inside",
          "object": "cup",
          "target": "bowl",
-         "value": 95
+         "value": 90
         }
        }
       ]
@@ -3430,9 +3216,9 @@
    "ledger": [
     {
      "model": "nvidia/Nemotron-3_5-Lightning",
-     "prompt_tokens": 2906,
-     "completion_tokens": 308,
-     "seconds": 1.189
+     "prompt_tokens": 2905,
+     "completion_tokens": 309,
+     "seconds": 1.426
     }
    ]
   }
@@ -3440,8 +3226,8 @@
  {
   "spec": {
    "version": 1,
-   "title": "cup into bowl: Faster tilt",
-   "summary": "The arm turns the cup all the way over in one second instead of 120 degrees over 1.5 seconds.",
+   "title": "cup into bowl: Turn over faster",
+   "summary": "The cup tilts all the way over in one second instead of 1.5.",
    "objects": [
     {
      "id": "block",
@@ -3542,21 +3328,21 @@
      "t_end_s": 4,
      "source": "demo",
      "sources": {
-      "pour": "variant#5"
+      "pour": "variant#4"
      }
     }
    ],
    "warnings": [],
    "open_questions": [],
    "sources": {
-    "title": "variant#5",
-    "summary": "variant#5"
+    "title": "variant#4",
+    "summary": "variant#4"
    }
   },
   "result": {
    "status": "done",
    "value": {
-    "spec_title": "cup into bowl: Faster tilt",
+    "spec_title": "cup into bowl: Turn over faster",
     "steps": [
      {
       "step_id": "s1",
@@ -3638,9 +3424,9 @@
    "ledger": [
     {
      "model": "nvidia/Nemotron-3_5-Lightning",
-     "prompt_tokens": 2906,
+     "prompt_tokens": 2898,
      "completion_tokens": 304,
-     "seconds": 1.416
+     "seconds": 1.337
     }
    ]
   }
@@ -3648,8 +3434,8 @@
  {
   "spec": {
    "version": 1,
-   "title": "cup into bowl: Bigger bowl",
-   "summary": "The cup pours its water into a 90 mm wide bowl beside it.",
+   "title": "cup into bowl: Stricter transfer",
+   "summary": "95% of the water has to reach the bowl instead of 90%.",
    "objects": [
     {
      "id": "block",
@@ -3705,8 +3491,8 @@
      "name": "bowl",
      "shape": "box",
      "size_mm": [
-      90,
-      90,
+      68,
+      68,
       40
      ],
      "symmetry": "none",
@@ -3714,7 +3500,215 @@
      "pose": {
       "xyz_mm": [
        300,
-       91,
+       80,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.5,
+     "source": "demo",
+     "sources": {}
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "pour",
+     "object": "cup",
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "liquid_inside",
+       "object": "cup",
+       "target": "bowl",
+       "value": 95
+      }
+     ],
+     "tolerances": {},
+     "pour": {
+      "into": "bowl",
+      "tilt_deg": 120,
+      "tilt_s": 1.5
+     },
+     "t_start_s": 0,
+     "t_end_s": 4,
+     "source": "demo",
+     "sources": {
+      "success": "variant#5"
+     }
+    }
+   ],
+   "warnings": [],
+   "open_questions": [],
+   "sources": {
+    "title": "variant#5",
+    "summary": "variant#5"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "cup into bowl: Stricter transfer",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "cup",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "front"
+       },
+       {
+        "op": "move_to",
+        "frame": "cup",
+        "offset_mm": [
+         0,
+         0,
+         0
+        ],
+        "approach": "front"
+       },
+       {
+        "op": "grasp",
+        "object": "cup",
+        "aperture_mm": 48
+       },
+       {
+        "op": "tilt",
+        "deg": 120,
+        "toward": "bowl",
+        "seconds": 1.5
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "liquid_inside",
+         "object": "cup",
+         "target": "bowl",
+         "value": 95
+        },
+        "timeout_s": 3
+       },
+       {
+        "op": "tilt",
+        "deg": 0,
+        "seconds": 1.5
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "move_to",
+        "frame": "cup",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "front"
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "liquid_inside",
+         "object": "cup",
+         "target": "bowl",
+         "value": 95
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": []
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/Nemotron-3_5-Lightning",
+     "prompt_tokens": 2904,
+     "completion_tokens": 309,
+     "seconds": 1.158
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "cup into bowl: Bigger bowl",
+   "summary": "The bowl is wider, so the arm pours into a larger opening.",
+   "objects": [
+    {
+     "id": "block",
+     "name": "block",
+     "shape": "box",
+     "size_mm": [
+      60,
+      60,
+      46
+     ],
+     "symmetry": "none",
+     "role": "surface",
+     "pose": {
+      "xyz_mm": [
+       300,
+       0,
+       23
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.5,
+     "source": "demo",
+     "sources": {}
+    },
+    {
+     "id": "cup",
+     "name": "cup",
+     "shape": "box",
+     "size_mm": [
+      48,
+      48,
+      54
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       300,
+       0,
+       73
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "liquid_ml": 38,
+     "confidence": 0.5,
+     "source": "demo",
+     "sources": {}
+    },
+    {
+     "id": "bowl",
+     "name": "bowl",
+     "shape": "box",
+     "size_mm": [
+      100,
+      100,
+      40
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       300,
+       96,
        20
       ],
       "yaw_deg": 0,
@@ -3849,7 +3843,7 @@
      "model": "nvidia/Nemotron-3_5-Lightning",
      "prompt_tokens": 2908,
      "completion_tokens": 308,
-     "seconds": 1.701
+     "seconds": 2.084
     }
    ]
   }
@@ -3858,7 +3852,7 @@
   "spec": {
    "version": 1,
    "title": "cup into bowl: Pour it back",
-   "summary": "The water starts in the bowl and the arm pours it back into the cup.",
+   "summary": "The water starts in the bowl and the arm tilts the bowl at the cup's place into the cup.",
    "objects": [
     {
      "id": "block",
@@ -3984,7 +3978,7 @@
   "result": {
    "status": "done",
    "value": {
-    "spec_title": "Pour back into cup",
+    "spec_title": "cup into bowl: Pour it back",
     "steps": [
      {
       "step_id": "s1",
@@ -4066,9 +4060,9 @@
    "ledger": [
     {
      "model": "nvidia/Nemotron-3_5-Lightning",
-     "prompt_tokens": 2958,
-     "completion_tokens": 308,
-     "seconds": 1.881
+     "prompt_tokens": 2963,
+     "completion_tokens": 311,
+     "seconds": 1.759
     }
    ]
   }

@@ -50,13 +50,14 @@ describe.skipIf(process.env.VARIANTS_RECORD !== "1")("record the variants (live,
     const recordedReplies = JSON.parse(readFileSync(fixture("variants.json"), "utf8")) as Reply[];
     const recordedCompiles = JSON.parse(readFileSync(fixture("compile.json"), "utf8")) as { spec: unknown; result: StageResult<Program> }[];
     let usd = 0;
-    // the task itself, when compile.json has no recording of its exact spec (the pour, #125): compiled once, then kept
-    const baseRecorded = recordedCompiles.some((x) => JSON.stringify(TaskSpec.parse(x.spec)) === JSON.stringify(spec));
-    const baseCompile = baseRecorded ? undefined : await postCompile(spec, undefined, false);
+    // the task itself, when compile.json has no compile of its exact spec (the pour, #125): compiled once, then kept;
+    // a failed compile is never recorded, so the next re-record tries again
+    const isBase = (x: { spec: unknown }) => JSON.stringify(TaskSpec.parse(x.spec)) === JSON.stringify(spec);
+    const baseCompile = recordedCompiles.some((x) => isBase(x) && x.result.status === "done") ? undefined : await postCompile(spec, undefined, false);
     if (baseCompile) {
-      usd += costOf(baseCompile.status === "done" ? baseCompile.ledger : []).usd;
-      const outcome = baseCompile.status === "done" ? (["earth", "orbit"] as const).map((w) => { const x = rollout(engine, spec, baseCompile.value, w); return `${w} ${x.pass ? "pass" : `fail (${x.why})`}`; }).join(", ") : JSON.stringify(baseCompile);
-      console.log(`  "${spec.title}" compiled live | ${outcome}`);
+      if (baseCompile.status !== "done") throw new Error(`"${spec.title}" did not compile: ${JSON.stringify(baseCompile)}`);
+      usd += costOf(baseCompile.ledger).usd;
+      console.log(`  "${spec.title}" compiled live | ${(["earth", "orbit"] as const).map((w) => { const x = rollout(engine, spec, baseCompile.value, w); return `${w} ${x.pass ? "pass" : `fail (${x.why})`}`; }).join(", ")}`);
     }
     const replies = [];
     const compiles: { spec: TaskSpec; result: unknown }[] = [];
@@ -103,9 +104,9 @@ describe.skipIf(process.env.VARIANTS_RECORD !== "1")("record the variants (live,
     // a re-record replaces every variant of this task where they were and keeps every other recording
     const mine = (r: { spec: unknown }) => TaskSpec.parse(r.spec).title.startsWith(`${spec.title}: `);
     const from = recorded.findIndex(mine);
-    const kept: { spec: unknown; result?: unknown }[] = recorded.filter((r) => !mine(r));
+    const kept: { spec: unknown; result?: unknown }[] = recorded.filter((r) => !mine(r) && !(baseCompile && isBase(r)));
     if (baseCompile) kept.push({ spec, result: baseCompile });
-    const place = from < 0 ? kept.length : from;
+    const place = from < 0 ? kept.length : recorded.slice(0, from).filter((r) => kept.includes(r)).length;
     writeFileSync(fixture("compile.json"), `${JSON.stringify([...kept.slice(0, place), ...compiles, ...kept.slice(place)], null, 1)}\n`);
     expect(replies[0].result.status).toBe("done");
   }, 600_000);

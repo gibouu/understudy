@@ -178,14 +178,24 @@
    "value": {
     "variants": [
      {
+      "title": "Pour it back",
+      "summary": "The water starts in the bowl and the arm pours it into the cup.",
+      "changes": [
+       {
+        "path": "steps[s1].object",
+        "value": "bowl"
+       }
+      ]
+     },
+     {
       "title": "Bigger bowl",
-      "summary": "The arm pours the same water into a wider 90 mm bowl beside the cup.",
+      "summary": "The bowl is 100 mm wide, giving the stream a larger opening to land in.",
       "changes": [
        {
         "path": "objects[bowl].size_mm",
         "value": [
-         90,
-         90,
+         100,
+         100,
          40
         ]
        }
@@ -193,7 +203,7 @@
      },
      {
       "title": "Bowl on a shelf",
-      "summary": "The bowl stands 30 mm higher on a shelf, closer to the cup’s rim.",
+      "summary": "The bowl stands 20 mm higher, closing the gap to the cup's rim.",
       "changes": [
        {
         "path": "objects[bowl].pose",
@@ -201,7 +211,7 @@
          "xyz_mm": [
           300,
           80,
-          30
+          40
          ],
          "yaw_deg": 0,
          "frame": "world"
@@ -210,29 +220,22 @@
       ]
      },
      {
-      "title": "Pour it back",
-      "summary": "The water starts in the bowl and the arm pours it back into the cup.",
+      "title": "Turn over faster",
+      "summary": "The cup tilts all the way over in one second instead of 1.5.",
       "changes": [
        {
-        "path": "steps[s1].object",
-        "value": "bowl"
-       },
-       {
-        "path": "steps[s1].success",
-        "value": [
-         {
-          "kind": "liquid_inside",
-          "object": "bowl",
-          "target": "cup",
-          "value": 90
-         }
-        ]
+        "path": "steps[s1].pour",
+        "value": {
+         "into": "bowl",
+         "tilt_deg": 180,
+         "tilt_s": 1
+        }
        }
       ]
      },
      {
-      "title": "Tighter transfer",
-      "summary": "The arm must get 95 percent of the water into the bowl instead of 90.",
+      "title": "Stricter transfer",
+      "summary": "95% of the water has to reach the bowl instead of 90%.",
       "changes": [
        {
         "path": "steps[s1].success",
@@ -246,20 +249,6 @@
         ]
        }
       ]
-     },
-     {
-      "title": "Faster tilt",
-      "summary": "The arm turns the cup all the way over in one second instead of 120 degrees over 1.5 seconds.",
-      "changes": [
-       {
-        "path": "steps[s1].pour",
-        "value": {
-         "into": "bowl",
-         "tilt_deg": 180,
-         "tilt_s": 1
-        }
-       }
-      ]
      }
     ],
     "not_yet": []
@@ -268,10 +257,10 @@
    "ledger": [
     {
      "model": "nvidia/Nemotron-3.5-Super-VL",
-     "prompt_tokens": 2652,
-     "completion_tokens": 353,
+     "prompt_tokens": 2688,
+     "completion_tokens": 311,
      "cached_tokens": 0,
-     "seconds": 1.413
+     "seconds": 1.983
     }
    ]
   }
@@ -285,13 +274,13 @@
     "variants": [
      {
       "title": "Bigger bowl",
-      "summary": "The cup pours its water into a 90 mm wide bowl beside it.",
+      "summary": "The bowl is wider, so the arm pours into a larger opening.",
       "changes": [
        {
         "path": "objects[bowl].size_mm",
         "value": [
-         90,
-         90,
+         100,
+         100,
          40
         ]
        }
@@ -304,17 +293,17 @@
    "ledger": [
     {
      "model": "nvidia/Nemotron-3.5-Super-VL",
-     "prompt_tokens": 2669,
-     "completion_tokens": 68,
+     "prompt_tokens": 2705,
+     "completion_tokens": 71,
      "cached_tokens": 0,
-     "seconds": 0.642
+     "seconds": 2.025
     },
     {
      "model": "nvidia/Nemotron-3.5-Super-VL",
-     "prompt_tokens": 2799,
-     "completion_tokens": 65,
+     "prompt_tokens": 2838,
+     "completion_tokens": 58,
      "cached_tokens": 0,
-     "seconds": 0.53
+     "seconds": 1.471
     }
    ]
   }
@@ -328,22 +317,11 @@
     "variants": [
      {
       "title": "Pour it back",
-      "summary": "The water starts in the bowl and the arm pours it back into the cup.",
+      "summary": "The water starts in the bowl and the arm tilts the bowl at the cup's place into the cup.",
       "changes": [
        {
         "path": "steps[s1].object",
         "value": "bowl"
-       },
-       {
-        "path": "steps[s1].success",
-        "value": [
-         {
-          "kind": "liquid_inside",
-          "object": "bowl",
-          "target": "cup",
-          "value": 90
-         }
-        ]
        }
       ]
      }
@@ -354,17 +332,10 @@
    "ledger": [
     {
      "model": "nvidia/Nemotron-3.5-Super-VL",
-     "prompt_tokens": 2666,
-     "completion_tokens": 118,
+     "prompt_tokens": 2702,
+     "completion_tokens": 55,
      "cached_tokens": 0,
-     "seconds": 0.995
-    },
-    {
-     "model": "nvidia/Nemotron-3.5-Super-VL",
-     "prompt_tokens": 2846,
-     "completion_tokens": 91,
-     "cached_tokens": 0,
-     "seconds": 0.78
+     "seconds": 0.759
     }
    ]
   }
