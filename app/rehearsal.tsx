@@ -10,6 +10,7 @@ import type { Frame } from "@/lib/sim/protocol";
 import { StageRenderer } from "@/lib/sim/render";
 import { SETTING_NAMES, SETTING_WORLD, settingFor } from "@/lib/sim/settings";
 import { rehearsed } from "@/lib/reshoot/evidence";
+import { reportPassed } from "./passed";
 import { PatchLoop } from "./patch-loop";
 import { SettingNote, SettingSwitch, type Shown } from "./setting-switch";
 import type { Failure } from "./program-view";
@@ -100,6 +101,10 @@ export function Rehearsal({
   const suggested = useMemo(() => settingFor(spec.title, spec.summary, hint), [spec, hint]);
   const earned = passed?.program === program && passed.worlds.includes(SETTING_WORLD[suggested]);
   const shown = picked !== "auto" ? picked : earned ? suggested : null;
+  // what passed in every world, for the saboteur below (app/passed.ts)
+  useEffect(() => {
+    if (passed && WORLDS.every((w) => passed.worlds.includes(w))) reportPassed(passed.program, passed.ran);
+  }, [passed]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
