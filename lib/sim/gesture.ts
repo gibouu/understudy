@@ -14,7 +14,8 @@
  * Scale. The person's arm (shoulder to elbow to wrist, measured on the same
  * landmarks) maps onto the SO-101's (ARM_MM); a path that is still larger than
  * the plane's box is shrunk to fit it. The path is centred in the box. Both
- * factors are reported, never applied silently. A [1, 2, 1] average over
+ * factors are reported, never applied silently, and so is the side-to-side
+ * stretch a narrow path gets (MAX_STRETCH). A [1, 2, 1] average over
  * neighbouring samples takes off the landmarks' frame-to-frame jitter; at
  * 30 fps it keeps 90% of a wave that turns back three times a second.
  *
@@ -47,6 +48,11 @@ const MIN_SPAN_S = 0.5;
 export const MAX_POINTS = 600;
 /** A hand that moved less than this either way (m) is held still: the landmarks jitter by about 1 cm. */
 const MIN_MOVE_M = 0.02;
+/**
+ * A path narrower than half the box is stretched side to side to fill its width, at most this many times: a wave
+ * whose height is mostly the arm rising would otherwise leave a swing of a few centimetres that does not read as one.
+ */
+export const MAX_STRETCH = 4;
 
 export type Scaled = {
   path: PathPoint[];
@@ -104,11 +110,16 @@ export function scalePath(samples: HandSample[], armM: number | null): Scaled {
   const fit = Math.min(1, wide * mm_per_m > boxW ? boxW / (wide * mm_per_m) : 1, tall * mm_per_m > boxH ? boxH / (tall * mm_per_m) : 1);
   if (fit < 1) warnings.push(`the hand's path is larger than the arm's reach; scaled down a further ${Math.round((1 - fit) * 100)}%`);
   const k = mm_per_m * fit;
+  // the side-to-side scale: k, or more when the path would use under half the box's width
+  const across = wide * k;
+  const stretch = wide >= MIN_MOVE_M && across < boxW / 2 ? Math.min(MAX_STRETCH, boxW / across) : 1;
+  if (stretch > 1) warnings.push(`the side-to-side motion is stretched ${r1(stretch)}x, from ${Math.round(across)} to ${Math.round(across * stretch)} mm across, so the swing is as wide as the arm's reach`);
+  const kY = k * stretch;
   const [cx, cy] = [(x0 + x1) / 2, (y0 + y1) / 2];
   const [cY, cZ] = [(BOX_Y_MM[0] + BOX_Y_MM[1]) / 2, (BOX_Z_MM[0] + BOX_Z_MM[1]) / 2];
   const path = smooth.map((p) => ({
     t_s: p.t_s,
-    xyz_mm: [PLANE_X_MM, r1(cY - (p.x_m - cx) * k), r1(cZ - (p.y_m - cy) * k)] as Vec3,
+    xyz_mm: [PLANE_X_MM, r1(cY - (p.x_m - cx) * kY), r1(cZ - (p.y_m - cy) * k)] as Vec3,
   }));
   return { path, mm_per_m: r1(k), fit: Math.round(fit * 1000) / 1000, warnings };
 }

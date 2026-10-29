@@ -32,9 +32,9 @@ export const MODELS = {
   vl: live(process.env.UNDERSTUDY_MODEL_VL ?? "nvidia/Nemotron-3.5-Super-VL"),
   /** plays the robot: spec to program, ask slots, grounding filter (Nemotron 3.5 Lightning in place of Nemotron 3 Nano) */
   nano: live(process.env.UNDERSTUDY_MODEL_NANO ?? "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"),
-  /** interviews, writes perturbation scenarios, patches programs (Nemotron 3.5 Super VL in place of Nemotron 3 Super) */
+  /** patches failing programs from the simulator's notes, suggests similar tasks (Nemotron 3.5 Super VL in place of Nemotron 3 Super) */
   super: live(process.env.UNDERSTUDY_MODEL_SUPER ?? "nvidia/nemotron-3-super-120b-a12b"),
-  /** failure classes, reshoot list, open risks, in the background */
+  /** takes over a patch loop that is stuck, thinking off (lib/notes/patch.ts) */
   ultra: live(process.env.UNDERSTUDY_MODEL_ULTRA ?? "nvidia/Nemotron-3-Ultra-550b-a55b"),
 } as const;
 

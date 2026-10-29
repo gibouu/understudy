@@ -1,0 +1,2146 @@
+{
+  "version": 1,
+  "clip": {
+    "name": "iss-fluid-bag-foam",
+    "duration_s": 10.2,
+    "sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1"
+  },
+  "recorded_at": "2026-10-29T07:00:07.999Z",
+  "spec": {
+    "version": 1,
+    "title": "ISS foil drink bag squeezed into tubing and foam block",
+    "summary": "A person aboard a station holds and squeezes a silver foil drink bag so red fruit punch flows through clear tubing into a white foam block, then removes the bag from the blue work surface.",
+    "objects": [
+      {
+        "id": "obj2",
+        "name": "clear tubing",
+        "shape": "cylinder",
+        "size_mm": [
+          6,
+          6,
+          40
+        ],
+        "symmetry": "axial",
+        "role": "manipulated",
+        "pose": {
+          "xyz_mm": [
+            200,
+            -100,
+            20
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "confidence": 0.6,
+        "source": "vl#seg2",
+        "sources": {
+          "pose": "fit",
+          "size_mm": "fit"
+        }
+      },
+      {
+        "id": "obj3",
+        "name": "white foam block",
+        "shape": "box",
+        "size_mm": [
+          150,
+          100,
+          30
+        ],
+        "symmetry": "none",
+        "role": "fixture",
+        "pose": {
+          "xyz_mm": [
+            175,
+            100,
+            15
+          ],
+          "yaw_deg": 0,
+          "frame": "world"
+        },
+        "pocket_clearance_mm": 10,
+        "confidence": 0.7,
+        "source": "vl#seg2",
+        "sources": {
+          "pose": "fit",
+          "size_mm": "fit",
+          "pocket_clearance_mm": "interview#1"
+        }
+      }
+    ],
+    "steps": [
+      {
+        "id": "s1",
+        "verb": "grasp",
+        "object": "obj2",
+        "via_points": [],
+        "preconditions": [],
+        "success": [],
+        "tolerances": {},
+        "t_start_s": 5,
+        "t_end_s": 5,
+        "source": "fit",
+        "sources": {}
+      },
+      {
+        "id": "s2",
+        "verb": "place",
+        "object": "obj2",
+        "target": {
+          "fixture": "pocket",
+          "frame": "obj3"
+        },
+        "via_points": [],
+        "preconditions": [],
+        "success": [
+          {
+            "kind": "inside_zone",
+            "object": "obj2",
+            "target": "obj3"
+          },
+          {
+            "kind": "object_still",
+            "object": "obj2"
+          }
+        ],
+        "tolerances": {},
+        "t_start_s": 5,
+        "t_end_s": 8,
+        "source": "vl#seg2",
+        "sources": {
+          "success": "interview#1"
+        }
+      }
+    ],
+    "warnings": [],
+    "open_questions": [],
+    "sources": {},
+    "provenance": {
+      "label_input": "video",
+      "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+      "model": "nvidia/Nemotron-3.5-Super-VL"
+    }
+  },
+  "suggestions": {
+    "status": "done",
+    "value": {
+      "variants": [
+        {
+          "id": "variant#1",
+          "title": "Taller block",
+          "summary": "The foam block is taller, so the tubing must land deeper in its pocket.",
+          "changes": [
+            {
+              "path": "objects[obj3].size_mm",
+              "value": [
+                150,
+                100,
+                20
+              ],
+              "source": "variant#1"
+            }
+          ],
+          "edits": [
+            {
+              "path": "objects[obj3].size_mm",
+              "before": [
+                150,
+                100,
+                30
+              ],
+              "after": [
+                150,
+                100,
+                20
+              ]
+            },
+            {
+              "path": "objects[obj3].pose",
+              "before": {
+                "xyz_mm": [
+                  175,
+                  100,
+                  15
+                ],
+                "yaw_deg": 0,
+                "frame": "world"
+              },
+              "after": {
+                "xyz_mm": [
+                  175,
+                  100,
+                  10
+                ],
+                "yaw_deg": 0,
+                "frame": "world"
+              }
+            }
+          ],
+          "spec": {
+            "version": 1,
+            "title": "ISS foil drink bag squeezed into tubing and foam block: Taller block",
+            "summary": "The foam block is taller, so the tubing must land deeper in its pocket.",
+            "objects": [
+              {
+                "id": "obj2",
+                "name": "clear tubing",
+                "shape": "cylinder",
+                "size_mm": [
+                  6,
+                  6,
+                  40
+                ],
+                "symmetry": "axial",
+                "role": "manipulated",
+                "pose": {
+                  "xyz_mm": [
+                    200,
+                    -100,
+                    20
+                  ],
+                  "yaw_deg": 0,
+                  "frame": "world"
+                },
+                "confidence": 0.6,
+                "source": "vl#seg2",
+                "sources": {
+                  "pose": "fit",
+                  "size_mm": "fit"
+                }
+              },
+              {
+                "id": "obj3",
+                "name": "white foam block",
+                "shape": "box",
+                "size_mm": [
+                  150,
+                  100,
+                  20
+                ],
+                "symmetry": "none",
+                "role": "fixture",
+                "pose": {
+                  "xyz_mm": [
+                    175,
+                    100,
+                    10
+                  ],
+                  "yaw_deg": 0,
+                  "frame": "world"
+                },
+                "pocket_clearance_mm": 10,
+                "confidence": 0.7,
+                "source": "vl#seg2",
+                "sources": {
+                  "pose": "fit",
+                  "size_mm": "fit",
+                  "pocket_clearance_mm": "interview#1"
+                }
+              }
+            ],
+            "steps": [
+              {
+                "id": "s1",
+                "verb": "grasp",
+                "object": "obj2",
+                "via_points": [],
+                "preconditions": [],
+                "success": [],
+                "tolerances": {},
+                "t_start_s": 5,
+                "t_end_s": 5,
+                "source": "fit",
+                "sources": {}
+              },
+              {
+                "id": "s2",
+                "verb": "place",
+                "object": "obj2",
+                "target": {
+                  "fixture": "pocket",
+                  "frame": "obj3"
+                },
+                "via_points": [],
+                "preconditions": [],
+                "success": [
+                  {
+                    "kind": "inside_zone",
+                    "object": "obj2",
+                    "target": "obj3"
+                  },
+                  {
+                    "kind": "object_still",
+                    "object": "obj2"
+                  }
+                ],
+                "tolerances": {},
+                "t_start_s": 5,
+                "t_end_s": 8,
+                "source": "vl#seg2",
+                "sources": {
+                  "success": "interview#1"
+                }
+              }
+            ],
+            "warnings": [],
+            "open_questions": [],
+            "sources": {
+              "title": "variant#1",
+              "summary": "variant#1"
+            },
+            "provenance": {
+              "label_input": "video",
+              "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+              "model": "nvidia/Nemotron-3.5-Super-VL"
+            }
+          },
+          "warnings": []
+        },
+        {
+          "id": "variant#2",
+          "title": "Block on a shelf",
+          "summary": "The block sits 13 mm higher, so the arm reaches farther down into its pocket.",
+          "changes": [
+            {
+              "path": "objects[obj3].pose",
+              "value": {
+                "xyz_mm": [
+                  175,
+                  100,
+                  28
+                ],
+                "yaw_deg": 0,
+                "frame": "world"
+              },
+              "source": "variant#2"
+            }
+          ],
+          "edits": [
+            {
+              "path": "objects[obj3].pose",
+              "before": {
+                "xyz_mm": [
+                  175,
+                  100,
+                  15
+                ],
+                "yaw_deg": 0,
+                "frame": "world"
+              },
+              "after": {
+                "xyz_mm": [
+                  175,
+                  100,
+                  28
+                ],
+                "yaw_deg": 0,
+                "frame": "world"
+              }
+            }
+          ],
+          "spec": {
+            "version": 1,
+            "title": "ISS foil drink bag squeezed into tubing and foam block: Block on a shelf",
+            "summary": "The block sits 13 mm higher, so the arm reaches farther down into its pocket.",
+            "objects": [
+              {
+                "id": "obj2",
+                "name": "clear tubing",
+                "shape": "cylinder",
+                "size_mm": [
+                  6,
+                  6,
+                  40
+                ],
+                "symmetry": "axial",
+                "role": "manipulated",
+                "pose": {
+                  "xyz_mm": [
+                    200,
+                    -100,
+                    20
+                  ],
+                  "yaw_deg": 0,
+                  "frame": "world"
+                },
+                "confidence": 0.6,
+                "source": "vl#seg2",
+                "sources": {
+                  "pose": "fit",
+                  "size_mm": "fit"
+                }
+              },
+              {
+                "id": "obj3",
+                "name": "white foam block",
+                "shape": "box",
+                "size_mm": [
+                  150,
+                  100,
+                  30
+                ],
+                "symmetry": "none",
+                "role": "fixture",
+                "pose": {
+                  "xyz_mm": [
+                    175,
+                    100,
+                    28
+                  ],
+                  "yaw_deg": 0,
+                  "frame": "world"
+                },
+                "pocket_clearance_mm": 10,
+                "confidence": 0.7,
+                "source": "vl#seg2",
+                "sources": {
+                  "pose": "variant#2",
+                  "size_mm": "fit",
+                  "pocket_clearance_mm": "interview#1"
+                }
+              }
+            ],
+            "steps": [
+              {
+                "id": "s1",
+                "verb": "grasp",
+                "object": "obj2",
+                "via_points": [],
+                "preconditions": [],
+                "success": [],
+                "tolerances": {},
+                "t_start_s": 5,
+                "t_end_s": 5,
+                "source": "fit",
+                "sources": {}
+              },
+              {
+                "id": "s2",
+                "verb": "place",
+                "object": "obj2",
+                "target": {
+                  "fixture": "pocket",
+                  "frame": "obj3"
+                },
+                "via_points": [],
+                "preconditions": [],
+                "success": [
+                  {
+                    "kind": "inside_zone",
+                    "object": "obj2",
+                    "target": "obj3"
+                  },
+                  {
+                    "kind": "object_still",
+                    "object": "obj2"
+                  }
+                ],
+                "tolerances": {},
+                "t_start_s": 5,
+                "t_end_s": 8,
+                "source": "vl#seg2",
+                "sources": {
+                  "success": "interview#1"
+                }
+              }
+            ],
+            "warnings": [],
+            "open_questions": [],
+            "sources": {
+              "title": "variant#2",
+              "summary": "variant#2"
+            },
+            "provenance": {
+              "label_input": "video",
+              "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+              "model": "nvidia/Nemotron-3.5-Super-VL"
+            }
+          },
+          "warnings": []
+        },
+        {
+          "id": "variant#3",
+          "title": "Tighter pocket",
+          "summary": "The block's pocket is tighter, leaving only 2 mm of play around the tubing.",
+          "changes": [
+            {
+              "path": "objects[obj3].pocket_clearance_mm",
+              "value": 2,
+              "source": "variant#3"
+            }
+          ],
+          "edits": [
+            {
+              "path": "objects[obj3].pocket_clearance_mm",
+              "before": 10,
+              "after": 2
+            }
+          ],
+          "spec": {
+            "version": 1,
+            "title": "ISS foil drink bag squeezed into tubing and foam block: Tighter pocket",
+            "summary": "The block's pocket is tighter, leaving only 2 mm of play around the tubing.",
+            "objects": [
+              {
+                "id": "obj2",
+                "name": "clear tubing",
+                "shape": "cylinder",
+                "size_mm": [
+                  6,
+                  6,
+                  40
+                ],
+                "symmetry": "axial",
+                "role": "manipulated",
+                "pose": {
+                  "xyz_mm": [
+                    200,
+                    -100,
+                    20
+                  ],
+                  "yaw_deg": 0,
+                  "frame": "world"
+                },
+                "confidence": 0.6,
+                "source": "vl#seg2",
+                "sources": {
+                  "pose": "fit",
+                  "size_mm": "fit"
+                }
+              },
+              {
+                "id": "obj3",
+                "name": "white foam block",
+                "shape": "box",
+                "size_mm": [
+                  150,
+                  100,
+                  30
+                ],
+                "symmetry": "none",
+                "role": "fixture",
+                "pose": {
+                  "xyz_mm": [
+                    175,
+                    100,
+                    15
+                  ],
+                  "yaw_deg": 0,
+                  "frame": "world"
+                },
+                "pocket_clearance_mm": 2,
+                "confidence": 0.7,
+                "source": "vl#seg2",
+                "sources": {
+                  "pose": "fit",
+                  "size_mm": "fit",
+                  "pocket_clearance_mm": "variant#3"
+                }
+              }
+            ],
+            "steps": [
+              {
+                "id": "s1",
+                "verb": "grasp",
+                "object": "obj2",
+                "via_points": [],
+                "preconditions": [],
+                "success": [],
+                "tolerances": {},
+                "t_start_s": 5,
+                "t_end_s": 5,
+                "source": "fit",
+                "sources": {}
+              },
+              {
+                "id": "s2",
+                "verb": "place",
+                "object": "obj2",
+                "target": {
+                  "fixture": "pocket",
+                  "frame": "obj3"
+                },
+                "via_points": [],
+                "preconditions": [],
+                "success": [
+                  {
+                    "kind": "inside_zone",
+                    "object": "obj2",
+                    "target": "obj3"
+                  },
+                  {
+                    "kind": "object_still",
+                    "object": "obj2"
+                  }
+                ],
+                "tolerances": {},
+                "t_start_s": 5,
+                "t_end_s": 8,
+                "source": "vl#seg2",
+                "sources": {
+                  "success": "interview#1"
+                }
+              }
+            ],
+            "warnings": [],
+            "open_questions": [],
+            "sources": {
+              "title": "variant#3",
+              "summary": "variant#3"
+            },
+            "provenance": {
+              "label_input": "video",
+              "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+              "model": "nvidia/Nemotron-3.5-Super-VL"
+            }
+          },
+          "warnings": []
+        },
+        {
+          "id": "variant#4",
+          "title": "Block turned",
+          "summary": "The block is turned 90 degrees, so the arm places the tubing along its other long side.",
+          "changes": [
+            {
+              "path": "objects[obj3].pose",
+              "value": {
+                "xyz_mm": [
+                  175,
+                  100,
+                  15
+                ],
+                "yaw_deg": 90,
+                "frame": "world"
+              },
+              "source": "variant#4"
+            }
+          ],
+          "edits": [
+            {
+              "path": "objects[obj3].pose",
+              "before": {
+                "xyz_mm": [
+                  175,
+                  100,
+                  15
+                ],
+                "yaw_deg": 0,
+                "frame": "world"
+              },
+              "after": {
+                "xyz_mm": [
+                  175,
+                  100,
+                  15
+                ],
+                "yaw_deg": 90,
+                "frame": "world"
+              }
+            }
+          ],
+          "spec": {
+            "version": 1,
+            "title": "ISS foil drink bag squeezed into tubing and foam block: Block turned",
+            "summary": "The block is turned 90 degrees, so the arm places the tubing along its other long side.",
+            "objects": [
+              {
+                "id": "obj2",
+                "name": "clear tubing",
+                "shape": "cylinder",
+                "size_mm": [
+                  6,
+                  6,
+                  40
+                ],
+                "symmetry": "axial",
+                "role": "manipulated",
+                "pose": {
+                  "xyz_mm": [
+                    200,
+                    -100,
+                    20
+                  ],
+                  "yaw_deg": 0,
+                  "frame": "world"
+                },
+                "confidence": 0.6,
+                "source": "vl#seg2",
+                "sources": {
+                  "pose": "fit",
+                  "size_mm": "fit"
+                }
+              },
+              {
+                "id": "obj3",
+                "name": "white foam block",
+                "shape": "box",
+                "size_mm": [
+                  150,
+                  100,
+                  30
+                ],
+                "symmetry": "none",
+                "role": "fixture",
+                "pose": {
+                  "xyz_mm": [
+                    175,
+                    100,
+                    15
+                  ],
+                  "yaw_deg": 90,
+                  "frame": "world"
+                },
+                "pocket_clearance_mm": 10,
+                "confidence": 0.7,
+                "source": "vl#seg2",
+                "sources": {
+                  "pose": "variant#4",
+                  "size_mm": "fit",
+                  "pocket_clearance_mm": "interview#1"
+                }
+              }
+            ],
+            "steps": [
+              {
+                "id": "s1",
+                "verb": "grasp",
+                "object": "obj2",
+                "via_points": [],
+                "preconditions": [],
+                "success": [],
+                "tolerances": {},
+                "t_start_s": 5,
+                "t_end_s": 5,
+                "source": "fit",
+                "sources": {}
+              },
+              {
+                "id": "s2",
+                "verb": "place",
+                "object": "obj2",
+                "target": {
+                  "fixture": "pocket",
+                  "frame": "obj3"
+                },
+                "via_points": [],
+                "preconditions": [],
+                "success": [
+                  {
+                    "kind": "inside_zone",
+                    "object": "obj2",
+                    "target": "obj3"
+                  },
+                  {
+                    "kind": "object_still",
+                    "object": "obj2"
+                  }
+                ],
+                "tolerances": {},
+                "t_start_s": 5,
+                "t_end_s": 8,
+                "source": "vl#seg2",
+                "sources": {
+                  "success": "interview#1"
+                }
+              }
+            ],
+            "warnings": [],
+            "open_questions": [],
+            "sources": {
+              "title": "variant#4",
+              "summary": "variant#4"
+            },
+            "provenance": {
+              "label_input": "video",
+              "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+              "model": "nvidia/Nemotron-3.5-Super-VL"
+            }
+          },
+          "warnings": []
+        },
+        {
+          "id": "variant#5",
+          "title": "Tubing starts in the block",
+          "summary": "The tubing starts sitting in the block's pocket and the arm picks it up and puts it back.",
+          "changes": [
+            {
+              "path": "objects[obj2].pose",
+              "value": {
+                "xyz_mm": [
+                  0,
+                  0,
+                  13
+                ],
+                "yaw_deg": 0,
+                "frame": "obj3"
+              },
+              "source": "variant#5"
+            }
+          ],
+          "edits": [
+            {
+              "path": "objects[obj2].pose",
+              "before": {
+                "xyz_mm": [
+                  200,
+                  -100,
+                  20
+                ],
+                "yaw_deg": 0,
+                "frame": "world"
+              },
+              "after": {
+                "xyz_mm": [
+                  0,
+                  0,
+                  13
+                ],
+                "yaw_deg": 0,
+                "frame": "obj3"
+              }
+            }
+          ],
+          "spec": {
+            "version": 1,
+            "title": "ISS foil drink bag squeezed into tubing and foam block: Tubing starts in the block",
+            "summary": "The tubing starts sitting in the block's pocket and the arm picks it up and puts it back.",
+            "objects": [
+              {
+                "id": "obj2",
+                "name": "clear tubing",
+                "shape": "cylinder",
+                "size_mm": [
+                  6,
+                  6,
+                  40
+                ],
+                "symmetry": "axial",
+                "role": "manipulated",
+                "pose": {
+                  "xyz_mm": [
+                    0,
+                    0,
+                    13
+                  ],
+                  "yaw_deg": 0,
+                  "frame": "obj3"
+                },
+                "confidence": 0.6,
+                "source": "vl#seg2",
+                "sources": {
+                  "pose": "variant#5",
+                  "size_mm": "fit"
+                }
+              },
+              {
+                "id": "obj3",
+                "name": "white foam block",
+                "shape": "box",
+                "size_mm": [
+                  150,
+                  100,
+                  30
+                ],
+                "symmetry": "none",
+                "role": "fixture",
+                "pose": {
+                  "xyz_mm": [
+                    175,
+                    100,
+                    15
+                  ],
+                  "yaw_deg": 0,
+                  "frame": "world"
+                },
+                "pocket_clearance_mm": 10,
+                "confidence": 0.7,
+                "source": "vl#seg2",
+                "sources": {
+                  "pose": "fit",
+                  "size_mm": "fit",
+                  "pocket_clearance_mm": "interview#1"
+                }
+              }
+            ],
+            "steps": [
+              {
+                "id": "s1",
+                "verb": "grasp",
+                "object": "obj2",
+                "via_points": [],
+                "preconditions": [],
+                "success": [],
+                "tolerances": {},
+                "t_start_s": 5,
+                "t_end_s": 5,
+                "source": "fit",
+                "sources": {}
+              },
+              {
+                "id": "s2",
+                "verb": "place",
+                "object": "obj2",
+                "target": {
+                  "fixture": "pocket",
+                  "frame": "obj3"
+                },
+                "via_points": [],
+                "preconditions": [],
+                "success": [
+                  {
+                    "kind": "inside_zone",
+                    "object": "obj2",
+                    "target": "obj3"
+                  },
+                  {
+                    "kind": "object_still",
+                    "object": "obj2"
+                  }
+                ],
+                "tolerances": {},
+                "t_start_s": 5,
+                "t_end_s": 8,
+                "source": "vl#seg2",
+                "sources": {
+                  "success": "interview#1"
+                }
+              }
+            ],
+            "warnings": [],
+            "open_questions": [],
+            "sources": {
+              "title": "variant#5",
+              "summary": "variant#5"
+            },
+            "provenance": {
+              "label_input": "video",
+              "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+              "model": "nvidia/Nemotron-3.5-Super-VL"
+            }
+          },
+          "warnings": []
+        }
+      ],
+      "not_yet": []
+    },
+    "warnings": [],
+    "ledger": [
+      {
+        "model": "nvidia/Nemotron-3.5-Super-VL",
+        "prompt_tokens": 2594,
+        "completion_tokens": 330,
+        "cached_tokens": 0,
+        "seconds": 2.355
+      },
+      {
+        "model": "nvidia/Nemotron-3.5-Super-VL",
+        "prompt_tokens": 3009,
+        "completion_tokens": 330,
+        "cached_tokens": 0,
+        "seconds": 2.076
+      }
+    ]
+  },
+  "programs": [
+    {
+      "id": "variant#1",
+      "spec": {
+        "version": 1,
+        "title": "ISS foil drink bag squeezed into tubing and foam block: Taller block",
+        "summary": "The foam block is taller, so the tubing must land deeper in its pocket.",
+        "objects": [
+          {
+            "id": "obj2",
+            "name": "clear tubing",
+            "shape": "cylinder",
+            "size_mm": [
+              6,
+              6,
+              40
+            ],
+            "symmetry": "axial",
+            "role": "manipulated",
+            "pose": {
+              "xyz_mm": [
+                200,
+                -100,
+                20
+              ],
+              "yaw_deg": 0,
+              "frame": "world"
+            },
+            "confidence": 0.6,
+            "source": "vl#seg2",
+            "sources": {
+              "pose": "fit",
+              "size_mm": "fit"
+            }
+          },
+          {
+            "id": "obj3",
+            "name": "white foam block",
+            "shape": "box",
+            "size_mm": [
+              150,
+              100,
+              20
+            ],
+            "symmetry": "none",
+            "role": "fixture",
+            "pose": {
+              "xyz_mm": [
+                175,
+                100,
+                10
+              ],
+              "yaw_deg": 0,
+              "frame": "world"
+            },
+            "pocket_clearance_mm": 10,
+            "confidence": 0.7,
+            "source": "vl#seg2",
+            "sources": {
+              "pose": "fit",
+              "size_mm": "fit",
+              "pocket_clearance_mm": "interview#1"
+            }
+          }
+        ],
+        "steps": [
+          {
+            "id": "s1",
+            "verb": "grasp",
+            "object": "obj2",
+            "via_points": [],
+            "preconditions": [],
+            "success": [],
+            "tolerances": {},
+            "t_start_s": 5,
+            "t_end_s": 5,
+            "source": "fit",
+            "sources": {}
+          },
+          {
+            "id": "s2",
+            "verb": "place",
+            "object": "obj2",
+            "target": {
+              "fixture": "pocket",
+              "frame": "obj3"
+            },
+            "via_points": [],
+            "preconditions": [],
+            "success": [
+              {
+                "kind": "inside_zone",
+                "object": "obj2",
+                "target": "obj3"
+              },
+              {
+                "kind": "object_still",
+                "object": "obj2"
+              }
+            ],
+            "tolerances": {},
+            "t_start_s": 5,
+            "t_end_s": 8,
+            "source": "vl#seg2",
+            "sources": {
+              "success": "interview#1"
+            }
+          }
+        ],
+        "warnings": [],
+        "open_questions": [],
+        "sources": {
+          "title": "variant#1",
+          "summary": "variant#1"
+        },
+        "provenance": {
+          "label_input": "video",
+          "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+          "model": "nvidia/Nemotron-3.5-Super-VL"
+        }
+      },
+      "result": {
+        "status": "done",
+        "value": {
+          "spec_title": "ISS foil drink bag squeezed into tubing and foam block: Taller block",
+          "steps": [
+            {
+              "step_id": "s1",
+              "ops": [
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    62
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    12
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "grasp",
+                  "object": "obj2",
+                  "aperture_mm": 6
+                },
+                {
+                  "op": "wait_until",
+                  "predicate": {
+                    "kind": "contact_both_pads",
+                    "object": "obj2"
+                  },
+                  "timeout_s": 1
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    50
+                  ],
+                  "approach": "top"
+                }
+              ]
+            },
+            {
+              "step_id": "s2",
+              "ops": [
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    50
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    31
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    18
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "release"
+                },
+                {
+                  "op": "wait_until",
+                  "predicate": {
+                    "kind": "object_still",
+                    "object": "obj2"
+                  },
+                  "timeout_s": 2
+                }
+              ]
+            }
+          ],
+          "warnings": []
+        },
+        "warnings": [],
+        "ledger": [
+          {
+            "model": "nvidia/Nemotron-3_5-Lightning",
+            "prompt_tokens": 3037,
+            "completion_tokens": 368,
+            "seconds": 1.579
+          }
+        ]
+      }
+    },
+    {
+      "id": "variant#2",
+      "spec": {
+        "version": 1,
+        "title": "ISS foil drink bag squeezed into tubing and foam block: Block on a shelf",
+        "summary": "The block sits 13 mm higher, so the arm reaches farther down into its pocket.",
+        "objects": [
+          {
+            "id": "obj2",
+            "name": "clear tubing",
+            "shape": "cylinder",
+            "size_mm": [
+              6,
+              6,
+              40
+            ],
+            "symmetry": "axial",
+            "role": "manipulated",
+            "pose": {
+              "xyz_mm": [
+                200,
+                -100,
+                20
+              ],
+              "yaw_deg": 0,
+              "frame": "world"
+            },
+            "confidence": 0.6,
+            "source": "vl#seg2",
+            "sources": {
+              "pose": "fit",
+              "size_mm": "fit"
+            }
+          },
+          {
+            "id": "obj3",
+            "name": "white foam block",
+            "shape": "box",
+            "size_mm": [
+              150,
+              100,
+              30
+            ],
+            "symmetry": "none",
+            "role": "fixture",
+            "pose": {
+              "xyz_mm": [
+                175,
+                100,
+                28
+              ],
+              "yaw_deg": 0,
+              "frame": "world"
+            },
+            "pocket_clearance_mm": 10,
+            "confidence": 0.7,
+            "source": "vl#seg2",
+            "sources": {
+              "pose": "variant#2",
+              "size_mm": "fit",
+              "pocket_clearance_mm": "interview#1"
+            }
+          }
+        ],
+        "steps": [
+          {
+            "id": "s1",
+            "verb": "grasp",
+            "object": "obj2",
+            "via_points": [],
+            "preconditions": [],
+            "success": [],
+            "tolerances": {},
+            "t_start_s": 5,
+            "t_end_s": 5,
+            "source": "fit",
+            "sources": {}
+          },
+          {
+            "id": "s2",
+            "verb": "place",
+            "object": "obj2",
+            "target": {
+              "fixture": "pocket",
+              "frame": "obj3"
+            },
+            "via_points": [],
+            "preconditions": [],
+            "success": [
+              {
+                "kind": "inside_zone",
+                "object": "obj2",
+                "target": "obj3"
+              },
+              {
+                "kind": "object_still",
+                "object": "obj2"
+              }
+            ],
+            "tolerances": {},
+            "t_start_s": 5,
+            "t_end_s": 8,
+            "source": "vl#seg2",
+            "sources": {
+              "success": "interview#1"
+            }
+          }
+        ],
+        "warnings": [],
+        "open_questions": [],
+        "sources": {
+          "title": "variant#2",
+          "summary": "variant#2"
+        },
+        "provenance": {
+          "label_input": "video",
+          "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+          "model": "nvidia/Nemotron-3.5-Super-VL"
+        }
+      },
+      "result": {
+        "status": "done",
+        "value": {
+          "spec_title": "ISS foil drink bag squeezed into tubing and foam block: Block on a shelf",
+          "steps": [
+            {
+              "step_id": "s1",
+              "ops": [
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    62
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    12
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "grasp",
+                  "object": "obj2",
+                  "aperture_mm": 6
+                },
+                {
+                  "op": "wait_until",
+                  "predicate": {
+                    "kind": "contact_both_pads",
+                    "object": "obj2"
+                  },
+                  "timeout_s": 1
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    50
+                  ],
+                  "approach": "top"
+                }
+              ]
+            },
+            {
+              "step_id": "s2",
+              "ops": [
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    55
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    36
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    13
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "release"
+                },
+                {
+                  "op": "wait_until",
+                  "predicate": {
+                    "kind": "object_still",
+                    "object": "obj2"
+                  },
+                  "timeout_s": 2
+                },
+                {
+                  "op": "assert",
+                  "predicate": {
+                    "kind": "inside_zone",
+                    "object": "obj2",
+                    "target": "obj3"
+                  }
+                }
+              ]
+            }
+          ],
+          "warnings": []
+        },
+        "warnings": [],
+        "ledger": [
+          {
+            "model": "nvidia/Nemotron-3_5-Lightning",
+            "prompt_tokens": 3043,
+            "completion_tokens": 411,
+            "seconds": 1.824
+          }
+        ]
+      }
+    },
+    {
+      "id": "variant#3",
+      "spec": {
+        "version": 1,
+        "title": "ISS foil drink bag squeezed into tubing and foam block: Tighter pocket",
+        "summary": "The block's pocket is tighter, leaving only 2 mm of play around the tubing.",
+        "objects": [
+          {
+            "id": "obj2",
+            "name": "clear tubing",
+            "shape": "cylinder",
+            "size_mm": [
+              6,
+              6,
+              40
+            ],
+            "symmetry": "axial",
+            "role": "manipulated",
+            "pose": {
+              "xyz_mm": [
+                200,
+                -100,
+                20
+              ],
+              "yaw_deg": 0,
+              "frame": "world"
+            },
+            "confidence": 0.6,
+            "source": "vl#seg2",
+            "sources": {
+              "pose": "fit",
+              "size_mm": "fit"
+            }
+          },
+          {
+            "id": "obj3",
+            "name": "white foam block",
+            "shape": "box",
+            "size_mm": [
+              150,
+              100,
+              30
+            ],
+            "symmetry": "none",
+            "role": "fixture",
+            "pose": {
+              "xyz_mm": [
+                175,
+                100,
+                15
+              ],
+              "yaw_deg": 0,
+              "frame": "world"
+            },
+            "pocket_clearance_mm": 2,
+            "confidence": 0.7,
+            "source": "vl#seg2",
+            "sources": {
+              "pose": "fit",
+              "size_mm": "fit",
+              "pocket_clearance_mm": "variant#3"
+            }
+          }
+        ],
+        "steps": [
+          {
+            "id": "s1",
+            "verb": "grasp",
+            "object": "obj2",
+            "via_points": [],
+            "preconditions": [],
+            "success": [],
+            "tolerances": {},
+            "t_start_s": 5,
+            "t_end_s": 5,
+            "source": "fit",
+            "sources": {}
+          },
+          {
+            "id": "s2",
+            "verb": "place",
+            "object": "obj2",
+            "target": {
+              "fixture": "pocket",
+              "frame": "obj3"
+            },
+            "via_points": [],
+            "preconditions": [],
+            "success": [
+              {
+                "kind": "inside_zone",
+                "object": "obj2",
+                "target": "obj3"
+              },
+              {
+                "kind": "object_still",
+                "object": "obj2"
+              }
+            ],
+            "tolerances": {},
+            "t_start_s": 5,
+            "t_end_s": 8,
+            "source": "vl#seg2",
+            "sources": {
+              "success": "interview#1"
+            }
+          }
+        ],
+        "warnings": [],
+        "open_questions": [],
+        "sources": {
+          "title": "variant#3",
+          "summary": "variant#3"
+        },
+        "provenance": {
+          "label_input": "video",
+          "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+          "model": "nvidia/Nemotron-3.5-Super-VL"
+        }
+      },
+      "result": {
+        "status": "done",
+        "value": {
+          "spec_title": "ISS foil drink bag squeezed into tubing and foam block: Tighter pocket",
+          "steps": [
+            {
+              "step_id": "s1",
+              "ops": [
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    62
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    12
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "grasp",
+                  "object": "obj2",
+                  "aperture_mm": 6
+                },
+                {
+                  "op": "wait_until",
+                  "predicate": {
+                    "kind": "contact_both_pads",
+                    "object": "obj2"
+                  },
+                  "timeout_s": 1
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    50
+                  ],
+                  "approach": "top"
+                }
+              ]
+            },
+            {
+              "step_id": "s2",
+              "ops": [
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    55
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    36
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    13
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "release"
+                },
+                {
+                  "op": "wait_until",
+                  "predicate": {
+                    "kind": "object_still",
+                    "object": "obj2"
+                  },
+                  "timeout_s": 2
+                },
+                {
+                  "op": "assert",
+                  "predicate": {
+                    "kind": "inside_zone",
+                    "object": "obj2",
+                    "target": "obj3"
+                  }
+                }
+              ]
+            }
+          ],
+          "warnings": []
+        },
+        "warnings": [],
+        "ledger": [
+          {
+            "model": "nvidia/Nemotron-3_5-Lightning",
+            "prompt_tokens": 3037,
+            "completion_tokens": 410,
+            "seconds": 1.858
+          }
+        ]
+      }
+    },
+    {
+      "id": "variant#4",
+      "spec": {
+        "version": 1,
+        "title": "ISS foil drink bag squeezed into tubing and foam block: Block turned",
+        "summary": "The block is turned 90 degrees, so the arm places the tubing along its other long side.",
+        "objects": [
+          {
+            "id": "obj2",
+            "name": "clear tubing",
+            "shape": "cylinder",
+            "size_mm": [
+              6,
+              6,
+              40
+            ],
+            "symmetry": "axial",
+            "role": "manipulated",
+            "pose": {
+              "xyz_mm": [
+                200,
+                -100,
+                20
+              ],
+              "yaw_deg": 0,
+              "frame": "world"
+            },
+            "confidence": 0.6,
+            "source": "vl#seg2",
+            "sources": {
+              "pose": "fit",
+              "size_mm": "fit"
+            }
+          },
+          {
+            "id": "obj3",
+            "name": "white foam block",
+            "shape": "box",
+            "size_mm": [
+              150,
+              100,
+              30
+            ],
+            "symmetry": "none",
+            "role": "fixture",
+            "pose": {
+              "xyz_mm": [
+                175,
+                100,
+                15
+              ],
+              "yaw_deg": 90,
+              "frame": "world"
+            },
+            "pocket_clearance_mm": 10,
+            "confidence": 0.7,
+            "source": "vl#seg2",
+            "sources": {
+              "pose": "variant#4",
+              "size_mm": "fit",
+              "pocket_clearance_mm": "interview#1"
+            }
+          }
+        ],
+        "steps": [
+          {
+            "id": "s1",
+            "verb": "grasp",
+            "object": "obj2",
+            "via_points": [],
+            "preconditions": [],
+            "success": [],
+            "tolerances": {},
+            "t_start_s": 5,
+            "t_end_s": 5,
+            "source": "fit",
+            "sources": {}
+          },
+          {
+            "id": "s2",
+            "verb": "place",
+            "object": "obj2",
+            "target": {
+              "fixture": "pocket",
+              "frame": "obj3"
+            },
+            "via_points": [],
+            "preconditions": [],
+            "success": [
+              {
+                "kind": "inside_zone",
+                "object": "obj2",
+                "target": "obj3"
+              },
+              {
+                "kind": "object_still",
+                "object": "obj2"
+              }
+            ],
+            "tolerances": {},
+            "t_start_s": 5,
+            "t_end_s": 8,
+            "source": "vl#seg2",
+            "sources": {
+              "success": "interview#1"
+            }
+          }
+        ],
+        "warnings": [],
+        "open_questions": [],
+        "sources": {
+          "title": "variant#4",
+          "summary": "variant#4"
+        },
+        "provenance": {
+          "label_input": "video",
+          "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+          "model": "nvidia/Nemotron-3.5-Super-VL"
+        }
+      },
+      "result": {
+        "status": "done",
+        "value": {
+          "spec_title": "ISS foil drink bag squeezed into tubing and foam block: Block turned",
+          "steps": [
+            {
+              "step_id": "s1",
+              "ops": [
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    62
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    12
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "grasp",
+                  "object": "obj2",
+                  "aperture_mm": 6
+                },
+                {
+                  "op": "wait_until",
+                  "predicate": {
+                    "kind": "contact_both_pads",
+                    "object": "obj2"
+                  },
+                  "timeout_s": 1
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    50
+                  ],
+                  "approach": "top"
+                }
+              ]
+            },
+            {
+              "step_id": "s2",
+              "ops": [
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    55
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    36
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    13
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "release"
+                },
+                {
+                  "op": "wait_until",
+                  "predicate": {
+                    "kind": "object_still",
+                    "object": "obj2"
+                  },
+                  "timeout_s": 2
+                },
+                {
+                  "op": "assert",
+                  "predicate": {
+                    "kind": "inside_zone",
+                    "object": "obj2",
+                    "target": "obj3"
+                  }
+                }
+              ]
+            }
+          ],
+          "warnings": [
+            "pocket_clearance_mm"
+          ]
+        },
+        "warnings": [],
+        "ledger": [
+          {
+            "model": "nvidia/Nemotron-3_5-Lightning",
+            "prompt_tokens": 3044,
+            "completion_tokens": 421,
+            "seconds": 1.79
+          }
+        ]
+      }
+    },
+    {
+      "id": "variant#5",
+      "spec": {
+        "version": 1,
+        "title": "ISS foil drink bag squeezed into tubing and foam block: Tubing starts in the block",
+        "summary": "The tubing starts sitting in the block's pocket and the arm picks it up and puts it back.",
+        "objects": [
+          {
+            "id": "obj2",
+            "name": "clear tubing",
+            "shape": "cylinder",
+            "size_mm": [
+              6,
+              6,
+              40
+            ],
+            "symmetry": "axial",
+            "role": "manipulated",
+            "pose": {
+              "xyz_mm": [
+                0,
+                0,
+                13
+              ],
+              "yaw_deg": 0,
+              "frame": "obj3"
+            },
+            "confidence": 0.6,
+            "source": "vl#seg2",
+            "sources": {
+              "pose": "variant#5",
+              "size_mm": "fit"
+            }
+          },
+          {
+            "id": "obj3",
+            "name": "white foam block",
+            "shape": "box",
+            "size_mm": [
+              150,
+              100,
+              30
+            ],
+            "symmetry": "none",
+            "role": "fixture",
+            "pose": {
+              "xyz_mm": [
+                175,
+                100,
+                15
+              ],
+              "yaw_deg": 0,
+              "frame": "world"
+            },
+            "pocket_clearance_mm": 10,
+            "confidence": 0.7,
+            "source": "vl#seg2",
+            "sources": {
+              "pose": "fit",
+              "size_mm": "fit",
+              "pocket_clearance_mm": "interview#1"
+            }
+          }
+        ],
+        "steps": [
+          {
+            "id": "s1",
+            "verb": "grasp",
+            "object": "obj2",
+            "via_points": [],
+            "preconditions": [],
+            "success": [],
+            "tolerances": {},
+            "t_start_s": 5,
+            "t_end_s": 5,
+            "source": "fit",
+            "sources": {}
+          },
+          {
+            "id": "s2",
+            "verb": "place",
+            "object": "obj2",
+            "target": {
+              "fixture": "pocket",
+              "frame": "obj3"
+            },
+            "via_points": [],
+            "preconditions": [],
+            "success": [
+              {
+                "kind": "inside_zone",
+                "object": "obj2",
+                "target": "obj3"
+              },
+              {
+                "kind": "object_still",
+                "object": "obj2"
+              }
+            ],
+            "tolerances": {},
+            "t_start_s": 5,
+            "t_end_s": 8,
+            "source": "vl#seg2",
+            "sources": {
+              "success": "interview#1"
+            }
+          }
+        ],
+        "warnings": [],
+        "open_questions": [],
+        "sources": {
+          "title": "variant#5",
+          "summary": "variant#5"
+        },
+        "provenance": {
+          "label_input": "video",
+          "clip_sha256": "60734a21b7c973842128f123aeaa523bcdba900ed5a6b2eef19161e5e6f4e4a1",
+          "model": "nvidia/Nemotron-3.5-Super-VL"
+        }
+      },
+      "result": {
+        "status": "done",
+        "value": {
+          "spec_title": "ISS foil drink bag squeezed into tubing and foam block: Tubing starts in the block",
+          "steps": [
+            {
+              "step_id": "s1",
+              "ops": [
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    62
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    12
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "grasp",
+                  "object": "obj2",
+                  "aperture_mm": 6
+                },
+                {
+                  "op": "wait_until",
+                  "predicate": {
+                    "kind": "contact_both_pads",
+                    "object": "obj2"
+                  },
+                  "timeout_s": 1
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj2",
+                  "offset_mm": [
+                    0,
+                    0,
+                    50
+                  ],
+                  "approach": "top"
+                }
+              ]
+            },
+            {
+              "step_id": "s2",
+              "ops": [
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    55
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    36
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "move_to",
+                  "frame": "obj3",
+                  "offset_mm": [
+                    0,
+                    0,
+                    13
+                  ],
+                  "approach": "top"
+                },
+                {
+                  "op": "release"
+                },
+                {
+                  "op": "wait_until",
+                  "predicate": {
+                    "kind": "object_still",
+                    "object": "obj2"
+                  },
+                  "timeout_s": 2
+                },
+                {
+                  "op": "assert",
+                  "predicate": {
+                    "kind": "inside_zone",
+                    "object": "obj2",
+                    "target": "obj3"
+                  }
+                }
+              ]
+            }
+          ],
+          "warnings": []
+        },
+        "warnings": [],
+        "ledger": [
+          {
+            "model": "nvidia/Nemotron-3_5-Lightning",
+            "prompt_tokens": 3043,
+            "completion_tokens": 413,
+            "seconds": 1.747
+          }
+        ]
+      }
+    }
+  ],
+  "total_usd": 0.003673
+}

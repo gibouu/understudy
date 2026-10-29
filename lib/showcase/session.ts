@@ -166,3 +166,25 @@ export const LabelRecording = z.object({
   total_usd: z.number(),
 });
 export type LabelRecording = z.infer<typeof LabelRecording>;
+
+/** A route's answer as the page reads it (lib/spec/stage-result.ts), kept as JSON. */
+const Answered = z.object({ status: z.literal("done"), value: z.unknown(), warnings: z.array(z.string()), ledger: z.array(z.record(z.string(), z.unknown())).optional() });
+
+/**
+ * A sample's similar tasks, run once ahead of time (lib/showcase/prerun.ts):
+ * Super's suggestions for the spec /try ends on once the recorded answers are
+ * given, and the program written for each one. /api/variants and
+ * /api/compile answer these exact specs at once, live or not, so a sample
+ * never waits on a model. Kept as public/showcase/<clip>.variants.json.
+ */
+export const VariantsRecording = z.object({
+  version: z.literal(1),
+  clip: Session.shape.clip,
+  recorded_at: z.string(),
+  /** the spec the suggestions are for: the recording's last interview iteration */
+  spec: TaskSpec,
+  suggestions: Answered,
+  programs: z.array(z.object({ id: z.string(), spec: TaskSpec, result: Answered })),
+  total_usd: z.number(),
+});
+export type VariantsRecording = z.infer<typeof VariantsRecording>;

@@ -17,7 +17,7 @@ import { canonical, formAnswers, recordedLine, turnFor } from "./play";
 import { LabelRecording, Session } from "./session";
 
 const DIR = path.join(process.cwd(), "public", "showcase");
-const files = readdirSync(DIR).filter((f) => f.endsWith(".json"));
+const files = readdirSync(DIR).filter((f) => f.endsWith(".json") && !f.endsWith(".variants.json"));
 const sessions = files.filter((f) => !f.endsWith(".label.json")).map((f) => Session.parse(JSON.parse(readFileSync(path.join(DIR, f), "utf8"))));
 const labelOnly = files.filter((f) => f.endsWith(".label.json")).map((f) => LabelRecording.parse(JSON.parse(readFileSync(path.join(DIR, f), "utf8"))));
 

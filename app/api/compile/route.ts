@@ -22,6 +22,7 @@ import { askable, WAITING_NOTE, waitingProgram, withRequiredAsks } from "@/lib/s
 import { gestureProgram } from "@/lib/sim/gesture";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
 import { explain, liveGate } from "@/lib/unlock/check";
+import { prerunProgram } from "@/lib/showcase/lookup";
 
 export const maxDuration = 60;
 
@@ -141,6 +142,10 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
   if (gestures) return NextResponse.json(done(gestures, ["every step is a gesture: the program follows each path and needs no model"]));
   const waiting = waitingProgram(spec.data);
   if (waiting) return NextResponse.json(done(waiting, [WAITING_NOTE]));
+
+  // a sample's similar task, written ahead of time (lib/showcase/prerun.ts): no model, no wait
+  const pre = await prerunProgram(spec.data);
+  if (pre) return NextResponse.json(pre);
 
   const gate = wantsReplay(req) ? null : await liveGate("compile", body);
   const client = gate?.live ? tokenFactory({ timeout: 25_000, maxRetries: 1 }) : null;

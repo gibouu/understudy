@@ -128,9 +128,11 @@ Chrome on a laptop, at [understudy-rose.vercel.app](https://understudy-rose.verc
 
 1. **Watch the 1-minute demo** (`/demo`): one recorded NASA run, step by step, with the arm rehearsing live in the browser and no model call. The last step downloads that run as a LeRobot v2.1 skeleton (joint values, no video; format-valid, not checked with GR00T's loader, not training data).
 2. **Space showcase** (`/space`): open a clip to see what the model saw, what the robot asked and how the program improved; the arm rehearses every version again in the browser. No model call, so it works whatever the state of the credits.
-3. **Try it** (`/try`): pick a sample clip. It answers from its recording where it has one and live otherwise, and each section names the model that answered. The answers given when it was recorded are filled in: click "Answer and recompile", then "Rehearse on Earth, then in orbit". When a rehearsal fails, the Notes patches appear one by one, with their price. Uploading a clip of your own needs the unlock code given in the submission (H.264 MP4, one person, fixed phone).
+3. **Try it** (`/try`): pick a sample clip. It answers from its recording where it has one and live otherwise, and each section names the model that answered. The answers given when it was recorded are filled in: click "Answer and recompile", then "Rehearse on Earth, then in orbit". When a rehearsal fails, the Notes patches appear one by one, with their price. "Suggest similar tasks" and their programs were run ahead of time for every sample, so they answer at once too; "Suggest more" asks the model live. Uploading a clip of your own needs the unlock code given in the submission (H.264 MP4, one person, fixed phone).
 
 A live call that Token Factory refuses shows as failed on the page.
+
+**Models during judging:** Token Factory retires Nemotron 3 Nano and Nemotron 3 Super on 9 November 2026, before judging. We built and recorded on them. The NASA samples, their similar tasks included, replay those recordings and need no model; a clip of your own runs on the Nemotron models Token Factory names in their place (Nemotron 3.5 Lightning and Nemotron 3.5 Super VL, with Nemotron 3 Ultra for a stuck patch loop), measured on the same benches (`docs/MEASUREMENTS.md` section 12) but not the ones the prompts were tuned on. If a model is gone when you try, each step says so and plays its recording.
 
 ## How it improves
 
