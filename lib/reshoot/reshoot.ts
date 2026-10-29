@@ -79,8 +79,12 @@ function ownAt(node: unknown, parts: string[]): unknown {
  */
 export function fieldsOf(spec: TaskSpec): Field[] {
   const out: Field[] = [];
-  const add = (list: "objects" | "steps", rec: { id: string; source: string; sources: Record<string, string> } & Record<string, unknown>, names: readonly string[]) => {
+  const top = (key: string) => (Object.hasOwn(spec.sources, key) ? spec.sources[key] : undefined);
+  const add = (list: "objects" | "steps", i: number, rec: { id: string; source: string; sources: Record<string, string> } & Record<string, unknown>, names: readonly string[]) => {
     const at = `${list}[${rec.id}]`;
+    const first = out.length;
+    // the whole record or the whole list replaced (an answer, a hand edit) is recorded in the spec's own sources
+    const replaced = top(`${list}.${rec.id}`) ?? top(`${list}.${i}`) ?? top(list);
     const sourceOf = (leaf: string) => (Object.hasOwn(rec.sources, leaf) ? rec.sources[leaf] : undefined);
     for (const name of names) {
       const value = rec[name];
@@ -93,7 +97,7 @@ export function fieldsOf(spec: TaskSpec): Field[] {
         });
         continue;
       }
-      const source = sourceOf(name) ?? rec.source;
+      const source = sourceOf(name) ?? replaced ?? rec.source;
       out.push({ path: `${at}.${name}`, source, origin: originOf(source), value: shown(value) });
     }
     // fields changed later (an answer, a hand edit) carry their own source, under a leaf path
@@ -103,9 +107,11 @@ export function fieldsOf(spec: TaskSpec): Field[] {
       if (value === undefined) continue;
       out.push({ path: `${at}.${leaf}`, source, origin: originOf(source), value: shown(value) });
     }
+    // a record replaced from anywhere but the clip or an answer: nothing in it can be refilmed, whatever it says inside
+    if (replaced !== undefined && originOf(replaced) === "other") for (let k = first; k < out.length; k++) out[k] = { ...out[k], source: replaced, origin: "other" };
   };
-  for (const o of spec.objects) add("objects", o as never, OBJECT_FIELDS);
-  for (const s of spec.steps) add("steps", s as never, STEP_FIELDS);
+  spec.objects.forEach((o, i) => add("objects", i, o as never, OBJECT_FIELDS));
+  spec.steps.forEach((s, i) => add("steps", i, s as never, STEP_FIELDS));
   return out;
 }
 

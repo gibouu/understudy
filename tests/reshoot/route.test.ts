@@ -2,7 +2,8 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { fieldFor, fieldsOf, originOf, reshootPrompt, type Reshoot, type ReshootBody } from "@/lib/reshoot/reshoot";
 import { MODELS } from "@/lib/providers/tokenfactory";
 import type { StageResult } from "@/lib/spec/stage-result";
-import { LIVE_CLOSED } from "@/lib/unlock/messages";
+import { LIVE_CLOSED, LIVE_NO_BUDGET } from "@/lib/unlock/messages";
+import { fakeRedis } from "@/tests/store/fake-redis";
 import { issSample, loadSim } from "../notes/harness";
 import { issEvidence } from "./harness";
 
@@ -90,6 +91,14 @@ describe("the reshoot list's fields", () => {
     expect(fieldFor(edited, ef, "objects[obj2].pose")).toBeUndefined();
     expect(fieldFor(edited, ef, "objects[obj2].pose.xyz_mm")).toMatchObject({ path: "objects[obj2].pose.xyz_mm", origin: "video" });
     expect(fieldFor(edited, ef, "objects[obj2].pose.yaw_deg")).toMatchObject({ origin: "other" });
+
+    // a whole record replaced by hand: nothing in it is from the clip any more, whatever it says inside
+    const replaced = { ...body.spec, sources: { ...body.spec.sources, "objects.obj2": "user#edit" } };
+    const rf = fieldsOf(replaced);
+    expect(fieldFor(replaced, rf, "objects[obj2].pocket_clearance_mm")).toMatchObject({ origin: "other", source: "user#edit" });
+    expect(fieldFor(replaced, rf, "objects[obj1].name")).toMatchObject({ origin: "video" });
+    const list = { ...body.spec, sources: { ...body.spec.sources, steps: "default" } };
+    expect(fieldFor(list, fieldsOf(list), "steps[s2].target")).toMatchObject({ origin: "other" });
   });
 
   it("puts the run, the patches and the final outcome in the prompt", () => {
@@ -185,6 +194,7 @@ describe("POST /api/reshoot", () => {
     tf.sent.length = 0;
     vi.stubEnv("VERCEL_ENV", "production");
     vi.stubEnv("UNDERSTUDY_UNLOCK_CODE", "");
+    fakeRedis();
     try {
       const { result } = await post(body);
       expect(tf.sent).toHaveLength(0);
@@ -192,6 +202,24 @@ describe("POST /api/reshoot", () => {
       expect((result as { warnings: string[] }).warnings[0]).toBe(LIVE_CLOSED);
     } finally {
       vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("replays when the live budget turns the call away halfway", async () => {
+    tf.sent.length = 0;
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("UNDERSTUDY_UNLOCK_CODE", "let-me-in");
+    // the gate reads money left; the reservation for Ultra's call then fails, so callModel does not make it
+    fakeRedis().refuse.push("INCRBY");
+    try {
+      const { result } = await post({ ...body, unlock: "let-me-in" });
+      expect(tf.sent).toHaveLength(0);
+      expect(result).toMatchObject({ status: "done" });
+      expect((result as { warnings: string[] }).warnings[0]).toBe(LIVE_NO_BUDGET);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.unstubAllGlobals();
     }
   });
 

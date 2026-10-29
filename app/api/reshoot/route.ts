@@ -18,7 +18,7 @@ import { priced } from "@/lib/providers/price";
 import { MODELS, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
 import { checkReply, finalOutcome, MAX_TOKENS, normalizeReply, REPLY_SHAPE, THINKING, RESHOOT_SYSTEM, ReshootBody, ReshootReply, reshootPrompt, type Reshoot } from "@/lib/reshoot/reshoot";
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
-import { explain, liveGate } from "@/lib/unlock/check";
+import { budgetRefused, explain, liveGate } from "@/lib/unlock/check";
 
 // one Ultra call (4 to 40 s measured with thinking on), re-asked once if it does not parse; the page stops waiting at 90 s
 export const maxDuration = 120;
@@ -72,7 +72,10 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Resho
   if (deadline.signal.aborted) r = failed(late);
   const costs = priced(ledger);
   const spent = costs.reduce((n, e) => n + (e.usd ?? 0), 0);
-  if (r.status !== "done") return NextResponse.json(failed(`${r.status === "failed" ? r.message : "no answer"} (${costs.length} call${costs.length === 1 ? "" : "s"}, $${spent.toFixed(4)})`, r.status === "failed" && r.retryable));
+  // the live budget turned the call away: the recording answers, saying why
+  const refused = budgetRefused(r);
+  if (refused) return NextResponse.json(explain(replay(b, outcome), refused));
+  if (r.status !== "done") return NextResponse.json(failed(`${r.status === "failed" ? r.message : "no answer"} (${costs.length} call${costs.length === 1 ? "" : "s"}, $${spent.toFixed(4)})`, r.status === "failed" && r.retryable, costs));
   const { reshoot, dropped } = checkReply(b.spec, r.value);
   const value: Reshoot = {
     failure_classes: r.value.failure_classes,
