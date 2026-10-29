@@ -1,6 +1,6 @@
 # Three failing rollouts
 
-Issue #24 names three classes of failure: an insertion collision, an unreachable target, a wrong aperture. The first two are below as recorded failing rollouts of a scripted SO-101 program. The third cannot fail in this rehearsal, because it does not simulate a commanded aperture; case 3 shows that with two constructed rollouts that pass, and gives the nearest failure it does produce, a grasp that misses. Each case is replayed with no model call by `tests/sim/failures.test.ts`, which asserts the simulator's reasons exactly as quoted here, the recorded model output quoted here, and the sizes and measurements given here, so they cannot drift from the code:
+Issue #24 names three classes of failure: an insertion collision, an unreachable target, a wrong aperture. The first two are below as recorded failing rollouts of a scripted SO-101 program. The third cannot fail in this rehearsal, because it does not simulate a commanded aperture; case 3 shows that with two constructed rollouts that pass, and the nearest failure it produced, a grasp that missed, which turned out to be a scene bug, fixed in #77. Each case is replayed with no model call by `tests/sim/failures.test.ts`, which asserts the simulator's reasons exactly as quoted here, the recorded model output quoted here, and the sizes and measurements given here, so they cannot drift from the code:
 
 ```bash
 node_modules/.bin/vitest run tests/sim/failures.test.ts --silent=false
@@ -49,15 +49,17 @@ This is the kept run of four (`bench/rerecord/iss-glovebox-pipette/`); in the th
 - the kept glovebox program with its grasp at 5 mm instead of 25 mm, for a 25 mm object: the rollout passes, at the same simulated time and with the same log apart from the grasp line;
 - the same program with the object made 120 x 120 mm across and 40 mm tall (and the cartridge 160 mm, so its pocket can still be built): "grasp pipette: held", and the rollout passes. The gate asks that each jaw touch the object (`jawsTouch` in `lib/sim/grasp.ts`), not that the object be between them.
 
-So a grasp aperture in a program, whether the compiler wrote it or an answer gave it, is kept with the program and not checked by the rehearsal. The nearest failure the simulator does produce is a grasp that misses.
+So a grasp aperture in a program, whether the compiler wrote it or an answer gave it, is kept with the program and not checked by the rehearsal. The nearest failure the simulator produced was a grasp that missed, and writing it up found that its cause was a scene bug, since fixed.
 
 **What was run.** The last recorded version of `public/showcase/dev-clip.json` (after its Notes patch; a 40 mm cylinder placed on a board), on the scenario `obj2-tilt-x+10`, "piece tilted 10 deg about x", written by the patching model (`nvidia/Nemotron-3.5-Super-VL`) and recorded in `tests/fixtures/saboteur.json`; at 0 g, sensed and blind alike.
 
-**What the simulator said** (s1, op 4, `assert contact_both_pads`, after the log line "grasp obj2: missed"):
+**What the simulator said, before the fix** (s1, op 4, `assert contact_both_pads`, after the log line "grasp obj2: missed"):
 
 > the pads are not both on obj2
 
-The jaws closed on the tilted piece and pushed it away instead of holding it: at the end it is not held, moves at 69.7 mm/s and is 365.8 mm from the board's centre. At 1 g, sensed, the same program on the same tilt passes.
+The jaws closed on the tilted piece and pushed it away instead of holding it: at the end it was not held, moved at 69.7 mm/s and was 365.8 mm from the board's centre. At 1 g, sensed, the same program on the same tilt passed.
+
+**Why, and what changed.** The scene tilted the piece about its centre without raising it, so its lowest edge started 3.2 mm inside the table (20 mm x cos 10° + 20 mm x sin 10° − 20 mm, for a 40 mm cylinder). At 0 g nothing holds it down: the contact pushed it out as the jaws closed, and they missed. Issue #77 fixed the scene: a tilted object now starts with its lowest point where it stood untilted. With that fix the same program on the same recorded scenario passes at 0 g, sensed and blind, and at 1 g, sensed, and the piece ends still. So this was not a grasp failure, and the rehearsal has no recorded missed grasp left to show here.
 
 **What the patching model said.** When it wrote the scenario: `expected: "unknown"`, "tilted cylinder may seat unevenly in microgravity". It failed at the grasp, before any seating. No patch exists for it.
 

@@ -10,9 +10,9 @@
  * - unreachable target: the program after the answers in iss-glovebox-pipette,
  *   on the nominal bench, and the Notes patch that fixed it;
  * - wrong aperture: what the rehearsal can show of it. A commanded aperture is
- *   not simulated (two constructed cases pass); the nearest failure is a grasp
- *   that misses, the last program of dev-clip on the recorded scenario
- *   "obj2-tilt-x+10" in orbit.
+ *   not simulated (two constructed cases pass); the nearest failure, a grasp
+ *   that missed (the last program of dev-clip on the recorded scenario
+ *   "obj2-tilt-x+10" in orbit), was a scene bug fixed in #77: it now holds.
  *
  *   node_modules/.bin/vitest run tests/sim/failures.test.ts --silent=false
  */
@@ -182,7 +182,7 @@ describe("3. wrong aperture: what the rehearsal can show of it", () => {
     expect(r.pass).toBe(true);
   }, 60_000);
 
-  it("recorded program, recorded scenario: in orbit the jaws close on a tilted piece without holding it", async () => {
+  it("recorded program, recorded scenario: the tilted piece that was missed in orbit before #77 starts on the table and is held", async () => {
     const s = session("public/showcase/dev-clip.json");
     const last = s.iterations.at(-1)!;
     expect(last.spec.objects.find((o) => o.id === "obj2")).toMatchObject({ shape: "cylinder", size_mm: [40, 40, 40] });
@@ -193,16 +193,13 @@ describe("3. wrong aperture: what the rehearsal can show of it", () => {
       { scenario: sc, mode: "blind", gravity_g: 0 },
       { scenario: sc, mode: "sensed", gravity_g: 1 },
     ]);
-    for (const r of [orbitSensed, orbitBlind]) {
-      expect(r).toMatchObject({ pass: false, failed_step_id: "s1", failed_op: 4, why: "the pads are not both on obj2" });
-      expect(r.failure_class).toBeUndefined();
-      expect(r.log.some((l) => l.endsWith("grasp obj2: missed"))).toBe(true);
+    // docs/FAILURES.md case 3: before #77 the piece started 3.2 mm inside the table and was missed at 0 g
+    for (const r of [orbitSensed, orbitBlind, earthSensed]) {
+      expect(r.pass).toBe(true);
+      expect(r.log.some((l) => l.endsWith("grasp obj2: missed"))).toBe(false);
+      const end = r.end!.find((o) => o.object === "obj2")!;
+      console.info(`tilted piece: ends at ${end.speed_mm_s.toFixed(1)} mm/s`);
+      expect(end.speed_mm_s).toBeLessThan(1);
     }
-    const end = orbitSensed.end!.find((o) => o.object === "obj2")!;
-    console.info(`0 g sensed: the piece ends ${end.speed_mm_s.toFixed(1)} mm/s, ${end.seated?.why}`);
-    expect(end.held).toBe(false);
-    expect(end.speed_mm_s).toBeCloseTo(69.7, 1);
-    expect(end.seated?.why).toBe("obj2 is 365.8 mm from obj1's centre, not inside it");
-    expect(earthSensed.pass).toBe(true);
   }, 120_000);
 });

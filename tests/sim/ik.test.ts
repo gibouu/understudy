@@ -1,7 +1,7 @@
 import type { MainModule, MjData, MjModel } from "@mujoco/mujoco";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { dls, reachability, solveIk, type Approach } from "@/lib/sim/ik";
-import { SO101_TIP_SITE, stageXml } from "@/lib/sim/so101";
+import { dls, reachability, reachSphere, solveIk, type Approach } from "@/lib/sim/ik";
+import { SO101_GRASP_SITE, SO101_HELD_SITE, SO101_TIP_SITE, stageXml } from "@/lib/sim/so101";
 import { loadSo101 } from "@/lib/sim/so101-disk";
 
 let mujoco: MainModule;
@@ -99,6 +99,45 @@ describe("IK on the SO-101 tip site", () => {
     expect(pre.ok).toBe(false);
     expect(pre.failure_class).toBe("embodiment_limit");
     expect(pre.results.map((x) => x.ok)).toEqual([true, false]);
+  });
+  it.each([SO101_TIP_SITE, SO101_GRASP_SITE, SO101_HELD_SITE])("bounds how far %s can be from the pan joint, in every pose", (site) => {
+    const sphere = reachSphere(mujoco, model, data, site);
+    expect(sphere).not.toBeNull();
+    const sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, site);
+    const qpos = data.qpos as Float64Array;
+    let s = 11;
+    const rng = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    let far = 0;
+    for (let k = 0; k < 5000; k++) {
+      for (let i = 0; i < 6; i++) qpos[i] = -3 + 6 * rng();
+      mujoco.mj_kinematics(model, data);
+      const p = data.site_xpos as Float64Array;
+      far = Math.max(far, Math.hypot(p[3 * sid] - sphere!.pivot[0], p[3 * sid + 1] - sphere!.pivot[1], p[3 * sid + 2] - sphere!.pivot[2]));
+    }
+    expect(far).toBeLessThanOrEqual(sphere!.r + 1e-9);
+    expect(far).toBeGreaterThan(0.9 * sphere!.r); // and not a loose one
+  });
+  it("measures the sphere where the held frame is now: a grasp moves it", () => {
+    const sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, SO101_HELD_SITE);
+    const sp = model.site_pos as Float64Array;
+    const saved = Array.from(sp.slice(3 * sid, 3 * sid + 3));
+    const before = reachSphere(mujoco, model, data, SO101_HELD_SITE)!.r;
+    try {
+      sp[3 * sid + 2] -= 0.06;
+      expect(reachSphere(mujoco, model, data, SO101_HELD_SITE)!.r).toBeGreaterThan(before + 0.01);
+    } finally {
+      sp.set(saved, 3 * sid);
+    }
+    expect(reachSphere(mujoco, model, data, SO101_HELD_SITE)!.r).toBeCloseTo(before, 12);
+  });
+  it("calls a target beyond the arm's full length out of reach, and says how far short it falls", () => {
+    const { pivot, r: R } = reachSphere(mujoco, model, data)!;
+    const target: [number, number, number] = [pivot[0] + R + 0.1, pivot[1], pivot[2]];
+    const r = solveIk(mujoco, model, data, target, "front");
+    expect(r.ok).toBe(false);
+    expect(r.failure_class).toBe("embodiment_limit");
+    expect(r.pos_err_mm).toBeGreaterThanOrEqual(100 - 1e-6);
+    expect(r.pos_err_mm).toBeLessThan(100 + 0.1 * R * 1000);
   });
 });
 

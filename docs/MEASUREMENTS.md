@@ -53,8 +53,10 @@ Ultra's reshoot list is 73% of the cost and most of its variance (4.6k to 10.1k 
 
 - **Accuracy.** Over 436 solved targets on a 25 mm grid at three heights, the tip lands at a median 0.27 mm from the target, 0.84 mm at the 95th percentile, 1.88 mm at worst, checked by independent forward kinematics. A reachable target solves in 0.1 ms.
 - **Reach.** Top-down grasps reach 56 to 58% of a 30 by 50 cm table grid at 2 cm height and none at 12 cm; side grasps reach 3% at most, because the wrist has no yaw.
+- **Misses.** A target the arm cannot reach costs 65 to 90 ms, because the solver tries all 82 starting poses. Beyond 0.47 m from the pan joint, the length of the whole chain, no pose can reach. There the solver skips the starts that differ only in wrist roll, a third of the work, and the shortfall it reports moves by at most 1.8 mm (816 such targets). Stopping a search once its error stopped improving was tried and dropped: it lost 5 of 841 reaches on a wider grid. The two isolated holes on the centre line, (0.10, 0, 0.06) m from the top and (0.25, 0, 0.12) m from the front, are joint limits, not the solver. 3,000 random starts found no solution for either, and the best ones sit at the wrist-flex limit (+1.66 rad) and the elbow limit (+1.69 rad).
 - **Speed.** A 3 s rollout of the arm in the demo scene takes about 5 ms. All 24 rollouts of one gravity, with the 12 scenario worlds compiled, take 0.28 s on Earth, 0.28 s on the Moon and 0.25 s in orbit, about 250 times real time, in node, scene build included. Each is a fixed 3 s move to an IK pose 50 mm above the pocket, with no interpreter, grasp or success check. On the page the grid's line says about a second per 24 (1.1 to 1.3 s for the seed film, 29 October): a different workload, the clip's real program with its grasps and checks, in the browser's worker, which hands control back between rollouts and posts each result; loading the engine and the meshes is not on that clock. Played visibly in the browser at real time the same grid takes 72 s per gravity, so the fast path needs a headless batch mode in the worker.
 - **Scenarios.** All 12 perturbation scenarios build and load next to the arm; 11 change the world measurably; the twelfth, a yaw on the symmetric tube, is flagged as a no-op.
+- **Tilts.** A tilted object is raised until its lowest point is where it stood untilted. Before this fix, the rack tilted 5° started 2.54 mm inside the table, and the tube tilted 8° 0.7 mm inside; the tilt runs in `bench/results/arm-scenario-coverage.json` predate the fix.
 
 ## 4. Gravity, pouring and motion
 
@@ -402,15 +404,15 @@ Live, for the 12, on Nemotron 3.5 Lightning: the route asked where with no model
 
 ## 17. The baseline on the scoreboard
 
-The scoreboard's first bar (#55) is "retarget and replay": a program written by fixed rules from the label's steps as first fitted to the bench, with no model and no answers (take the object, carry it 20 mm over the target, lower it onto it or into the pocket, let go; no waits, no checks; `lib/saboteur/baseline.ts`). It is our rule set, one stand-in for the standard approach, not a published method and not a retargeted human trajectory. It runs on each clip's twelve replayed perturbations, blind and sensed, on the last recorded version's spec, as every version does. Source: `tests/saboteur/baseline.test.ts` and `tests/saboteur/scoreboard.test.ts`, headless in node, no model call (29 October); the page gives the same counts (seed film and fluid bag checked in the browser).
+The scoreboard's first bar (#55) is "retarget and replay": a program written by fixed rules from the label's steps as first fitted to the bench, with no model and no answers (take the object, carry it 20 mm over the target, lower it onto it or into the pocket, let go; no waits, no checks; `lib/saboteur/baseline.ts`). It is our rule set, one stand-in for the standard approach, not a published method and not a retargeted human trajectory. It runs on each clip's twelve replayed perturbations, blind and sensed, on the last recorded version's spec, as every version does. Source: `tests/saboteur/baseline.test.ts` and `tests/saboteur/scoreboard.test.ts`, headless in node, no model call (29 October, after the tilt fix of #77, which moved six of these counts by one or two, on the second seed film, the fluid bag and the chess clip: a tilted object no longer starts inside the table); the page gives the same counts (seed film and fluid bag checked in the browser).
 
 | Clip | Baseline, Earth | Last version, Earth | Baseline, orbit | Last version, orbit |
 |---|---|---|---|---|
 | `iss-veggie-seed-film` | 24 | 24 (second Notes patch) | 3 | 15 |
-| `iss-veggie-seed-film-2` | 23 | 22 (after the interview) | 0 | 20 |
+| `iss-veggie-seed-film-2` | 22 | 21 (after the interview) | 0 | 19 |
 | `iss-glovebox-pipette` | 0 | 21 (Notes patch) | 0 | 22 |
-| `iss-fluid-bag-foam` | 24 | 23 (after the interview) | 8 | 12 |
-| `dev-clip` (chess) | 0 | 23 (Notes patch) | 0 | 20 |
+| `iss-fluid-bag-foam` | 24 | 22 (after the interview) | 8 | 13 |
+| `dev-clip` (chess) | 0 | 23 (Notes patch) | 0 | 22 |
 
 Passes out of 24 per gravity. On the pipette and the chess clip the baseline stops at a move 50 mm above the object, out of reach by 8.1 and 11.1 mm, as their first compiles do. Where it does move, it does as well on Earth as the last version or better, and in orbit, where an object let go has to be held until it is constrained, it falls behind on every clip. The wave has nothing to perturb and no baseline.
 
