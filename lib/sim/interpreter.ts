@@ -32,6 +32,7 @@ import { describeLiquid, planLiquid, type Liquid, type LiquidPlan, type LiquidWh
 import { toNumbers } from "./names";
 import { evaluate } from "./predicates";
 import { buildScene, footprintMm, heightMm, layoutMissingPoses, MM, perturb, type WorldPose } from "./scene";
+import { applyAlong, contactMarkers, type Contacted } from "./contact";
 import { GRIPPER_CLOSED, GRIPPER_OPEN, SO101_GRASP_SITE, SO101_HELD_SITE, SO101_HOME, SO101_JOINT_NAMES, SO101_MOVING_JAW_BODY } from "./so101";
 import { nearestPass, predict, type Flight, type Release } from "./toss";
 
@@ -70,6 +71,8 @@ export type Rollout = {
   liquid?: LiquidWhere;
   /** each gesture path the program followed: the only check a gesture has */
   followed?: Followed[];
+  /** each contact path the program applied the held object along, as MuJoCo measured it (lib/sim/contact.ts) */
+  contacted?: Contacted[];
   /** each toss, and its catch when the program tried one: measured, as the release and the grasp check found them */
   flights?: Flight[];
 };
@@ -184,7 +187,7 @@ export function environment(spec: TaskSpec, scenario?: Scenario): Environment {
     const laid = layoutMissingPoses(spec).spec;
     const liquid = planLiquid(laid, nominal);
     return {
-      worldbody: `${nominal.worldbody}\n${markers}`,
+      worldbody: `${nominal.worldbody}\n${markers}${contactMarkers(laid, nominal.frames)}`,
       graspable: nominal.manipulated,
       gravity_g: 1,
       spec: laid,
@@ -198,7 +201,7 @@ export function environment(spec: TaskSpec, scenario?: Scenario): Environment {
   const world = buildScene(p.spec, p.tilts);
   const liquid = planLiquid(p.spec, world);
   return {
-    worldbody: `${world.worldbody}\n${markers}`,
+    worldbody: `${world.worldbody}\n${markers}${contactMarkers(p.spec, world.frames)}`,
     graspable: world.manipulated,
     gravity_g: p.gravity_g,
     spec: p.spec,
@@ -237,9 +240,10 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
   const followed: Followed[] = [];
   /** each toss of this run, and the state it let go in, by body: what a catch predicts from */
   const flights: Flight[] = [];
+  const contacted: Contacted[] = [];
   /** `rot`: the held site's orientation as it let go; `closing`: the jaws' closing direction; `spin`: the object's turning, rad/s, world */
   const released = new Map<string, { release: Release; rot: number[]; closing: Vec3; spin: Vec3; hold_rad: number; flight: Flight; fixedSide: Vec3; room: number }>();
-  const extras = () => ({ ...(followed.length ? { followed } : {}), ...(flights.length ? { flights } : {}) });
+  const extras = () => ({ ...(followed.length ? { followed } : {}), ...(flights.length ? { flights } : {}), ...(contacted.length ? { contacted } : {}) });
   const fail = (r: Omit<Rollout, "pass" | "t" | "log">): Rollout => {
     log.push(`fail: ${r.why}`);
     return { pass: false, ...(r.failed_step_id !== undefined && opIndex !== undefined ? { failed_op: opIndex } : {}), ...r, t, log, end: snapshot(sim, env, world(), held), ...liquidNow(), ...extras() };
@@ -300,6 +304,10 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
     // every spec step of that id: a spec that repeats an id (validateSpec's error) cannot hide one's success
     const success = env.spec.steps.filter((x) => x.id === id).flatMap((x) => x.success);
     if (env.spec.steps.some((x) => x.id === id)) succeeded.add(id);
+    // an apply step's check is its contact, measured: a program that never made it cannot pass the step
+    if (env.spec.steps.some((x) => x.id === id && x.verb === "apply") && !contacted.some((c) => c.step_id === id)) {
+      return fail({ failed_step_id: id, failure_class: "spec_gap", why: `step ${id} applies along a contact path and the program never made contact; its op is {"op":"contact"}` });
+    }
     if (!success.length) return null;
     opIndex = undefined; // a step's success is no op of it
     try {
@@ -616,6 +624,16 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             followed.push(f);
             log.push(`${t.toFixed(2)} follow: ${describeReach(f)}`);
             if (f.missed.length) return fail({ failed_step_id: s.step_id, failure_class: "embodiment_limit", why: `follow: ${describeReach(f)}` });
+            break;
+          }
+          case "contact": {
+            // the held object along the step's contact path, force-limited; all of it in lib/sim/contact.ts
+            if (!held) return fail({ failed_step_id: s.step_id, why: "contact: nothing is held" });
+            const applyStep = env.spec.steps.find((x) => x.id === s.step_id);
+            if (!applyStep) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `contact: no step ${s.step_id} in the spec` });
+            const out = yield* applyAlong({ mujoco, model, data, spec: env.spec, names: env.names, beliefs, held, ctrl, step, now: () => t, log: (line) => log.push(line) }, applyStep);
+            if (out.contacted) contacted.push(out.contacted);
+            if (out.fail) return fail({ failed_step_id: s.step_id, ...out.fail });
             break;
           }
           case "toss": {

@@ -31,6 +31,8 @@ function line(op: ProgramOp, name: (id?: string) => string): string {
       return "open the gripper";
     case "follow":
       return "follow the hand's path traced from the clip with the point between the pads, point by point";
+    case "contact":
+      return "bring what it holds slowly onto the surface, keep it there along the path under the force limit, and take it off slowly";
     case "toss":
       return `let go of it moving at (${op.velocity_mm_s.join(", ")}) mm/s, after a ${op.run_mm} mm run-up`;
     case "catch":

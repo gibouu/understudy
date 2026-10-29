@@ -27,6 +27,10 @@ export type IssueCode =
   | "pour_without_block"
   | "pour_block_on_other_verb"
   | "pour_into_itself"
+  | "contact_without_block"
+  | "contact_block_on_other_verb"
+  | "contact_surface_moves"
+  | "contact_without_path"
   | "liquid_share_as_fraction"
   | "gesture_without_block"
   | "gesture_block_on_other_verb"
@@ -123,6 +127,14 @@ export function validateSpec(spec: TaskSpec): SpecIssue[] {
     if (s.pour && s.verb !== "pour") issues.push({ code: "pour_block_on_other_verb", path: `${at}.pour`, message: `step "${s.id}" is a ${s.verb} step with a pour block; only a pour step pours`, severity: "error" });
     if (s.pour && !reg.ids.has(s.pour.into)) issues.push({ code: "unknown_frame", path: `${at}.pour.into`, message: `step "${s.id}" pours into unknown object "${s.pour.into}"`, severity: "error" });
     if (s.pour && s.pour.into === s.object) issues.push({ code: "pour_into_itself", path: `${at}.pour.into`, message: `step "${s.id}" pours the ${s.object} into itself`, severity: "error" });
+    // a contact step needs its verb, its block, a fixed surface that is not what it holds, and a path on it
+    if (s.verb === "apply" && !s.contact) issues.push({ code: "contact_without_block", path: `${at}.contact`, message: `step "${s.id}" applies but says neither onto what nor along which path`, severity: "error" });
+    if (s.contact && s.verb !== "apply") issues.push({ code: "contact_block_on_other_verb", path: `${at}.contact`, message: `step "${s.id}" is a ${s.verb} step with a contact block; only an apply step makes contact along a path`, severity: "error" });
+    if (s.contact && !reg.ids.has(s.contact.surface)) issues.push({ code: "unknown_frame", path: `${at}.contact.surface`, message: `step "${s.id}" applies onto unknown object "${s.contact.surface}"`, severity: "error" });
+    else if (s.contact && spec.objects.some((o) => o.id === s.contact!.surface && o.role === "manipulated")) {
+      issues.push({ code: "contact_surface_moves", path: `${at}.contact.surface`, message: `step "${s.id}" applies onto "${s.contact.surface}", which moves; the surface of a contact step is an object that does not`, severity: "error" });
+    }
+    if (s.contact && s.contact.path.length < 2) issues.push({ code: "contact_without_path", path: `${at}.contact.path`, message: `step "${s.id}" has no contact path: at least two points on the surface, in its frame`, severity: "error" });
     for (const [k, p] of s.success.entries()) {
       if (p.kind === "liquid_inside" && p.value !== undefined && p.value <= 1) {
         issues.push({ code: "liquid_share_as_fraction", path: `${at}.success[${k}].value`, message: `liquid_inside ${p.value} reads as ${p.value}% of the liquid; a share is a percent (90 for 90%)`, severity: "warning" });
@@ -204,6 +216,8 @@ export function lintProgram(program: Program, spec: TaskSpec): string[] {
     const step = spec.steps.find((s) => s.id === ps.step_id);
     if (step?.verb === "gesture" && !ps.ops.some((op) => op.op === "follow")) out.push(`steps[${i}] (gesture): never follows its path; its ops are {"op":"follow"}`);
     if (step && step.verb !== "gesture" && ps.ops.some((op) => op.op === "follow")) out.push(`steps[${i}] (${step.verb}): follow traces a gesture's path, and this step is not a gesture`);
+    if (step?.verb === "apply" && !ps.ops.some((op) => op.op === "contact")) out.push(`steps[${i}] (apply): never makes contact along its path; add {"op":"contact"} once the ${step.object} is held`);
+    if (step && step.verb !== "apply" && ps.ops.some((op) => op.op === "contact")) out.push(`steps[${i}] (${step.verb}): contact applies along an apply step's contact path, and this step is not one`);
     if (step && (step.verb === "insert" || step.verb === "place") && !ps.ops.some((op) => op.op === "release")) {
       out.push(`steps[${i}] (${step.verb}): never releases the ${step.object}`);
     }

@@ -30,6 +30,8 @@ export function opText(op: ProgramOp): string {
       return "release";
     case "follow":
       return "follow the gesture path";
+    case "contact":
+      return "contact along the step's path";
     case "toss":
       return `toss at (${op.velocity_mm_s.join(", ")}) mm/s over a ${op.run_mm} mm run-up`;
     case "catch":
