@@ -11,7 +11,7 @@ Machine for the local runs: Apple M4, Node 24, one thread, MuJoCo WebAssembly 3.
 | One full session on Token Factory | 16.7 calls, 51k tokens, US$0.0375 (US$0.028 to US$0.052 over 3 runs), 71 s | 1 |
 | Hands found on the gloved, far-camera ISS clip | 149 of 360 frames from wrist crops; 0 before | 2 |
 | Arm accuracy | median tip error 0.27 mm, max 1.9 mm, over 436 targets | 3 |
-| Rehearsal speed, headless | 24 rollouts per gravity, all 12 scenario worlds, in 0.3 s in node, scene build included; about a second per 24 on the page's clock, where the worker yields between rollouts | 3 |
+| Rehearsal speed, headless | 24 rollouts per gravity, all 12 scenario worlds, in 0.3 s in node (a fixed 3 s move per rollout, scene build included); about a second per 24 on the page's clock, running the real programs | 3 |
 | A tube let go at the slot mouth | seats on Earth, Mars and the Moon; floats 30 mm up in orbit, indefinitely | 4 |
 | Lateral push that topples a standing tube | 1.59 m/s² on Earth, 0.27 m/s² on the Moon | 4 |
 | Liquid model against physics | drain time within 2.8% of Torricelli's law; surface tilt within 0.09° of atan(a/g) | 5 |
@@ -53,7 +53,7 @@ Ultra's reshoot list is 73% of the cost and most of its variance (4.6k to 10.1k 
 
 - **Accuracy.** Over 436 solved targets on a 25 mm grid at three heights, the tip lands at a median 0.27 mm from the target, 0.84 mm at the 95th percentile, 1.88 mm at worst, checked by independent forward kinematics. A reachable target solves in 0.1 ms.
 - **Reach.** Top-down grasps reach 56 to 58% of a 30 by 50 cm table grid at 2 cm height and none at 12 cm; side grasps reach 3% at most, because the wrist has no yaw.
-- **Speed.** A 3 s rollout of the arm in the demo scene takes about 5 ms. All 24 rollouts of one gravity, with the 12 scenario worlds compiled, take 0.28 s on Earth, 0.28 s on the Moon and 0.25 s in orbit, about 250 times real time, in node, scene build included. On the page the grid's line says about a second per 24 (1.1 to 1.3 s for the seed film, 29 October): the same WebAssembly batch in the browser's worker, which hands control back between rollouts and posts each result; loading the engine and the meshes is not on that clock. Played visibly in the browser at real time the same grid takes 72 s per gravity, so the fast path needs a headless batch mode in the worker.
+- **Speed.** A 3 s rollout of the arm in the demo scene takes about 5 ms. All 24 rollouts of one gravity, with the 12 scenario worlds compiled, take 0.28 s on Earth, 0.28 s on the Moon and 0.25 s in orbit, about 250 times real time, in node, scene build included. Each is a fixed 3 s move to an IK pose 50 mm above the pocket, with no interpreter, grasp or success check. On the page the grid's line says about a second per 24 (1.1 to 1.3 s for the seed film, 29 October): a different workload, the clip's real program with its grasps and checks, in the browser's worker, which hands control back between rollouts and posts each result; loading the engine and the meshes is not on that clock. Played visibly in the browser at real time the same grid takes 72 s per gravity, so the fast path needs a headless batch mode in the worker.
 - **Scenarios.** All 12 perturbation scenarios build and load next to the arm; 11 change the world measurably; the twelfth, a yaw on the symmetric tube, is flagged as a no-op.
 
 ## 4. Gravity, pouring and motion
