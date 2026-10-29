@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { groundingRecord, type GroundingRecord } from "@/lib/export/grounding";
 import { applyChanges } from "@/lib/spec/apply";
 import { chipChange, chipEffect, type Chip, type Grounding } from "@/lib/spec/ground";
 import type { TaskSpec } from "@/lib/spec/schema";
@@ -33,8 +34,10 @@ const host = (url: string) => {
  * Opt-in grounding: one click searches the web (Tavily), and each sentence
  * Nano kept comes back as a chip with its source. Nothing enters the spec
  * until the person adds a chip; `onSpec` then receives the changed spec.
+ * `onGrounding` hears the Tavily ledger and the chips added, for an export's grounding.json (#112); null while
+ * nothing has been found.
  */
-export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: boolean; onSpec: (next: TaskSpec) => void }) {
+export function GroundChips({ spec, busy, onSpec, onGrounding }: { spec: TaskSpec; busy: boolean; onSpec: (next: TaskSpec) => void; onGrounding?: (g: GroundingRecord | null) => void }) {
   const say = useModels();
   const [result, setResult] = useState<StageResult<Grounding>>(idle());
   const [added, setAdded] = useState<number[]>([]);
@@ -48,8 +51,11 @@ export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: bool
       const r = (await res.json()) as StageResult<Grounding>;
       keepCall("/api/ground", { spec }, r, at);
       setResult(r);
+      setAdded([]);
+      onGrounding?.(groundingRecord(r, []));
     } catch (err) {
       setResult(failed((err as Error).message));
+      onGrounding?.(null);
     }
   }
 
@@ -61,6 +67,7 @@ export function GroundChips({ spec, busy, onSpec }: { spec: TaskSpec; busy: bool
     }
     setNote("");
     setAdded([...added, i]);
+    onGrounding?.(groundingRecord(result, [...added, i]));
     onSpec(next);
   }
 

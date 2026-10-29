@@ -5,6 +5,7 @@
  * there.
  */
 import type { Envelope, SignedBand, TaskSpec } from "@/lib/spec/schema";
+import { sourceMarkdown, type ClipSource } from "@/lib/export/source";
 import { SO101_JOINTS, type EpisodeRecord, type QualityReport } from "@/lib/export/types";
 
 /** A dimension whose range is at or below this is degenerate. */
@@ -134,15 +135,18 @@ export type QualityMarkdownOptions = {
   origin?: EpisodeOrigin;
   /** must match the report's too */
   rendered?: boolean;
+  /** where the clip came from (#61): a sample's source and licence, or "upload"; the section is left out when unknown */
+  source?: ClipSource;
 };
 
 /** QUALITY.md, written next to the dataset. */
 export function renderQualityMarkdown(
   report: QualityReport,
   episodes: EpisodeRecord[],
-  { origin = "rehearsal", rendered = false, jointUnits = ORIGIN_TEXT[origin].units }: QualityMarkdownOptions = {},
+  { origin = "rehearsal", rendered = false, jointUnits = ORIGIN_TEXT[origin].units, source }: QualityMarkdownOptions = {},
 ): string {
   const lines: string[] = ["# Quality report", "", `**${report.headline}.**`, ""];
+  if (source !== undefined) lines.push(...sourceMarkdown(source));
 
   lines.push(
     `${originText(origin, rendered).how} They fill the LeRobot v2.1 layout Isaac-GR00T reads, to show the format; they are not demonstrations to train a policy on.`,

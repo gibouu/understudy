@@ -2,6 +2,8 @@
  * The 1-minute demo at /demo: which recording it plays, which versions of its program it rehearses, and the export
  * it builds from the rollouts it showed. Nothing here reads files or calls a model.
  */
+import type { GroundingRecord } from "@/lib/export/grounding";
+import { clipSource } from "@/lib/export/source";
 import { buildExportZip, type ExportResult } from "@/lib/export/zip";
 import { resample, type TraceFrame } from "@/lib/export/trace";
 import type { EpisodeRecord } from "@/lib/export/types";
@@ -54,8 +56,11 @@ export type TourRun = { world: GravityName; trace: TraceFrame[] };
 /**
  * The download: every passing rollout the stage played of the last version, as LeRobot v2.1 episodes, and next to
  * them what the recording holds (the spec, the program, the interview, the ledger). No video: the frames are not kept.
+ * The clip's source and licence (#61) go in QUALITY.md and next to the clip in recording.json; `grounding`, when the
+ * session looked something up on the web (#112), becomes grounding.json.
  */
-export async function tourExport(session: Session, runs: TourRun[]): Promise<ExportResult> {
+export async function tourExport(session: Session, runs: TourRun[], grounding?: GroundingRecord | null): Promise<ExportResult> {
+  const source = clipSource(session.clip.name);
   const it = session.iterations.at(-1)!;
   const task = instruction(it.spec);
   const episodes: EpisodeRecord[] = runs.map((r, episode_index) => ({
@@ -78,9 +83,10 @@ export async function tourExport(session: Session, runs: TourRun[]): Promise<Exp
         interview: session.turns.map((t) => ({ asks: t.asks, answers: t.answers.map(({ slot, text }) => ({ slot, text })) })),
         versions: session.iterations.map((x) => ({ source: x.source, changes: x.changes, why: x.why, results: x.results })),
         ledger: session.ledger,
-        recording: { clip: session.clip, hint: session.hint, recorded_at: session.recorded_at, models: session.models, total_usd: session.total_usd },
+        ...(grounding ? { grounding } : {}),
+        recording: { clip: session.clip, source, hint: session.hint, recorded_at: session.recorded_at, models: session.models, total_usd: session.total_usd },
       },
     },
-    { spec: it.spec, origin: "rehearsal" },
+    { spec: it.spec, origin: "rehearsal", source },
   );
 }
