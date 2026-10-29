@@ -21,7 +21,7 @@ import { canonicalSlot, valueAt } from "@/lib/spec/apply";
 import { askable, WAITING_NOTE, waitingProgram, withRequiredAsks } from "@/lib/spec/answer";
 import { gestureProgram } from "@/lib/sim/gesture";
 import { footprintMm, MM, WALL_M } from "@/lib/sim/scene";
-import { explain, liveGate } from "@/lib/unlock/check";
+import { budgetRefused, explain, liveGate } from "@/lib/unlock/check";
 import { prerunProgram } from "@/lib/showcase/lookup";
 
 export const maxDuration = 60;
@@ -149,7 +149,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
 
   const gate = wantsReplay(req) ? null : await liveGate("compile", body);
   const client = gate?.live ? tokenFactory({ timeout: 25_000, maxRetries: 1 }) : null;
-  const result = client
+  const asked = client
     ? await callModel(client, {
         role: "nano",
         system: COMPILE_SYSTEM,
@@ -162,6 +162,9 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Progr
         previous,
       })
     : explain(replay(spec.data), gate);
+  // turned away by the live budget halfway: the recording answers, as if the guard had said so
+  const refused = budgetRefused(asked);
+  const result = refused ? explain(replay(spec.data), refused) : asked;
   if (result.status !== "done") return NextResponse.json(result);
   const resolved = resolveFixtureNames(result.value, spec.data);
   const warnings = [...result.warnings, ...resolved.warnings];

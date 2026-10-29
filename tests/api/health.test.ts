@@ -6,6 +6,8 @@
 import OpenAI from "openai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { forgetModels } from "@/lib/providers/tokenfactory";
+import { BUDGET_ENV, SPENT_KEY } from "@/lib/unlock/budget";
+import { fakeRedis } from "@/tests/store/fake-redis";
 
 const tf = vi.hoisted(() => ({ calls: 0, refuse: false, broken: false }));
 vi.mock("@/lib/providers/tokenfactory", async (original) => {
@@ -47,7 +49,11 @@ describe("GET /api/health", () => {
     tf.broken = false;
     forgetModels();
   });
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
 
   it("makes one paid call for a burst of requests", async () => {
     const answers = await Promise.all(Array.from({ length: 20 }, () => health()));
@@ -76,6 +82,29 @@ describe("GET /api/health", () => {
 
   it("answers ?replay=1 without a call", async () => {
     expect(await health("?replay=1")).toMatchObject({ mode: "replay" });
+    expect(tf.calls).toBe(0);
+  });
+
+  it("says what the live budget has left, and replays without a probe once it is spent", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const store = fakeRedis();
+    vi.stubEnv(BUDGET_ENV, "10");
+    store.data.set(SPENT_KEY, 2_500_000);
+    expect(await health()).toMatchObject({ mode: "live", budget: { cap_usd: 10, spent_usd: 2.5, left_usd: 7.5 } });
+    expect(tf.calls).toBe(1);
+    store.data.set(SPENT_KEY, 10_000_000);
+    vi.setSystemTime(now + 61_000);
+    const spent = await health();
+    expect(spent).toMatchObject({ mode: "replay", budget: { left_usd: 0 } });
+    expect(spent.reason).toContain("the live budget for judging is spent");
+    expect(tf.calls).toBe(1);
+  });
+
+  it("replays on a deployment whose budget cannot be read", async () => {
+    vi.stubEnv("VERCEL_ENV", "production");
+    vi.stubEnv("KV_REST_API_URL", "");
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
+    expect(await health()).toMatchObject({ mode: "replay" });
     expect(tf.calls).toBe(0);
   });
 });

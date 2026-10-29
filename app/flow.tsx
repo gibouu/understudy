@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { estimate, usual, type Stage } from "@/lib/estimate";
 import { SAMPLES, type Sample } from "@/lib/samples";
 import { formAnswers, recordedBy, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
@@ -12,12 +12,14 @@ import { applyChanges } from "@/lib/spec/apply";
 import { LINE_MAX, oneArmLine, scopeNotes, sentenceOf } from "@/lib/spec/confirm";
 import type { Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema";
 import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
+import { CONSENT_LINE } from "@/lib/keep/record";
 import { gateNote } from "@/lib/unlock/messages";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
 import { rememberedLabel, rememberLabel } from "@/lib/vision/remembered";
 import { withGesturePaths } from "@/lib/vision/trace";
 import { FilmYourself, keepSampleToken, liveAuth, UnlockPrompt } from "./capture";
 import { GroundChips } from "./ground-chips";
+import { keep, keepCall, keeping, startSession } from "./keep";
 import { answeredBy, useModels, type Role } from "./models";
 import { ProgramView, type Failure } from "./program-view";
 import { Working } from "./working";
@@ -49,9 +51,12 @@ type Ask = Extract<ProgramOp, { op: "ask" }>;
 const asksOf = (p: Program): Ask[] => p.steps.flatMap((s) => s.ops).filter((op): op is Ask => op.op === "ask");
 
 async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
+  const at = keeping();
   try {
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...liveAuth(), ...(body as object) }) });
-    return (await res.json()) as StageResult<T>;
+    const r = (await res.json()) as StageResult<T>;
+    keepCall(url, body, r, at);
+    return r;
   } catch (err) {
     return failed((err as Error).message);
   }
@@ -76,7 +81,15 @@ export function Flow() {
   const [failure, setFailure] = useState<Failure | null>(null);
   /** a live label waiting for the person to confirm it (#158): the tracing notes its fit will carry */
   const [unconfirmed, setUnconfirmed] = useState<string[] | null>(null);
+  /** the consent box for a clip of your own (#78): nothing is kept without it */
+  const [consent, setConsent] = useState(false);
+  /** the id a session given for training is kept under, shown so its owner can ask for it to be deleted */
+  const [kept, setKept] = useState<string | undefined>(undefined);
+  /** the id the rehearsal on screen began under: a rollout that ends after the box changed is not kept */
+  const rehearsalAt = useRef<string | undefined>(undefined);
   const pick = useRef(0);
+  // leaving /try ends the kept session: no other page asks for consent
+  useEffect(() => () => void startSession(false), []);
   /** bumped by every reset: a reply that lands after a newer clip or run is dropped */
   const gen = useRef(0);
 
@@ -103,6 +116,8 @@ export function Flow() {
     });
     setDuration(null);
     setHint(nextHint);
+    // a sample is NASA's: only a clip of your own, with the box ticked, is kept
+    setKept(startSession(!sample && consent));
     reset();
   }
 
@@ -233,6 +248,7 @@ export function Flow() {
       changes.push({ path: a.slot, value, source: `interview#${turn + 1}` });
     }
     if (changes.length === 0) return;
+    keep("answers", { turn: turn + 1, asks, changes }, keeping());
     const applied = applyChanges(spec, changes);
     setNotes(applied.warnings);
     if (applied.warnings.length) return;
@@ -266,11 +282,12 @@ export function Flow() {
               {s.label}
             </button>
           ))}
-          <label className="cursor-pointer rounded border border-dashed px-3 py-1.5 text-sm hover:bg-neutral-50">
+          <label className={`rounded border border-dashed px-3 py-1.5 text-sm ${consent ? "cursor-pointer hover:bg-neutral-50" : "cursor-not-allowed opacity-40"}`}>
             Upload an MP4
             <input
               type="file"
               accept="video/mp4"
+              disabled={!consent}
               className="sr-only"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -278,8 +295,19 @@ export function Flow() {
               }}
             />
           </label>
-          <FilmYourself onClip={(take) => choose(take, "")} />
+          <FilmYourself disabled={!consent} onClip={(take) => choose(take, "")} />
         </div>
+        <label className="mt-3 flex items-start gap-2 text-sm text-neutral-700">
+          <input type="checkbox" className="mt-1" checked={consent} onChange={(e) => {
+              setConsent(e.target.checked);
+              // untick: nothing more of this clip is kept; tick again: what follows is kept, under a new id
+              setKept(startSession(e.target.checked && Boolean(clip) && !clip?.sample));
+            }} />
+          <span>
+            {CONSENT_LINE} <span className="text-neutral-500">Needed to upload or film a clip of your own; the samples need nothing.</span>
+          </span>
+        </label>
+        <Privacy kept={kept} />
         {clip && (
           <div className="mt-3 flex flex-col gap-3">
             <video src={clip.url} controls muted playsInline onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)} className="max-h-72 w-full rounded-lg bg-black object-contain" />
@@ -391,7 +419,7 @@ export function Flow() {
       {ready && program.status === "done" && (
         <Section n={5} title="Rehearse" model="MuJoCo WebAssembly · SO-101">
           {asks.length > 0 && <p className="text-sm text-amber-700">Some questions are still open: the rehearsal stops at the first one.</p>}
-          <Rehearsal spec={spec} program={program.value} onFail={setFailure} hint={hint} />
+          <Rehearsal spec={spec} program={program.value} onFail={setFailure} hint={hint} onRehearse={() => (rehearsalAt.current = keeping())} onRun={kept ? (world, rollout) => keep("rehearsal", { world, program: program.value, rollout }, rehearsalAt.current) : undefined} />
         </Section>
       )}
 
@@ -401,6 +429,25 @@ export function Flow() {
         </Section>
       )}
     </div>
+  );
+}
+
+/** What a session given for training keeps, and why (README.md and docs/LIMITATIONS.md say the same). */
+function Privacy({ kept }: { kept?: string }) {
+  return (
+    <p className="mt-2 text-xs text-neutral-500">
+      What is kept: for a clip of your own, and only with the box ticked, the small copy the model watches (480 pixels wide, 4 frames a second, no sound), the line you typed, the label, the task spec, your answers, every program, each rehearsal&apos;s result and each patch, under a random session id, with no name, account or address. It sits in a private store that only the Understudy team reads, to see where the models go wrong and to train models that do better. Without the box ticked nothing is kept, and the samples are never kept.
+      {kept && (
+        <>
+          {" "}
+          This session is kept as <span className="font-mono">{kept}</span>; to have it deleted, quote that id in an issue on{" "}
+          <a className="underline" href="https://github.com/gibouu/understudy/issues">
+            github.com/gibouu/understudy
+          </a>
+          .
+        </>
+      )}
+    </p>
   );
 }
 

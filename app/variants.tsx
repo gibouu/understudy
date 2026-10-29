@@ -13,6 +13,7 @@ import { pourOf } from "@/lib/variants/pour";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
 import { gateNote } from "@/lib/unlock/messages";
 import { liveAuth } from "./capture";
+import { keep, keepCall, keeping } from "./keep";
 import { answeredBy, useModels } from "./models";
 import { PatchLoop } from "./patch-loop";
 import { Pulse } from "./working";
@@ -28,9 +29,12 @@ type Run = { n: number; compile: StageResult<Program>; worlds: Partial<Record<Gr
 type Call = { what: string; ledger: LedgerEntry[]; replayed: boolean; failed: boolean };
 
 async function post<T>(url: string, body: unknown): Promise<StageResult<T>> {
+  const at = keeping();
   try {
     const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...liveAuth(), ...(body as object) }) });
-    return (await res.json()) as StageResult<T>;
+    const r = (await res.json()) as StageResult<T>;
+    keepCall(url, body, r, at);
+    return r;
   } catch (err) {
     return failed((err as Error).message);
   }
@@ -187,6 +191,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
   async function runWorlds(v: Variant, p: Program, show: boolean, id: number): Promise<WorldRun[] | null> {
     const client = clientRef.current;
     if (!client) throw new Error("the simulator is not loaded");
+    const at = keeping();
     setShowing(v.id);
     await client.load({ spec: v.spec });
     const out: WorldRun[] = [];
@@ -205,8 +210,10 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
       }
       if (id !== gen.current) return null;
       put(world, result);
-      if (!("error" in result)) out.push({ world, rollout: result });
-      else if (!show) throw new Error(result.error);
+      if (!("error" in result)) {
+        out.push({ world, rollout: result });
+        if (show) keep("rehearsal", { variant: v.title, world, program: p, rollout: result }, at);
+      } else if (!show) throw new Error(result.error);
     }
     return out;
   }

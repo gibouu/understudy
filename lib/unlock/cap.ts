@@ -13,7 +13,8 @@ export type LiveRoute = keyof typeof LIVE_PER_MINUTE;
 const WINDOW_MS = 60_000;
 const recent = new Map<LiveRoute, number[]>();
 
-const deployed = () => process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview";
+/** A Vercel deployment, production or preview; local runs and tests are not one. */
+export const deployed = () => process.env.VERCEL_ENV === "production" || process.env.VERCEL_ENV === "preview";
 
 /** Takes one of the route's live calls for this minute; false when they are all taken. */
 export function takeLiveCall(route: LiveRoute, now = Date.now()): boolean {

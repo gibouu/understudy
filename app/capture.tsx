@@ -30,7 +30,7 @@ function recorderFor(media: MediaStream): MediaRecorder {
   return new MediaRecorder(media, options);
 }
 
-export function FilmYourself({ onClip }: { onClip: (take: Blob) => void }) {
+export function FilmYourself({ onClip, disabled = false }: { onClip: (take: Blob) => void; disabled?: boolean }) {
   const [state, dispatch] = useReducer(step, { kind: "idle" } as CaptureState);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const run = useRef<AbortController | null>(null);
@@ -102,7 +102,7 @@ export function FilmYourself({ onClip }: { onClip: (take: Blob) => void }) {
 
   return (
     <>
-      <button className="rounded border px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-40" disabled={state.kind !== "idle"} onClick={shoot}>
+      <button className="rounded border px-3 py-1.5 text-sm hover:bg-neutral-50 disabled:opacity-40" disabled={disabled || state.kind !== "idle"} onClick={shoot}>
         Film yourself
       </button>
       {state.kind !== "idle" && (
@@ -135,7 +135,7 @@ export function FilmYourself({ onClip }: { onClip: (take: Blob) => void }) {
             </button>
           </div>
           <p className="text-xs text-neutral-500">
-            Your clip stays in this browser. Only a small copy, 480 pixels wide at 4 frames a second, goes to the model on Nebius Token Factory; this app keeps none of it.
+            Your clip stays in this browser. Only a small copy, 480 pixels wide at 4 frames a second, goes to the model on Nebius Token Factory, and is kept with the session as the consent line says.
           </p>
         </div>
       )}

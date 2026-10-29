@@ -3,12 +3,16 @@
  * asked for), one retry without JSON mode when Token Factory answers 400
  * (thinking stays off), one more ask when the output does not parse, and then the
  * caller's previous value (when it has one) instead of a failure, so a bad
- * recompile never loses a working program. Spec v2 risk 3.
+ * recompile never loses a working program. Spec v2 risk 3. Every call first
+ * reserves what it can cost from the live budget (lib/unlock/budget.ts) and
+ * is not made when the budget has no room for it.
  */
 import OpenAI from "openai";
 import type { z } from "zod";
 import { ModelOutputError, parseModelJson, type Normalizer } from "@/lib/spec/parse";
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
+import { promptTokensAtMost, reserve, settle } from "@/lib/unlock/budget";
+import { LIVE_NO_BUDGET, LIVE_SPENT } from "@/lib/unlock/messages";
 import { errorText, MODELS, notServed, thinkingOff, usageOf, type ModelRole } from "./tokenfactory";
 
 /** Token Factory takes a video as a `video_url` part, which the OpenAI types do not list. */
@@ -35,6 +39,13 @@ export type CallOptions<T> = {
   ledger?: LedgerEntry[];
 };
 
+/** The live budget had no room for a call, so it was not made. */
+class NoBudget extends Error {
+  constructor(readonly why: "spent" | "unknown") {
+    super(why === "spent" ? LIVE_SPENT : LIVE_NO_BUDGET);
+  }
+}
+
 export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<StageResult<T>> {
   const model = MODELS[o.role];
   const ledger: LedgerEntry[] = o.ledger ?? [];
@@ -47,18 +58,37 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
 
   async function ask(): Promise<string> {
     const started = Date.now();
+    const entryOf = (res: OpenAI.ChatCompletion): LedgerEntry => {
+      const u = usageOf(res);
+      return { model, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, cached_tokens: u.cached_tokens, seconds: (Date.now() - started) / 1000 };
+    };
     // thinking stays off on the retry too: a thinking answer can spend the whole budget and return nothing
     const params = { model, messages, max_tokens: o.maxTokens, ...(o.thinking ? {} : thinkingOff()) };
+    // the client's retries are made here, one request at a time, so each has a reservation of its own
+    const attempts = (client.maxRetries ?? 0) + 1;
     let res;
-    try {
-      res = await client.chat.completions.create(optional ? { ...params, response_format: { type: "json_object" } } : params);
-    } catch (err) {
-      if (!(optional && err instanceof OpenAI.APIError && err.status === 400)) throw err;
-      optional = false;
-      return ask();
+    for (let sent = 1; ; sent++) {
+      // the most this request can cost is counted before it is made, the unusable answers too (lib/unlock/budget.ts)
+      const hold = await reserve(model, promptTokensAtMost(messages), o.maxTokens);
+      if (!hold.ok) throw new NoBudget(hold.why);
+      try {
+        res = await client.chat.completions.create(optional ? { ...params, response_format: { type: "json_object" } } : params, { maxRetries: 0 });
+        // an answer that does not say what it used keeps its whole reservation
+        if (res.usage) await settle(hold, entryOf(res));
+        break;
+      } catch (err) {
+        const status = err instanceof OpenAI.APIError ? err.status : undefined;
+        // only a request Token Factory refused outright (4xx) is surely unbilled; a timeout or a 5xx keeps its reservation
+        if (status !== undefined && status >= 400 && status < 500) await settle(hold, null);
+        if (optional && status === 400) {
+          optional = false;
+          return ask();
+        }
+        if (!(status === undefined || status === 408 || status === 429 || status >= 500) || sent >= attempts) throw err;
+        await new Promise((r) => setTimeout(r, 500 * sent));
+      }
     }
-    const u = usageOf(res);
-    ledger.push({ model, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, cached_tokens: u.cached_tokens, seconds: (Date.now() - started) / 1000 });
+    ledger.push(entryOf(res));
     return res.choices[0]?.message?.content ?? "";
   }
 
@@ -83,7 +113,12 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
       }
     }
   } catch (err) {
-    // network, auth, rate limit: the SDK already retried what it could
+    if (err instanceof NoBudget) {
+      if (checked) return done(checked.value, [...checked.warnings, `${o.role}: the fix was not asked for (${err.message})`], ledger);
+      if (o.previous !== undefined) return done(o.previous, [`${o.role}: ${err.message}; previous value kept`], ledger);
+      return failed(`${o.role}: ${err.message}`, false, ledger);
+    }
+    // network, auth, rate limit: ask() already retried what it could
     const status = err instanceof OpenAI.APIError ? err.status : undefined;
     // a retired or unknown model: from the next request on, every route replays
     if (status === 404) notServed(model);

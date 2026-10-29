@@ -10,10 +10,15 @@
  * has an 8 s deadline and no retries so the route always answers inside its 30 s.
  * The probe's answer serves every request on the instance for a minute (#129):
  * the 5-token call is paid and the page calls this route with no code.
+ * `budget` is what the live budget for judging has left (lib/unlock/budget.ts),
+ * read with the probe; once it is spent, or cannot be read, the answer is
+ * replay with the reason, and no probe is paid for.
  */
 import { connection, NextResponse } from "next/server";
 import OpenAI from "openai";
-import { errorText, liveModels, MODELS, notServed, tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
+import { errorText, liveModels, MODELS, notServed, tokenFactory, usageOf, wantsReplay } from "@/lib/providers/tokenfactory";
+import { readBudget, reserve, settle } from "@/lib/unlock/budget";
+import { LIVE_NO_BUDGET, LIVE_SPENT } from "@/lib/unlock/messages";
 
 export const maxDuration = 30;
 
@@ -22,7 +27,11 @@ type Health = {
   reason?: string;
   models?: Record<string, boolean>;
   latency_ms?: number;
+  budget?: { cap_usd: number; spent_usd: number; left_usd: number };
 };
+
+/** a gate line without its "replay: " */
+const reason = (line: string) => line.replace(/^replay: /, "");
 
 /** How long one probe's answer serves every request on this instance. */
 const PROBE_FOR_MS = 60_000;
@@ -52,20 +61,29 @@ export async function GET(req: Request): Promise<NextResponse<Health>> {
   return NextResponse.json(await probe.result);
 }
 
-/** The model list, then a 5-token call to the compiling model. */
+/** The live budget, the model list, then a 5-token call to the compiling model. */
 async function check(): Promise<Health> {
   const client = tokenFactory({ timeout: 8_000, maxRetries: 0 });
   if (!client) return { mode: "replay", reason: "no NEBIUS_API_KEY" };
+  const b = await readBudget();
+  if (b.state === "unknown") return { mode: "replay", reason: reason(LIVE_NO_BUDGET) };
+  const budget = b.state === "open" ? undefined : { cap_usd: b.cap_usd, spent_usd: b.spent_usd, left_usd: b.left_usd };
+  if (b.state === "spent") return { mode: "replay", reason: reason(LIVE_SPENT), budget };
   const started = Date.now();
   const { ok, why, models } = await liveModels(client);
-  if (!ok) return { mode: "replay", reason: why, models };
+  if (!ok) return { mode: "replay", reason: why, models, budget };
+  // the probe is a billed call too: reserved like any other (lib/unlock/budget.ts)
+  const hold = await reserve(MODELS.nano, 100, 5, 1);
+  if (!hold.ok) return { mode: "replay", reason: reason(hold.why === "spent" ? LIVE_SPENT : LIVE_NO_BUDGET), budget };
   try {
-    await client.chat.completions.create({
+    const res = await client.chat.completions.create({
       model: MODELS.nano,
       messages: [{ role: "user", content: "Reply with the single word ok." }],
       max_tokens: 5,
     });
-    return { mode: "live", models, latency_ms: Date.now() - started };
+    const u = usageOf(res);
+    if (res.usage) await settle(hold, { model: MODELS.nano, prompt_tokens: u.prompt_tokens, completion_tokens: u.completion_tokens, cached_tokens: u.cached_tokens, seconds: (Date.now() - started) / 1000 });
+    return { mode: "live", models, latency_ms: Date.now() - started, budget };
   } catch (err) {
     // listed but refused: the routes replay from their next request on
     if (err instanceof OpenAI.APIError && err.status === 404) notServed(MODELS.nano);

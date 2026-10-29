@@ -29,7 +29,7 @@ import { Attempt, escalation, MAX_PATCHES, MAX_TOKENS_OFF, MAX_TOKENS_ON, PATCH_
 import { GRAVITIES, Predicate, Program, TaskSpec, Vec3mm } from "@/lib/spec/schema";
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { lintProgram } from "@/lib/spec/validate";
-import { explain, liveGate } from "@/lib/unlock/check";
+import { budgetRefused, explain, liveGate } from "@/lib/unlock/check";
 
 // a thinking call takes up to ~40 s, and a no-op re-asks once
 export const maxDuration = 180;
@@ -116,6 +116,8 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<NoteP
   }
   const costs = priced(ledger);
   const spent = costs.reduce((n, e) => n + (e.usd ?? 0), 0);
+  const refused = budgetRefused(r);
+  if (refused) return NextResponse.json(explain(replay(program, history.length), refused));
   if (r.status !== "done" || !applied) {
     const message = r.status === "failed" ? r.message : "the patch could not be applied";
     return NextResponse.json(failed(`${message} (${costs.length} call${costs.length === 1 ? "" : "s"}, $${spent.toFixed(4)})`, r.status === "failed" ? r.retryable : false, costs));
