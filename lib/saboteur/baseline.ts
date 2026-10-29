@@ -25,6 +25,8 @@ export function baselineProgram(label: TaskSpec, scored: TaskSpec): Baseline {
   let held: string | null = null;
   const steps: Program["steps"] = [];
   let moves = 0;
+  /** a container a later step pours is gripped from the front by that step, never taken from the top before it */
+  const poured = new Set(label.steps.filter((s) => s.verb === "pour").map((s) => s.object));
 
   const take = (id: string): ProgramOp[] => {
     if (held === id) return [];
@@ -73,7 +75,8 @@ export function baselineProgram(label: TaskSpec, scored: TaskSpec): Baseline {
     }
     if (s.verb === "place" || s.verb === "insert") return { why: `the label gives step ${s.id} nowhere to go: where it went was an answer` };
     // reach, grasp, move, release, retract with nowhere to go: the hand takes the object, or lets it go
-    steps.push({ step_id: s.id, ops: s.verb === "release" || s.verb === "retract" ? (held ? ((held = null), [{ op: "release" }]) : []) : [...take(id), ...via] });
+    const lets = s.verb === "release" || s.verb === "retract";
+    steps.push({ step_id: s.id, ops: lets ? (held ? ((held = null), [{ op: "release" }]) : []) : poured.has(id) ? via : [...take(id), ...via] });
   }
   if (moves === 0) return { why: "the label has no step that puts an object somewhere" };
   const frames = new Set(["world", ...scored.objects.map((o) => o.id)]);
