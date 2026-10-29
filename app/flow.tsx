@@ -430,7 +430,7 @@ export function Flow() {
 
       {ready && program.status === "done" && <Reshoot spec={spec} program={program.value} />}
 
-      {ready && program.status === "done" && !spec.steps.some((s) => s.verb === "gesture") && (
+      {ready && program.status === "done" && (
         <Section n={7} title="Try a similar task">
           <Variants spec={spec} program={program.value} />
         </Section>

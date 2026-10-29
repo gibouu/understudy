@@ -36,8 +36,12 @@ import { MAX_VARIANTS, type Idea, type NotYet, type VariantReply } from "./parse
 import { halfAlong, pourLine, pourOf, type Pour } from "./pour";
 import { BENCH } from "./prompt";
 
-/** What the rehearsal runs after the grasp: one insert or place (lib/sim/fit.ts). Any other verb is not supported yet, and a pour is only ever a pour. */
-export const REHEARSED_VERBS: readonly string[] = ["insert", "place"];
+/**
+ * What the rehearsal runs: after the grasp, one insert or place (lib/sim/fit.ts); or gestures alone, whose
+ * variants are built from the path (lib/variants/gesture.ts). Any other verb is not supported yet, and a task
+ * keeps its kind: a pour is only ever a pour, a gesture only ever a gesture.
+ */
+export const REHEARSED_VERBS: readonly string[] = ["insert", "place", "gesture"];
 export const SYMMETRY_OF = { box: "none", cylinder: "axial", sphere: "full" } as const;
 /** The SO-101's reach from its base, mm, and a spot too close to it to reach down to. */
 export const REACH_MM = 300;
@@ -51,7 +55,8 @@ const DEG = Math.PI / 180;
  * Pouring (#93) and waving (#94) are not part of a task that puts an object
  * somewhere: a variant of one whose name or summary claims either is not
  * offered, even when its changes alone would run. A pour's variants may say
- * they pour. Other actions the rehearsal does not run are left to the
+ * they pour; a gesture's are built from its path (lib/variants/gesture.ts),
+ * never here. Other actions the rehearsal does not run are left to the
  * prompt, since their words are also object names (a stirring rod, a wet wipe).
  */
 const NOT_YET_ACTIONS = /\b(pour(s|ing|ed)?|wav(e|es|ing|ed))\b/i;
@@ -122,7 +127,7 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 export function physicalKey(spec: TaskSpec): string {
   return JSON.stringify({
     objects: spec.objects.map((o) => [o.id, o.shape, o.size_mm, o.role, o.pose, o.pocket_clearance_mm, o.liquid_ml]),
-    steps: spec.steps.map((s) => [s.id, s.verb, s.object, s.target, s.pour, s.success, s.tolerances, s.preconditions, s.via_points]),
+    steps: spec.steps.map((s) => [s.id, s.verb, s.object, s.target, s.pour, s.success, s.tolerances, s.preconditions, s.via_points, s.gesture]),
   });
 }
 
@@ -554,9 +559,9 @@ export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: 
     changes.push({ path, value: c.value, source });
   }
   if (changes.length === 0) return { why: "it changes nothing in the task" };
-  // a pour's variants may say they pour; nothing says it waves yet
+  // a pour's variants may say they pour; a task that puts an object somewhere never waves
   const claim = [...`${idea.title} ${idea.summary}`.matchAll(new RegExp(NOT_YET_ACTIONS, "gi"))].find((m) => !(pour && POUR_WORD.test(m[0])));
-  if (claim) return { why: !pour && POUR_WORD.test(claim[0]) ? neverPours : `not yet: "${claim[0].toLowerCase()}" is not something the rehearsal runs; it runs ${runs(base)}` };
+  if (claim) return { why: !pour && POUR_WORD.test(claim[0]) ? neverPours : `this task has no gesture: "${claim[0].toLowerCase()}" is not part of it; its variants keep ${runs(base)}` };
 
   // a new shape brings its symmetry: a cylinder turns freely about its axis, a sphere about any
   for (const c of changes.filter((c) => parsePath(c.path)[2] === "shape" && (SHAPES as readonly unknown[]).includes(c.value))) {
@@ -579,6 +584,7 @@ export function buildVariant(base: TaskSpec, idea: Idea, n: number): { variant: 
     const before = base.steps.find((b) => b.id === s.id);
     if (before && s.verb !== before.verb) {
       if (s.verb === "pour") return { why: neverPours };
+      if (s.verb === "gesture" || before.verb === "gesture") return { why: `a task keeps its kind: its variants keep ${runs(base)} and never turn into a gesture` };
       if (!REHEARSED_VERBS.includes(s.verb)) return { why: `not yet: the rehearsal runs ${runs(base)}, not "${s.verb}"` };
     }
     if (s.target && !(FIXTURES as readonly string[]).includes(s.target.fixture)) return { why: `"${s.target.fixture}" is not a fixture the bench has` };
