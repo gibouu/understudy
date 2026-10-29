@@ -178,48 +178,30 @@
    "value": {
     "variants": [
      {
-      "title": "Bowl deeper",
-      "summary": "The bowl is taller so the arm pours into a deeper target.",
+      "title": "Bowl smaller",
+      "summary": "The cup pours into a smaller 52 mm bowl.",
       "changes": [
        {
         "path": "objects[bowl].size_mm",
         "value": [
-         68,
-         68,
-         60
+         52,
+         52,
+         40
         ]
        }
       ]
      },
      {
-      "title": "Cup lifted higher",
-      "summary": "The cup starts higher above the block so the arm picks it up from a greater height before pouring.",
-      "changes": [
-       {
-        "path": "objects[cup].pose",
-        "value": {
-         "xyz_mm": [
-          300,
-          0,
-          90
-         ],
-         "yaw_deg": 0,
-         "frame": "world"
-        }
-       }
-      ]
-     },
-     {
-      "title": "Bowl shifted right",
-      "summary": "The bowl sits further right so the arm carries the cup farther to pour.",
+      "title": "Bowl higher",
+      "summary": "The bowl sits on a 10 mm high shelf.",
       "changes": [
        {
         "path": "objects[bowl].pose",
         "value": {
          "xyz_mm": [
           300,
-          120,
-          20
+          80,
+          30
          ],
          "yaw_deg": 0,
          "frame": "world"
@@ -234,43 +216,62 @@
        {
         "path": "steps[s1].object",
         "value": "bowl"
+       },
+       {
+        "path": "steps[s1].success",
+        "value": [
+         {
+          "kind": "liquid_inside",
+          "object": "bowl",
+          "target": "cup",
+          "value": 90
+         }
+        ]
        }
       ]
      },
      {
-      "title": "Faster pour",
-      "summary": "The cup tilts all the way over in one second for a quicker transfer.",
+      "title": "Faster tilt",
+      "summary": "The cup turns over in 0.8 seconds.",
       "changes": [
        {
         "path": "steps[s1].pour",
         "value": {
          "into": "bowl",
-         "tilt_deg": 180,
-         "tilt_s": 1
+         "tilt_deg": 120,
+         "tilt_s": 0.8
         }
+       }
+      ]
+     },
+     {
+      "title": "Stricter transfer",
+      "summary": "95% of the water must reach the bowl.",
+      "changes": [
+       {
+        "path": "steps[s1].success",
+        "value": [
+         {
+          "kind": "liquid_inside",
+          "object": "cup",
+          "target": "bowl",
+          "value": 95
+         }
+        ]
        }
       ]
      }
     ],
     "not_yet": []
    },
-   "warnings": [
-    "super: variant \"Cup lifted higher\": cup would start in mid-air, 17 mm above the surface under it"
-   ],
+   "warnings": [],
    "ledger": [
     {
-     "model": "nvidia/nemotron-3-super-120b-a12b",
-     "prompt_tokens": 2622,
-     "completion_tokens": 356,
+     "model": "nvidia/Nemotron-3.5-Super-VL",
+     "prompt_tokens": 2695,
+     "completion_tokens": 317,
      "cached_tokens": 0,
-     "seconds": 2.509
-    },
-    {
-     "model": "nvidia/nemotron-3-super-120b-a12b",
-     "prompt_tokens": 3028,
-     "completion_tokens": 358,
-     "cached_tokens": 2592,
-     "seconds": 1.945
+     "seconds": 1.829
     }
    ]
   }
@@ -284,13 +285,13 @@
     "variants": [
      {
       "title": "Bigger bowl",
-      "summary": "The bowl is larger while keeping the same gap to the cup’s rim.",
+      "summary": "The arm pours the cup's water into a wider 100 mm bowl instead of the 68 mm one.",
       "changes": [
        {
         "path": "objects[bowl].size_mm",
         "value": [
-         80,
-         80,
+         100,
+         100,
          40
         ]
        }
@@ -302,18 +303,11 @@
    "warnings": [],
    "ledger": [
     {
-     "model": "nvidia/nemotron-3-super-120b-a12b",
-     "prompt_tokens": 2639,
-     "completion_tokens": 112,
+     "model": "nvidia/Nemotron-3.5-Super-VL",
+     "prompt_tokens": 2712,
+     "completion_tokens": 76,
      "cached_tokens": 0,
-     "seconds": 1.068
-    },
-    {
-     "model": "nvidia/nemotron-3-super-120b-a12b",
-     "prompt_tokens": 2813,
-     "completion_tokens": 66,
-     "cached_tokens": 0,
-     "seconds": 1.033
+     "seconds": 1.229
     }
    ]
   }
@@ -341,11 +335,11 @@
    "warnings": [],
    "ledger": [
     {
-     "model": "nvidia/nemotron-3-super-120b-a12b",
-     "prompt_tokens": 2636,
-     "completion_tokens": 65,
+     "model": "nvidia/Nemotron-3.5-Super-VL",
+     "prompt_tokens": 2709,
+     "completion_tokens": 57,
      "cached_tokens": 0,
-     "seconds": 0.82
+     "seconds": 0.724
     }
    ]
   }

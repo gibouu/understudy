@@ -1,8 +1,8 @@
 /**
  * Records Super's suggestions for one task, and its answer to each of that
  * task's requests, into tests/fixtures/variants.json, and adds Nano's compile
- * of every variant to tests/fixtures/compile.json, so the variants replay end
- * to end. The task is the ISS sample, or with VARIANTS_BASE=pour the stage's
+ * of every variant (and of the task itself, when it has no recording yet) to
+ * tests/fixtures/compile.json, so the variants replay end to end. The task is the ISS sample, or with VARIANTS_BASE=pour the stage's
  * pour; a re-record replaces that task's recordings and keeps every other.
  * Prints each variant's rehearsal on Earth and in orbit. Spends Token Factory
  * credits (about a cent), so it runs only with VARIANTS_RECORD=1. With
@@ -49,9 +49,18 @@ describe.skipIf(process.env.VARIANTS_RECORD !== "1")("record the variants (live,
     type Reply = { request: string | null; spec_title: string; result: StageResult<unknown> };
     const recordedReplies = JSON.parse(readFileSync(fixture("variants.json"), "utf8")) as Reply[];
     const recordedCompiles = JSON.parse(readFileSync(fixture("compile.json"), "utf8")) as { spec: unknown; result: StageResult<Program> }[];
+    let usd = 0;
+    // the task itself, when compile.json has no compile of its exact spec (the pour, #125): compiled once, then kept;
+    // a failed compile is never recorded, so the next re-record tries again
+    const isBase = (x: { spec: unknown }) => JSON.stringify(TaskSpec.parse(x.spec)) === JSON.stringify(spec);
+    const baseCompile = recordedCompiles.some((x) => isBase(x) && x.result.status === "done") ? undefined : await postCompile(spec, undefined, false);
+    if (baseCompile) {
+      if (baseCompile.status !== "done") throw new Error(`"${spec.title}" did not compile: ${JSON.stringify(baseCompile)}`);
+      usd += costOf(baseCompile.ledger).usd;
+      console.log(`  "${spec.title}" compiled live | ${(["earth", "orbit"] as const).map((w) => { const x = rollout(engine, spec, baseCompile.value, w); return `${w} ${x.pass ? "pass" : `fail (${x.why})`}`; }).join(", ")}`);
+    }
     const replies = [];
     const compiles: { spec: TaskSpec; result: unknown }[] = [];
-    let usd = 0;
     let first = 1;
     for (const request of base.requests) {
       let r: StageResult<VariantReply>;
@@ -95,8 +104,9 @@ describe.skipIf(process.env.VARIANTS_RECORD !== "1")("record the variants (live,
     // a re-record replaces every variant of this task where they were and keeps every other recording
     const mine = (r: { spec: unknown }) => TaskSpec.parse(r.spec).title.startsWith(`${spec.title}: `);
     const from = recorded.findIndex(mine);
-    const kept = recorded.filter((r) => !mine(r));
-    const place = from < 0 ? kept.length : from;
+    const kept: { spec: unknown; result?: unknown }[] = recorded.filter((r) => !mine(r) && !(baseCompile && isBase(r)));
+    if (baseCompile) kept.push({ spec, result: baseCompile });
+    const place = from < 0 ? kept.length : recorded.slice(0, from).filter((r) => kept.includes(r)).length;
     writeFileSync(fixture("compile.json"), `${JSON.stringify([...kept.slice(0, place), ...compiles, ...kept.slice(place)], null, 1)}\n`);
     expect(replies[0].result.status).toBe("done");
   }, 600_000);
