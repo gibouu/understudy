@@ -96,7 +96,11 @@ describe("the reshoot list's fields", () => {
     const replaced = { ...body.spec, sources: { ...body.spec.sources, "objects.obj2": "user#edit" } };
     const rf = fieldsOf(replaced);
     expect(fieldFor(replaced, rf, "objects[obj2].pocket_clearance_mm")).toMatchObject({ origin: "other", source: "user#edit" });
-    expect(fieldFor(replaced, rf, "objects[obj1].name")).toMatchObject({ origin: "video" });
+    // the key may point at another record after a rename or a reorder: every record of the list is held to it
+    expect(fieldFor(replaced, rf, "objects[obj1].name")).toMatchObject({ origin: "other" });
+    expect(fieldFor(replaced, rf, "steps[s2].target")).toMatchObject({ origin: "video" });
+    const numeric = { ...body.spec, objects: [{ ...body.spec.objects[0], id: "1" }, { ...body.spec.objects[1], id: "renamed" }], sources: { ...body.spec.sources, "objects.1": "user#edit" } };
+    expect(fieldFor(numeric, fieldsOf(numeric), "objects[renamed].pocket_clearance_mm")).toMatchObject({ origin: "other" });
     // replaced twice, under its id from an answer and under its index by hand: the hand edit counts
     const twice = { ...body.spec, sources: { ...body.spec.sources, "objects.obj2": "interview#1", "objects.1": "user#edit" } };
     expect(fieldFor(twice, fieldsOf(twice), "objects[obj2].pocket_clearance_mm")).toMatchObject({ origin: "other", source: "user#edit" });

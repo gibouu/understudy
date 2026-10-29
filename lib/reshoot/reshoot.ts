@@ -83,14 +83,13 @@ export function fieldsOf(spec: TaskSpec): Field[] {
   const add = (list: "objects" | "steps", i: number, rec: { id: string; source: string; sources: Record<string, string> } & Record<string, unknown>, names: readonly string[]) => {
     const at = `${list}[${rec.id}]`;
     const first = out.length;
-    // the whole record or the whole list replaced (an answer, a hand edit) is recorded in the spec's own sources
-    // under its id, its index or the list's name, perhaps several times over: any one from elsewhere wins
-    // a key under the list that names no other record now (this one replaced, perhaps renamed since) counts for this one
-    const records: { id: string }[] = spec[list];
-    const another = (k: string) => records.some((r, j) => j !== i && (k === `${list}.${r.id}` || k === `${list}.${j}`));
-    const orphans = Object.keys(spec.sources).filter((k) => k.startsWith(`${list}.`) && !another(k));
-    const overrides = [top(`${list}.${rec.id}`), top(`${list}.${i}`), top(list), ...orphans.map(top)].filter((x): x is string => x !== undefined);
-    const replaced = overrides.find((x) => originOf(x) === "other") ?? overrides[0];
+    // A whole record or the whole list replaced (an answer, a hand edit) is recorded in the spec's own sources, under
+    // the id or index it had then, which a later rename or reorder can make point at another record. So a replacement
+    // from elsewhere anywhere in the list counts for every record of it: a reshoot item is then refused for a field it
+    // may not touch, never accepted for one it did.
+    const keys = Object.keys(spec.sources).filter((k) => k === list || k.startsWith(`${list}.`));
+    const elsewhere = keys.map(top).find((x) => x !== undefined && originOf(x) === "other");
+    const replaced = elsewhere ?? top(`${list}.${rec.id}`) ?? top(`${list}.${i}`) ?? top(list);
     const sourceOf = (leaf: string) => (Object.hasOwn(rec.sources, leaf) ? rec.sources[leaf] : undefined);
     for (const name of names) {
       const value = rec[name];
