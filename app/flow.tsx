@@ -30,6 +30,7 @@ const Rehearsal = dynamic(() => import("./rehearsal").then((m) => m.Rehearsal), 
   loading: () => <div className="aspect-[4/3] w-full animate-pulse rounded-xl border bg-neutral-100" />,
 });
 const Variants = dynamic(() => import("./variants").then((m) => m.Variants), { ssr: false });
+const Saboteur = dynamic(() => import("./saboteur").then((m) => m.Saboteur), { ssr: false });
 
 /** Nano asks about one gap per compile; past this many rounds the page stops asking. */
 const MAX_ROUNDS = 6;
@@ -424,10 +425,16 @@ export function Flow() {
         </Section>
       )}
 
+      {ready && program.status === "done" && !spec.steps.some((s) => s.verb === "gesture") && (
+        <Section n={6} title="Perturb the world" model="MuJoCo WebAssembly · headless batch">
+          <Saboteur spec={spec} program={program.value} />
+        </Section>
+      )}
+
       {ready && program.status === "done" && <Reshoot spec={spec} program={program.value} />}
 
       {ready && program.status === "done" && !spec.steps.some((s) => s.verb === "gesture") && (
-        <Section n={6} title="Try a similar task">
+        <Section n={7} title="Try a similar task">
           <Variants spec={spec} program={program.value} />
         </Section>
       )}

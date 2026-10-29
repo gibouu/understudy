@@ -1,0 +1,725 @@
+[
+  {
+    "spec_title": "Astronaut places seed film into Veggie plant pillows aboard ISS",
+    "recorded_at": "2026-10-29T08:16:42.126Z",
+    "result": {
+      "status": "done",
+      "value": {
+        "scenarios": [
+          {
+            "id": "obj2-x+2",
+            "name": "tray 2 mm off on x",
+            "axis": "x_mm",
+            "offset": 2,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "inside the 4 mm band on x"
+          },
+          {
+            "id": "obj2-x-2",
+            "name": "tray 2 mm off on x",
+            "axis": "x_mm",
+            "offset": -2,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "inside the 4 mm band on x"
+          },
+          {
+            "id": "obj2-x+4",
+            "name": "tray 4 mm off on x",
+            "axis": "x_mm",
+            "offset": 4,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the 4 mm band edge on x"
+          },
+          {
+            "id": "obj2-x-4",
+            "name": "tray 4 mm off on x",
+            "axis": "x_mm",
+            "offset": -4,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the 4 mm band edge on x"
+          },
+          {
+            "id": "obj2-x+6",
+            "name": "tray 6 mm off on x",
+            "axis": "x_mm",
+            "offset": 6,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "beyond the 4 mm band on x"
+          },
+          {
+            "id": "obj2-x-6",
+            "name": "tray 6 mm off on x",
+            "axis": "x_mm",
+            "offset": -6,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "beyond the 4 mm band on x"
+          },
+          {
+            "id": "obj2-y+2",
+            "name": "tray 2 mm off on y",
+            "axis": "y_mm",
+            "offset": 2,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "inside the 4 mm band on y"
+          },
+          {
+            "id": "obj2-y-2",
+            "name": "tray 2 mm off on y",
+            "axis": "y_mm",
+            "offset": -2,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "inside the 4 mm band on y"
+          },
+          {
+            "id": "obj2-y+4",
+            "name": "tray 4 mm off on y",
+            "axis": "y_mm",
+            "offset": 4,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the 4 mm band edge on y"
+          },
+          {
+            "id": "obj2-y-4",
+            "name": "tray 4 mm off on y",
+            "axis": "y_mm",
+            "offset": -4,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the 4 mm band edge on y"
+          },
+          {
+            "id": "obj2-clear-2",
+            "name": "pocket 2 mm narrower",
+            "axis": "clearance_mm",
+            "offset": -2,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "unknown",
+            "why": "half the play remains in the pocket"
+          },
+          {
+            "id": "obj2-yaw+20",
+            "name": "tray turned 20 deg",
+            "axis": "yaw_deg",
+            "offset": 20,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "non-square pocket misaligns with the packet"
+          }
+        ]
+      },
+      "warnings": [],
+      "ledger": [
+        {
+          "model": "nvidia/Nemotron-3.5-Super-VL",
+          "prompt_tokens": 1177,
+          "completion_tokens": 612,
+          "cached_tokens": 0,
+          "seconds": 2.421
+        }
+      ]
+    }
+  },
+  {
+    "spec_title": "ISS astronaut planting seed film into Veggie plant pillows",
+    "recorded_at": "2026-10-29T08:16:44.448Z",
+    "result": {
+      "status": "done",
+      "value": {
+        "scenarios": [
+          {
+            "id": "tray-x+5",
+            "name": "tray 5 mm off on x",
+            "axis": "x_mm",
+            "offset": 5,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the band: packet still clears the pocket rim"
+          },
+          {
+            "id": "tray-x+6",
+            "name": "tray 6 mm off on x",
+            "axis": "x_mm",
+            "offset": 6,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "past the band: packet hits the rim"
+          },
+          {
+            "id": "tray-x-5",
+            "name": "tray -5 mm off on x",
+            "axis": "x_mm",
+            "offset": -5,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the band: packet still clears the pocket rim"
+          },
+          {
+            "id": "tray-y+4",
+            "name": "tray 4 mm off on y",
+            "axis": "y_mm",
+            "offset": 4,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "inside the band: packet still fits"
+          },
+          {
+            "id": "tray-y-5",
+            "name": "tray -5 mm off on y",
+            "axis": "y_mm",
+            "offset": -5,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the band: packet still clears the pocket rim"
+          },
+          {
+            "id": "tray-y-6",
+            "name": "tray -6 mm off on y",
+            "axis": "y_mm",
+            "offset": -6,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "past the band: packet hits the rim"
+          },
+          {
+            "id": "tray-yaw+10",
+            "name": "tray turned 10°",
+            "axis": "yaw_deg",
+            "offset": 10,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "asymmetric tray misaligns the pocket opening"
+          },
+          {
+            "id": "tray-clear-4",
+            "name": "pocket 4 mm narrower",
+            "axis": "clearance_mm",
+            "offset": -4,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "leaves 1 mm play against a 10 mm packet"
+          },
+          {
+            "id": "tray-tilt+5",
+            "name": "tray tipped 5° about x",
+            "axis": "tilt_deg",
+            "offset": 5,
+            "object": "obj1",
+            "tilt_axis": "x",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "5° tilt raises the far rim enough to block insertion"
+          },
+          {
+            "id": "packet-x+5",
+            "name": "packet 5 mm off on x",
+            "axis": "x_mm",
+            "offset": 5,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "held-pose error at the band prevents seating"
+          },
+          {
+            "id": "packet-y+5",
+            "name": "packet 5 mm off on y",
+            "axis": "y_mm",
+            "offset": 5,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "held-pose error at the band prevents seating"
+          },
+          {
+            "id": "packet-z-5",
+            "name": "packet 5 mm off on z",
+            "axis": "z_mm",
+            "offset": -5,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "packet driven below the tray surface"
+          }
+        ]
+      },
+      "warnings": [],
+      "ledger": [
+        {
+          "model": "nvidia/Nemotron-3.5-Super-VL",
+          "prompt_tokens": 1182,
+          "completion_tokens": 626,
+          "cached_tokens": 0,
+          "seconds": 2.318
+        }
+      ]
+    }
+  },
+  {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "recorded_at": "2026-10-29T08:16:49.836Z",
+    "result": {
+      "status": "done",
+      "value": {
+        "scenarios": [
+          {
+            "id": "cart-x+1",
+            "name": "cartridge 1 mm right on x",
+            "axis": "x_mm",
+            "offset": 1,
+            "object": "cartridge",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "within 5 mm band: pipette still enters pocket"
+          },
+          {
+            "id": "cart-x+4",
+            "name": "cartridge 4 mm right on x",
+            "axis": "x_mm",
+            "offset": 4,
+            "object": "cartridge",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "inside 5 mm band: pipette still enters pocket"
+          },
+          {
+            "id": "cart-x+5",
+            "name": "cartridge 5 mm right on x",
+            "axis": "x_mm",
+            "offset": 5,
+            "object": "cartridge",
+            "gravity_g": 1,
+            "expected": "unknown",
+            "why": "at 5 mm band edge: pipette may clip pocket wall"
+          },
+          {
+            "id": "cart-x+6",
+            "name": "cartridge 6 mm right on x",
+            "axis": "x_mm",
+            "offset": 6,
+            "object": "cartridge",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "beyond 5 mm band: pipette misses pocket"
+          },
+          {
+            "id": "cart-x-5",
+            "name": "cartridge 5 mm left on x",
+            "axis": "x_mm",
+            "offset": -5,
+            "object": "cartridge",
+            "gravity_g": 1,
+            "expected": "unknown",
+            "why": "at 5 mm band edge on opposite side: pipette may clip pocket wall"
+          },
+          {
+            "id": "cart-y+3",
+            "name": "cartridge 3 mm forward on y",
+            "axis": "y_mm",
+            "offset": 3,
+            "object": "cartridge",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "within 5 mm band: pipette still enters pocket"
+          },
+          {
+            "id": "cart-y-6",
+            "name": "cartridge 6 mm back on y",
+            "axis": "y_mm",
+            "offset": -6,
+            "object": "cartridge",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "beyond 5 mm band: pipette misses pocket"
+          },
+          {
+            "id": "cart-yaw+15",
+            "name": "cartridge turned 15 deg",
+            "axis": "yaw_deg",
+            "offset": 15,
+            "object": "cartridge",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "square pocket rotated: pipette entry no longer aligned"
+          },
+          {
+            "id": "cart-tilt-x+10",
+            "name": "cartridge tipped 10 deg about x",
+            "axis": "tilt_deg",
+            "offset": 10,
+            "object": "cartridge",
+            "tilt_axis": "x",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "pocket face tipped: pipette cannot seat level"
+          },
+          {
+            "id": "cart-clear-2",
+            "name": "pocket 2 mm narrower",
+            "axis": "clearance_mm",
+            "offset": -2,
+            "object": "cartridge",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "8 mm clearance leaves only 3 mm play, under 5 mm band"
+          },
+          {
+            "id": "pipette-x-3",
+            "name": "pipette 3 mm left on x",
+            "axis": "x_mm",
+            "offset": -3,
+            "object": "pipette",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "held object pose error within 5 mm band: grasp still aligns"
+          },
+          {
+            "id": "cart-z+2",
+            "name": "cartridge 2 mm up on z",
+            "axis": "z_mm",
+            "offset": 2,
+            "object": "cartridge",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "within 5 mm band: pipette still reaches pocket"
+          }
+        ]
+      },
+      "warnings": [],
+      "ledger": [
+        {
+          "model": "nvidia/Nemotron-3.5-Super-VL",
+          "prompt_tokens": 1179,
+          "completion_tokens": 661,
+          "cached_tokens": 0,
+          "seconds": 2.863
+        },
+        {
+          "model": "nvidia/Nemotron-3.5-Super-VL",
+          "prompt_tokens": 1897,
+          "completion_tokens": 655,
+          "cached_tokens": 0,
+          "seconds": 2.519
+        }
+      ]
+    }
+  },
+  {
+    "spec_title": "ISS foil drink bag squeezed into tubing and foam block",
+    "recorded_at": "2026-10-29T08:16:52.616Z",
+    "result": {
+      "status": "done",
+      "value": {
+        "scenarios": [
+          {
+            "id": "foam-x+1",
+            "name": "foam 1 mm off on x",
+            "axis": "x_mm",
+            "offset": 1,
+            "object": "obj3",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "within the 5 mm band, tubing still enters the pocket"
+          },
+          {
+            "id": "foam-x+5",
+            "name": "foam 5 mm off on x",
+            "axis": "x_mm",
+            "offset": 5,
+            "object": "obj3",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the band edge, the tubing still clears the pocket rim"
+          },
+          {
+            "id": "foam-x+6",
+            "name": "foam 6 mm off on x",
+            "axis": "x_mm",
+            "offset": 6,
+            "object": "obj3",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "just beyond the 5 mm band, the tubing hits the pocket edge"
+          },
+          {
+            "id": "foam-x-6",
+            "name": "foam 6 mm off on -x",
+            "axis": "x_mm",
+            "offset": -6,
+            "object": "obj3",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "just beyond the 5 mm band on the opposite side, the tubing misses the pocket"
+          },
+          {
+            "id": "foam-y+1",
+            "name": "foam 1 mm off on y",
+            "axis": "y_mm",
+            "offset": 1,
+            "object": "obj3",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "within the 5 mm band, tubing still enters the pocket"
+          },
+          {
+            "id": "foam-y+5",
+            "name": "foam 5 mm off on y",
+            "axis": "y_mm",
+            "offset": 5,
+            "object": "obj3",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the band edge, the tubing still clears the pocket rim"
+          },
+          {
+            "id": "foam-y+6",
+            "name": "foam 6 mm off on y",
+            "axis": "y_mm",
+            "offset": 6,
+            "object": "obj3",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "just beyond the 5 mm band, the tubing hits the pocket edge"
+          },
+          {
+            "id": "foam-clear-2",
+            "name": "pocket 2 mm narrower",
+            "axis": "clearance_mm",
+            "offset": -2,
+            "object": "obj3",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "80% of the play is gone, too tight for the tubing"
+          },
+          {
+            "id": "foam-tilt+5",
+            "name": "foam tilted 5 deg about x",
+            "axis": "tilt_deg",
+            "offset": 5,
+            "object": "obj3",
+            "tilt_axis": "x",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "the pocket lip rises and blocks tube insertion"
+          },
+          {
+            "id": "tubing-x+3",
+            "name": "tubing 3 mm off on x",
+            "axis": "x_mm",
+            "offset": 3,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "the held tube no longer aligns with the pocket"
+          },
+          {
+            "id": "foam-yaw+10",
+            "name": "foam turned 10 deg",
+            "axis": "yaw_deg",
+            "offset": 10,
+            "object": "obj3",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "the rectangular pocket is misaligned with the tube approach"
+          },
+          {
+            "id": "foam-z+10",
+            "name": "foam 10 mm higher on z",
+            "axis": "z_mm",
+            "offset": 10,
+            "object": "obj3",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "the pocket is too high for the tube to reach"
+          }
+        ]
+      },
+      "warnings": [],
+      "ledger": [
+        {
+          "model": "nvidia/Nemotron-3.5-Super-VL",
+          "prompt_tokens": 1166,
+          "completion_tokens": 669,
+          "cached_tokens": 0,
+          "seconds": 2.777
+        }
+      ]
+    }
+  },
+  {
+    "spec_title": "Astronaut presents chess set aboard ISS",
+    "recorded_at": "2026-10-29T08:16:58.064Z",
+    "result": {
+      "status": "done",
+      "value": {
+        "scenarios": [
+          {
+            "id": "board-x+2",
+            "name": "board 2 mm right on x",
+            "axis": "x_mm",
+            "offset": 2,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "within the 5 mm band"
+          },
+          {
+            "id": "board-x+5",
+            "name": "board 5 mm right on x",
+            "axis": "x_mm",
+            "offset": 5,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the band edge"
+          },
+          {
+            "id": "board-x-6",
+            "name": "board 6 mm left on x",
+            "axis": "x_mm",
+            "offset": -6,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "just beyond the 5 mm band"
+          },
+          {
+            "id": "board-x-10",
+            "name": "board 10 mm left on x",
+            "axis": "x_mm",
+            "offset": -10,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "twice the band"
+          },
+          {
+            "id": "board-y+4",
+            "name": "board 4 mm forward on y",
+            "axis": "y_mm",
+            "offset": 4,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "within the 5 mm band"
+          },
+          {
+            "id": "board-y-5",
+            "name": "board 5 mm back on y",
+            "axis": "y_mm",
+            "offset": -5,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "at the band edge"
+          },
+          {
+            "id": "board-y+6",
+            "name": "board 6 mm forward on y",
+            "axis": "y_mm",
+            "offset": 6,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "beyond the 5 mm band"
+          },
+          {
+            "id": "board-yaw+20",
+            "name": "board turned 20 deg about z",
+            "axis": "yaw_deg",
+            "offset": 20,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "pass",
+            "why": "zone is tolerant of modest rotation"
+          },
+          {
+            "id": "obj2-x+10",
+            "name": "piece 10 mm right on x",
+            "axis": "x_mm",
+            "offset": 10,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "grasp misses a 40 mm piece shifted off nominal"
+          },
+          {
+            "id": "obj2-tilt-x+10",
+            "name": "piece tilted 10 deg about x",
+            "axis": "tilt_deg",
+            "offset": 10,
+            "object": "obj2",
+            "tilt_axis": "x",
+            "gravity_g": 1,
+            "expected": "unknown",
+            "why": "tilted cylinder may seat unevenly in microgravity"
+          },
+          {
+            "id": "board-z-5",
+            "name": "board 5 mm lower on z",
+            "axis": "z_mm",
+            "offset": -5,
+            "object": "obj1",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "board out of reach zone for placement"
+          },
+          {
+            "id": "obj2-z+15",
+            "name": "piece 15 mm higher on z",
+            "axis": "z_mm",
+            "offset": 15,
+            "object": "obj2",
+            "gravity_g": 1,
+            "expected": "fail",
+            "why": "grasp misses the piece lifted above nominal"
+          }
+        ]
+      },
+      "warnings": [],
+      "ledger": [
+        {
+          "model": "nvidia/Nemotron-3.5-Super-VL",
+          "prompt_tokens": 1161,
+          "completion_tokens": 594,
+          "cached_tokens": 0,
+          "seconds": 2.978
+        },
+        {
+          "model": "nvidia/Nemotron-3.5-Super-VL",
+          "prompt_tokens": 1812,
+          "completion_tokens": 594,
+          "cached_tokens": 0,
+          "seconds": 2.465
+        }
+      ]
+    }
+  }
+]
