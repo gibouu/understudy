@@ -1,5 +1,6 @@
 /** Main-thread handle on the MuJoCo worker. Requests carry ids; errors reach their caller. */
 import type { Mode, Program, Scenario, TaskSpec } from "@/lib/spec/schema";
+import type { BatchResult, BatchRollout } from "./batch";
 import type { Approach, IkResult } from "./ik";
 import type { Rollout } from "./interpreter";
 import type { Frame, FromWorker, SimMeta, ToWorker, Waypoint } from "./protocol";
@@ -15,6 +16,7 @@ export type SimEvents = {
 type JacobianResult = Extract<FromWorker, { type: "jacobian" }>;
 type IkReply = Extract<FromWorker, { type: "ik" }>;
 type RunReply = Extract<FromWorker, { type: "run" }>;
+type BatchReply = Extract<FromWorker, { type: "batch" }>;
 type Pending = { resolve: (v: never) => void; reject: (e: Error) => void };
 
 export class SimClient {
@@ -24,6 +26,8 @@ export class SimClient {
   private nextId = 1;
   /** rollouts whose frames go to a caller as well, by request id: a finished run's last frame can arrive after the next run starts */
   private traced = new Map<number, (frame: Frame) => void>();
+  /** batches under way, by request id: each hears its rollouts as they finish */
+  private batches = new Map<number, (r: BatchResult) => void>();
   meta: SimMeta | null = null;
 
   constructor() {
@@ -101,6 +105,33 @@ export class SimClient {
       if (mine !== undefined) this.traced.delete(mine);
     }
   }
+  /**
+   * Run `program` once per entry of `rollouts` as fast as the worker can (lib/sim/batch.ts), each from home in a world
+   * of its own: the stage's model and any paced run are left alone, and no load is needed first. `onResult` hears each
+   * rollout as it finishes; the promise resolves with all of them, in order, and the wall-clock milliseconds taken.
+   */
+  async batch(
+    spec: TaskSpec,
+    program: Program,
+    rollouts: BatchRollout[],
+    options: { onResult?: (r: BatchResult) => void; sample_s?: number; mujocoBase?: string; assetBase?: string } = {},
+  ): Promise<{ results: BatchResult[]; ms: number }> {
+    const { onResult, sample_s, mujocoBase = "/mujoco", assetBase = SO101_ASSET_BASE } = options;
+    const results: BatchResult[] = [];
+    let mine: number | undefined;
+    try {
+      const end = await this.request<BatchReply>((id) => {
+        this.batches.set((mine = id), (r) => {
+          results.push(r);
+          onResult?.(r);
+        });
+        return { type: "batch", id, mujocoBase, assetBase, spec, program, rollouts, sample_s };
+      });
+      return { results, ms: end.ms };
+    } finally {
+      if (mine !== undefined) this.batches.delete(mine);
+    }
+  }
   dispose() {
     this.rejectAll(new Error("sim client disposed"));
     this.worker.terminate();
@@ -147,9 +178,13 @@ export class SimClient {
         if (msg.frame.run !== undefined) this.traced.get(msg.frame.run)?.(msg.frame);
         this.listeners.frame?.(msg.frame);
         break;
+      case "batchResult":
+        this.batches.get(msg.id)?.(msg.result);
+        break;
       case "jacobian":
       case "ik":
       case "run":
+      case "batch":
         this.settle(msg.id, msg);
         break;
       case "error":
