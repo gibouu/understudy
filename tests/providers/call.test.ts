@@ -102,6 +102,86 @@ describe("callModel", () => {
   });
 });
 
+describe("a route's deadline stops callModel (#189)", () => {
+  /** A client whose create() waits for its signal, then fails as the SDK does: a cut request has no status. */
+  function hanging(maxRetries = 0) {
+    const sent: { signal?: AbortSignal }[] = [];
+    const client = {
+      maxRetries,
+      chat: {
+        completions: {
+          create: (_params: unknown, options: { signal?: AbortSignal }) => {
+            sent.push(options);
+            return new Promise((_resolve, reject) => options.signal?.addEventListener("abort", () => reject(new OpenAI.APIUserAbortError()), { once: true }));
+          },
+        },
+      },
+    } as unknown as OpenAI;
+    return { client, sent };
+  }
+
+  it("passes the signal to every request, and sends nothing once it is aborted", async () => {
+    const ok = fake(['{"n":1}']);
+    const signal = new AbortController().signal;
+    let options: unknown;
+    const create = ok.client.chat.completions.create.bind(ok.client.chat.completions);
+    (ok.client.chat.completions as { create: unknown }).create = (params: never, o: unknown) => ((options = o), create(params));
+    expect(await callModel(ok.client, { ...opts, signal })).toMatchObject({ status: "done" });
+    expect(options).toMatchObject({ signal, maxRetries: 0 });
+
+    const gone = fake(['{"n":1}']);
+    const r = await callModel(gone.client, { ...opts, signal: AbortSignal.abort() });
+    expect(r).toMatchObject({ status: "failed", retryable: true });
+    expect(gone.sent).toHaveLength(0);
+  });
+
+  it("cuts the request in flight and makes no retry and no other ask", async () => {
+    const { client, sent } = hanging(2);
+    const deadline = new AbortController();
+    const answer = callModel(client, { ...opts, signal: deadline.signal });
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    deadline.abort();
+    expect(await answer).toMatchObject({ status: "failed" });
+    expect(sent).toHaveLength(1);
+  });
+
+  it("does not resend without JSON mode a 400 that came after the deadline", async () => {
+    const deadline = new AbortController();
+    const { client, sent } = fake([badRequest(), '{"n":2}']);
+    const create = client.chat.completions.create.bind(client.chat.completions);
+    (client.chat.completions as { create: unknown }).create = (params: never) => {
+      deadline.abort();
+      return create(params);
+    };
+    expect(await callModel(client, { ...opts, signal: deadline.signal })).toMatchObject({ status: "failed" });
+    expect(sent).toHaveLength(1);
+  });
+
+  it("asks for no fix after the deadline, and keeps the answer it has", async () => {
+    const deadline = new AbortController();
+    const check = () => {
+      deadline.abort();
+      return ["n is wrong"];
+    };
+    const { client, sent } = fake(['{"n":-1}', '{"n":4}']);
+    expect(await callModel(client, { ...opts, check, signal: deadline.signal })).toMatchObject({ status: "done", value: { n: -1 } });
+    expect(sent).toHaveLength(1);
+  });
+
+  it("ends the pause before a retry at the deadline", async () => {
+    const deadline = new AbortController();
+    const { client, sent } = fake([new Error("socket hang up"), '{"n":1}']);
+    (client as { maxRetries: number }).maxRetries = 1;
+    const answer = callModel(client, { ...opts, signal: deadline.signal });
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    const at = Date.now();
+    deadline.abort();
+    expect(await answer).toMatchObject({ status: "failed" });
+    expect(Date.now() - at).toBeLessThan(400);
+    expect(sent).toHaveLength(1);
+  });
+});
+
 /** A key pasted into an env var with a stray newline (#103). */
 const SECRET = "sk-test-0123456789abcdef";
 
