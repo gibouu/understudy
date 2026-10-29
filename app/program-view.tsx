@@ -31,6 +31,10 @@ function line(op: ProgramOp, name: (id?: string) => string): string {
       return "open the gripper";
     case "follow":
       return "follow the hand's path traced from the clip with the point between the pads, point by point";
+    case "toss":
+      return `let go of it moving at (${op.velocity_mm_s.join(", ")}) mm/s, after a ${op.run_mm} mm run-up`;
+    case "catch":
+      return `catch the ${name(op.object)} on its way${op.frame === undefined && op.offset_mm === undefined ? ", back in the gripper" : `, near (${(op.offset_mm ?? [0, 0, 0]).join(", ")}) mm from ${(op.frame ?? "world") === "world" ? "the robot base" : `the ${name(op.frame)}`}`}`;
     case "tilt":
       return op.deg === 0 ? `turn it back upright over ${op.seconds} s` : `tilt it ${op.deg}° toward ${op.toward ? `the ${name(op.toward)}` : "away from the robot"} over ${op.seconds} s`;
     case "wait_until":

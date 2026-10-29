@@ -250,6 +250,32 @@ export const ProgramOp = z.discriminatedUnion("op", [
   }),
   /** Trace the gesture path of the step it is in with the point between the pads, then check each point was reached. */
   z.object({ op: z.literal("follow") }),
+  /**
+   * Let go of the held object while the gripper moves (#159): the arm winds back about `run_mm` and speeds up so the
+   * held object's centre passes where it is now at `velocity_mm_s` (world frame), the jaws let go there, the gripper
+   * keeps its speed until the object is off the pads, then brakes over `brake_mm`. From then on MuJoCo carries the
+   * object as a rigid body; there is no drag (lib/sim/toss.ts). Not in the compile prompt yet.
+   */
+  z.object({
+    op: z.literal("toss"),
+    velocity_mm_s: Vec3mm,
+    run_mm: z.number().positive().default(60),
+    brake_mm: z.number().positive().default(20),
+  }),
+  /**
+   * Catch `object`, tossed earlier in the program: the gripper goes where the object's predicted path (from its
+   * state as it came off the pads, and gravity) passes nearest `frame` + `offset_mm` (neither: where the gripper is
+   * now), holding it as it let go of it, and the jaws close to meet it there; it is held again if the jaws stop on it
+   * as they held it, the grasp's own check holding, within `window_s` of the predicted moment. A miss is not a
+   * failure by itself, as with grasp: the program's checks find out. Not in the compile prompt yet.
+   */
+  z.object({
+    op: z.literal("catch"),
+    object: z.string().min(1),
+    frame: z.string().min(1).optional(),
+    offset_mm: Vec3mm.optional(),
+    window_s: z.number().positive().default(0.3),
+  }),
   z.object({
     op: z.literal("wait_until"),
     predicate: Predicate,
@@ -271,13 +297,25 @@ export const Program = z.object({
   steps: z.array(z.object({ step_id: z.string().min(1), ops: z.array(ProgramOp) })),
   warnings: z.array(z.string()).default([]),
 });
+/** Ops the simulator runs from a hand-written program but the compile prompt does not offer (#159): a compiled answer naming one is unusable. */
+export const SIM_ONLY_OPS = ["toss", "catch"] as const;
+/**
+ * The ops a compiled answer may use: ProgramOp without SIM_ONLY_OPS, in the same order, so an answer that names one
+ * fails to parse exactly as an unknown op did before they existed (the route asks again).
+ */
+export const CompiledOp = z.discriminatedUnion(
+  "op",
+  ProgramOp.options.filter((o) => !(SIM_ONLY_OPS as readonly string[]).includes(o.shape.op.value)) as unknown as typeof ProgramOp.options,
+);
+/** A program as the compile route parses the model's answer: Program over CompiledOp. */
+export const CompiledProgram = Program.extend({ steps: z.array(z.object({ step_id: z.string().min(1), ops: z.array(CompiledOp) })) });
 /** `playbook`: the rules the compiler says it applied, as playbook#<id> (lib/spec/playbook.ts); only with the playbook on. */
 export type Program = z.infer<typeof Program> & { playbook?: string[] };
 /**
  * A program compiled with the playbook on: Program and the ids it says it applied. Only that compile parses
  * with it; Program strips the key, so with the playbook off the model's answer is read as before it existed.
  */
-export const PlaybookProgram = Program.extend({ playbook: z.array(z.string()).optional().catch(undefined) });
+export const PlaybookProgram = CompiledProgram.extend({ playbook: z.array(z.string()).optional().catch(undefined) });
 
 /** One field-level change, applied with `applyChanges`, which also records provenance. */
 export const SpecChange = z.object({
