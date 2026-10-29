@@ -82,9 +82,17 @@ const MINUTE_MS = Number(process.env.FINETUNE_TF_MINUTE_MS ?? 60_000);
 const WATCHDOG_LOG = process.env.FINETUNE_TF_WATCHDOG_LOG || path.join(process.env.TMPDIR ?? os.tmpdir(), "understudy-ft-endpoint-watchdog.log");
 /**
  * For the tests only: the process whose end stops a watchdog at once, deleting nothing, so a watchdog
- * pointed at a test's mock server never outlives the test run (#157). Unset, a watchdog runs to its deadline.
+ * pointed at a test's mock server never outlives the test run (#157). It counts only against a loopback
+ * base URL: a stray variable in a shell can never stop the watchdog of a real, paid endpoint.
  */
-const OWNER = Number(process.env.FINETUNE_TF_WATCHDOG_OWNER) || 0;
+const LOOPBACK = (() => {
+  try {
+    return ["127.0.0.1", "localhost", "[::1]"].includes(new URL(BASE_URL).hostname);
+  } catch {
+    return false;
+  }
+})();
+const OWNER = LOOPBACK ? Number(process.env.FINETUNE_TF_WATCHDOG_OWNER) || 0 : 0;
 const ownerGone = () => {
   if (!OWNER) return false;
   try {
@@ -525,14 +533,15 @@ const GIVE_UP_MINUTES = 360;
 async function deleteEndpoint(id) {
   const until = Date.now() + GIVE_UP_MINUTES * MINUTE_MS;
   for (;;) {
+    // checked right before each delete: an owner gone during the wait below sends no further call
+    if (ownerGone()) {
+      ownerGoneNote();
+      return false;
+    }
     const res = await fetch(`${API_ROOT}/v0/dedicated_endpoints/${id}`, { method: "DELETE", headers: auth() }).catch((e) => ({ ok: false, status: String(e) }));
     if (res.ok || res.status === 404) return true;
     if (Date.now() > until) {
       console.log(`${new Date().toISOString()} GAVE UP deleting endpoint ${id} after ${GIVE_UP_MINUTES} minutes of failures (last: ${res.status}): delete it by hand in the console`);
-      return false;
-    }
-    if (ownerGone()) {
-      ownerGoneNote();
       return false;
     }
     // 30 s, in the scaled minute the tests use: the line states the real wait

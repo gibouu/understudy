@@ -282,7 +282,7 @@ describe("Token Factory fine-tune job script (local stand-in)", () => {
     expect(groupAlive(ep.watchdog_pid)).toBe(false);
     expect(endpoints.map((e) => e.id)).toContain(ep.id);
     expect(readFileSync(watchdogLog, "utf8")).toContain(`(${dead}) is gone; the watchdog stops`);
-    await run("node", ["scripts/finetune-tf.mjs", "endpoint-delete"], { env: orphan, cwd: process.cwd() });
+    await run("node", ["scripts/finetune-tf.mjs", "endpoint-delete"], { env, cwd: process.cwd() });
     expect(endpoints).toHaveLength(0);
   }, 60_000);
 
