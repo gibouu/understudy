@@ -52,8 +52,10 @@ Ultra's reshoot list is 73% of the cost and most of its variance (4.6k to 10.1k 
 
 - **Accuracy.** Over 436 solved targets on a 25 mm grid at three heights, the tip lands at a median 0.27 mm from the target, 0.84 mm at the 95th percentile, 1.88 mm at worst, checked by independent forward kinematics. A reachable target solves in 0.1 ms.
 - **Reach.** Top-down grasps reach 56 to 58% of a 30 by 50 cm table grid at 2 cm height and none at 12 cm; side grasps reach 3% at most, because the wrist has no yaw.
+- **Misses.** A target the arm cannot reach costs 65 to 90 ms, because the solver tries all 82 starting poses. Beyond 0.47 m from the pan joint, the length of the whole chain, no pose can reach. There the solver skips the starts that differ only in wrist roll, a third of the work, and the shortfall it reports moves by at most 1.8 mm (816 such targets). Stopping a search once its error stopped improving was tried and dropped: it lost 5 of 841 reaches on a wider grid. The two isolated holes on the centre line, (0.10, 0, 0.06) m from the top and (0.25, 0, 0.12) m from the front, are joint limits, not the solver. 3,000 random starts found no solution for either, and the best ones sit at the wrist-flex limit (+1.66 rad) and the elbow limit (+1.69 rad).
 - **Speed.** A 3 s rollout of the arm in the demo scene takes about 5 ms. All 24 rollouts of one gravity, with the 12 scenario worlds compiled, take 0.28 s on Earth, 0.28 s on the Moon and 0.25 s in orbit, about 250 times real time. Played visibly in the browser at real time the same grid takes 72 s per gravity, so the fast path needs a headless batch mode in the worker.
 - **Scenarios.** All 12 perturbation scenarios build and load next to the arm; 11 change the world measurably; the twelfth, a yaw on the symmetric tube, is flagged as a no-op.
+- **Tilts.** A tilted object is raised until its lowest point is where it stood untilted. Before this fix, the rack tilted 5° started 2.54 mm inside the table, and the tube tilted 8° 0.7 mm inside; the tilt runs in `bench/results/arm-scenario-coverage.json` predate the fix.
 
 ## 4. Gravity, pouring and motion
 

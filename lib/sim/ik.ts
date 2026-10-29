@@ -90,8 +90,14 @@ export function solveIk(
   // positive pan swings the arm towards -y: start every default seed facing the target
   const facing = -Math.atan2(target[1] - pan[1], target[0] - pan[0]);
   const seeds = SEEDS.map((s) => [facing, ...s.slice(1)]);
+  // beyond the chain's full length no pose gets within tolerance, so the search only measures how far short it
+  // falls: the wrist roll barely moves the site, so the seeds that differ only in roll are left out (a third of
+  // the work; on 816 such targets the shortfall reported moved by 1.8 mm at most). Inside the sphere a miss still
+  // tries every seed: stopping a plateaued search early lost 5 of 841 reaches on a wider grid.
+  const bound = reachBound(model, data, arm);
+  const beyond = bound !== null && Math.hypot(target[0] - bound.pivot[0], target[1] - bound.pivot[1], target[2] - bound.pivot[2]) > bound.r + REACH_POS_M;
   let best: IkResult | null = null;
-  for (const s of [seed, ...seeds]) {
+  for (const s of beyond ? [seed, ...seeds.filter((q) => q[4] === 0)] : [seed, ...seeds]) {
     const r = descend(mujoco, model, data, arm, target, axis.v, s);
     const res: IkResult = { ...r, axis: axis.v, approach_deg: axis.deg };
     if (!best || score(res) < score(best)) best = res;
@@ -212,7 +218,7 @@ function rotationError(target: number[], current: number[]): Vec3 {
   return scale(best, Math.PI / norm(best));
 }
 
-type ArmIndex = { qposadr: number[]; dofadr: number[]; range: [number, number][]; panJoint: number; site: number };
+type ArmIndex = { joints: number[]; qposadr: number[]; dofadr: number[]; range: [number, number][]; panJoint: number; site: number };
 
 function armIndex(model: MjModel, siteName: string): ArmIndex {
   const names = toNumbers(model.names);
@@ -230,12 +236,58 @@ function armIndex(model: MjModel, siteName: string): ArmIndex {
   for (let s = 0; s < (model.nsite as number); s++) if (decodeName(names, siteAdr[s]) === siteName) site = s;
   if (site < 0) throw new Error(`no site named ${siteName}`);
   return {
+    joints: ids,
     qposadr: ids.map((j) => qposadr[j]),
     dofadr: ids.map((j) => dofadr[j]),
     range: ids.map((j) => [range[2 * j], range[2 * j + 1]]),
     panJoint: ids[0],
     site,
   };
+}
+
+/** The sphere `site` stays inside (reachBound), from the arm's pose in `data`; null when it cannot be bounded. */
+export function reachSphere(mujoco: MainModule, model: MjModel, data: MjData, site: string = SO101_TIP_SITE) {
+  mujoco.mj_kinematics(model, data);
+  return reachBound(model, data, armIndex(model, site));
+}
+
+const bounds = new WeakMap<MjModel, Map<number, { pivot: Vec3; r: number } | null>>();
+
+/**
+ * The farthest the site can be from the pan joint's anchor in any pose: the sum of the distances from each IK
+ * joint's anchor to the next and from the last to the site. Each of those is fixed in one body, so the triangle
+ * inequality makes it a true bound. Null when the site does not hang off the five joints alone (another joint
+ * between them would move it), so no target is ever ruled out by a guess. The pan anchor is fixed in the world.
+ */
+function reachBound(model: MjModel, data: MjData, arm: ArmIndex): { pivot: Vec3; r: number } | null {
+  let perSite = bounds.get(model);
+  if (!perSite) bounds.set(model, (perSite = new Map()));
+  if (perSite.has(arm.site)) return perSite.get(arm.site)!;
+  const parent = toNumbers(model.body_parentid);
+  const jntBody = toNumbers(model.jnt_bodyid);
+  const jntNum = toNumbers(model.body_jntnum);
+  const bodies = arm.joints.map((j) => jntBody[j]);
+  // walking up from the site's body: every jointed body met is the next IK joint's, each with that joint only
+  let ok = true;
+  let k = bodies.length - 1;
+  for (let b = toNumbers(model.site_bodyid)[arm.site]; b > 0 && ok; b = parent[b]) {
+    if (jntNum[b] === 0) continue;
+    if (k < 0 || b !== bodies[k] || jntNum[b] !== 1) ok = false;
+    k--;
+  }
+  let out: { pivot: Vec3; r: number } | null = null;
+  if (ok && k === -1) {
+    // anchors and the site where they are now; the distances between them are the same in every pose
+    const xa = toNumbers(data.xanchor);
+    const sp = toNumbers(data.site_xpos);
+    const pts: Vec3[] = arm.joints.map((j) => [xa[3 * j], xa[3 * j + 1], xa[3 * j + 2]]);
+    pts.push([sp[3 * arm.site], sp[3 * arm.site + 1], sp[3 * arm.site + 2]]);
+    let r = 0;
+    for (let i = 1; i < pts.length; i++) r += norm(sub(pts[i], pts[i - 1]));
+    out = { pivot: pts[0], r };
+  }
+  perSite.set(arm.site, out);
+  return out;
 }
 
 function descend(mujoco: MainModule, model: MjModel, data: MjData, arm: ArmIndex, target: Vec3, axis: Vec3, seed: number[]) {
