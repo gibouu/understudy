@@ -2,15 +2,17 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import type { Sample } from "@/lib/samples";
 import { usd, verdict } from "@/lib/showcase/format";
 import { modelLabel } from "@/lib/providers/models";
 import type { Call, Iteration, Run, Session } from "@/lib/showcase/session";
 import type { TaskSpec } from "@/lib/spec/schema";
 import type { SaboteurPlan } from "@/lib/saboteur/ask";
+import { baselineProgram } from "@/lib/saboteur/baseline";
+import { scoredSpec } from "@/lib/saboteur/scoreboard";
 import { ProgramView, type Failure } from "../../program-view";
-import { ScoreBars, ScoreboardHead, useScoreboard } from "./scoreboard";
+import { ScoreBars, ScoreboardHead, useScoreboard } from "../../scoreboard";
 
 const Rehearsal = dynamic(() => import("../../rehearsal").then((m) => m.Rehearsal), {
   ssr: false,
@@ -122,7 +124,12 @@ export type ScoreboardPlan = { plan: SaboteurPlan; by?: string } | { plan: null;
 
 export function Story({ sample, session, scoreboard }: { sample: Sample; session: Session; scoreboard: ScoreboardPlan }) {
   const last = session.iterations.length - 1;
-  const board = useScoreboard(session, scoreboard.plan);
+  const scored = scoredSpec(session);
+  // the baseline (retarget and replay, lib/saboteur/baseline.ts) from the label as fitted, then every recorded version
+  const baseline = useMemo(() => baselineProgram(session.fit.spec, scored), [session, scored]);
+  const programs = useMemo(() => [...("program" in baseline ? [baseline.program] : []), ...session.iterations.map((x) => x.program)], [baseline, session]);
+  const board = useScoreboard(scored, programs, scoreboard.plan);
+  const offset = "program" in baseline ? 1 : 0;
   const [pick, setPick] = useState(last);
   const [failure, setFailure] = useState<Failure | null>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -298,6 +305,22 @@ export function Story({ sample, session, scoreboard }: { sample: Sample; session
       <Step n={6} title="How it improved">
         <ScoreboardHead plan={scoreboard.plan} by={scoreboard.plan ? scoreboard.by : undefined} why={scoreboard.plan ? undefined : scoreboard.why} busy={board.busy} ms={board.ms} ran={board.scores.length > 0} start={board.start} />
         <ol className="flex flex-col divide-y-2 divide-ink/15 border-y-2 border-ink/15">
+          {scoreboard.plan && (
+            <li className="grid gap-3 py-4 md:grid-cols-[13rem_minmax(0,1fr)_11rem] md:gap-6">
+              <span className="display text-xl font-semibold md:pl-3">Baseline: retarget and replay</span>
+              <div className="flex min-w-0 flex-col gap-2">
+                {"program" in baseline ? (
+                  <>
+                    <ScoreBars score={board.scores[0]} scenarios={scoreboard.plan.scenarios.length} />
+                    <p className="text-sm text-muted">A program written by fixed rules from the label&apos;s steps as fitted to the bench, with no model and no answers. Never recorded: it runs only here.</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted">Not built for this clip: {baseline.why}.</p>
+                )}
+              </div>
+              <p className="tnum text-sm text-neutral-700 md:pr-3 md:text-right">no model call</p>
+            </li>
+          )}
           {session.iterations.map((x, i) => (
             <li key={i} className={`grid gap-3 py-4 md:grid-cols-[13rem_minmax(0,1fr)_11rem] md:gap-6 ${i === pick ? "bg-card" : ""}`}>
               <div className="flex flex-col gap-1 md:pl-3">
@@ -314,7 +337,7 @@ export function Story({ sample, session, scoreboard }: { sample: Sample; session
                   <br />
                   Orbit: <Outcome run={x.results.orbit} spec={x.spec} />
                 </p>
-                {scoreboard.plan && <ScoreBars score={board.scores[i]} scenarios={scoreboard.plan.scenarios.length} />}
+                {scoreboard.plan && <ScoreBars score={board.scores[i + offset]} scenarios={scoreboard.plan.scenarios.length} />}
                 {x.changes.length > 0 && (
                   <ul className="list-disc pl-5 text-neutral-700">
                     {x.changes.map((c) => (

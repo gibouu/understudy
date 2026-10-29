@@ -4,6 +4,7 @@
  * `cube_to_bowl_5` (robot `so101_follower`, six floats per frame).
  */
 import type { Mode, SignedBand } from "@/lib/spec/schema";
+import type { VideoFrames } from "@/lib/export/video";
 
 /** Joint order of the SO-101 follower as GR00T's demo names them. */
 export const SO101_JOINTS = [
@@ -36,7 +37,7 @@ export type EpisodeRecord = {
   instruction: string;
   frames: EpisodeFrame[];
   /** rendered workspace camera frames, one per EpisodeFrame, 480x360 */
-  video?: { width: number; height: number; frames: ImageBitmap[] | Blob[] };
+  video?: { width: number; height: number; frames: VideoFrames };
 };
 
 export type ExportBundle = {

@@ -27,7 +27,10 @@ export type VideoFormat = {
   codec: "h264" | "vp9";
 };
 
-export type VideoFrames = ImageBitmap[] | Blob[];
+/** Pictures drawn on demand, in order, one at a time: an episode's frames are never all held at once (lib/export/render.ts). */
+export type DrawnFrames = { readonly length: number; draw(index: number): Promise<ImageBitmap> };
+
+export type VideoFrames = ImageBitmap[] | Blob[] | DrawnFrames;
 
 export interface EpisodeVideoEncoder {
   readonly format: VideoFormat;
@@ -77,7 +80,8 @@ export async function createBrowserVideoEncoder({
       try {
         await output.start();
         for (let i = 0; i < frames.length; i++) {
-          const frame = frames[i];
+          const drawn = !Array.isArray(frames);
+          const frame = drawn ? await frames.draw(i) : frames[i];
           const bitmap = frame instanceof Blob ? await createImageBitmap(frame) : frame;
           try {
             const sample = new VideoSample(bitmap, { timestamp: i / fps, duration: 1 / fps });
@@ -87,7 +91,7 @@ export async function createBrowserVideoEncoder({
               sample.close();
             }
           } finally {
-            if (frame instanceof Blob) bitmap.close();
+            if (drawn || frame instanceof Blob) bitmap.close();
           }
         }
         source.close();

@@ -89,6 +89,12 @@ export class StageRenderer {
     this.camera.updateProjectionMatrix();
   }
 
+  /** Draws the scene now, so the canvas can be read in the same task (the export's video, lib/export/render.ts). */
+  draw(): HTMLCanvasElement {
+    this.renderer.render(this.scene, this.camera);
+    return this.canvas;
+  }
+
   /** Look at `target` from `from`, world metres; with a setting drawn, also the view the bare bench gets back. */
   view(target: [number, number, number], from: [number, number, number]) {
     if (this.dressing) this.benchView = [target, from];
@@ -281,7 +287,8 @@ export class StageRenderer {
     this.updateLiquid(frame);
   }
 
-  dispose() {
+  /** `loseContext` frees the GL context now, for a canvas never drawn on again: browsers cap live contexts and drop the oldest */
+  dispose({ loseContext = false } = {}) {
     cancelAnimationFrame(this.raf);
     this.resizeObserver.disconnect();
     this.controls.dispose();
@@ -295,6 +302,7 @@ export class StageRenderer {
     }
     this.objects.clear();
     this.renderer.dispose();
+    if (loseContext) this.renderer.forceContextLoss();
   }
 }
 
