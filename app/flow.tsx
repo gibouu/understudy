@@ -6,6 +6,7 @@ import { estimate, usual, type Stage } from "@/lib/estimate";
 import type { GroundingRecord } from "@/lib/export/grounding";
 import { emptyLog, runOf, withRun, type TryCall, type TryLog, type VersionSource } from "@/lib/export/try";
 import type { NotePatch } from "@/lib/notes/patch";
+import type { SaboteurPlan } from "@/lib/saboteur/ask";
 import { SAMPLES, type Sample } from "@/lib/samples";
 import { formAnswers, recordedBy, recordedLine, recordedNote, same, turnFor } from "@/lib/showcase/play";
 import { Session } from "@/lib/showcase/session";
@@ -37,6 +38,7 @@ const Rehearsal = dynamic(() => import("./rehearsal").then((m) => m.Rehearsal), 
 const Variants = dynamic(() => import("./variants").then((m) => m.Variants), { ssr: false });
 const Saboteur = dynamic(() => import("./saboteur").then((m) => m.Saboteur), { ssr: false });
 const TryDownload = dynamic(() => import("./try-download").then((m) => m.TryDownload), { ssr: false });
+const TryScoreboard = dynamic(() => import("./try-scoreboard").then((m) => m.TryScoreboard), { ssr: false });
 
 /** Nano asks about one gap per compile; past this many rounds the page stops asking. */
 const MAX_ROUNDS = 6;
@@ -96,6 +98,10 @@ export function Flow() {
   const [log, setLog] = useState<TryLog>(emptyLog);
   /** the web lookup and the chips added from it, for grounding.json (#112); null until one finished */
   const [grounding, setGrounding] = useState<GroundingRecord | null>(null);
+  /** the grid's twelve and the spec they were chosen for, for the scoreboard (#55) */
+  const [grid, setGrid] = useState<{ plan: SaboteurPlan; spec: TaskSpec } | null>(null);
+  /** the label as first fitted to the bench, before any answer: what the scoreboard's baseline is built from */
+  const [fitted, setFitted] = useState<TaskSpec | null>(null);
   const pick = useRef(0);
   // leaving /try ends the kept session: no other page asks for consent
   useEffect(() => () => void startSession(false), []);
@@ -117,6 +123,8 @@ export function Flow() {
     setUnconfirmed(null);
     setLog(emptyLog());
     setGrounding(null);
+    setGrid(null);
+    setFitted(null);
   }
 
   /** The calls a stage's answer paid for, into the log. */
@@ -263,6 +271,7 @@ export function Flow() {
     const f = rec ? { spec: rec.fit.spec, warnings: [...rec.fit.warnings] } : fitToBench(labelled);
     f.warnings.unshift(...traced);
     setFit(f);
+    setFitted(f.spec);
     setSpec(f.spec);
     await compile(f.spec);
   }
@@ -476,7 +485,11 @@ export function Flow() {
 
       {ready && program.status === "done" && !spec.steps.some((s) => s.verb === "gesture") && (
         <Section n={6} title="Perturb the world" model="MuJoCo WebAssembly · headless batch">
-          <Saboteur spec={spec} program={program.value} />
+          <Saboteur spec={spec} program={program.value} onPlan={(plan, on) => setGrid(plan ? { plan, spec: on } : null)} />
+          <div className="mt-5 border-t pt-4">
+            <h3 className="mb-2 text-sm font-medium">Scoreboard: every version under perturbation</h3>
+            <TryScoreboard spec={spec} plan={grid?.spec === spec ? grid.plan : null} label={fitted} versions={log.versions} />
+          </div>
         </Section>
       )}
 
