@@ -1,22 +1,15 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
-import type { MainModule, MjVFS } from "@mujoco/mujoco";
+import type { MainModule } from "@mujoco/mujoco";
 import { beforeAll, describe, expect, it } from "vitest";
 import { BOX_Y_MM, BOX_Z_MM, PLANE_X_MM, scalePath, type HandSample } from "@/lib/sim/gesture";
 import { environment, runToEnd } from "@/lib/sim/interpreter";
-import { SO101_XML, stageXml } from "@/lib/sim/so101";
+import { stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { Program, TaskSpec, type PathPoint } from "@/lib/spec/schema";
 
 let mujoco: MainModule;
-let vfs: MjVFS;
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+  mujoco = await loadSo101();
 }, 60_000);
 
 /** A wrist swinging side to side twice a second, 12 cm either way on a 0.6 m arm, for 4 s: a wave, as measured. */
@@ -42,7 +35,7 @@ const FOLLOW = Program.parse({ spec_title: "a gesture", steps: [{ step_id: "s1",
 
 function rollout(spec: TaskSpec, program: Program, gravity_g: number) {
   const env = environment(spec);
-  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g, graspable: env.graspable }), vfs);
+  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g, graspable: env.graspable }));
   const data = new mujoco.MjData(model);
   try {
     return runToEnd({ mujoco, model, data }, env, program, "sensed");

@@ -1,22 +1,15 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
-import type { MainModule, MjVFS } from "@mujoco/mujoco";
+import type { MainModule } from "@mujoco/mujoco";
 import { beforeAll, describe, expect, it } from "vitest";
 import { DEMO_PROGRAMS, DEMO_SPEC } from "@/lib/sim/demo-spec";
 import { environment, runToEnd, type Environment } from "@/lib/sim/interpreter";
-import { SO101_XML, stageXml } from "@/lib/sim/so101";
+import { stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { Program, TaskSpec, type Mode, type Scenario } from "@/lib/spec/schema";
 
 let mujoco: MainModule;
-let vfs: MjVFS;
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+  mujoco = await loadSo101();
 }, 60_000);
 
 /** Set up the world, then run the program in it: the whole interface. */
@@ -25,7 +18,7 @@ function rollout(program: Program, mode: Mode, scenario?: Partial<Scenario>, spe
     spec,
     scenario && { id: "t", name: "t", axis: "x_mm", offset: 0, object: "pillow", expected: "unknown", why: "", gravity_g: 1, ...scenario },
   );
-  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: env.gravity_g, graspable: env.graspable }), vfs);
+  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: env.gravity_g, graspable: env.graspable }));
   const data = new mujoco.MjData(model);
   try {
     return runToEnd({ mujoco, model, data }, env, program, mode);

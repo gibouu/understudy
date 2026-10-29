@@ -1,25 +1,18 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
-import type { MainModule, MjVFS } from "@mujoco/mujoco";
+import type { MainModule } from "@mujoco/mujoco";
 import { beforeAll, describe, expect, it } from "vitest";
 import { BOX_Y_MM, BOX_Z_MM, scalePath } from "@/lib/sim/gesture";
 import { environment, runToEnd } from "@/lib/sim/interpreter";
-import { SO101_XML, stageXml } from "@/lib/sim/so101";
+import { stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { Program, TaskSpec } from "@/lib/spec/schema";
 import { armLength, busierHand, handSamples } from "@/lib/vision/hand";
 import type { TokenFrame } from "@/lib/vision/types";
 import wave from "../fixtures/vision/wave.json";
 
 let mujoco: MainModule;
-let vfs: MjVFS;
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+  mujoco = await loadSo101();
 }, 60_000);
 
 /** The recorded landmarks (tests/fixtures/vision/wave.json) as Watch tokens. */
@@ -60,7 +53,7 @@ describe("the NASA wave clip (samples/iss-wave.mp4), as MediaPipe measured it", 
   it.each([1, 0])("is followed point by point within 5 mm at %s g, slower than the clip if it must be", (g) => {
     const spec = TaskSpec.parse({ version: 1, title: "wave", summary: "", objects: [], steps: [{ id: "s1", verb: "gesture", gesture: { hand: "right", path: scaled.path }, t_start_s: t0, t_end_s: t1 }] });
     const env = environment(spec);
-    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: g }), vfs);
+    const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: g }));
     const data = new mujoco.MjData(model);
     try {
       const r = runToEnd({ mujoco, model, data }, env, Program.parse({ spec_title: "wave", steps: [{ step_id: "s1", ops: [{ op: "follow" }] }] }), "sensed");

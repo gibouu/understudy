@@ -49,7 +49,7 @@ function recordedScenario(spec: TaskSpec, id: string): Scenario {
 }
 
 async function batch(spec: TaskSpec, program: Program, rollouts: BatchRollout[]): Promise<Rollout[]> {
-  const out = await runBatch(engine.mujoco, (xml) => engine.mujoco.MjModel.from_xml_string(xml, engine.vfs), spec, program, rollouts);
+  const out = await runBatch(engine.mujoco, (xml) => engine.mujoco.MjModel.from_xml_string(xml), spec, program, rollouts);
   return out.map((r) => {
     if (!r.rollout) throw new Error(r.error ?? "no rollout");
     return r.rollout;
