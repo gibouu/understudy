@@ -241,7 +241,8 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
    * step cannot undo what the first one did.
    */
   function* successHolds(id: string, after: string): Generator<Tick, Rollout | null> {
-    const success = env.spec.steps.find((x) => x.id === id)?.success ?? [];
+    // every spec step of that id: a spec that repeats an id (validateSpec's error) cannot hide one's success
+    const success = env.spec.steps.filter((x) => x.id === id).flatMap((x) => x.success);
     if (env.spec.steps.some((x) => x.id === id)) succeeded.add(id);
     if (!success.length) return null;
     opIndex = undefined; // a step's success is no op of it

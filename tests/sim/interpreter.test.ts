@@ -158,6 +158,13 @@ describe("the spec's success, checked whatever the program asserts (#117)", () =
     expect({ step: r.failed_step_id, predicate: r.failed_predicate }).toEqual({ step: "s2", predicate: success[0] });
   }, 60_000);
 
+  it("a spec that repeats s2, once with no success, still checks the other one's", () => {
+    const twice = TaskSpec.parse({ ...spec, steps: [spec.steps[0], { ...spec.steps[1], success: [] }, spec.steps[1]] });
+    const r = rollout(skipsInside, "sensed", { gravity_g: 0 }, twice);
+    expect(r.pass, r.log.join("\n")).toBe(false);
+    expect({ step: r.failed_step_id, predicate: r.failed_predicate }).toEqual({ step: "s2", predicate: success[0] });
+  }, 60_000);
+
   it("the same program passes where the spec sets no success: the program's own checks were all there was", () => {
     const r = rollout(skipsInside, "sensed", { gravity_g: 0 });
     expect(r.pass, r.log.join("\n")).toBe(true);
