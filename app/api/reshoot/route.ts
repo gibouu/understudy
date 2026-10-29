@@ -55,7 +55,8 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Resho
   if (!base) return NextResponse.json(replay(b, outcome));
 
   // one deadline for every request of this answer, the re-ask included: at DEADLINE_MS the request in flight is
-  // aborted and no other starts, so nothing runs past maxDuration; the race answers even if the SDK lingers
+  // aborted (by the fetch below and by callModel's signal) and no other is reserved or sent, so nothing runs past
+  // maxDuration; the race answers even if the SDK lingers
   const deadline = new AbortController();
   const client = base.withOptions({ fetch: (url, init) => fetch(url, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, deadline.signal]) : deadline.signal }) });
   const ledger: LedgerEntry[] = [];
@@ -67,7 +68,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Resho
       resolve(failed(late));
     }, DEADLINE_MS);
   });
-  const answer = callModel(client, { role: "ultra", system: RESHOOT_SYSTEM, user: reshootPrompt(b.spec, b), maxTokens: MAX_TOKENS, schema: ReshootReply, normalize: normalizeReply, shape: REPLY_SHAPE, thinking: THINKING, ledger });
+  const answer = callModel(client, { role: "ultra", system: RESHOOT_SYSTEM, user: reshootPrompt(b.spec, b), maxTokens: MAX_TOKENS, schema: ReshootReply, normalize: normalizeReply, shape: REPLY_SHAPE, thinking: THINKING, ledger, signal: deadline.signal });
   let r = await Promise.race([answer, expired]).finally(() => clearTimeout(timer));
   if (deadline.signal.aborted) r = failed(late);
   const costs = priced(ledger);

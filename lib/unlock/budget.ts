@@ -101,28 +101,68 @@ export function promptTokensAtMost(messages: unknown): number {
   return tokens;
 }
 
-/** A reservation for one call: settle it with what the call cost, or with nothing when it was not billed. */
-export type Hold = { ok: true; micro: number } | { ok: false; why: "spent" | "unknown" };
+/**
+ * A ceiling of this process's own, on top of the shared one, for a script that spends live on
+ * purpose (the showcase recorder, lib/showcase/record.ts). While one is set, every reservation
+ * counts against it as well, store or none, from the request about to be sent: its real prompt,
+ * each SDK retry and the resend after a 400 included, since callModel reserves every request it
+ * sends. It is settled as the shared total is. A reservation it has no room for is refused, and
+ * `refused` says why.
+ */
+export type Ceiling = { cap_usd: number; held_micro: number; refused?: string };
 
-const OPEN: Hold = { ok: true, micro: 0 };
+let ceiling: Ceiling | null = null;
+
+/** Runs `fn` with `c` counting every reservation made meanwhile; one ceiling at a time. */
+export async function underCeiling<T>(c: Ceiling, fn: () => Promise<T>): Promise<T> {
+  if (ceiling) throw new Error("budget: a ceiling is already set in this process");
+  ceiling = c;
+  try {
+    return await fn();
+  } finally {
+    ceiling = null;
+  }
+}
+
+/** A reservation for one call: settle it with what the call cost, or with nothing when it was not billed. */
+export type Hold = { ok: true; micro: number; local?: { ceiling: Ceiling; micro: number } } | { ok: false; why: "spent" | "unknown" };
+
+/** Takes `micro` from the ceiling when one is set; false when it has no room for it. */
+function holdLocally(model: string, micro: number): { ceiling: Ceiling; micro: number } | null | false {
+  if (!ceiling) return null;
+  if (ceiling.held_micro + micro > ceiling.cap_usd * MICRO) {
+    ceiling.refused = `US$${(ceiling.held_micro / MICRO).toFixed(4)} reserved so far; the next ${model} request could cost up to US$${(micro / MICRO).toFixed(4)}, over the US$${ceiling.cap_usd} cap`;
+    return false;
+  }
+  ceiling.held_micro += micro;
+  return { ceiling, micro };
+}
 
 /**
  * Reserves the most a call can cost, `attempts` times over (the SDK may send a request again after a
  * lost answer, and each may be billed); refused when that would pass the cap, or when the total cannot be counted.
  */
 export async function reserve(model: string, promptTokens: number, maxTokens: number, attempts = 1): Promise<Hold> {
-  if (!hasStore()) return deployed() ? { ok: false, why: "unknown" } : OPEN;
   const micro = attempts * microOf({ model, prompt_tokens: promptTokens, completion_tokens: maxTokens, seconds: 0 });
+  // counted against the process's own ceiling first, before anything is awaited
+  const local = holdLocally(model, micro);
+  if (local === false) return { ok: false, why: "spent" };
+  const refuse = (why: "spent" | "unknown"): Hold => {
+    if (local) local.ceiling.held_micro -= local.micro;
+    return { ok: false, why };
+  };
+  const mine = local ? { local } : {};
+  if (!hasStore()) return deployed() ? refuse("unknown") : { ok: true, micro: 0, ...mine };
   let total: number;
   try {
     total = Number(await command(["INCRBY", SPENT_KEY, micro]));
   } catch (err) {
     console.error(`budget: no room could be reserved for a ${model} call (${(err as Error).message}), so it is not made`);
-    return { ok: false, why: "unknown" };
+    return refuse("unknown");
   }
-  if (total <= budgetCap() * MICRO) return { ok: true, micro };
+  if (total <= budgetCap() * MICRO) return { ok: true, micro, ...mine };
   await giveBack(micro);
-  return { ok: false, why: "spent" };
+  return refuse("spent");
 }
 
 async function giveBack(micro: number) {
@@ -136,8 +176,11 @@ async function giveBack(micro: number) {
 
 /** Settles a reservation to what the call cost (`null`: not billed). Never throws; a refused settlement keeps the reservation counted. */
 export async function settle(hold: Hold, e: LedgerEntry | null): Promise<void> {
-  if (!hold.ok || !hasStore()) return;
-  const delta = (e ? microOf(e) : 0) - hold.micro;
+  if (!hold.ok) return;
+  const cost = e ? microOf(e) : 0;
+  if (hold.local) hold.local.ceiling.held_micro += cost - hold.local.micro;
+  if (!hasStore()) return;
+  const delta = cost - hold.micro;
   if (delta === 0) return;
   try {
     await command(["INCRBY", SPENT_KEY, delta]);

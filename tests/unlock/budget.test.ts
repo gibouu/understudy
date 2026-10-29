@@ -5,13 +5,13 @@
  * the store cannot be read on a deployment. The store is faked
  * (tests/store/fake-redis.ts) and so is Token Factory: nothing here spends.
  */
-import type OpenAI from "openai";
+import OpenAI from "openai";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { callModel } from "@/lib/providers/call";
 import { MODELS } from "@/lib/providers/tokenfactory";
 import { usdOf } from "@/lib/providers/price";
-import { BUDGET_ENV, budgetCap, costOf, promptTokensAtMost, readBudget, reserve, settle, SPENT_KEY, VIDEO_TOKENS } from "@/lib/unlock/budget";
+import { BUDGET_ENV, budgetCap, costOf, promptTokensAtMost, readBudget, reserve, settle, SPENT_KEY, underCeiling, VIDEO_TOKENS, type Ceiling } from "@/lib/unlock/budget";
 import { forgetLiveCalls } from "@/lib/unlock/cap";
 import { liveGate, UNLOCK_ENV } from "@/lib/unlock/check";
 import { gateNote, LIVE_NO_BUDGET, LIVE_SPENT } from "@/lib/unlock/messages";
@@ -187,6 +187,63 @@ describe("with a store", () => {
     expect(store.data.get(SPENT_KEY)).toBe(held + Math.ceil(usdOf(call(MODELS.nano, 10, 5))! * 1e6));
   });
 
+  it("keeps the reservation of a request cut at the deadline, and reserves nothing after it (#189)", async () => {
+    const store = fakeRedis();
+    const deadline = new AbortController();
+    let sent = 0;
+    const client = {
+      maxRetries: 2,
+      chat: {
+        completions: {
+          create: (_p: unknown, o: { signal?: AbortSignal }) => {
+            sent++;
+            return new Promise((_resolve, reject) => o.signal?.addEventListener("abort", () => reject(new OpenAI.APIUserAbortError()), { once: true }));
+          },
+        },
+      },
+    } as unknown as OpenAI;
+    const answer = callModel(client, { role: "nano", user: "u", maxTokens: 100, schema: z.object({ n: z.number() }), signal: deadline.signal });
+    await vi.waitFor(() => expect(sent).toBe(1));
+    deadline.abort();
+    expect((await answer).status).toBe("failed");
+    expect(sent).toBe(1);
+    expect(store.data.get(SPENT_KEY)).toBe(Math.ceil(usdOf(call(MODELS.nano, promptTokensAtMost([{ role: "user", content: "u" }]), 100))! * 1e6));
+  });
+
+  it("keeps the reservation of a 400 the SDK made of a response cut at the deadline (#189)", async () => {
+    const store = fakeRedis();
+    const deadline = new AbortController();
+    let sent = 0;
+    const client = {
+      chat: {
+        completions: {
+          create: async () => {
+            sent++;
+            // the error body was cut short: the SDK still reports the status line it read
+            deadline.abort();
+            throw new OpenAI.BadRequestError(400, undefined, "400 status code (no body)", new Headers());
+          },
+        },
+      },
+    } as unknown as OpenAI;
+    expect((await callModel(client, { role: "nano", user: "u", maxTokens: 100, schema: z.object({ n: z.number() }), signal: deadline.signal })).status).toBe("failed");
+    expect(sent).toBe(1);
+    expect(store.data.get(SPENT_KEY)).toBe(Math.ceil(usdOf(call(MODELS.nano, promptTokensAtMost([{ role: "user", content: "u" }]), 100))! * 1e6));
+  });
+
+  it("gives back the reservation of a request cut before it was sent, and pauses for no retry once cut (#189)", async () => {
+    const store = fakeRedis();
+    const deadline = new AbortController();
+    let sent = 0;
+    const client = { chat: { completions: { create: async () => (sent++, { choices: [{ message: { content: '{"n":1}' } }] }) } } } as unknown as OpenAI;
+    const incr = store.data.set.bind(store.data);
+    // the deadline passes while the reservation is being made
+    store.data.set = (k, v) => (deadline.abort(), incr(k, v));
+    expect((await callModel(client, { role: "nano", user: "u", maxTokens: 100, schema: z.object({ n: z.number() }), signal: deadline.signal })).status).toBe("failed");
+    expect(sent).toBe(0);
+    expect(store.data.get(SPENT_KEY) ?? 0).toBe(0);
+  });
+
   it("keeps the whole reservation of an answer that does not say what it used", async () => {
     const store = fakeRedis();
     const client = { chat: { completions: { create: async () => ({ choices: [{ message: { content: '{"n":1}' } }] }) } } } as unknown as OpenAI;
@@ -220,5 +277,72 @@ describe("with a store", () => {
     expect(made).toBe(0);
     expect(r).toMatchObject({ status: "failed", retryable: false });
     expect(r.status === "failed" && r.message).toContain(LIVE_SPENT);
+  });
+});
+
+describe("a ceiling of the process's own (the showcase recorder, #118)", () => {
+  const micro = (model: string, prompt: number, completion: number) => Math.ceil(usdOf(call(model, prompt, completion))! * 1e6);
+  /** answers from the list in turn (an Error is thrown) and keeps the messages of every request */
+  function client(replies: (string | Error)[], maxRetries = 0) {
+    const sent: unknown[] = [];
+    const c = {
+      maxRetries,
+      chat: {
+        completions: {
+          create: async (p: { messages: unknown }) => {
+            sent.push(structuredClone(p.messages));
+            const r = replies.shift();
+            if (r instanceof Error) throw r;
+            return { choices: [{ message: { content: r } }], usage: { prompt_tokens: 10, completion_tokens: 5 } };
+          },
+        },
+      },
+    } as unknown as OpenAI;
+    return { c, sent };
+  }
+  const opts = { role: "nano" as const, user: "u", maxTokens: 100, schema: z.object({ n: z.number() }) };
+  const badRequest = () => new OpenAI.BadRequestError(400, { message: "unknown field" }, "400 unknown field", new Headers());
+
+  it("counts every request, the resend after a 400 and a re-ask's longer prompt included, and settles each to its cost, with no store", async () => {
+    const ceiling: Ceiling = { cap_usd: 1, held_micro: 0 };
+    const { c, sent } = client([badRequest(), "not json", '{"n":1}']);
+    expect((await underCeiling(ceiling, () => callModel(c, opts))).status).toBe("done");
+    expect(sent).toHaveLength(3);
+    // the 400 was refused unbilled; the two answers settled to what they used
+    expect(ceiling.held_micro).toBe(2 * micro(MODELS.nano, 10, 5));
+    expect(ceiling.refused).toBeUndefined();
+  });
+
+  it("refuses the request it has no room for, before it is sent, from that request's own prompt", async () => {
+    const first = micro(MODELS.nano, promptTokensAtMost([{ role: "user", content: "u" }]), 100);
+    // room for the first request, not for the re-ask, whose prompt carries the first answer back
+    const ceiling: Ceiling = { cap_usd: (micro(MODELS.nano, 10, 5) + first + 1) / 1e6, held_micro: 0 };
+    const { c, sent } = client(["not json", '{"n":1}']);
+    const r = await underCeiling(ceiling, () => callModel(c, opts));
+    expect(r.status).toBe("failed");
+    expect(sent).toHaveLength(1);
+    expect(ceiling.refused).toMatch(/the next .* request could cost up to US\$.* over the US\$.* cap/);
+    expect(ceiling.held_micro).toBe(micro(MODELS.nano, 10, 5));
+  });
+
+  it("keeps the hold of a request that may have been billed, and gives back what the shared total refused", async () => {
+    const ceiling: Ceiling = { cap_usd: 1, held_micro: 0 };
+    const { c } = client([new Error("socket hang up")]);
+    await underCeiling(ceiling, () => callModel(c, opts));
+    expect(ceiling.held_micro).toBe(micro(MODELS.nano, promptTokensAtMost([{ role: "user", content: "u" }]), 100));
+
+    fakeRedis();
+    vi.stubEnv(BUDGET_ENV, "0");
+    const shared: Ceiling = { cap_usd: 1, held_micro: 0 };
+    const hold = await underCeiling(shared, () => reserve(MODELS.nano, 100, 100));
+    expect(hold).toEqual({ ok: false, why: "spent" });
+    expect(shared.held_micro).toBe(0);
+  });
+
+  it("is one at a time, and gone once its work ends", async () => {
+    const ceiling: Ceiling = { cap_usd: 1, held_micro: 0 };
+    await expect(underCeiling(ceiling, () => underCeiling({ cap_usd: 1, held_micro: 0 }, async () => 1))).rejects.toThrow(/already set/);
+    await reserve(MODELS.nano, 100, 100);
+    expect(ceiling.held_micro).toBe(0);
   });
 });

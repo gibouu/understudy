@@ -558,7 +558,9 @@ function totalsOf(calls) {
     completion_tokens: sum("completion_tokens"),
     reasoning_tokens: sum("reasoning_tokens"),
     total_tokens: sum("prompt_tokens") + sum("completion_tokens"),
-    cost_usd: Number(sum("cost_usd").toFixed(6)),
+    // what the ledger charged: real costs plus the estimate of each failed call (the server may have done the work)
+    cost_usd: Number((sum("cost_usd") + sum("estimated_usd")).toFixed(6)),
+    estimated_usd: Number(sum("estimated_usd").toFixed(6)),
     latency_ms: sum("ms"),
   };
 }

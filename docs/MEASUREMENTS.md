@@ -11,13 +11,14 @@ Machine for the local runs: Apple M4, Node 24, one thread, MuJoCo WebAssembly 3.
 | One full session on Token Factory | 16.7 calls, 51k tokens, US$0.0375 (US$0.028 to US$0.052 over 3 runs), 71 s | 1 |
 | Hands found on the gloved, far-camera ISS clip | 149 of 360 frames from wrist crops; 0 before | 2 |
 | Arm accuracy | median tip error 0.27 mm, max 1.9 mm, over 436 targets | 3 |
-| Rehearsal speed, headless | 24 rollouts per gravity, all 12 scenario worlds, in 0.3 s | 3 |
+| Rehearsal speed, headless | 24 rollouts per gravity, all 12 scenario worlds, in 0.3 s in node (a fixed 3 s move per rollout, scene build included); about a second per 24 on the page's clock, running the real programs | 3 |
 | A tube let go at the slot mouth | seats on Earth, Mars and the Moon; floats 30 mm up in orbit, indefinitely | 4 |
 | Lateral push that topples a standing tube | 1.59 m/s² on Earth, 0.27 m/s² on the Moon | 4 |
 | Liquid model against physics | drain time within 2.8% of Torricelli's law; surface tilt within 0.09° of atan(a/g) | 5 |
 | Interview recovering missing details | 21% with the first design, 43% with a separate answer-to-change call | 7 |
 | Failing rehearsals fixed from simulator notes alone | 69% (Super), 94% (Super with reasoning, or escalating to it when stuck) within 5 patches | 8 |
-| Learning across tasks, Moon and orbit | rules learned on Earth and Mars add 28 points of first-try success with the cheap model (5% to 33%) and 18 with reasoning (48% to 67%), against matched controls; no measurable change within five patches | 8 |
+| Learning across tasks, Moon and orbit | rules learned on Earth and Mars add 28 points of first-try success with the cheap model (5% to 33%) and 18 with reasoning (48% to 67%), against matched controls; no measurable change within five patches. On the site's own compile (four NASA pocket clips, Nemotron 3.5 Lightning) the playbook does not carry over: first try 0 of 32 with the rules learned on the other clips, against 6 of 32 for the matched control (-19 points) and 8 of 32 with it off | 8 |
+| Retarget-and-replay baseline against the last recorded version, 24 rollouts per gravity | Earth: as good or better on 3 of the 5 NASA manipulation clips; orbit: behind on all 5 (3 against 15 of 24 on the seed film) | 17 |
 | Pouring with a real liquid model | far harder to fix than beads (48% against 88%), and pouring in orbit turns out feasible | 8 |
 | Nemotron against other models on Token Factory | patching: Super with reasoning 94%, gpt-oss-120b 92% at under half the cost per fix, Muse Spark 100%; Super with reasoning off 69% against Qwen3.5 397B's 87%. Compiling: Nano's first program clean in 55 to 70% of compiles, the same-size Qwen3 30B's in 98%. Video: of the eleven models we tried, only Super VL and Muse Spark read it, Super VL at a third of the cost | 10 |
 
@@ -52,8 +53,10 @@ Ultra's reshoot list is 73% of the cost and most of its variance (4.6k to 10.1k 
 
 - **Accuracy.** Over 436 solved targets on a 25 mm grid at three heights, the tip lands at a median 0.27 mm from the target, 0.84 mm at the 95th percentile, 1.88 mm at worst, checked by independent forward kinematics. A reachable target solves in 0.1 ms.
 - **Reach.** Top-down grasps reach 56 to 58% of a 30 by 50 cm table grid at 2 cm height and none at 12 cm; side grasps reach 3% at most, because the wrist has no yaw.
-- **Speed.** A 3 s rollout of the arm in the demo scene takes about 5 ms. All 24 rollouts of one gravity, with the 12 scenario worlds compiled, take 0.28 s on Earth, 0.28 s on the Moon and 0.25 s in orbit, about 250 times real time. Played visibly in the browser at real time the same grid takes 72 s per gravity, so the fast path needs a headless batch mode in the worker.
+- **Misses.** A target the arm cannot reach costs 65 to 90 ms, because the solver tries all 82 starting poses. Beyond 0.47 m from the pan joint, the length of the whole chain, no pose can reach. There the solver skips the starts that differ only in wrist roll, a third of the work, and the shortfall it reports moves by at most 1.8 mm (816 such targets). Stopping a search once its error stopped improving was tried and dropped: it lost 5 of 841 reaches on a wider grid. The two isolated holes on the centre line, (0.10, 0, 0.06) m from the top and (0.25, 0, 0.12) m from the front, are joint limits, not the solver. 3,000 random starts found no solution for either, and the best ones sit at the wrist-flex limit (+1.66 rad) and the elbow limit (+1.69 rad).
+- **Speed.** A 3 s rollout of the arm in the demo scene takes about 5 ms. All 24 rollouts of one gravity, with the 12 scenario worlds compiled, take 0.28 s on Earth, 0.28 s on the Moon and 0.25 s in orbit, about 250 times real time, in node, scene build included. Each is a fixed 3 s move to an IK pose 50 mm above the pocket, with no interpreter, grasp or success check. On the page the grid's line says about a second per 24 (1.1 to 1.3 s for the seed film, 29 October): a different workload, the clip's real program with its grasps and checks, in the browser's worker, which hands control back between rollouts and posts each result; loading the engine and the meshes is not on that clock. Played visibly in the browser at real time the same grid takes 72 s per gravity, so the fast path needs a headless batch mode in the worker.
 - **Scenarios.** All 12 perturbation scenarios build and load next to the arm; 11 change the world measurably; the twelfth, a yaw on the symmetric tube, is flagged as a no-op.
+- **Tilts.** A tilted object is raised until its lowest point is where it stood untilted. Before this fix, the rack tilted 5° started 2.54 mm inside the table, and the tube tilted 8° 0.7 mm inside; the tilt runs in `bench/results/arm-scenario-coverage.json` predate the fix.
 
 ## 4. Gravity, pouring and motion
 
@@ -133,6 +136,17 @@ The learning curve for the escalating patcher, share of failing rehearsals fixed
 The rules make the first try right more often; within five patches the loop gets there anyway, and no lift is distinguishable from zero. With reasoning, the set-up call alone does much of the work: it takes the first try from 5% to 48% without any rules. The cheap model never uses the set-up call (0 of 120 changed anything). Declaring the orbit bead pour infeasible happens before the first rollout in 11 of 12 runs, and by the fourth patch in the twelfth, with the rules and without them alike, so it is not their doing.
 
 **The liquid model changes the pour.** Re-run on the liquid solver (600 particles, one-way coupled), the same loop fixes far fewer pours: 19% [10 to 32] with Super thinking off and 48% [34 to 62] with thinking on, against 79% and 88% with beads. Most failures sit at 75 to 88% of the water in the target, lost along the lip as the water wets the walls. And in orbit, turning the cup over in one second and waiting lands the water and keeps it there in 3 of 6 seeds, so "pouring in orbit is infeasible" was an artefact of the bead model. No patcher found that throw. This is the reason to keep the liquid model: it changes conclusions, not only numbers.
+
+**The playbook on the site (29 October).** `tests/measure/playbook.test.ts`, live: the site's own compile route, unchanged, with Nemotron 3.5 Lightning, on each NASA manipulation clip's answered spec (its interview iteration in `public/showcase/<clip>.json`), the program rehearsed at once at 1 g and 0 g with no Notes patch; first try = it passes in both. Arms with the same calls: off (no playbook); carry-over (the default-on rules of `lib/spec/playbook.ts` learned on the other clips; the route keeps those of the clip's kind of task); matched control (the carry-over request with its rules replaced by "(no rules)"); own (every default-on rule, the clip's own included). 8 runs per arm and clip, Wilson 95% intervals:
+
+| Arm | First try, four pocket clips | |
+|---|---|---|
+| Off | 8 of 32 (25%) | [13 to 42] |
+| Matched control | 6 of 32 (19%) | [9 to 35] |
+| Carry-over rules | 0 of 32 (0%) | [0 to 11] |
+| Own rules | 4 of 32 (13%) | [5 to 28] |
+
+The carry-over rules lower first-try success by 19 points against the matched control [-35 to -4]: the 5 s wait and the release 2 mm above the floor, learned on the seed film, leave the fluid bag turning in orbit (8 of 8 off, 0 of 8 with them). With its own clip's rule the compiler sometimes applies it (seed film 4 of 8, the chess clip 4 of 8 against 0 of 8 off), so the rules are read; they are specific to the clip they came from. The pipette fails in every arm: at the lift out of reach, or with its own rule mostly at the insert. Seed film and the second seed film fail in orbit with the playbook off too: Lightning's programs do not repeat the recorded Nano passes. 5 of 144 compiles came back unusable, all on the second seed film. Spend: US$0.056 for the 144 measured compiles (`bench/results/playbook.json`), US$0.065 on the ledger with a one-run smoke test and the two recordings. Four clips, eight runs: enough to see the harm, not to rank rules.
 
 Limits: the program is 2 to 4 bounded knobs, not the full interpreter; the failure notes are written by the probes (measured facts, never knob names or answers, checked by a test); seeds mostly vary the model's sampling. Spend: US$10.60 for the two rounds and US$1.28 for the matched controls.
 
@@ -303,7 +317,7 @@ Each model call in today's recordings (`public/showcase/*.json`, from node on th
 
 What the page says comes from these rows (`lib/estimate.ts`): beside each stage's clock, "usually" a range that grows with the clip for the proxy (0.1 + 0.01 s to 1 + 0.04 s per clip second), Super VL (3 + 0.15 s to 10 + 0.3 s per clip second) and the trace (3 + 1.2 s to 5 + 1.8 s per clip second), and 1.5 to 10 s for Nano and 1 to 17 s for a patch; before "Watch the clip", for a clip of your own, the proxy, Super VL and Nano's first program added up: "This takes about 5 to 25 seconds for your own video" for 8 s, 10 to 35 seconds for 36 s, 20 to 65 seconds for the longest the page takes (120 s). On this Mac the proxy was the shortest stage; on a slower one its clock now shows how long it takes.
 
-A sample with a recording skips all of this: on a local server each of the six reached its program 0.05 to 0.10 s after "Watch the clip", and veggie's two Notes patches came back in 0.4 s each; the rehearsals still run in the browser. The five new recordings were made on 27 October with Nemotron 3.5 Super VL, Nemotron 3 Nano and Nemotron 3 Super, which leave Token Factory serverless on 9 November: US$0.031 for the five kept, about US$0.04 with three runs that stopped (Nano's first answer did not parse once, Super VL's label failed its schema twice). The wave's hand path was traced once in the browser against its recorded label and handed to the recorder, which cannot run MediaPipe. Where they end: the drink bag passes after the interview, chess and the first seed film pass after Notes, the wave's path is followed on Earth and in orbit; the pipette and the second seed film still fail after five patches, and are kept as they came out.
+A sample with a recording skips all of this: on a local server each of the six reached its program 0.05 to 0.10 s after "Watch the clip", and veggie's two Notes patches came back in 0.4 s each; the rehearsals still run in the browser. The five new recordings were made on 27 October with Nemotron 3.5 Super VL, Nemotron 3 Nano and Nemotron 3 Super, which leave Token Factory serverless on 9 November: US$0.031 for the five kept, about US$0.04 with three runs that stopped (Nano's first answer did not parse once, Super VL's label failed its schema twice). The wave's hand path was traced once in the browser against its recorded label and handed to the recorder, which cannot run MediaPipe. Where they end: the drink bag passes after the interview, chess and the first seed film pass after Notes, the wave's path is followed on Earth and in orbit; the pipette and the second seed film still failed after five patches. Both were then re-recorded the same day on the same models with the same answers (#152, every run in `bench/rerecord/`): the pipette's runs 1 to 3 still failed after five patches (run 1 on Earth and in orbit, runs 2 and 3 in orbit) and run 4 passes after one Notes patch; the second seed film's run 1 failed on Earth and in orbit after five patches and run 2 passes after the interview, with no patch. `public/showcase/<clip>.json` holds the kept run and says on the page which it is, out of how many ([FAILURES.md](FAILURES.md), cases 1 and 2, use the kept runs).
 
 ## 14. Clips of your own: first answers that did not parse
 
@@ -388,6 +402,76 @@ After #154, 15 of the 104 kept labels still had nothing to rehearse (section 15)
 
 Live, for the 12, on Nemotron 3.5 Lightning: the route asked where with no model, and after the answer Lightning compiled every one, asking next what counts as done. Answered with the recorder's defaults and rehearsed in node, before any Notes patch, 5 of the 12 pass on Earth and in orbit and 1 on Earth only. The other 6 fail as other clips do: a thin object the pads do not hold, a reach 10 mm too far, an object still settling. Notes patches those on the page. In only 2 of the 12 did the label name the real destination (the cartridge, the equipment tray), so for the other 10 the right answer is the bench. Spend: about US$0.02.
 
+## 17. The baseline on the scoreboard
+
+The scoreboard's first bar (#55) is "retarget and replay": a program written by fixed rules from the label's steps as first fitted to the bench, with no model and no answers (take the object, carry it 20 mm over the target, lower it onto it or into the pocket, let go; no waits, no checks; `lib/saboteur/baseline.ts`). It is our rule set, one stand-in for the standard approach, not a published method and not a retargeted human trajectory. It runs on each clip's twelve replayed perturbations, blind and sensed, on the last recorded version's spec, as every version does. Source: `tests/saboteur/baseline.test.ts` and `tests/saboteur/scoreboard.test.ts`, headless in node, no model call (29 October, after the tilt fix of #77, which moved six of these counts by one or two, on the second seed film, the fluid bag and the chess clip: a tilted object no longer starts inside the table); the page gives the same counts (seed film and fluid bag checked in the browser).
+
+| Clip | Baseline, Earth | Last version, Earth | Baseline, orbit | Last version, orbit |
+|---|---|---|---|---|
+| `iss-veggie-seed-film` | 24 | 24 (second Notes patch) | 3 | 15 |
+| `iss-veggie-seed-film-2` | 22 | 21 (after the interview) | 0 | 19 |
+| `iss-glovebox-pipette` | 0 | 21 (Notes patch) | 0 | 22 |
+| `iss-fluid-bag-foam` | 24 | 22 (after the interview) | 8 | 13 |
+| `dev-clip` (chess) | 0 | 23 (Notes patch) | 0 | 22 |
+
+Passes out of 24 per gravity. On the pipette and the chess clip the baseline stops at a move 50 mm above the object, out of reach by 8.1 and 11.1 mm, as their first compiles do. Where it does move, it does as well on Earth as the last version or better, and in orbit, where an object let go has to be held until it is constrained, it falls behind on every clip. The wave has nothing to perturb and no baseline.
+
+```bash
+node_modules/.bin/vitest run tests/saboteur/baseline.test.ts tests/saboteur/scoreboard.test.ts --silent=false
+```
+
+## 18. A toss and a catch with one arm
+
+Issue #159, measured on 29 October 2026 in `tests/sim/toss.test.ts` (Node, MuJoCo 3.17, 5 ms step). The raw rows are in `bench/results/toss-catch.json`. Two ops are in the program schema but not yet in the compile prompt:
+
+- `toss` lets go of the held object while the gripper moves. MuJoCo then carries it on as a rigid body, with no drag, since the simulator has no air.
+- `catch` meets the object on the path predicted from its own state as it came off the pads, and closes the jaws so they meet it there.
+
+A catch counts only when four things hold: the object came off the pads, nothing of the gripper touches it as the jaws start to close, the jaws then stop on it within 0.05 rad of the angle they held it at, and the grasp's own check holds (both jaws on it, the moving jaw settled). Nothing is welded otherwise.
+
+Hand-written programs, ten seeds each, the box's start moved by up to 3 mm on x and y (sensed):
+
+| World | Task | Caught | Wilson 95% |
+|---|---|---|---|
+| Earth (1 g) | a 20 x 20 x 50 mm box thrown straight up at 1.3 m/s asked, caught back in the same gripper | 8 of 10 | 49% to 94% |
+| Orbit (0 g) | a 20 x 30 x 40 mm box pushed across at 0.1 m/s from y = -90 mm, caught at y = +90 mm by the same arm (both points within its reach) | 0 of 10 | 0% to 28% |
+
+On Earth, every box that was thrown was caught. The two misses are the grasp before the throw closing on an edge, from a 3 mm start error.
+
+- **How the throw goes.** The modelled position servos top out near 4.8 rad/s unloaded (measured with a 1 rad step on each joint), and the toss asks no joint for more than 4 rad/s through the run-up, the coast and the brake. With the servo's lag put back on top, the joints really turn at up to 4.2 to 4.3 rad/s (measured, `measured_joint_rad_s`). The box comes off the pads at 0.91 to 0.92 m/s of the 1.3 asked, tumbling, because the gripper has to turn to throw it that fast.
+- **Letting go.** For 40 to 50 ms after the weld comes off the box still rides on the squeezed pads. It leaves them with 76 to 115 mm/s sideways (across the jaws) and up to 62 mm/s along the fingers.
+- **The catch.** The path is predicted from that moment and holds: 1.5 mm off when the jaws start to close, on every seed. The gripper overshoots: it stops about 12 mm above the top of the box's flight (312 mm against a 300 mm apex on seed 2), so the box never rises above the jaws. The catch then brings the gripper down onto the predicted path near the top of the flight, and the jaws hold the box 0.06 to 0.135 s after the predicted moment. It is a short toss: the box touches nothing for only about 75 ms (seed 7, from leaving the pads to the first pad touching it again) and rises about 43 mm from where it left them (0.92 m/s squared over 2 g).
+- **This result is fragile.** Before the coast and the brake rates were held to 4 rad/s (they asked the elbow for up to 5 rad/s), the same programs caught 2 of 10. On 6 others the jaws stopped on the box with both pads touching, but 0.05 to 0.09 rad narrower than they had held it, which the angle check rejects. Two rollouts earlier still "caught" the box resting on top of fully shut jaws, which is why that check is there. Treat 8 of 10 as one setting of a scripted throw, not a property of the arm.
+
+In orbit none of the ten was caught:
+
+- 3 grasps missed before the throw.
+- On 2 seeds the box never came off the pads within 0.3 s. Nothing pulls it off the fixed jaw, and the catch refuses an object that never flew.
+- On 2 it came off in 40 ms instead of 220 to 300 ms and left at 143 to 147 mm/s, 15 to 22 mm/s downward, so it was past the far point before the arm could get there.
+- On 2 it was 42 and 48 mm off its predicted path by the time the jaws were to close, because the gripper coming down onto its path had knocked it, and the jaws found no hold.
+- On 1 the arm could not hold the box's orientation at the catch point within 3 mm (it was 6.4 mm off).
+
+Where the box does leave cleanly, its straight path is well predicted: it leaves at 99 to 102 mm/s with under 6 mm/s sideways.
+
+Left for later: a softer release (jaws that let go without the squeeze), a catch that comes in along the path instead of down onto it, and a far-side fixture in place of one arm reaching both points.
+
+## 19. Contact on a stand-in: force-limited following
+
+Issue #160: an on-body clip (lip balm, cream) rehearsed as the arm applying the held object to someone else, gently. There is no person in the simulation: the stand-in is a fixed primitive with a size (role `surface`), and the step is the new `apply` verb with a `contact` block (surface, path in the surface's frame, force limit, reach, coverage). The `contact` op (`lib/sim/contact.ts`) goes to a stand-off 30 mm out along the surface normal, comes in at 40 mm/s and from 25 mm out at 8 mm/s until MuJoCo reports a contact of at least 0.05 N, follows the path at 15 mm/s while a force loop moves the commanded depth by the error against half the limit and a second loop shifts the commanded point across the path by the measured distance from the contact to it, then leaves at 8 mm/s. Every number below is read from MuJoCo each 5 ms step: the normal force of every contact between the held object and the stand-in (`mj_contactForce`), where those contacts are, any contact between the arm itself and the stand-in, and the speed of the held object's contact point along the normal within 15 mm of the surface.
+
+Setup (`tests/sim/contact.test.ts`): the applicator is a 16 x 70 mm cylinder on a block, gripped from the front; the force limit is the default 2 N (a setting, not a safety figure), the reach 3 mm and the coverage wanted 90%. Two stand-ins: a 70 x 200 x 50 mm box on the table, the path an S of 126 mm across its top face, and a 160 mm sphere, the path an 82 mm arc over its top (27° from the top at its ends). Each of 20 seeds moves the stand-in by up to 15 mm in x and y, 5 mm in z and 15° in yaw, and the applicator's block by up to 5 mm; the program is told the true poses (sensed). One hand-written program, no model.
+
+| Stand-in, gravity | Pass | 95% Wilson | Coverage, lowest | Peak force, highest (limit 2 N) | Mean force while following | Time in contact, mean | Approach / retreat speed within 15 mm, highest |
+|---|---|---|---|---|---|---|---|
+| Box, 1 g | 20 of 20 | 84 to 100% | 100% | 1.23 N | 0.99 N | 9.0 s of 8.8 s of path | 8.2 / 11.7 mm/s |
+| Box, 0 g | 20 of 20 | 84 to 100% | 100% | 1.22 N | 0.99 N | 9.0 s | 8.4 / 12.0 mm/s |
+| Sphere, 1 g | 0 of 20 | 0 to 16% | 94% | 2.41 N | 0.98 N | 6.0 s of 5.8 s of path | 12.5 / 10.2 mm/s |
+| Sphere, 0 g | 0 of 20 | 0 to 16% | 94% | 2.41 N | 0.97 N | 6.0 s | 13.8 / 10.4 mm/s |
+
+The arm itself never touched a stand-in. On the flat face the force peaks at most 0.23 N above its 1 N target. On the sphere the mean holds at the target but the peak goes over the 2 N limit on every seed, by 0.28 to 0.41 N, so the curved stand-in fails 0 of 20 at both gravities: force-limited following works here on a flat face and not on a curved one. That is the result as measured, not tuned away. An earlier run that cut the path into samples before moving them onto the sphere (so its samples sat closer together than 1 mm on the surface) passed 17 and 20 of 20 with peaks of 2.04 and 2.00 N: the margin on a curved surface is that thin. Time in contact is longer than the path because the contact starts on the approach and lasts through a 0.4 s dwell at the end. The move out to the stand-off is measured too: a stand-in in the way of it fails the step (`tests/sim/contact.test.ts`), and on the sphere that move brings the applicator within 15 mm of the surface at up to 12.5 and 13.8 mm/s, faster than the 8 mm/s of the approach proper (the speeds are measured, not limited, and the step does not fail on them). Speed and coverage are measured against the surface where MuJoCo has it, not where the program was told it is.
+
+What it took, on the box as placed with no seed: before the loop across the path, the contact ran 2.6 to 4.5 mm off the path (the held object sits a few mm off its commanded pose under the contact's own push, and MuJoCo puts the contact of a tipped cap partway between its centre and its rim), and covered 39 to 41% within 3 mm. Without the slow zone starting 10 mm before the 15 mm where speed is measured, the approach crossed it at 40 mm/s, as a position actuator lags its command.
+
 ## Reproduce
 
 Run from the repository root. Paid scripts read the key from the file named by `UNDERSTUDY_ENV_FILE` (never printed) and log every call to `bench/results/ledger.jsonl`; `node scripts/bench-ledger.mjs` prints the spend. Since 27 October the Nano and Super roles call their replacements (section 12): add `UNDERSTUDY_KEEP_RETIRED=1` to rerun a Nano or Super row while Token Factory still serves them, until 9 November 2026.
@@ -398,6 +482,10 @@ pnpm test
 
 ```bash
 MEASURE_WRITE=1 node_modules/.bin/vitest run tests/measure tests/sim/fluid.test.ts --reporter=verbose
+```
+
+```bash
+MEASURE_WRITE=1 node_modules/.bin/vitest run tests/sim/toss.test.ts --silent=false
 ```
 
 ```bash
@@ -421,6 +509,12 @@ BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local PATCH_SCRIPT=patch-loop-r2 PATCH_SEE
 ```
 
 `PATCH_ARMS=` with no arms reprints every patch-loop table from the saved results without spending anything.
+
+Section 8, the playbook on the site (under its own US$0.25 cap on the ledger):
+
+```bash
+BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local PLAYBOOK_RUNS=8 node_modules/.bin/vitest run tests/measure/playbook.test.ts --reporter=verbose
+```
 
 Section 10 (other models; every call is charged to the ledger under the comparison's own US$25 cap):
 

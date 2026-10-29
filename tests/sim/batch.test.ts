@@ -7,30 +7,23 @@
  *
  *   node_modules/.bin/vitest run tests/sim/batch.test.ts --silent=false
  */
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
-import type { MainModule, MjModel, MjVFS } from "@mujoco/mujoco";
+import type { MainModule, MjModel } from "@mujoco/mujoco";
 import { beforeAll, describe, expect, it } from "vitest";
 import { runBatch, type BatchRollout } from "@/lib/sim/batch";
 import { DEMO_PROGRAMS, DEMO_SPEC, POUR_PROGRAMS, POUR_SPEC } from "@/lib/sim/demo-spec";
 import { environment, run, type Rollout } from "@/lib/sim/interpreter";
 import { Liquid } from "@/lib/sim/liquid";
-import { G_M_S2, park, SO101_XML, stageXml } from "@/lib/sim/so101";
+import { G_M_S2, park, stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { GRAVITIES, MODES, Scenario, type Program, type TaskSpec } from "@/lib/spec/schema";
 
 let mujoco: MainModule;
-let vfs: MjVFS;
 
 beforeAll(async () => {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  mujoco = await loadMujoco();
-  const dir = path.join(process.cwd(), "assets", "so101");
-  vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+  mujoco = await loadSo101();
 }, 60_000);
 
-const compile = (xml: string): MjModel => mujoco.MjModel.from_xml_string(xml, vfs);
+const compile = (xml: string): MjModel => mujoco.MjModel.from_xml_string(xml);
 const sc = (id: string, axis: Scenario["axis"], offset: number, object: string) => Scenario.parse({ id, name: id, axis, offset, object, expected: "unknown" });
 const SCENARIOS = [sc("pillow-x+6", "x_mm", 6, "pillow"), sc("pillow-y-2", "y_mm", -2, "pillow"), sc("film-x+10", "x_mm", 10, "film")];
 

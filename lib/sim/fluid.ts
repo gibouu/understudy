@@ -56,6 +56,13 @@
  *   - Where solids leave no room at all for a particle (say two walls closer than its
  *     diameter), the closing contact pass cannot place it: the last projection stands, it
  *     ends inside another solid, and closeUnresolved counts it.
+ *   - A rotating solid's conservative advancement drops a contact it found mid-substep when the
+ *     particle's end point is back in front of the carried contact plane, and samples the rest of
+ *     the substep only every 3 degrees of turn: a plane that slides 2 cm and turns 0.05 rad in one
+ *     substep can pass through a 100 um particle and leave it unpushed (about 50 um of penetration
+ *     on the way). That early return is also what keeps repeated projection passes from adding the
+ *     pushes up, and removing it replays pushes on later passes, so it stands; the app's cups move
+ *     millimetres per substep with 4 mm particles, far from this.
  */
 
 export type Vec3 = [number, number, number];
@@ -1221,6 +1228,8 @@ export class Fluid {
           else if (v > hi) { depth = v - hi; v = hi; sign = -1; }
           if (sign === 0) continue;
           p[o] = v;
+          // the clamp can push it into a solid next to the bounds (a wall meeting them at a shallow angle): check after
+          this.entangled[i] = 1;
           const cur = contactSolid[i];
           if (cur === BOUNDS_ID) contactDepth[i] += depth;
           else if (cur === -1 || depth > contactDepth[i]) {

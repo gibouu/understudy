@@ -32,7 +32,7 @@ export const SHAPES = ["cylinder", "box", "sphere"] as const;
 /** none: a box; axial: a cylinder (yaw does not matter); full: a sphere. */
 export const SYMMETRIES = ["none", "axial", "full"] as const;
 export const ROLES = ["manipulated", "fixture", "obstacle", "surface"] as const;
-export const VERBS = ["reach", "grasp", "move", "insert", "place", "release", "retract", "pour", "gesture"] as const;
+export const VERBS = ["reach", "grasp", "move", "insert", "place", "release", "retract", "pour", "gesture", "apply"] as const;
 export const APPROACHES = ["top", "side", "front"] as const;
 /** The person's own hands, as MediaPipe names them. */
 export const HANDS = ["left", "right"] as const;
@@ -150,6 +150,15 @@ export const GESTURE_REACH_MM = 5;
 export const PathPoint = z.object({ t_s: z.number().nonnegative(), xyz_mm: Vec3mm });
 export type PathPoint = z.infer<typeof PathPoint>;
 
+/**
+ * A contact step's defaults: the most the held object may push on the surface it is applied to (N), how close
+ * (mm) a contact must pass to a point of the path for the point to count as covered, and the share (%) of the
+ * path that must be covered. The force limit is a setting, not a safety rating (docs/LIMITATIONS.md).
+ */
+export const CONTACT_FORCE_N = 2;
+export const CONTACT_REACH_MM = 3;
+export const CONTACT_COVERAGE_PC = 90;
+
 export const ViaPoint = z.object({
   /** frame the point is expressed in: an object id or "world" */
   frame: z.string().min(1),
@@ -189,6 +198,22 @@ export const Step = z
         hand: z.enum(HANDS).optional(),
         path: z.array(PathPoint).default([]),
         reach_mm: z.number().positive().default(GESTURE_REACH_MM),
+      })
+      .optional(),
+    /**
+     * verb "apply": the held `object` is brought onto the fixed object `surface` (a stand-in: any object that does
+     * not move), slowly near it, kept on its surface along `path` with the contact force under `force_n`, and
+     * taken off slowly. `path` is in the surface object's frame, mm; each point is moved onto its surface
+     * (lib/sim/surface.ts). The contact op checks it (lib/sim/contact.ts): `coverage_pc` of the path within
+     * `reach_mm` of a contact, and the force under the limit throughout.
+     */
+    contact: z
+      .object({
+        surface: z.string().min(1),
+        path: z.array(Vec3mm).default([]),
+        force_n: z.number().positive().max(20).default(CONTACT_FORCE_N),
+        reach_mm: z.number().positive().default(CONTACT_REACH_MM),
+        coverage_pc: z.number().gt(0).max(100).default(CONTACT_COVERAGE_PC),
       })
       .optional(),
     t_start_s: z.number().nonnegative(),
@@ -250,6 +275,37 @@ export const ProgramOp = z.discriminatedUnion("op", [
   }),
   /** Trace the gesture path of the step it is in with the point between the pads, then check each point was reached. */
   z.object({ op: z.literal("follow") }),
+  /**
+   * Apply the held object along the contact path of the step it is in: slowly onto the surface, along the path with
+   * the force kept under the step's limit (read from MuJoCo's contacts), slowly off; then check coverage and force.
+   */
+  z.object({ op: z.literal("contact") }),
+  /**
+   * Let go of the held object while the gripper moves (#159): the arm winds back about `run_mm` and speeds up so the
+   * held object's centre passes where it is now at `velocity_mm_s` (world frame), the jaws let go there, the gripper
+   * keeps its speed until the object is off the pads, then brakes over `brake_mm`. From then on MuJoCo carries the
+   * object as a rigid body; there is no drag (lib/sim/toss.ts). Not in the compile prompt yet.
+   */
+  z.object({
+    op: z.literal("toss"),
+    velocity_mm_s: Vec3mm,
+    run_mm: z.number().positive().default(60),
+    brake_mm: z.number().positive().default(20),
+  }),
+  /**
+   * Catch `object`, tossed earlier in the program: the gripper goes where the object's predicted path (from its
+   * state as it came off the pads, and gravity) passes nearest `frame` + `offset_mm` (neither: where the gripper is
+   * now), holding it as it let go of it, and the jaws close to meet it there; it is held again if the jaws stop on it
+   * as they held it, the grasp's own check holding, within `window_s` of the predicted moment. A miss is not a
+   * failure by itself, as with grasp: the program's checks find out. Not in the compile prompt yet.
+   */
+  z.object({
+    op: z.literal("catch"),
+    object: z.string().min(1),
+    frame: z.string().min(1).optional(),
+    offset_mm: Vec3mm.optional(),
+    window_s: z.number().positive().default(0.3),
+  }),
   z.object({
     op: z.literal("wait_until"),
     predicate: Predicate,
@@ -271,7 +327,25 @@ export const Program = z.object({
   steps: z.array(z.object({ step_id: z.string().min(1), ops: z.array(ProgramOp) })),
   warnings: z.array(z.string()).default([]),
 });
-export type Program = z.infer<typeof Program>;
+/** Ops the simulator runs from a hand-written program but the compile prompt does not offer (#159, #160): a compiled answer naming one is unusable. */
+export const SIM_ONLY_OPS = ["toss", "catch", "contact"] as const;
+/**
+ * The ops a compiled answer may use: ProgramOp without SIM_ONLY_OPS, in the same order, so an answer that names one
+ * fails to parse exactly as an unknown op did before they existed (the route asks again).
+ */
+export const CompiledOp = z.discriminatedUnion(
+  "op",
+  ProgramOp.options.filter((o) => !(SIM_ONLY_OPS as readonly string[]).includes(o.shape.op.value)) as unknown as typeof ProgramOp.options,
+);
+/** A program as the compile route parses the model's answer: Program over CompiledOp. */
+export const CompiledProgram = Program.extend({ steps: z.array(z.object({ step_id: z.string().min(1), ops: z.array(CompiledOp) })) });
+/** `playbook`: the rules the compiler says it applied, as playbook#<id> (lib/spec/playbook.ts); only with the playbook on. */
+export type Program = z.infer<typeof Program> & { playbook?: string[] };
+/**
+ * A program compiled with the playbook on: Program and the ids it says it applied. Only that compile parses
+ * with it; Program strips the key, so with the playbook off the model's answer is read as before it existed.
+ */
+export const PlaybookProgram = CompiledProgram.extend({ playbook: z.array(z.string()).optional().catch(undefined) });
 
 /** One field-level change, applied with `applyChanges`, which also records provenance. */
 export const SpecChange = z.object({

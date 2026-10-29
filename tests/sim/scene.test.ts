@@ -1,9 +1,8 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { TaskSpec, type Scenario } from "@/lib/spec/schema";
-import { apply, buildScene, layoutMissingPoses, matToQuat, mjcfName, perturb, SceneError, standaloneXml, WALL_M, worldPoses } from "@/lib/sim/scene";
-import { stageXml, SO101_XML } from "@/lib/sim/so101";
+import { apply, buildScene, halfHeightMm, layoutMissingPoses, matToQuat, mjcfName, perturb, SceneError, standaloneXml, WALL_M, worldPoses } from "@/lib/sim/scene";
+import { stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 
 /** A free test tube above the table: the orbit demo for the gravity check. */
 function demoTubeXml(): string {
@@ -81,10 +80,60 @@ describe("buildScene", () => {
     });
     const w = worldPoses(chain, { tray: { axis: "y", deg: 90 } }, { partial: true });
     expect(w.cap.xyz_mm[0]).toBeCloseTo(290, 6); // +z of the tray now points along +x
-    expect(w.cap.xyz_mm[2]).toBeCloseTo(20, 6);
+    // on its edge the tray stands 200 mm tall: raised 80 mm so it does not sink into the table, the cap with it
+    expect(w.tray.xyz_mm[2]).toBeCloseTo(100, 6);
+    expect(w.cap.xyz_mm[2]).toBeCloseTo(100, 6);
     const zAxis = apply(w.cap.R, [0, 0, 1]);
     expect(zAxis[0]).toBeCloseTo(1, 6);
     expect(matToQuat(w.cap.R)[2]).toBeCloseTo(Math.sin(Math.PI / 4), 6);
+  });
+  it.each([
+    ["box", [60, 40, 30], "x", 5],
+    ["box", [60, 40, 30], "y", -12],
+    ["cylinder", [16, 16, 100], "y", 8],
+    ["cylinder", [80, 80, 20], "x", 30],
+    ["sphere", [30, 30, 30], "x", 20],
+    ["cylinder", [16, 16, 100], "x", 45],
+  ] as const)("moves a tilted %s %j (%s %d deg) until its lowest point is back on the table", (shape, size_mm, axis, deg) => {
+    const one = TaskSpec.parse({
+      ...spec,
+      objects: [{ id: "thing", name: "thing", shape, size_mm, symmetry: "none", role: "obstacle", pose: { xyz_mm: [250, 0, size_mm[2] / 2], yaw_deg: 30 }, source: "vl#seg1" }],
+      steps: [],
+    });
+    const lowest = (w: ReturnType<typeof worldPoses>) => w.thing.xyz_mm[2] - halfHeightMm(one.objects[0], w.thing.R);
+    expect(lowest(worldPoses(one))).toBeCloseTo(0, 9);
+    const tilted = worldPoses(one, { thing: { axis, deg } });
+    expect(lowest(tilted)).toBeCloseTo(0, 9);
+    if (shape !== "sphere") expect(tilted.thing.xyz_mm[2]).not.toBeCloseTo(size_mm[2] / 2, 3);
+    // the same corner, found independently: every vertex of the box (or rim point of the cylinder), turned
+    const pts: [number, number, number][] =
+      shape === "box"
+        ? [-1, 1].flatMap((i) => [-1, 1].flatMap((j) => [-1, 1].map((k): [number, number, number] => [(i * size_mm[0]) / 2, (j * size_mm[1]) / 2, (k * size_mm[2]) / 2])))
+        : shape === "cylinder"
+          ? Array.from({ length: 720 }, (_, n) => [-1, 1].map((k): [number, number, number] => [(size_mm[0] / 2) * Math.cos((n * Math.PI) / 360), (size_mm[0] / 2) * Math.sin((n * Math.PI) / 360), (k * size_mm[2]) / 2])).flat()
+          : [];
+    if (pts.length) expect(Math.min(...pts.map((p) => tilted.thing.xyz_mm[2] + apply(tilted.thing.R, p)[2]))).toBeCloseTo(0, 3);
+  });
+  it("lifts a container as the open box it is built as, whatever shape the spec gives it", () => {
+    const one = TaskSpec.parse({
+      ...spec,
+      objects: [{ id: "cup", name: "cup", shape: "cylinder", size_mm: [80, 80, 40], symmetry: "none", role: "obstacle", liquid_ml: 50, pose: { xyz_mm: [250, 0, 20], yaw_deg: 45 }, source: "vl#seg1" }],
+      steps: [],
+    });
+    const w = worldPoses(one, { cup: { axis: "x", deg: 5 } });
+    // the box's eight corners, turned: the lowest is on the table
+    const corners = [-1, 1].flatMap((i) => [-1, 1].flatMap((j) => [-1, 1].map((k): [number, number, number] => [i * 40, j * 40, k * 20])));
+    expect(Math.min(...corners.map((c) => w.cup.xyz_mm[2] + apply(w.cup.R, c)[2]))).toBeCloseTo(0, 6);
+  });
+  it("lifts a cylinder container by the square box its footprint makes, not by its second size", () => {
+    const one = TaskSpec.parse({
+      ...spec,
+      objects: [{ id: "cup", name: "cup", shape: "cylinder", size_mm: [80, 40, 40], symmetry: "none", role: "obstacle", liquid_ml: 50, pose: { xyz_mm: [250, 0, 20] }, source: "vl#seg1" }],
+      steps: [],
+    });
+    const w = worldPoses(one, { cup: { axis: "x", deg: 30 } });
+    const corners = [-1, 1].flatMap((i) => [-1, 1].flatMap((j) => [-1, 1].map((k): [number, number, number] => [i * 40, j * 40, k * 20])));
+    expect(Math.min(...corners.map((c) => w.cup.xyz_mm[2] + apply(w.cup.R, c)[2]))).toBeCloseTo(0, 6);
   });
   it("lays out an unposed parent before resolving its posed child", () => {
     const orphan = TaskSpec.parse({
@@ -282,25 +331,19 @@ describe("the generated scene compiles in MuJoCo", () => {
     }
   }, 30_000);
   it("loads the full stage next to the arm even with ids that match arm bodies", async () => {
-    const { default: loadMujoco } = await import("@mujoco/mujoco");
-    const mujoco = await loadMujoco();
-    const dir = path.join(process.cwd(), "assets", "so101");
-    const vfs = new mujoco.MjVFS();
-    vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-    for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+    const mujoco = await loadSo101();
     const clash = TaskSpec.parse({
       ...spec,
       objects: [{ ...spec.objects[0], id: "gripper" }, { ...spec.objects[1], id: "base" }, { ...spec.objects[2], id: "a b" }, { ...spec.objects[2], id: "a_b" }],
       steps: [{ ...spec.steps[0], object: "gripper" }, { ...spec.steps[1], object: "gripper", target: { fixture: "pocket", frame: "base" } }],
     });
     const build = buildScene(clash);
-    const model = mujoco.MjModel.from_xml_string(stageXml(build.worldbody), vfs);
+    const model = mujoco.MjModel.from_xml_string(stageXml(build.worldbody));
     try {
       expect(model.nbody).toBeGreaterThan(8 + 4); // the arm's bodies plus ours
       expect(model.nq).toBe(6 + 7); // six arm joints plus one free joint
     } finally {
       model.delete();
-      vfs.delete();
     }
   }, 60_000);
 });

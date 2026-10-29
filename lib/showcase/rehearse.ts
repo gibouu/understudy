@@ -5,35 +5,29 @@
  * world is the worker's reset (the arm parked at home, the liquid filled when
  * the spec holds any); gravity is the same model option either way.
  */
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
-import type { MainModule, MjVFS } from "@mujoco/mujoco";
+import type { MainModule } from "@mujoco/mujoco";
 import type { WorldRun } from "@/lib/notes/note";
 import { environment, runToEnd, type Rollout } from "@/lib/sim/interpreter";
 import { Liquid } from "@/lib/sim/liquid";
-import { park, SO101_XML, stageXml } from "@/lib/sim/so101";
+import { park, stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 import { GRAVITIES, type GravityName, type Program, type TaskSpec } from "@/lib/spec/schema";
 import type { Run } from "./session";
 
 export const WORLDS = ["earth", "orbit"] as const satisfies readonly GravityName[];
 export type World = (typeof WORLDS)[number];
 
-export type Engine = { mujoco: MainModule; vfs: MjVFS };
+/** An engine with the SO-101 mounted in its file system: models compile from stageXml alone. */
+export type Engine = { mujoco: MainModule };
 
 export async function loadEngine(root = process.cwd()): Promise<Engine> {
-  const { default: loadMujoco } = await import("@mujoco/mujoco");
-  const mujoco = await loadMujoco();
-  const dir = path.join(root, "assets", "so101");
-  const vfs = new mujoco.MjVFS();
-  vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-  for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
-  return { mujoco, vfs };
+  return { mujoco: await loadSo101(root) };
 }
 
 /** One world's rollout in full: its log and where the objects ended are what /api/notes reads. */
-export function rollout({ mujoco, vfs }: Engine, spec: TaskSpec, program: Program, world: GravityName): Rollout {
+export function rollout({ mujoco }: Engine, spec: TaskSpec, program: Program, world: GravityName): Rollout {
   const env = environment(spec);
-  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: GRAVITIES[world], graspable: env.graspable }), vfs);
+  const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: GRAVITIES[world], graspable: env.graspable }));
   const data = new mujoco.MjData(model);
   try {
     park(mujoco, model, data);

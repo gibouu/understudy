@@ -1,23 +1,17 @@
-import { readFileSync, readdirSync } from "node:fs";
-import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEMO_SPEC } from "@/lib/sim/demo-spec";
 import { reachability } from "@/lib/sim/ik";
 import { buildScene } from "@/lib/sim/scene";
-import { SO101_XML, stageXml } from "@/lib/sim/so101";
+import { stageXml } from "@/lib/sim/so101";
+import { loadSo101 } from "@/lib/sim/so101-disk";
 
 describe("the /stage demo spec", () => {
   it("compiles next to the arm with the film's grasp point and a point 50 mm above the pocket in reach", async () => {
-    const { default: loadMujoco } = await import("@mujoco/mujoco");
-    const mujoco = await loadMujoco();
-    const dir = path.join(process.cwd(), "assets", "so101");
-    const vfs = new mujoco.MjVFS();
-    vfs.addBuffer(SO101_XML, new Uint8Array(readFileSync(path.join(dir, SO101_XML))));
-    for (const file of readdirSync(path.join(dir, "assets"))) vfs.addBuffer(file, new Uint8Array(readFileSync(path.join(dir, "assets", file))));
+    const mujoco = await loadSo101();
     const build = buildScene(DEMO_SPEC);
     expect(build.warnings).toEqual([]);
     expect(build.pockets.pillow.inner_m[0]).toBeCloseTo(0.02, 6);
-    const model = mujoco.MjModel.from_xml_string(stageXml(build.worldbody), vfs);
+    const model = mujoco.MjModel.from_xml_string(stageXml(build.worldbody));
     const data = new mujoco.MjData(model);
     try {
       expect(model.nq).toBe(6 + 7); // six arm joints plus the film's free joint
@@ -34,7 +28,6 @@ describe("the /stage demo spec", () => {
     } finally {
       data.delete();
       model.delete();
-      vfs.delete();
     }
   }, 60_000);
 });

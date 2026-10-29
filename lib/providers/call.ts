@@ -5,7 +5,9 @@
  * caller's previous value (when it has one) instead of a failure, so a bad
  * recompile never loses a working program. Spec v2 risk 3. Every call first
  * reserves what it can cost from the live budget (lib/unlock/budget.ts) and
- * is not made when the budget has no room for it.
+ * is not made when the budget has no room for it. A route with a deadline
+ * passes a signal: once it is aborted, the request in flight is cut (its
+ * error body included) and no other is reserved or sent.
  */
 import OpenAI from "openai";
 import type { z } from "zod";
@@ -37,6 +39,11 @@ export type CallOptions<T> = {
   thinking?: boolean;
   /** every billed call is pushed here as well, failed ones included (a failed result carries the same ledger) */
   ledger?: LedgerEntry[];
+  /**
+   * a route's deadline: aborting it cuts the request in flight and starts no other (no retry, no re-ask).
+   * The request it cut keeps its reservation, as a timeout does: it may have been billed.
+   */
+  signal?: AbortSignal;
 };
 
 /** The live budget had no room for a call, so it was not made. */
@@ -68,16 +75,26 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
     const attempts = (client.maxRetries ?? 0) + 1;
     let res;
     for (let sent = 1; ; sent++) {
+      // past the route's deadline nothing more is reserved or sent
+      if (o.signal?.aborted) throw new OpenAI.APIUserAbortError();
       // the most this request can cost is counted before it is made, the unusable answers too (lib/unlock/budget.ts)
       const hold = await reserve(model, promptTokensAtMost(messages), o.maxTokens);
       if (!hold.ok) throw new NoBudget(hold.why);
+      // cut while the reservation was made: nothing was sent, so nothing is held
+      if (o.signal?.aborted) {
+        await settle(hold, null);
+        throw new OpenAI.APIUserAbortError();
+      }
       try {
-        res = await client.chat.completions.create(optional ? { ...params, response_format: { type: "json_object" } } : params, { maxRetries: 0 });
+        res = await client.chat.completions.create(optional ? { ...params, response_format: { type: "json_object" } } : params, { maxRetries: 0, signal: o.signal });
         // an answer that does not say what it used keeps its whole reservation
         if (res.usage) await settle(hold, entryOf(res));
         break;
       } catch (err) {
         const status = err instanceof OpenAI.APIError ? err.status : undefined;
+        // cut at the deadline: the reservation stays, whatever status the SDK made of the cut (it can turn an error
+        // body cut short into a 4xx), and neither the 400 retry nor another attempt is made
+        if (o.signal?.aborted) throw err;
         // only a request Token Factory refused outright (4xx) is surely unbilled; a timeout or a 5xx keeps its reservation
         if (status !== undefined && status >= 400 && status < 500) await settle(hold, null);
         if (optional && status === 400) {
@@ -85,7 +102,18 @@ export async function callModel<T>(client: OpenAI, o: CallOptions<T>): Promise<S
           return ask();
         }
         if (!(status === undefined || status === 408 || status === 429 || status >= 500) || sent >= attempts) throw err;
-        await new Promise((r) => setTimeout(r, 500 * sent));
+        // cut while a 408 or 429 was settled: no pause, no other attempt
+        if (o.signal?.aborted) throw err;
+        // the pause ends at the deadline too, and the next turn then stops
+        await new Promise<void>((r) => {
+          const end = () => {
+            clearTimeout(t);
+            o.signal?.removeEventListener("abort", end);
+            r();
+          };
+          const t = setTimeout(end, 500 * sent);
+          o.signal?.addEventListener("abort", end, { once: true });
+        });
       }
     }
     ledger.push(entryOf(res));

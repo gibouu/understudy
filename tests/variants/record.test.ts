@@ -7,7 +7,10 @@
  * Prints each variant's rehearsal on Earth and in orbit. Spends Token Factory
  * credits (about a cent), so it runs only with VARIANTS_RECORD=1. With
  * VARIANTS_KEEP_REPLIES=1 it keeps Super's recorded replies and compiles only
- * the variants that have no recording of their exact spec (a tenth of a cent):
+ * the variants that have no recording of their exact spec (a tenth of a cent).
+ * A variant whose program asks something new is answered with the recorder's
+ * defaults (lib/showcase/answers.ts), as on its card (#110), and that compile
+ * is recorded too:
  *
  *   VARIANTS_RECORD=1 [VARIANTS_BASE=pour] [VARIANTS_KEEP_REPLIES=1] node_modules/.bin/vitest run tests/variants/record.test.ts
  */
@@ -17,9 +20,13 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { tokenFactory } from "@/lib/providers/tokenfactory";
 import { loadEngine, rollout, type Engine } from "@/lib/showcase/rehearse";
 import { POUR_PROGRAMS, POUR_SPEC } from "@/lib/sim/demo-spec";
+import { DEFAULT_ANSWERS, answerFor } from "@/lib/showcase/answers";
+import { asksOf } from "@/lib/spec/answer";
+import { applyChanges } from "@/lib/spec/apply";
 import { TaskSpec, type Program } from "@/lib/spec/schema";
 import type { StageResult } from "@/lib/spec/stage-result";
 import { callModel } from "@/lib/providers/call";
+import { nextTurn } from "@/lib/variants/answer";
 import { variantsCall } from "@/lib/variants/ask";
 import { costOf } from "@/lib/variants/cost";
 import { MAX_VARIANTS, VariantReply } from "@/lib/variants/parse";
@@ -91,6 +98,19 @@ describe.skipIf(process.env.VARIANTS_RECORD !== "1")("record the variants (live,
         compiles.push({ spec: v.spec, result: c });
         const outcome = c.status === "done" ? (["earth", "orbit"] as const).map((w) => { const x = rollout(engine, v.spec, c.value, w); return `${w} ${x.pass ? "pass" : `fail (${x.why})`}${x.liquid ? ` liquid ${JSON.stringify(x.liquid)}` : ""}`; }).join(", ") : c.status;
         console.log(`  ${v.id} ${v.title}: ${v.edits.map((e) => `${e.path} ${JSON.stringify(e.before)} -> ${JSON.stringify(e.after)}`).join("; ")} | ${outcome}`);
+        // a question this variant's program asks is answered on its card (#110): record that compile too, so the replay moves on
+        const asks = c.status === "done" ? asksOf(c.value) : [];
+        const turn = nextTurn(v.spec);
+        const answers = asks.flatMap((a) => answerFor(v.spec, a.slot, turn, DEFAULT_ANSWERS)?.change ?? []);
+        if (c.status !== "done" || answers.length === 0) continue;
+        const after = applyChanges(v.spec, answers);
+        if (after.warnings.length) throw new Error(`${v.title}: ${after.warnings.join("; ")}`);
+        const kept = keep ? recordedCompiles.find((x) => JSON.stringify(TaskSpec.parse(x.spec)) === JSON.stringify(after.spec))?.result : undefined;
+        const c2 = kept ?? (await postCompile(after.spec, c.value, false));
+        if (!kept) usd += costOf(c2.status === "done" ? c2.ledger : []).usd;
+        compiles.push({ spec: after.spec, result: c2 });
+        const answeredOutcome = c2.status === "done" ? (["earth", "orbit"] as const).map((w) => { const x = rollout(engine, after.spec, c2.value, w); return `${w} ${x.pass ? "pass" : `fail (${x.why})`}`; }).join(", ") : c2.status;
+        console.log(`  ${v.id} ${v.title}, answered ${answers.map((a) => `${a.path} = ${JSON.stringify(a.value)}`).join("; ")}: ${kept ? "kept its recorded compile" : "compiled live"} | ${answeredOutcome}`);
       }
     }
     console.log(`spent US$${usd.toFixed(5)}`);

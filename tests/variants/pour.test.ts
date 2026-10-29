@@ -114,7 +114,7 @@ describe("a variant of a pour", () => {
 
   it("may say it pours, and still not that it waves", () => {
     expect(why(buildVariant(POUR_SPEC, { title: "Pour it back", summary: "The water is poured back into the cup.", changes: [{ path: "steps[s1].object", value: "bowl" }] }, 1))).toBe("");
-    expect(why(buildVariant(POUR_SPEC, { title: "Wave, then pour", summary: "", changes: [{ path: "steps[s1].pour.tilt_s", value: 2 }] }, 1))).toBe('not yet: "wave" is not something the rehearsal runs; it runs one pour from a container the arm holds');
+    expect(why(buildVariant(POUR_SPEC, { title: "Wave, then pour", summary: "", changes: [{ path: "steps[s1].pour.tilt_s", value: 2 }] }, 1))).toBe('this task has no gesture: "wave" is not part of it; its variants keep one pour from a container the arm holds');
   });
 });
 

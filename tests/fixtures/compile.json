@@ -1350,6 +1350,316 @@
  {
   "spec": {
    "version": 1,
+   "title": "ISS Veggie seed film placement into plant pillows: Tighter pillow fit",
+   "summary": "The pocket clearance reduces to 2 mm, demanding precise placement of the seed film packet.",
+   "objects": [
+    {
+     "id": "obj1",
+     "name": "seed film packet",
+     "shape": "box",
+     "size_mm": [
+      40,
+      10,
+      40
+     ],
+     "symmetry": "none",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.7,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "obj2",
+     "name": "Veggie plant pillow tray",
+     "shape": "box",
+     "size_mm": [
+      150,
+      150,
+      30
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       15
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "pocket_clearance_mm": 2,
+     "confidence": 0.8,
+     "source": "vl#seg2",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit",
+      "pocket_clearance_mm": "variant#3"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "obj1",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 5,
+     "source": "vl#seg2",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "obj1",
+     "target": {
+      "fixture": "pocket",
+      "frame": "obj2"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "inside_zone",
+       "object": "obj1",
+       "target": "obj2"
+      },
+      {
+       "kind": "object_still",
+       "object": "obj1"
+      }
+     ],
+     "tolerances": {
+      "x_mm": 5
+     },
+     "t_start_s": 20,
+     "t_end_s": 30,
+     "source": "vl#seg2",
+     "sources": {
+      "success": "interview#1",
+      "tolerances.x_mm": "interview#2"
+     }
+    }
+   ],
+   "warnings": [
+    "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+   ],
+   "open_questions": [],
+   "sources": {
+    "title": "variant#3",
+    "summary": "variant#3"
+   },
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "c8cb52201a93974a4237431bdc262a72c307d15218895bde6dfbabe0f692798f",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "ISS Veggie seed film placement into plant pillows: Tighter pillow fit",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "obj1",
+        "aperture_mm": 10
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "contact_both_pads",
+         "object": "obj1"
+        },
+        "timeout_s": 1
+       },
+       {
+        "op": "move_to",
+        "frame": "obj1",
+        "offset_mm": [
+         0,
+         0,
+         50
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         13
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj1"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj1",
+         "target": "obj2"
+        }
+       }
+      ]
+     },
+     {
+      "step_id": "s3",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         55
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         36
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "obj2",
+        "offset_mm": [
+         0,
+         0,
+         13
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "obj1"
+        },
+        "timeout_s": 2
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "obj1",
+         "target": "obj2"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
+    ]
+   },
+   "warnings": [
+    "nano: steps[2].step_id: program step \"s3\" is not in the spec",
+    "steps[2].step_id: program step \"s3\" is not in the spec"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/Nemotron-3_5-Lightning",
+     "prompt_tokens": 3083,
+     "completion_tokens": 662,
+     "seconds": 2.845
+    },
+    {
+     "model": "nvidia/Nemotron-3_5-Lightning",
+     "prompt_tokens": 3796,
+     "completion_tokens": 608,
+     "seconds": 2.629
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
    "title": "ISS Veggie seed film placement into plant pillows: Flatter packet",
    "summary": "The seed film packet becomes thinner in height while length and width stay the same.",
    "objects": [
@@ -4063,6 +4373,553 @@
      "prompt_tokens": 2958,
      "completion_tokens": 311,
      "seconds": 3.87
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "ISS glovebox pipetting into sample cartridge",
+   "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into its wells, repeating the pipetting action several times.",
+   "objects": [
+    {
+     "id": "pipette",
+     "name": "pipette",
+     "shape": "box",
+     "size_mm": [
+      25,
+      25,
+      40
+     ],
+     "symmetry": "axial",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.5,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "cartridge",
+     "name": "sample cartridge",
+     "shape": "box",
+     "size_mm": [
+      65,
+      65,
+      12
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       6
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.6,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "pipette",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 2,
+     "source": "fit",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "pipette",
+     "target": {
+      "fixture": "pocket",
+      "frame": "cartridge"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 3.5,
+     "source": "vl#seg1",
+     "sources": {}
+    }
+   ],
+   "warnings": [
+    "No scale reference visible; object sizes and poses are estimated."
+   ],
+   "open_questions": [
+    "Which specific well of the cartridge is being pipetted into?",
+    "What is the pocket_clearance_mm of the cartridge wells?"
+   ],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "playbook": [
+   "pocket-lift-reach",
+   "pocket-wait-still-orbit",
+   "pocket-release-above-floor"
+  ],
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 25
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         41.9
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "ask",
+        "slot": "objects[cartridge].pocket_clearance_mm",
+        "question": "How much wider than the pipette is the opening of the sample cartridge?",
+        "why": "the pocket's clearance was not visible"
+       },
+       {
+        "op": "ask",
+        "slot": "steps[s2].success",
+        "question": "When does putting the pipette in the sample cartridge count as done?",
+        "why": "the step has no success check"
+       },
+       {
+        "op": "move_to",
+        "frame": "cartridge",
+        "offset_mm": [
+         0,
+         0,
+         46
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "cartridge",
+        "offset_mm": [
+         0,
+         0,
+         27
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "cartridge",
+        "offset_mm": [
+         0,
+         0,
+         18
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "pipette"
+        },
+        "timeout_s": 5
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No scale reference visible; object sizes and poses are estimated."
+    ],
+    "playbook": [
+     "playbook#pocket-lift-reach",
+     "playbook#pocket-wait-still-orbit",
+     "playbook#pocket-release-above-floor"
+    ]
+   },
+   "warnings": [
+    "added an ask for objects[cartridge].pocket_clearance_mm: the rehearsal needs it",
+    "added an ask for steps[s2].success: the rehearsal needs it"
+   ],
+   "ledger": [
+    {
+     "model": "nvidia/Nemotron-3_5-Lightning",
+     "prompt_tokens": 3626,
+     "completion_tokens": 461,
+     "seconds": 5.698
+    }
+   ]
+  }
+ },
+ {
+  "spec": {
+   "version": 1,
+   "title": "ISS glovebox pipetting into sample cartridge",
+   "summary": "A crew member in a glovebox holds a small rectangular sample cartridge in the left hand and uses a pipette in the right hand to dispense liquid into its wells, repeating the pipetting action several times.",
+   "objects": [
+    {
+     "id": "pipette",
+     "name": "pipette",
+     "shape": "box",
+     "size_mm": [
+      25,
+      25,
+      40
+     ],
+     "symmetry": "axial",
+     "role": "manipulated",
+     "pose": {
+      "xyz_mm": [
+       200,
+       -100,
+       20
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "confidence": 0.5,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit"
+     }
+    },
+    {
+     "id": "cartridge",
+     "name": "sample cartridge",
+     "shape": "box",
+     "size_mm": [
+      65,
+      65,
+      12
+     ],
+     "symmetry": "none",
+     "role": "fixture",
+     "pose": {
+      "xyz_mm": [
+       175,
+       100,
+       6
+      ],
+      "yaw_deg": 0,
+      "frame": "world"
+     },
+     "pocket_clearance_mm": 10,
+     "confidence": 0.6,
+     "source": "vl#seg1",
+     "sources": {
+      "pose": "fit",
+      "size_mm": "fit",
+      "pocket_clearance_mm": "interview#1"
+     }
+    }
+   ],
+   "steps": [
+    {
+     "id": "s1",
+     "verb": "grasp",
+     "object": "pipette",
+     "via_points": [],
+     "preconditions": [],
+     "success": [],
+     "tolerances": {},
+     "t_start_s": 2,
+     "t_end_s": 2,
+     "source": "fit",
+     "sources": {}
+    },
+    {
+     "id": "s2",
+     "verb": "insert",
+     "object": "pipette",
+     "target": {
+      "fixture": "pocket",
+      "frame": "cartridge"
+     },
+     "via_points": [],
+     "preconditions": [],
+     "success": [
+      {
+       "kind": "inside_zone",
+       "object": "pipette",
+       "target": "cartridge"
+      },
+      {
+       "kind": "object_still",
+       "object": "pipette"
+      }
+     ],
+     "tolerances": {
+      "clearance_mm": 5
+     },
+     "t_start_s": 2,
+     "t_end_s": 3.5,
+     "source": "vl#seg1",
+     "sources": {
+      "success": "interview#1",
+      "tolerances.clearance_mm": "interview#1"
+     }
+    }
+   ],
+   "warnings": [
+    "No scale reference visible; object sizes and poses are estimated."
+   ],
+   "open_questions": [
+    "Which specific well of the cartridge is being pipetted into?",
+    "What is the pocket_clearance_mm of the cartridge wells?"
+   ],
+   "sources": {},
+   "provenance": {
+    "label_input": "video",
+    "clip_sha256": "16c57ef3ce5e7df69071883e825bb44433d81f462e57d87044b34ac11f862b6f",
+    "model": "nvidia/Nemotron-3.5-Super-VL"
+   }
+  },
+  "playbook": [
+   "pocket-lift-reach",
+   "pocket-wait-still-orbit",
+   "pocket-release-above-floor"
+  ],
+  "result": {
+   "status": "done",
+   "value": {
+    "spec_title": "ISS glovebox pipetting into sample cartridge",
+    "steps": [
+     {
+      "step_id": "s1",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         62
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         12
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "grasp",
+        "object": "pipette",
+        "aperture_mm": 25
+       },
+       {
+        "op": "move_to",
+        "frame": "pipette",
+        "offset_mm": [
+         0,
+         0,
+         41.9
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "cartridge",
+        "offset_mm": [
+         0,
+         0,
+         46
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "cartridge",
+        "offset_mm": [
+         0,
+         0,
+         27
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "cartridge",
+        "offset_mm": [
+         0,
+         0,
+         20
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "pipette"
+        },
+        "timeout_s": 5
+       },
+       {
+        "op": "move_to",
+        "frame": "cartridge",
+        "offset_mm": [
+         0,
+         0,
+         18
+        ],
+        "approach": "top"
+       }
+      ]
+     },
+     {
+      "step_id": "s2",
+      "ops": [
+       {
+        "op": "move_to",
+        "frame": "cartridge",
+        "offset_mm": [
+         0,
+         0,
+         46
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "cartridge",
+        "offset_mm": [
+         0,
+         0,
+         27
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "move_to",
+        "frame": "cartridge",
+        "offset_mm": [
+         0,
+         0,
+         20
+        ],
+        "approach": "top"
+       },
+       {
+        "op": "release"
+       },
+       {
+        "op": "wait_until",
+        "predicate": {
+         "kind": "object_still",
+         "object": "pipette"
+        },
+        "timeout_s": 5
+       },
+       {
+        "op": "assert",
+        "predicate": {
+         "kind": "inside_zone",
+         "object": "pipette",
+         "target": "cartridge"
+        }
+       }
+      ]
+     }
+    ],
+    "warnings": [
+     "No scale reference visible; object sizes and poses are estimated."
+    ],
+    "playbook": [
+     "playbook#pocket-lift-reach",
+     "playbook#pocket-wait-still-orbit",
+     "playbook#pocket-release-above-floor"
+    ]
+   },
+   "warnings": [],
+   "ledger": [
+    {
+     "model": "nvidia/Nemotron-3_5-Lightning",
+     "prompt_tokens": 3696,
+     "completion_tokens": 649,
+     "seconds": 8.578
     }
    ]
   }

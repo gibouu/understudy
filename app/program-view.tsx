@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { Predicate, Program, ProgramOp, TaskSpec } from "@/lib/spec/schema";
 
-export type Failure = { step_id: string; op?: number; world: string; why?: string };
+/** `failure_class`: the rehearsal's, when it gave one (none when a check did not hold); the playbook narrows to it (lib/spec/playbook.ts). */
+export type Failure = { step_id: string; op?: number; world: string; why?: string; failure_class?: "embodiment_limit" | "spec_gap" };
 
 const CHECKS: Record<Predicate["kind"], (p: Predicate, name: (id?: string) => string) => string> = {
   contact_both_pads: (p, n) => `both pads touch the ${n(p.object)}`,
@@ -30,6 +31,12 @@ function line(op: ProgramOp, name: (id?: string) => string): string {
       return "open the gripper";
     case "follow":
       return "follow the hand's path traced from the clip with the point between the pads, point by point";
+    case "contact":
+      return "bring what it holds slowly onto the surface, keep it there along the path under the force limit, and take it off slowly";
+    case "toss":
+      return `let go of it moving at (${op.velocity_mm_s.join(", ")}) mm/s, after a ${op.run_mm} mm run-up`;
+    case "catch":
+      return `catch the ${name(op.object)} on its way${op.frame === undefined && op.offset_mm === undefined ? ", back in the gripper" : `, near (${(op.offset_mm ?? [0, 0, 0]).join(", ")}) mm from ${(op.frame ?? "world") === "world" ? "the robot base" : `the ${name(op.frame)}`}`}`;
     case "tilt":
       return op.deg === 0 ? `turn it back upright over ${op.seconds} s` : `tilt it ${op.deg}° toward ${op.toward ? `the ${name(op.toward)}` : "away from the robot"} over ${op.seconds} s`;
     case "wait_until":
@@ -86,6 +93,11 @@ export function ProgramView({ spec, program, failure, by = "Nano" }: { spec: Tas
         </ol>
       )}
       {program.warnings.length > 0 && <p className="text-xs text-neutral-500">{by} noted: {program.warnings.join("; ")}</p>}
+      {program.playbook && (
+        <p className="text-xs text-neutral-600">
+          {program.playbook.length ? `${by} says it applied ${program.playbook.join(", ")}` : `${by} says it applied none of the playbook's rules`}
+        </p>
+      )}
     </div>
   );
 }
