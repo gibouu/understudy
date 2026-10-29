@@ -20,7 +20,7 @@ import { checkReply, finalOutcome, MAX_TOKENS, normalizeReply, REPLY_SHAPE, THIN
 import { done, failed, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
 import { explain, liveGate } from "@/lib/unlock/check";
 
-// one Ultra call (11 to 40 s measured with thinking on), re-asked once if it does not parse; the page stops waiting at 90 s
+// one Ultra call (4 to 40 s measured with thinking on), re-asked once if it does not parse; the page stops waiting at 90 s
 export const maxDuration = 120;
 /** The route answers by then whatever the model does, re-ask included: inside maxDuration. */
 const DEADLINE_MS = 100_000;
@@ -51,18 +51,25 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Resho
   if (wantsReplay(req)) return NextResponse.json(replay(b, outcome));
   const gate = await liveGate("notes", body);
   if (!gate.live) return NextResponse.json(explain(replay(b, outcome), gate));
-  const client = tokenFactory({ timeout: 80_000, maxRetries: 0 });
-  if (!client) return NextResponse.json(replay(b, outcome));
+  const base = tokenFactory({ timeout: 80_000, maxRetries: 0 });
+  if (!base) return NextResponse.json(replay(b, outcome));
 
+  // one deadline for every request of this answer, the re-ask included: at DEADLINE_MS the request in flight is
+  // aborted and no other starts, so nothing runs past maxDuration; the race answers even if the SDK lingers
+  const deadline = new AbortController();
+  const client = base.withOptions({ fetch: (url, init) => fetch(url, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, deadline.signal]) : deadline.signal }) });
   const ledger: LedgerEntry[] = [];
+  const late = `ultra: no usable answer within ${DEADLINE_MS / 1000} s`;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const late = new Promise<StageResult<ReshootReply>>((resolve) => {
-    timer = setTimeout(() => resolve(failed(`ultra: no usable answer within ${DEADLINE_MS / 1000} s`)), DEADLINE_MS);
+  const expired = new Promise<StageResult<ReshootReply>>((resolve) => {
+    timer = setTimeout(() => {
+      deadline.abort();
+      resolve(failed(late));
+    }, DEADLINE_MS);
   });
-  const r = await Promise.race([
-    callModel(client, { role: "ultra", system: RESHOOT_SYSTEM, user: reshootPrompt(b.spec, b), maxTokens: MAX_TOKENS, schema: ReshootReply, normalize: normalizeReply, shape: REPLY_SHAPE, thinking: THINKING, ledger }),
-    late,
-  ]).finally(() => clearTimeout(timer));
+  const answer = callModel(client, { role: "ultra", system: RESHOOT_SYSTEM, user: reshootPrompt(b.spec, b), maxTokens: MAX_TOKENS, schema: ReshootReply, normalize: normalizeReply, shape: REPLY_SHAPE, thinking: THINKING, ledger });
+  let r = await Promise.race([answer, expired]).finally(() => clearTimeout(timer));
+  if (deadline.signal.aborted) r = failed(late);
   const costs = priced(ledger);
   const spent = costs.reduce((n, e) => n + (e.usd ?? 0), 0);
   if (r.status !== "done") return NextResponse.json(failed(`${r.status === "failed" ? r.message : "no answer"} (${costs.length} call${costs.length === 1 ? "" : "s"}, $${spent.toFixed(4)})`, r.status === "failed" && r.retryable));

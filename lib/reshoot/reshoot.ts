@@ -32,8 +32,8 @@ export const CLASS_LABELS: Record<FailureClass, string> = {
 export const MAX_TOKENS = 16_000;
 /**
  * Ultra thinks, because the call budget allows it: on the ISS sample (29 Oct 2026) one answer took
- * 2.7 s and $0.004 with thinking off; with it on, two answers took 11.0 s ($0.012, 3,431 completion
- * tokens, about 310 a second) and 18.3 s ($0.017, the recording in tests/fixtures/reshoot.json); on
+ * 2.7 s and $0.004 with thinking off; with it on, three answers took 11.0 s ($0.012, 3,431 completion
+ * tokens, about 310 a second), 18.3 s ($0.017) and 4.4 s ($0.005, the recording in tests/fixtures/reshoot.json); on
  * /try after two patches, one took about 40 s ($0.026, 10,006 tokens). The page gives up at 90 s and
  * says so; it never waits longer.
  */
@@ -87,7 +87,8 @@ export function fieldsOf(spec: TaskSpec): Field[] {
       if (empty(value)) continue;
       if (name === "via_points") {
         (value as { source: string }[]).forEach((v, i) => {
-          const source = sourceOf(`via_points.${i}`) ?? v.source;
+          // a replaced list (an answer, a hand edit) speaks for every point in it, over the points' own sources
+          const source = sourceOf(`via_points.${i}`) ?? sourceOf("via_points") ?? v.source;
           out.push({ path: `${at}.via_points.${i}`, source, origin: originOf(source), value: shown(v) });
         });
         continue;
@@ -109,7 +110,7 @@ export function fieldsOf(spec: TaskSpec): Field[] {
 }
 
 /**
- * The listed field a path names: itself, or the deepest listed field it lies inside (`pose.xyz_mm` inside `pose`),
+ * The field a path names, with the source of the deepest listed field it lies in (`pose.xyz_mm` takes `pose`'s),
  * and only when the whole path exists in the spec. A part below the path that came from anywhere else (a default
  * via-point inside a step labelled from the clip) makes the whole path ineligible: it is not all from the clip or
  * an answer.
@@ -125,7 +126,8 @@ export function fieldFor(spec: TaskSpec, fields: Field[], path: string): Field |
   if (fields.some((f) => f.path.startsWith(`${whole}.`) && f.origin === "other")) return undefined;
   for (let n = parts.length; n >= 3; n--) {
     const hit = fields.find((f) => f.path === key(parts.slice(0, n)));
-    if (hit) return hit;
+    // the path asked for, never the broader field it lies in (whose other parts may come from elsewhere)
+    if (hit) return { ...hit, path: whole, value: shown(ownAt(rec, parts.slice(2))) };
   }
   return undefined;
 }

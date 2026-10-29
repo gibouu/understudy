@@ -14,6 +14,9 @@ vi.mock("@/lib/providers/tokenfactory", async (original) => {
     ...real,
     wantsReplay: (req: Request) => new URL(req.url).searchParams.get("replay") === "1",
     tokenFactory: () => ({
+      withOptions() {
+        return this;
+      },
       models: { list: async () => ({ data: Object.values(real.MODELS).map((id) => ({ id })) }) },
       chat: {
         completions: {
@@ -54,7 +57,7 @@ describe("the reshoot list's fields", () => {
     expect(fields.find((f) => f.path === "objects[obj1].size_mm")).toMatchObject({ origin: "other", source: "fit" });
     // a bare id and a sub-path both find the listed field
     expect(fieldFor(body.spec, fields, "obj2.pocket_clearance_mm")?.path).toBe("objects[obj2].pocket_clearance_mm");
-    expect(fieldFor(body.spec, fields, "steps[s2].target.frame")?.path).toBe("steps[s2].target");
+    expect(fieldFor(body.spec, fields, "steps[s2].target.frame")).toMatchObject({ path: "steps[s2].target.frame", source: "vl#seg2" });
     expect(fieldFor(body.spec, fields, "objects[nope].size_mm")).toBeUndefined();
   });
 
@@ -75,6 +78,18 @@ describe("the reshoot list's fields", () => {
     expect(fieldFor(spec, fields, "steps[s2].__proto__")).toBeUndefined();
     expect(fieldFor(spec, fields, "steps[s2].constructor")).toBeUndefined();
     expect(fieldFor(spec, fields, "objects[obj2].pose.nonexistent")).toBeUndefined();
+
+    // a list replaced by hand speaks for its points; a part edited by hand keeps its parent out, not its siblings
+    const edited = {
+      ...spec,
+      objects: spec.objects.map((o) => (o.id === "obj2" ? { ...o, source: "vl#seg2", sources: { ...o.sources, pose: "vl#seg2", "pose.yaw_deg": "user#edit" } } : o)),
+      steps: spec.steps.map((s) => (s.id === "s2" ? { ...s, via_points: [{ ...s.via_points[0], source: "pose#seg1" }], sources: { ...s.sources, via_points: "user#edit" } } : s)),
+    };
+    const ef = fieldsOf(edited);
+    expect(fieldFor(edited, ef, "steps[s2].via_points.0.xyz_mm")).toMatchObject({ origin: "other", source: "user#edit" });
+    expect(fieldFor(edited, ef, "objects[obj2].pose")).toBeUndefined();
+    expect(fieldFor(edited, ef, "objects[obj2].pose.xyz_mm")).toMatchObject({ path: "objects[obj2].pose.xyz_mm", origin: "video" });
+    expect(fieldFor(edited, ef, "objects[obj2].pose.yaw_deg")).toMatchObject({ origin: "other" });
   });
 
   it("puts the run, the patches and the final outcome in the prompt", () => {

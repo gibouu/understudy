@@ -102,57 +102,65 @@
     "No visible scale reference; object sizes and poses are estimates based on typical ISS hardware."
    ]
   },
-  "seconds": 18.295,
+  "seconds": 4.37,
   "result": {
    "status": "done",
    "value": {
     "failure_classes": [
      {
       "class": "spec_gap",
-      "evidence": "In orbit (0 g), the seed film packet was released 0.7 mm above the pocket rim (22.7 mm above pocket floor) at 16.9 mm/s and never settled, causing wait_until object_still to timeout after 2 s (patched to 10 s, still failed). The compiled program used a final approach height of 36 mm from the top of obj2, which left the object above the rim in zero-g. Patch 3 lowered the height to 13 mm (pocket floor level), allowing contact before release and passing both worlds.",
+      "evidence": "In orbit (0 g), the insert step released obj1 at s2.op1 with centre 0.7 mm above obj2's pocket rim (22.7 mm above pocket floor) while moving at 16.9 mm/s. The spec's target pose (36 mm from obj2 top) placed the packet above the pocket instead of inside it. The patch that lowered the final z to 13 mm (pocket floor) made both worlds pass, showing the spec's insertion target was wrong and pocket depth was missing.",
       "fields": [
-       "steps[s2].target"
+       "steps[s2].target",
+       "steps[s2].success",
+       "objects[obj2].pocket_clearance_mm",
+       "objects[obj2].size_mm"
       ]
+     },
+     {
+      "class": "simulator_artefact",
+      "evidence": "In 0 g the rigid-body simulator has no friction or damping, so obj1 continued moving at 16.9 mm/s indefinitely after release above the rim. Increasing the wait_until timeout to 10 s did not help. A real robot in microgravity would experience contact damping and material friction.",
+      "fields": []
      }
     ],
     "reshoot": [
      {
-      "field": "steps[s2].target",
-      "source": "vl#seg2",
-      "origin": "video",
-      "why": "The video does not show the vertical position of the packet relative to the pillow rim during insertion, so the compiler defaulted to an approach height that works in gravity but not in zero-g.",
-      "ask": "Film a close-up side view (10–15 cm away) of the astronaut’s hand placing the seed film packet into the plant pillow, clearly showing the packet height above the pillow rim at the moment of release."
-     },
-     {
       "field": "objects[obj2].pocket_clearance_mm",
       "source": "interview#1",
       "origin": "interview",
-      "why": "The interview value (10 mm) may represent lateral clearance, not pocket depth; the actual pocket floor is 21.9 mm below the rim, which is needed to set the correct insertion height.",
-      "ask": "Ask the astronaut: ‘What is the distance from the top rim of the plant pillow pocket down to the pocket floor?’"
+      "why": "Interview gave only a horizontal clearance (10 mm). The pocket depth (vertical distance from rim to floor) is needed to define the correct insertion target.",
+      "ask": "What is the depth of the plant pillow pocket from rim to floor in millimetres?"
+     },
+     {
+      "field": "steps[s2].target",
+      "source": "vl#seg2",
+      "origin": "video",
+      "why": "The video shows the astronaut placing the packet into the pocket but the exact final height relative to the pocket rim is not measurable from the clip.",
+      "ask": "Film a close-up side view of the packet being inserted into the pocket, showing how far the packet descends below the rim before release."
      }
     ],
     "open_risks": [
-     "Real seed film packets are flexible and may deform, unlike the rigid box model.",
-     "The parallel-jaw gripper may not achieve the same secure grasp as a gloved hand, leading to slip or misalignment.",
-     "ISS vibrations and air currents could disturb the packet after release, especially in zero-g.",
-     "Pocket geometry (taper, lip) is not captured in the box primitive; real insertion may require angular alignment."
+     "Microgravity release may need active push or adhesion; the packet could rebound off the pocket floor and drift away.",
+     "Glove fingers may obstruct the packet during final placement, not modelled in the parallel gripper.",
+     "Packet orientation (symmetry none) may require alignment with pocket features not captured in the box shape.",
+     "ISS air currents or crew movement could disturb the unsecured packet after placement."
     ],
     "dropped": [],
     "outcome": "earth (1 g) PASS; orbit (0 g) PASS",
     "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
     "thinking": true,
-    "tokens": 6970,
-    "cost_usd": 0.016854
+    "tokens": 3178,
+    "cost_usd": 0.005478
    },
    "warnings": [],
    "ledger": [
     {
      "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
      "prompt_tokens": 2028,
-     "completion_tokens": 4942,
+     "completion_tokens": 1150,
      "cached_tokens": 0,
-     "seconds": 18.205,
-     "usd": 0.016854
+     "seconds": 4.287,
+     "usd": 0.005478
     }
    ]
   }
