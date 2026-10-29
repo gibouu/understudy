@@ -5,13 +5,16 @@ import type { WorldRun } from "@/lib/notes/note";
 import { SimClient } from "@/lib/sim/client";
 import type { Rollout } from "@/lib/sim/interpreter";
 import { StageRenderer } from "@/lib/sim/render";
+import { asksOf } from "@/lib/spec/answer";
 import { GRAVITIES, type GravityName, type Predicate, type Program, type TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
+import { answered, nextTurn } from "@/lib/variants/answer";
 import { costOf } from "@/lib/variants/cost";
 import { MAX_VARIANTS, type NotYet } from "@/lib/variants/parse";
 import { pourOf } from "@/lib/variants/pour";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
 import { gateNote } from "@/lib/unlock/messages";
+import { AskField } from "./ask-field";
 import { liveAuth } from "./capture";
 import { keep, keepCall, keeping } from "./keep";
 import { answeredBy, useModels } from "./models";
@@ -110,6 +113,8 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
     setPatching(patchingRef.current);
   }, []);
   const offeredKeys = useRef(new Set<string>());
+  /** a variant answered on its card recompiles from the program that asked (#110); any other from the program above */
+  const askedBy = useRef<Record<string, Program>>({});
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -230,7 +235,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
           return { ...rs, [v.id]: { ...(prev ?? { n: 0, compile: idle(), worlds: {}, ledger: [] }), ...run } };
         });
       setRuns((rs) => ({ ...rs, [v.id]: { n: (rs[v.id]?.n ?? 0) + 1, compile: running(`${say("nano")} is writing its program`), worlds: {}, ledger: [] } }));
-      const c = await post<Program>("/api/compile", { spec: v.spec, previous: program });
+      const c = await post<Program>("/api/compile", { spec: v.spec, previous: askedBy.current[v.id] ?? program });
       if (id !== gen.current) return;
       update({ compile: c, ledger: callOf("", c).ledger });
       setCalls((cs) => [...cs, callOf(`${v.title}: program`, c)]);
@@ -243,6 +248,22 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
     }
     rehearsing.current = false;
     setBusy(false);
+  }
+
+  /** The person's answers to a variant's own questions: its spec takes them, and it is compiled and rehearsed again. The reason when they do not apply. */
+  function answer(v: Variant, asking: Program, raw: Record<string, string>): string | null {
+    if (!ready || rehearsing.current || patchingRef.current) return null;
+    const asks = asksOf(asking);
+    const r = answered(spec, v, asks, raw);
+    if (!r) return null;
+    if ("why" in r) return r.why;
+    keep("answers", { variant: v.title, turn: nextTurn(v.spec), asks, changes: r.changes }, keeping());
+    askedBy.current[v.id] = asking;
+    // a later suggestion of the variant as answered is this card too
+    offeredKeys.current.add(physicalKey(r.variant.spec));
+    setOffered((xs) => xs.map((o) => (o.variant.id === v.id ? { ...o, variant: r.variant } : o)));
+    void rehearse([r.variant]);
+    return null;
   }
 
   /** The patch loop's rehearsal of a patched program, on this stage. */
@@ -305,6 +326,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
               disabled={!ready || busy || patching !== null}
               onCheck={(on) => setChosen((c) => (on ? new Set([...c, v.id]) : new Set([...c].filter((x) => x !== v.id))))}
               onRehearse={() => rehearse([v])}
+              onAnswer={(asking, raw) => answer(v, asking, raw)}
               patch={(() => {
                 const run = runs[v.id];
                 const first = patchable(run);
@@ -402,7 +424,7 @@ function StatusLine({ result }: { result: StageResult<Checked> }) {
   return by ? <span className="text-xs text-[color:var(--muted,#737373)]">written by {by}</span> : null;
 }
 
-function VariantCard({ base, variant: v, from, run, showing, checked, disabled, onCheck, onRehearse, patch }: { base: TaskSpec; variant: Variant; from: string; run?: Run; showing: boolean; checked: boolean; disabled: boolean; onCheck: (on: boolean) => void; onRehearse: () => void; patch: React.ReactNode }) {
+function VariantCard({ base, variant: v, from, run, showing, checked, disabled, onCheck, onRehearse, onAnswer, patch }: { base: TaskSpec; variant: Variant; from: string; run?: Run; showing: boolean; checked: boolean; disabled: boolean; onCheck: (on: boolean) => void; onRehearse: () => void; onAnswer: (asking: Program, raw: Record<string, string>) => string | null; patch: React.ReactNode }) {
   const cost = run && run.ledger.length ? costOf(run.ledger) : null;
   const pours = pourOf(v.spec) !== undefined;
   return (
@@ -464,10 +486,40 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
           {run.compile.status === "done" && run.compile.warnings.some((w) => w.startsWith("replay: recorded for an earlier version")) && (
             <p className="text-xs text-amber-700">Replayed: this program was recorded for an earlier version of this variant, so it may not do what the changes above say.</p>
           )}
+          {run.compile.status === "done" && asksOf(run.compile.value).length > 0 && <VariantAsks key={run.n} spec={v.spec} asking={run.compile.value} disabled={disabled} onAnswer={onAnswer} />}
           {patch}
         </div>
       )}
     </li>
+  );
+}
+
+/** The questions a variant's own program asks, answered on its card with the same fields as the questions above. */
+function VariantAsks({ spec, asking, disabled, onAnswer }: { spec: TaskSpec; asking: Program; disabled: boolean; onAnswer: (asking: Program, raw: Record<string, string>) => string | null }) {
+  const [raw, setRaw] = useState<Record<string, string>>({});
+  const [why, setWhy] = useState<string | null>(null);
+  const asks = asksOf(asking);
+  return (
+    <form
+      className="mt-2 flex flex-col gap-2 rounded border border-dashed p-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setWhy(onAnswer(asking, raw));
+      }}
+    >
+      <p className="text-xs text-[color:var(--muted,#737373)]">
+        Its program asks {asks.length === 1 ? "a question" : `${asks.length} questions`} the task above did not. Answer here and this variant is compiled and rehearsed again.
+      </p>
+      {asks.map((a) => (
+        <AskField key={a.slot} ask={a} spec={spec} value={raw[a.slot] ?? ""} onChange={(x) => setRaw({ ...raw, [a.slot]: x })} />
+      ))}
+      <div>
+        <button className="rounded border px-2 py-1 text-xs disabled:opacity-40" disabled={disabled || !asks.some((a) => raw[a.slot])}>
+          Answer and rehearse again
+        </button>
+      </div>
+      {why && <p className="text-xs text-red-700">{why}</p>}
+    </form>
   );
 }
 
