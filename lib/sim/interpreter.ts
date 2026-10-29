@@ -93,6 +93,8 @@ const MIN_MOVE_S = 0.4;
 /** a move has arrived once the arm is slower than this, or after SETTLE_S */
 const ARRIVED_RAD_S = 0.05;
 const SETTLE_S = 1;
+/** the spec's success predicates of a step, checked after its last op, may take this long to hold (an object settling) */
+const SUCCESS_WAIT_S = 1;
 const RELEASE_S = 0.3;
 const CLOSE_RAD_S = 0.6;
 const SQUARE_RAD = (3 * Math.PI) / 180;
@@ -229,6 +231,34 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
     setTilted(null);
     ctrl().set([...SO101_HOME.slice(0, ARM), GRIPPER_OPEN]);
     yield* moveArm(SO101_HOME.slice(0, ARM));
+  }
+
+  /** spec steps whose success has been checked */
+  const succeeded = new Set<string>();
+  /**
+   * The spec's success predicates of step `id`, all holding at once, given SUCCESS_WAIT_S to come about (an object
+   * settling): the failure if they do not, else null. Checked after every program step naming it, so a repeat of a
+   * step cannot undo what the first one did.
+   */
+  function* successHolds(id: string, after: string): Generator<Tick, Rollout | null> {
+    // every spec step of that id: a spec that repeats an id (validateSpec's error) cannot hide one's success
+    const success = env.spec.steps.filter((x) => x.id === id).flatMap((x) => x.success);
+    if (env.spec.steps.some((x) => x.id === id)) succeeded.add(id);
+    if (!success.length) return null;
+    opIndex = undefined; // a step's success is no op of it
+    try {
+      // a check that held while waiting for another one does not count
+      let checks = success.map((p) => evaluate(world(), p));
+      for (let w = 0; checks.some((c) => !c.ok) && w < SUCCESS_WAIT_S; w += dt) {
+        yield* step();
+        checks = success.map((p) => evaluate(world(), p));
+      }
+      for (const [k, c] of checks.entries()) log.push(`${t.toFixed(2)} the spec's success ${success[k].kind}: ${c.why}`);
+      const k = checks.findIndex((c) => !c.ok);
+      return k < 0 ? null : fail({ failed_step_id: id, failed_predicate: success[k], why: `the spec's success for step ${id} does not hold within ${SUCCESS_WAIT_S} s of ${after}: ${checks[k].why}` });
+    } catch (err) {
+      return fail({ failed_step_id: id, failure_class: "spec_gap", why: `the spec's success for step ${id}: ${(err as Error).message}` });
+    }
   }
 
   const beliefs = env.beliefs[mode];
@@ -554,6 +584,20 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
       } catch (err) {
         return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `${op.op}: ${(err as Error).message}` });
       }
+    }
+    // a rollout passes only where the spec's success holds at the end of each step, whatever the program checked
+    // itself (#117); a single op continued from here on /stage is a poke at the scene, not a rehearsal of the step
+    if (from === "home") {
+      const failed = yield* successHolds(s.step_id, "its last op");
+      if (failed) return failed;
+    }
+  }
+  if (from === "home") {
+    // a spec step no program step names is checked at the end, so leaving a step out cannot skip its success
+    for (const x of env.spec.steps) {
+      if (succeeded.has(x.id)) continue;
+      const failed = yield* successHolds(x.id, "the end of the program, which has no step for it");
+      if (failed) return failed;
     }
   }
   return { pass: true, t, log, end: snapshot(sim, env, world(), held), ...liquidNow(), ...(followed.length ? { followed } : {}) };

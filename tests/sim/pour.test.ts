@@ -25,10 +25,16 @@ beforeAll(async () => {
 }, 60_000);
 
 /**
+ * The pour scene without the step's success: these tests drive the tilt op by op, and a rollout passes only where
+ * its spec's success holds (#117), which tests/sim/interpreter.test.ts checks.
+ */
+const OPS_SPEC = TaskSpec.parse({ ...POUR_SPEC, steps: POUR_SPEC.steps.map((s) => ({ ...s, success: [] })) });
+
+/**
  * Build the world, park the arm, fill the liquid, run the program, as the worker does; `after_s` keeps stepping
  * once the program is done. Returns the rollout and where the liquid is at the end.
  */
-function pour(program: Program, gravity_g: number, { spec = POUR_SPEC, seed = 1, after_s = 0 }: { spec?: TaskSpec; seed?: number; after_s?: number } = {}) {
+function pour(program: Program, gravity_g: number, { spec = OPS_SPEC, seed = 1, after_s = 0 }: { spec?: TaskSpec; seed?: number; after_s?: number } = {}) {
   const env: Environment = environment(spec);
   const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g, graspable: env.graspable }), vfs);
   const data = new mujoco.MjData(model);
@@ -213,7 +219,7 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
   }, 60_000);
 
   it("counts the liquid a pour moved, not what the target held before", () => {
-    const full = TaskSpec.parse({ ...POUR_SPEC, objects: POUR_SPEC.objects.map((o) => (o.id === "bowl" ? { ...o, liquid_ml: 80 } : o)) });
+    const full = TaskSpec.parse({ ...OPS_SPEC, objects: OPS_SPEC.objects.map((o) => (o.id === "bowl" ? { ...o, liquid_ml: 80 } : o)) });
     const before = (p: unknown) => pour(ops({ op: "assert", predicate: p }), 1, { spec: full }).r;
     // the bowl holds most of all the liquid already, but none of the cup's
     expect(before({ kind: "liquid_inside", target: "bowl", value: 50 }).pass).toBe(true);
@@ -254,7 +260,7 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
    * or on a copy of it, which keeps the weld but not the tilt's record. Returns the runs and where the cup ends.
    */
   function splitReturn(deg: number, mode: "whole" | "split" | "copy") {
-    const env = environment(POUR_SPEC);
+    const env = environment(OPS_SPEC);
     const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
     const datas = [new mujoco.MjData(model)];
     try {
@@ -307,7 +313,7 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
   }, 240_000);
 
   it("turns a cup back from wherever a stopped tilt left it, never tipping it further first", () => {
-    const env = environment(POUR_SPEC);
+    const env = environment(OPS_SPEC);
     const tiltOf = (model: InstanceType<MainModule["MjModel"]>, data: InstanceType<MainModule["MjData"]>) => {
       const b = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY.value, env.names.cup);
       return (Math.acos(Math.max(-1, Math.min(1, (data.xmat as Float64Array)[9 * b + 8]))) * 180) / Math.PI;
@@ -356,7 +362,7 @@ describe("the interpreter's tilt and the check, in the simulator", () => {
   }, 240_000);
 
   it("does not mistake a cup leaning the other way at the same point for the path of its last tilt", () => {
-    const env = environment(POUR_SPEC);
+    const env = environment(OPS_SPEC);
     const model = mujoco.MjModel.from_xml_string(stageXml(env.worldbody, { gravity_g: 0, graspable: env.graspable }), vfs);
     const data = new mujoco.MjData(model);
     try {

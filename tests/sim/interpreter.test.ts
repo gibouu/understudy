@@ -114,3 +114,64 @@ describe("the program interpreter", () => {
     expect(r.pass, r.log.join("\n")).toBe(true);
   }, 60_000);
 });
+
+describe("the spec's success, checked whatever the program asserts (#117)", () => {
+  // the interview's answer for s2: inside the pillow, and still
+  const success = [
+    { kind: "inside_zone", object: "film", target: "pillow" },
+    { kind: "object_still", object: "film" },
+  ];
+  const spec = TaskSpec.parse({ ...DEMO_SPEC, steps: DEMO_SPEC.steps.map((s) => (s.id === "s2" ? { ...s, success } : s)) });
+  const pick = DEMO_PROGRAMS.release_early.steps[0];
+  // as recorded: s2 lets go 20 mm above the pocket's mouth (+37 mm puts the film's bottom 2 mm above it) and never
+  // asserts inside_zone. Its own check holds: here the opening jaws leave the film drifting in orbit, so the recorded
+  // wait for object_still would fail on its own, and the check is that the film is up off the table, which it is
+  const skipsInside = Program.parse({
+    spec_title: spec.title,
+    steps: [pick, { step_id: "s2", ops: [{ op: "move_to", frame: "pillow", offset_mm: [0, 0, 55] }, { op: "release" }, { op: "assert", predicate: { kind: "height_above", object: "film", value: 40 } }] }],
+  });
+
+  it("a program that leaves out inside_zone, released 20 mm above the pillow in orbit, cannot pass", () => {
+    const r = rollout(skipsInside, "sensed", { gravity_g: 0 }, spec);
+    expect(r.pass, r.log.join("\n")).toBe(false);
+    expect({ step: r.failed_step_id, predicate: r.failed_predicate }).toEqual({ step: "s2", predicate: success[0] });
+    expect(r.why).toMatch(/^the spec's success for step s2 does not hold/);
+    expect(r.end?.find((e) => e.object === "film")?.seated?.ok).toBe(false);
+  }, 60_000);
+
+  it.each([
+    ["no steps at all", []],
+    ["only s1", [pick]],
+    ["the release under an unknown step", [pick, { ...skipsInside.steps[1], step_id: "ghost" }]],
+    ["the release under s1 again", [pick, { ...skipsInside.steps[1], step_id: "s1" }]],
+  ])("a program that leaves out s2 cannot skip its success: %s", (_, steps) => {
+    const r = rollout(Program.parse({ spec_title: spec.title, steps }), "sensed", { gravity_g: 0 }, spec);
+    expect(r.pass, r.log.join("\n")).toBe(false);
+    expect({ step: r.failed_step_id, predicate: r.failed_predicate, op: r.failed_op }).toEqual({ step: "s2", predicate: success[0], op: undefined });
+  }, 60_000);
+
+  it("a repeat of s2 that takes the film back out cannot pass on the first one's success", () => {
+    const [first, seat] = DEMO_PROGRAMS.hold_until_seated.steps;
+    const again = { step_id: "s2", ops: [{ op: "grasp", object: "film", aperture_mm: 6 }, { op: "move_to", frame: "film", offset_mm: [0, 0, 42] }] };
+    const r = rollout(Program.parse({ spec_title: spec.title, steps: [first, seat, again] }), "sensed", { gravity_g: 0 }, spec);
+    expect(r.pass, r.log.join("\n")).toBe(false);
+    expect({ step: r.failed_step_id, predicate: r.failed_predicate }).toEqual({ step: "s2", predicate: success[0] });
+  }, 60_000);
+
+  it("a spec that repeats s2, once with no success, still checks the other one's", () => {
+    const twice = TaskSpec.parse({ ...spec, steps: [spec.steps[0], { ...spec.steps[1], success: [] }, spec.steps[1]] });
+    const r = rollout(skipsInside, "sensed", { gravity_g: 0 }, twice);
+    expect(r.pass, r.log.join("\n")).toBe(false);
+    expect({ step: r.failed_step_id, predicate: r.failed_predicate }).toEqual({ step: "s2", predicate: success[0] });
+  }, 60_000);
+
+  it("the same program passes where the spec sets no success: the program's own checks were all there was", () => {
+    const r = rollout(skipsInside, "sensed", { gravity_g: 0 });
+    expect(r.pass, r.log.join("\n")).toBe(true);
+  }, 60_000);
+
+  it.each([0, 1])("a program that seats the film still passes at %s g", (gravity_g) => {
+    const r = rollout(DEMO_PROGRAMS.hold_until_seated, "sensed", { gravity_g }, spec);
+    expect(r.pass, r.log.join("\n")).toBe(true);
+  }, 60_000);
+});

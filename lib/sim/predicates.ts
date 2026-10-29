@@ -65,7 +65,9 @@ export function evaluate(w: World, p: Predicate): Check {
     case "object_still": {
       const [v, omega] = speed(w, p.object!);
       const ok = v < STILL_M_S && omega < STILL_RAD_S;
-      return { ok, measured: v / MM, why: `${p.object} moving at ${(v / MM).toFixed(1)} mm/s` };
+      // when only its turning keeps it from still, say so: a reason that names the speed alone reads as a pass
+      const turning = v < STILL_M_S && omega >= STILL_RAD_S;
+      return { ok, measured: v / MM, why: turning ? `${p.object} turning at ${((omega * 180) / Math.PI).toFixed(1)}°/s (still means under ${((STILL_RAD_S * 180) / Math.PI).toFixed(1)}°/s)` : `${p.object} moving at ${(v / MM).toFixed(1)} mm/s` };
     }
     case "time_under":
       return { ok: w.t <= p.value!, measured: w.t, why: `${w.t.toFixed(2)} s elapsed, limit ${p.value} s` };
