@@ -270,6 +270,8 @@ export const Program = z.object({
   spec_title: z.string(),
   steps: z.array(z.object({ step_id: z.string().min(1), ops: z.array(ProgramOp) })),
   warnings: z.array(z.string()).default([]),
+  /** the playbook rules the compiler says it applied, as playbook#<id> (lib/spec/playbook.ts); absent unless the playbook was on */
+  playbook: z.array(z.string()).optional().catch(undefined),
 });
 export type Program = z.infer<typeof Program>;
 

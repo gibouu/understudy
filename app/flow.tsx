@@ -22,6 +22,7 @@ import { GroundChips } from "./ground-chips";
 import { keep, keepCall, keeping, startSession } from "./keep";
 import { answeredBy, useModels, type Role } from "./models";
 import { ProgramView, type Failure } from "./program-view";
+import { Playbook, PLAYBOOK_OFF, playbookAsk } from "./playbook";
 import { Reshoot } from "./reshoot";
 import { AskField } from "./ask-field";
 import { Working } from "./working";
@@ -79,6 +80,9 @@ export function Flow() {
   const [turn, setTurn] = useState(0);
   const [notes, setNotes] = useState<string[]>([]);
   const [failure, setFailure] = useState<Failure | null>(null);
+  /** the playbook switch (#56), off unless turned on; a ref too, so a compile started by the switch reads the new state */
+  const [playbook, setPlaybook] = useState(PLAYBOOK_OFF);
+  const playbookRef = useRef(PLAYBOOK_OFF);
   /** a live label waiting for the person to confirm it (#158): the tracing notes its fit will carry */
   const [unconfirmed, setUnconfirmed] = useState<string[] | null>(null);
   /** the consent box for a clip of your own (#78): nothing is kept without it */
@@ -150,8 +154,10 @@ export function Flow() {
   /** `fresh`: ask Nano even when the recording has this spec ("Ask Nano again"). */
   async function compile(next: TaskSpec, previous?: Program, fresh = false) {
     const id = gen.current;
+    // the playbook's rules for this spec, none with the switch off: then the request is the one from before it
+    const rules = playbookAsk(playbookRef.current, next, failure);
     setFailure(null);
-    const turn = !fresh && clip?.rec ? turnFor(clip.rec, next) : null;
+    const turn = !fresh && !rules && clip?.rec ? turnFor(clip.rec, next) : null;
     if (turn && clip?.rec) {
       // the recording compiled exactly this spec: its program, and the answers given to its asks
       setProgram(done(turn.program, [recordedNote(clip.rec, "compile"), ...turn.warnings]));
@@ -168,7 +174,7 @@ export function Flow() {
       return;
     }
     step("program", "compile");
-    const r = await post<Program>("/api/compile", { spec: next, previous });
+    const r = await post<Program>("/api/compile", rules ? { spec: next, previous, playbook: rules } : { spec: next, previous });
     if (id !== gen.current) return;
     // the calls that failed are in the ledger, but the program shown is the one kept (lib/providers/call.ts)
     const kept = r.status === "done" && r.warnings.some((w) => w.endsWith("previous value kept"));
@@ -373,6 +379,21 @@ export function Flow() {
             ))}
           </ul>
         </Section>
+      )}
+
+      {fit && spec && (
+        <Playbook
+          spec={spec}
+          state={playbook}
+          failure={failure}
+          busy={program.status === "running"}
+          onChange={(next, recompile) => {
+            playbookRef.current = next;
+            setPlaybook(next);
+            if (recompile && program.status !== "idle") compile(spec, program.status === "done" ? program.value : undefined);
+          }}
+          onRecompile={() => compile(spec, program.status === "done" ? program.value : undefined)}
+        />
       )}
 
       {program.status !== "idle" && spec && (

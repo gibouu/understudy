@@ -134,6 +134,17 @@ The rules make the first try right more often; within five patches the loop gets
 
 **The liquid model changes the pour.** Re-run on the liquid solver (600 particles, one-way coupled), the same loop fixes far fewer pours: 19% [10 to 32] with Super thinking off and 48% [34 to 62] with thinking on, against 79% and 88% with beads. Most failures sit at 75 to 88% of the water in the target, lost along the lip as the water wets the walls. And in orbit, turning the cup over in one second and waiting lands the water and keeps it there in 3 of 6 seeds, so "pouring in orbit is infeasible" was an artefact of the bead model. No patcher found that throw. This is the reason to keep the liquid model: it changes conclusions, not only numbers.
 
+**The playbook on the site (29 October).** `tests/measure/playbook.test.ts`, live: the site's own compile route, unchanged, with Nemotron 3.5 Lightning, on each NASA manipulation clip's answered spec (its interview iteration in `public/showcase/<clip>.json`), the program rehearsed at once at 1 g and 0 g with no Notes patch; first try = it passes in both. Arms with the same calls: off (no playbook); carry-over (the default-on rules of `lib/spec/playbook.ts` learned on the other clips; the route keeps those of the clip's kind of task); matched control (the carry-over request with its rules replaced by "(no rules)"); own (every default-on rule, the clip's own included). 8 runs per arm and clip, Wilson 95% intervals:
+
+| Arm | First try, four pocket clips | |
+|---|---|---|
+| Off | 8 of 32 (25%) | [13 to 42] |
+| Matched control | 6 of 32 (19%) | [9 to 35] |
+| Carry-over rules | 0 of 32 (0%) | [0 to 11] |
+| Own rules | 4 of 32 (13%) | [5 to 28] |
+
+The carry-over rules lower first-try success by 19 points against the matched control [-35 to -4]: the 5 s wait and the release 2 mm above the floor, learned on the seed film, leave the fluid bag turning in orbit (8 of 8 off, 0 of 8 with them). With its own clip's rule the compiler sometimes applies it (seed film 4 of 8, the chess clip 4 of 8 against 0 of 8 off), so the rules are read; they are specific to the clip they came from. The pipette fails in every arm: at the lift out of reach, or with its own rule mostly at the insert. Seed film and the second seed film fail in orbit with the playbook off too: Lightning's programs do not repeat the recorded Nano passes. 5 of 144 compiles came back unusable, all on the second seed film. Spend: US$0.065 (`bench/results/playbook.json`). Four clips, eight runs: enough to see the harm, not to rank rules.
+
 Limits: the program is 2 to 4 bounded knobs, not the full interpreter; the failure notes are written by the probes (measured facts, never knob names or answers, checked by a test); seeds mostly vary the model's sampling. Spend: US$10.60 for the two rounds and US$1.28 for the matched controls.
 
 ## 9. What this changes in the savings model
@@ -421,6 +432,12 @@ BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local PATCH_SCRIPT=patch-loop-r2 PATCH_SEE
 ```
 
 `PATCH_ARMS=` with no arms reprints every patch-loop table from the saved results without spending anything.
+
+Section 8, the playbook on the site (under its own US$0.25 cap on the ledger):
+
+```bash
+BENCH_LIVE=1 UNDERSTUDY_ENV_FILE=.env.local PLAYBOOK_RUNS=8 node_modules/.bin/vitest run tests/measure/playbook.test.ts --reporter=verbose
+```
 
 Section 10 (other models; every call is charged to the ledger under the comparison's own US$25 cap):
 
