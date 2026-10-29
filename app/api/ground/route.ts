@@ -102,6 +102,7 @@ async function ground(spec: TaskSpec, ledger: LedgerEntry[], warnings: string[],
     user: groundUser(spec, candidates, slots),
     maxTokens: 200,
     schema: GroundFilter,
+    signal,
   });
   // a failed answer still cost its calls (#106)
   if (r.status === "done" || r.status === "failed") ledger.push(...(r.ledger ?? []));

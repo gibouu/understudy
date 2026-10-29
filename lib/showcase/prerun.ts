@@ -33,7 +33,9 @@ export async function prerunClip(rec: Session, log: (line: string) => void = () 
   const { POST: compileRoute } = await import("@/app/api/compile/route");
   const base = baseOf(rec);
 
-  const suggestions = live(await post<Checked>(variantsRoute, "/api/variants", { spec: base.spec, first: 1 }), "variants");
+  // a gesture's similar tasks are built from its path, with no model (lib/variants/gesture.ts)
+  const gestures = base.spec.steps.length > 0 && base.spec.steps.every((s) => s.verb === "gesture");
+  const suggestions = live(await post<Checked>(variantsRoute, "/api/variants", { spec: base.spec, first: 1 }), "variants", !gestures);
   let total = usd(suggestions.ledger);
   log(`${rec.clip.name}: ${suggestions.value.variants.length} similar tasks, ${suggestions.value.not_yet.length} not yet`);
 
@@ -42,7 +44,6 @@ export async function prerunClip(rec: Session, log: (line: string) => void = () 
     if (total > CAP_USD) throw new Error(`${rec.clip.name}: over US$${CAP_USD} before ${v.title}`);
     const r = await post<Program>(compileRoute, "/api/compile", { spec: v.spec, previous: base.program });
     // a gesture's program is written by the route with no model
-    const gestures = v.spec.steps.every((s) => s.verb === "gesture");
     const kept = live(r, `compile ${v.title}`, !gestures);
     total += usd(kept.ledger);
     programs.push({ id: v.id, spec: v.spec, result: kept });

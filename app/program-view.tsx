@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { Predicate, Program, ProgramOp, TaskSpec } from "@/lib/spec/schema";
 
-export type Failure = { step_id: string; op?: number; world: string; why?: string };
+/** `failure_class`: the rehearsal's, when it gave one (none when a check did not hold); the playbook narrows to it (lib/spec/playbook.ts). */
+export type Failure = { step_id: string; op?: number; world: string; why?: string; failure_class?: "embodiment_limit" | "spec_gap" };
 
 const CHECKS: Record<Predicate["kind"], (p: Predicate, name: (id?: string) => string) => string> = {
   contact_both_pads: (p, n) => `both pads touch the ${n(p.object)}`,
@@ -86,6 +87,11 @@ export function ProgramView({ spec, program, failure, by = "Nano" }: { spec: Tas
         </ol>
       )}
       {program.warnings.length > 0 && <p className="text-xs text-neutral-500">{by} noted: {program.warnings.join("; ")}</p>}
+      {program.playbook && (
+        <p className="text-xs text-neutral-600">
+          {program.playbook.length ? `${by} says it applied ${program.playbook.join(", ")}` : `${by} says it applied none of the playbook's rules`}
+        </p>
+      )}
     </div>
   );
 }

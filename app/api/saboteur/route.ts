@@ -33,13 +33,17 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Sabot
   if (!client) return NextResponse.json(explain(replay(spec.data), gate));
   // a failed answer still cost its calls: the page counts them from this
   const billed: LedgerEntry[] = [];
-  // callModel may ask up to three times (a 400 retried, then one fix): past the deadline the spec's twelve answer
-  // inside maxDuration, and the calls still on their way are left to finish unheard
+  // callModel may ask up to three times (a 400 retried, then one fix): at the deadline the request in flight is
+  // aborted and no other starts (a cut request keeps its reservation), and the spec's twelve answer inside maxDuration
+  const deadline = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   const late = new Promise<StageResult<SaboteurReply>>((resolve) => {
-    timer = setTimeout(() => resolve(failed(`no answer within ${DEADLINE_MS / 1000} s`)), DEADLINE_MS);
+    timer = setTimeout(() => {
+      deadline.abort();
+      resolve(failed(`no answer within ${DEADLINE_MS / 1000} s`));
+    }, DEADLINE_MS);
   });
-  const result = await Promise.race([askSaboteur(client, spec.data, billed), late]).finally(() => clearTimeout(timer));
+  const result = await Promise.race([askSaboteur(client, spec.data, billed, deadline.signal), late]).finally(() => clearTimeout(timer));
   // turned away by the live budget halfway: the recording answers, as if the guard had said so
   const refused = budgetRefused(result);
   if (refused) return NextResponse.json({ ...explain(replay(spec.data), refused), ledger: billed });

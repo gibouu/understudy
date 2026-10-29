@@ -3,15 +3,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorldRun } from "@/lib/notes/note";
 import { SimClient } from "@/lib/sim/client";
+import { describeReach } from "@/lib/sim/gesture";
 import type { Rollout } from "@/lib/sim/interpreter";
 import { StageRenderer } from "@/lib/sim/render";
+import { asksOf } from "@/lib/spec/answer";
 import { GRAVITIES, type GravityName, type Predicate, type Program, type TaskSpec } from "@/lib/spec/schema";
 import { failed, idle, running, type LedgerEntry, type StageResult } from "@/lib/spec/stage-result";
+import { answered, nextTurn } from "@/lib/variants/answer";
 import { costOf } from "@/lib/variants/cost";
 import { MAX_VARIANTS, type NotYet } from "@/lib/variants/parse";
+import { clipPace, GESTURE_VARIANTS_NOTE, gestureText, gesturesOnly, heldBack } from "@/lib/variants/gesture";
 import { pourOf } from "@/lib/variants/pour";
 import { physicalKey, type Checked, type Edit, type Variant } from "@/lib/variants/validate";
 import { gateNote } from "@/lib/unlock/messages";
+import { AskField } from "./ask-field";
 import { liveAuth } from "./capture";
 import { keep, keepCall, keeping } from "./keep";
 import { answeredBy, useModels } from "./models";
@@ -110,6 +115,8 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
     setPatching(patchingRef.current);
   }, []);
   const offeredKeys = useRef(new Set<string>());
+  /** a variant answered on its card recompiles from the program that asked (#110); any other from the program above */
+  const askedBy = useRef<Record<string, Program>>({});
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -230,7 +237,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
           return { ...rs, [v.id]: { ...(prev ?? { n: 0, compile: idle(), worlds: {}, ledger: [] }), ...run } };
         });
       setRuns((rs) => ({ ...rs, [v.id]: { n: (rs[v.id]?.n ?? 0) + 1, compile: running(`${say("nano")} is writing its program`), worlds: {}, ledger: [] } }));
-      const c = await post<Program>("/api/compile", { spec: v.spec, previous: program });
+      const c = await post<Program>("/api/compile", { spec: v.spec, previous: askedBy.current[v.id] ?? program });
       if (id !== gen.current) return;
       update({ compile: c, ledger: callOf("", c).ledger });
       setCalls((cs) => [...cs, callOf(`${v.title}: program`, c)]);
@@ -245,6 +252,22 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
     setBusy(false);
   }
 
+  /** The person's answers to a variant's own questions: its spec takes them, and it is compiled and rehearsed again. The reason when they do not apply. */
+  function answer(v: Variant, asking: Program, raw: Record<string, string>): string | null {
+    if (!ready || rehearsing.current || patchingRef.current) return null;
+    const asks = asksOf(asking);
+    const r = answered(spec, v, asks, raw);
+    if (!r) return null;
+    if ("why" in r) return r.why;
+    keep("answers", { variant: v.title, turn: nextTurn(v.spec), asks, changes: r.changes }, keeping());
+    askedBy.current[v.id] = asking;
+    // a later suggestion of the variant as answered is this card too
+    offeredKeys.current.add(physicalKey(r.variant.spec));
+    setOffered((xs) => xs.map((o) => (o.variant.id === v.id ? { ...o, variant: r.variant } : o)));
+    void rehearse([r.variant]);
+    return null;
+  }
+
   /** The patch loop's rehearsal of a patched program, on this stage. */
   const patchRehearsal = (v: Variant) => async (p: Program): Promise<WorldRun[]> => {
     if (rehearsing.current || patchingRef.current !== v.id) throw new Error("the stage is busy with another rehearsal");
@@ -257,21 +280,25 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
   const failedCalls = calls.filter((c) => c.failed && c.ledger.length === 0).length;
   const anyReplayed = calls.some((c) => c.replayed);
   const picked = offered.filter((o) => chosen.has(o.variant.id)).map((o) => o.variant);
+  /** a gesture's similar tasks are built from its path with no model, so asking again gives the same ones (lib/variants/gesture.ts) */
+  const gestures = gesturesOnly(spec);
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-[color:var(--muted,#737373)]">
-        The same task with something changed: {say("super")} writes each one as changes to the spec above, {say("nano")} writes its program, and the arm rehearses it on Earth and in orbit. The answers given above carry over.
+        {gestures
+          ? "The same gesture with something changed: on the arm's other side, slower, or bigger. Each is built from the traced path with no model, and the arm follows it on Earth and in orbit, with the same reach check."
+          : <>The same task with something changed: {say("super")} writes each one as changes to the spec above, {say("nano")} writes its program, and the arm rehearses it on Earth and in orbit. The answers given above carry over.</>}
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button className="rounded bg-[var(--ink,#171717)] px-3 py-1.5 text-sm text-[color:var(--paper,#fff)] disabled:opacity-40" disabled={suggest.status === "running" || busy} onClick={suggestVariants}>
-          {offered.some((o) => o.from === "suggested") ? "Suggest more" : "Suggest similar tasks"}
+        <button className="rounded bg-[var(--ink,#171717)] px-3 py-1.5 text-sm text-[color:var(--paper,#fff)] disabled:opacity-40" disabled={suggest.status === "running" || busy || (gestures && offered.length > 0)} onClick={suggestVariants}>
+          {gestures ? "Build similar tasks from the path" : offered.some((o) => o.from === "suggested") ? "Suggest more" : "Suggest similar tasks"}
         </button>
         <StatusLine result={suggest} />
       </div>
 
-      <form
+      {!gestures && <form
         className="flex flex-col gap-1 text-sm"
         onSubmit={(e) => {
           e.preventDefault();
@@ -289,7 +316,7 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
         {ask.status === "done" && ask.value.variants.length === 0 && (
           <p className="text-[color:var(--accent,#b45309)]">Not yet: {ask.value.not_yet[0]?.why || "the arm cannot do that yet"}.</p>
         )}
-      </form>
+      </form>}
 
       {offered.length > 0 && (
         <ul className="flex flex-col gap-3">
@@ -305,9 +332,11 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
               disabled={!ready || busy || patching !== null}
               onCheck={(on) => setChosen((c) => (on ? new Set([...c, v.id]) : new Set([...c].filter((x) => x !== v.id))))}
               onRehearse={() => rehearse([v])}
+              onAnswer={(asking, raw) => answer(v, asking, raw)}
               patch={(() => {
                 const run = runs[v.id];
-                const first = patchable(run);
+                // a gesture's program is the path itself: no patch can change it
+                const first = gestures ? null : patchable(run);
                 if (!first || run.compile.status !== "done") return null;
                 return (
                   <VariantPatch
@@ -398,13 +427,17 @@ function StatusLine({ result }: { result: StageResult<Checked> }) {
   if (result.status === "failed") return <span className="text-sm text-red-700">{result.message}</span>;
   if (result.status !== "done") return null;
   const by = answeredBy(result.ledger);
+  if (!by && result.warnings.includes(GESTURE_VARIANTS_NOTE)) return <span className="text-xs text-[color:var(--muted,#737373)]">built from the traced path, no model</span>;
   if (replayed(result)) return <span className="text-xs text-amber-700">{gateNote(result.warnings) ?? "replayed from a recording"}{by ? `, written by ${by}` : ""}</span>;
   return by ? <span className="text-xs text-[color:var(--muted,#737373)]">written by {by}</span> : null;
 }
 
-function VariantCard({ base, variant: v, from, run, showing, checked, disabled, onCheck, onRehearse, patch }: { base: TaskSpec; variant: Variant; from: string; run?: Run; showing: boolean; checked: boolean; disabled: boolean; onCheck: (on: boolean) => void; onRehearse: () => void; patch: React.ReactNode }) {
+function VariantCard({ base, variant: v, from, run, showing, checked, disabled, onCheck, onRehearse, onAnswer, patch }: { base: TaskSpec; variant: Variant; from: string; run?: Run; showing: boolean; checked: boolean; disabled: boolean; onCheck: (on: boolean) => void; onRehearse: () => void; onAnswer: (asking: Program, raw: Record<string, string>) => string | null; patch: React.ReactNode }) {
   const cost = run && run.ledger.length ? costOf(run.ledger) : null;
   const pours = pourOf(v.spec) !== undefined;
+  const built = gesturesOnly(v.spec);
+  /** a gesture variant's path may be slowed: the speed the arm followed at is said against the clip, not the path */
+  const pace = built ? clipPace(base, v.spec) : {};
   return (
     <li className={`rounded-lg border p-3 text-sm ${showing ? "border-[color:var(--accent,#b45309)]" : ""}`}>
       <div className="flex items-start justify-between gap-3">
@@ -414,6 +447,7 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
             <span className="font-medium">{v.title}</span>
             {from !== "suggested" && <span className="text-xs text-[color:var(--muted,#737373)]"> · from “{from}”</span>}
             {v.summary && <span className="block text-[color:var(--muted,#737373)]">{v.summary}</span>}
+            {built && <span className="block text-xs text-[color:var(--muted,#737373)]">Built from the traced path with no model; its program follows the path, with no model either.</span>}
           </span>
         </label>
         <button className="shrink-0 rounded border px-2 py-1 text-xs disabled:opacity-40" disabled={disabled} onClick={onRehearse}>
@@ -449,11 +483,14 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
                       <Outcome result={run.worlds[w]} />
                     </td>
                     {pours && <td className="py-0.5 pr-3">{liquidIn(v.spec, run.worlds[w])}</td>}
-                    <td className="py-0.5 text-[color:var(--muted,#737373)]">{[why(run.worlds[w]), pours && liquidElsewhere(v.spec, run.worlds[w])].filter(Boolean).join("; ")}</td>
+                    <td className="py-0.5 text-[color:var(--muted,#737373)]">{[why(run.worlds[w], pace), pours && liquidElsewhere(v.spec, run.worlds[w])].filter(Boolean).join("; ")}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          )}
+          {built && v.title === "Slower" && WORLDS.some((w) => { const r = run.worlds[w]; return r && r !== "running" && !("error" in r) && heldBack(r.followed).length > 0; }) && (
+            <p className="text-xs text-amber-700">The arm was still held to its joint speed on this path, so it may follow it no slower than the task above: compare the speed it followed at with the rehearsal above.</p>
           )}
           {cost && (
             <p className="mt-1 text-xs text-[color:var(--muted,#737373)]">
@@ -464,10 +501,40 @@ function VariantCard({ base, variant: v, from, run, showing, checked, disabled, 
           {run.compile.status === "done" && run.compile.warnings.some((w) => w.startsWith("replay: recorded for an earlier version")) && (
             <p className="text-xs text-amber-700">Replayed: this program was recorded for an earlier version of this variant, so it may not do what the changes above say.</p>
           )}
+          {run.compile.status === "done" && asksOf(run.compile.value).length > 0 && <VariantAsks key={run.n} spec={v.spec} asking={run.compile.value} disabled={disabled} onAnswer={onAnswer} />}
           {patch}
         </div>
       )}
     </li>
+  );
+}
+
+/** The questions a variant's own program asks, answered on its card with the same fields as the questions above. */
+function VariantAsks({ spec, asking, disabled, onAnswer }: { spec: TaskSpec; asking: Program; disabled: boolean; onAnswer: (asking: Program, raw: Record<string, string>) => string | null }) {
+  const [raw, setRaw] = useState<Record<string, string>>({});
+  const [why, setWhy] = useState<string | null>(null);
+  const asks = asksOf(asking);
+  return (
+    <form
+      className="mt-2 flex flex-col gap-2 rounded border border-dashed p-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        setWhy(onAnswer(asking, raw));
+      }}
+    >
+      <p className="text-xs text-[color:var(--muted,#737373)]">
+        Its program asks {asks.length === 1 ? "a question" : `${asks.length} questions`} the task above did not. Answer here and this variant is compiled and rehearsed again.
+      </p>
+      {asks.map((a) => (
+        <AskField key={a.slot} ask={a} spec={spec} value={raw[a.slot] ?? ""} onChange={(x) => setRaw({ ...raw, [a.slot]: x })} />
+      ))}
+      <div>
+        <button className="rounded border px-2 py-1 text-xs disabled:opacity-40" disabled={disabled || !asks.some((a) => raw[a.slot])}>
+          Answer and rehearse again
+        </button>
+      </div>
+      {why && <p className="text-xs text-red-700">{why}</p>}
+    </form>
   );
 }
 
@@ -524,10 +591,16 @@ function liquidElsewhere(spec: TaskSpec, result?: WorldResult): string {
   return parts.join(", ");
 }
 
-function why(result?: WorldResult): string {
+function why(result?: WorldResult, pace: Record<string, number> = {}): string {
   if (!result || result === "running") return "";
   if ("error" in result) return result.error;
-  return result.pass ? `done in ${result.t.toFixed(1)} s` : (result.why ?? "");
+  // a gesture's only check is the path: say how closely the arm followed it, at what speed against the clip
+  const said = (f: NonNullable<Rollout["followed"]>[number]) => describeReach({ ...f, speed: f.speed * (pace[f.step_id] ?? 1) });
+  const reach = result.followed?.map(said).join("; ");
+  if (result.pass) return reach ? `${reach}, done in ${result.t.toFixed(1)} s` : `done in ${result.t.toFixed(1)} s`;
+  // a path missed is said again at the clip's pace (lib/sim/interpreter.ts writes it against the path it was given)
+  const missed = result.followed?.find((f) => f.step_id === result.failed_step_id && f.missed.length > 0);
+  return missed && result.why?.startsWith("follow: ") ? `follow: ${said(missed)}` : (result.why ?? "");
 }
 
 /** One changed field in plain words: what it was, what it is in this variant. */
@@ -552,6 +625,7 @@ function describeEdit(spec: TaskSpec, e: Edit): string {
       const said = (p: Predicate) => (p.kind === "liquid_inside" && p.target ? `${p.value ?? "?"}% of the ${p.object ? `${nameIn(spec, p.object)}'s ` : ""}liquid in the ${nameIn(spec, p.target)}` : p.kind);
       return (v as Predicate[]).map(said).join(" + ") || "none";
     }
+    if (field === "gesture" && v && typeof v === "object") return gestureText(v as Parameters<typeof gestureText>[0]);
     if (field === "target" && v && typeof v === "object") return (v as { fixture: string }).fixture;
     if (field === "tolerances" && v && typeof v === "object") return Object.entries(v).map(([k, x]) => `${k} ±${x}`).join(", ") || "none";
     return typeof v === "string" ? v : JSON.stringify(v);

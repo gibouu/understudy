@@ -271,7 +271,13 @@ export const Program = z.object({
   steps: z.array(z.object({ step_id: z.string().min(1), ops: z.array(ProgramOp) })),
   warnings: z.array(z.string()).default([]),
 });
-export type Program = z.infer<typeof Program>;
+/** `playbook`: the rules the compiler says it applied, as playbook#<id> (lib/spec/playbook.ts); only with the playbook on. */
+export type Program = z.infer<typeof Program> & { playbook?: string[] };
+/**
+ * A program compiled with the playbook on: Program and the ids it says it applied. Only that compile parses
+ * with it; Program strips the key, so with the playbook off the model's answer is read as before it existed.
+ */
+export const PlaybookProgram = Program.extend({ playbook: z.array(z.string()).optional().catch(undefined) });
 
 /** One field-level change, applied with `applyChanges`, which also records provenance. */
 export const SpecChange = z.object({
