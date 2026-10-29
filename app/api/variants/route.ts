@@ -10,7 +10,9 @@
  * ?replay=1, or no way past the spend guard) answers from
  * tests/fixtures/variants.json: Super's
  * recorded reply to the same request, for this task's title if there is one,
- * checked against the spec posted now.
+ * checked against the spec posted now. A sample's first suggestions, and the
+ * program for each, were run ahead of time (lib/showcase/prerun.ts) and
+ * answer at once.
  */
 import { NextResponse } from "next/server";
 import recordings from "@/tests/fixtures/variants.json";
@@ -22,6 +24,7 @@ import { VariantReply } from "@/lib/variants/parse";
 import { MAX_REQUEST_CHARS } from "@/lib/variants/prompt";
 import { checkReply, type Checked } from "@/lib/variants/validate";
 import { explain, liveGate } from "@/lib/unlock/check";
+import { prerunVariants } from "@/lib/showcase/lookup";
 
 export const maxDuration = 60;
 
@@ -47,6 +50,11 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Check
   if (!spec.success) return NextResponse.json(failed(`invalid spec: ${spec.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`, false), { status: 400 });
   const request = cleanRequest(body?.request, MAX_REQUEST_CHARS);
   const first = Number.isInteger(body?.first) && body.first >= 1 && body.first < 10_000 ? (body.first as number) : 1;
+  // a sample's first suggestions were run ahead of time: they answer at once, live or not ("Suggest more" asks Super)
+  if (!request && first === 1) {
+    const pre = await prerunVariants<Checked>(spec.data);
+    if (pre) return NextResponse.json(pre);
+  }
 
   const gate = wantsReplay(req) ? null : await liveGate("variants", body);
   const client = gate?.live ? tokenFactory({ timeout: 25_000, maxRetries: 1 }) : null;

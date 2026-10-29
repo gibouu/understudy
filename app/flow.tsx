@@ -14,6 +14,7 @@ import type { Program, ProgramOp, SpecChange, TaskSpec } from "@/lib/spec/schema
 import { done, failed, idle, running, type StageResult } from "@/lib/spec/stage-result";
 import { gateNote } from "@/lib/unlock/messages";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
+import { rememberedLabel, rememberLabel } from "@/lib/vision/remembered";
 import { withGesturePaths } from "@/lib/vision/trace";
 import { FilmYourself, keepSampleToken, liveAuth, UnlockPrompt } from "./capture";
 import { GroundChips } from "./ground-chips";
@@ -177,13 +178,20 @@ export function Flow() {
     let labelled = await recordedLabel(clip, line);
     if (id !== gen.current) return;
     if (!labelled) {
-      step("label", "proxy");
-      // without a proxy the route can still answer from its recording of this clip
-      const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: await clipSha256(clip.blob) }));
+      // a clip of your own labelled before, with the same line, answers from this browser (lib/vision/remembered.ts)
+      const sha = await clipSha256(clip.blob).catch(() => null);
+      labelled = sha ? await rememberedLabel(sha, line) : null;
       if (id !== gen.current) return;
-      step("label", "watch");
-      labelled = await post<TaskSpec>("/api/label", { ...body, hint: line });
-      if (id !== gen.current) return;
+      if (!labelled) {
+        step("label", "proxy");
+        // without a proxy the route can still answer from its recording of this clip
+        const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: sha ?? (await clipSha256(clip.blob)) }));
+        if (id !== gen.current) return;
+        step("label", "watch");
+        labelled = await post<TaskSpec>("/api/label", { ...body, hint: line });
+        if (id !== gen.current) return;
+        if (sha) void rememberLabel(sha, line, labelled);
+      }
     }
     keepSampleToken((labelled as { sample_token?: string }).sample_token);
     // the recording's own label keeps its recorded fit, so the recorded compiles match it exactly

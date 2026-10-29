@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ARM_MM, BOX_Y_MM, BOX_Z_MM, describeReach, gestureProgram, MAX_LAG_S, MAX_POINTS, speedText, PLANE_X_MM, pathMarkersXml, reachCheck, scalePath, type HandSample, type TraceSample } from "@/lib/sim/gesture";
+import { ARM_MM, BOX_Y_MM, BOX_Z_MM, describeReach, gestureProgram, MAX_LAG_S, MAX_STRETCH, MAX_POINTS, speedText, PLANE_X_MM, pathMarkersXml, reachCheck, scalePath, type HandSample, type TraceSample } from "@/lib/sim/gesture";
 import { TaskSpec, type PathPoint } from "@/lib/spec/schema";
 
 /** A wrist swinging side to side at `hz`, `amp_m` either way, 10 samples a second, around (x0, y0) metres. */
@@ -20,8 +20,8 @@ describe("scalePath", () => {
     // a 0.6 m arm: 250 / 0.6 mm of path per metre the hand moves; a step to the image's right is a step to the robot's right (-y)
     const samples: HandSample[] = [
       { t_s: 1, x_m: 0, y_m: 0 },
-      { t_s: 1.5, x_m: 0.1, y_m: 0 },
-      { t_s: 2, x_m: 0.1, y_m: -0.1 },
+      { t_s: 1.5, x_m: 0.3, y_m: 0 },
+      { t_s: 2, x_m: 0.3, y_m: -0.1 },
     ];
     const r = scalePath(samples, 0.6);
     const k = ARM_MM / 0.6;
@@ -31,9 +31,9 @@ describe("scalePath", () => {
     expect(r.path.every((p) => p.xyz_mm[0] === PLANE_X_MM)).toBe(true);
     const [a, b, c] = r.path.map((p) => p.xyz_mm);
     // the ends are kept; the middle sample is averaged with its neighbours, [1, 2, 1]
-    expect(c[1] - a[1]).toBeCloseTo(-0.1 * k, 0);
+    expect(c[1] - a[1]).toBeCloseTo(-0.3 * k, 0);
     expect(c[2] - a[2]).toBeCloseTo(0.1 * k, 0); // image up (y down, so -0.1) is world up
-    expect(b[1] - a[1]).toBeCloseTo(-0.075 * k, 0);
+    expect(b[1] - a[1]).toBeCloseTo(-0.225 * k, 0);
     expect(b[2] - a[2]).toBeCloseTo(0.025 * k, 0);
     expect(r.path.every(inBox)).toBe(true);
     expect(r.warnings).toEqual([]);
@@ -59,6 +59,23 @@ describe("scalePath", () => {
     expect(r.warnings.join(" ")).toMatch(/larger than the arm's reach/);
   });
 
+  it("stretches a narrow swing side to side to fill the box, at most MAX_STRETCH times, and says so", () => {
+    // the arm rises 0.3 m while the wrist swings 3 cm either way: 125 mm high, about 25 mm across
+    const rise: HandSample[] = Array.from({ length: 61 }, (_, k) => ({ t_s: k / 10, x_m: 0.03 * Math.sin(2 * Math.PI * (k / 10)), y_m: -0.3 * (k / 60) }));
+    const plain = scalePath(rise.map((s) => ({ ...s, x_m: 0 })), 0.6);
+    const r = scalePath(rise, 0.6);
+    const across = span(r.path, 1);
+    expect(across).toBeGreaterThan(span(plain.path, 1) + 50);
+    expect(across).toBeLessThanOrEqual(BOX_Y_MM[1] - BOX_Y_MM[0] + 1e-6);
+    // the height keeps the arm's own scale
+    expect(span(r.path, 2)).toBeCloseTo(span(plain.path, 2), 0);
+    expect(r.path.every(inBox)).toBe(true);
+    expect(r.warnings.join(" ")).toMatch(new RegExp(`stretched \\d+(\\.\\d)?x`));
+    expect(across / (0.06 * (ARM_MM / 0.6) * 0.95)).toBeLessThanOrEqual(MAX_STRETCH + 0.01);
+    // a path already half the box wide or more is left as it is
+    expect(scalePath(swing(0.2, 0.5, 4), 0.6).warnings.join(" ")).not.toMatch(/stretched/);
+  });
+
   it("fills the box when the arm could not be measured, and says so", () => {
     const r = scalePath(swing(0.05, 1, 3), null);
     expect(span(r.path, 1)).toBeCloseTo(BOX_Y_MM[1] - BOX_Y_MM[0], 0);
@@ -80,11 +97,11 @@ describe("scalePath", () => {
 
   it("keeps 90% of a quick wave: the average only takes off frame-to-frame jitter", () => {
     // three swings a second sampled 30 times a second; the samples nearest the turns are at sin(2π/5) of the swing
-    const samples: HandSample[] = Array.from({ length: 61 }, (_, k) => ({ t_s: k / 30, x_m: 0.05 * Math.sin(2 * Math.PI * 3 * (k / 30)), y_m: -0.5 }));
+    const samples: HandSample[] = Array.from({ length: 61 }, (_, k) => ({ t_s: k / 30, x_m: 0.15 * Math.sin(2 * Math.PI * 3 * (k / 30)), y_m: -0.5 }));
     const r = scalePath(samples, 0.5);
     const gain = (1 + Math.cos((2 * Math.PI * 3) / 30)) / 2;
     expect(gain).toBeCloseTo(0.9, 1);
-    expect(span(r.path, 1)).toBeCloseTo(2 * 0.05 * Math.sin((2 * Math.PI) / 5) * gain * (ARM_MM / 0.5), 0);
+    expect(span(r.path, 1)).toBeCloseTo(2 * 0.15 * Math.sin((2 * Math.PI) / 5) * gain * (ARM_MM / 0.5), 0);
     // jitter that flips every frame is gone
     const jitter = samples.map((s, k) => ({ ...s, x_m: s.x_m + (k % 2 ? 0.004 : -0.004) }));
     expect(scalePath(jitter, 0.5).path.slice(1, -1).map((p) => p.xyz_mm[1])).toEqual(r.path.slice(1, -1).map((p) => expect.closeTo(p.xyz_mm[1], 0)));

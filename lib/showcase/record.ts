@@ -107,15 +107,15 @@ export function priceOf(e: LedgerEntry): number {
 const calls = (stage: Call["stage"], ledger: LedgerEntry[] = []): Call[] =>
   ledger.map((e) => ({ stage, model: e.model, prompt_tokens: e.prompt_tokens, completion_tokens: e.completion_tokens, cached_tokens: e.cached_tokens, seconds: round(e.seconds, 2), usd: round(priceOf(e), 8) }));
 
-type Handler = (req: Request) => Promise<Response>;
+export type Handler = (req: Request) => Promise<Response>;
 /** Carries the unlock code when one is set here, so the spend guard (lib/unlock/check.ts) lets the recording go live. */
-async function post<T>(handler: Handler, route: string, body: unknown): Promise<StageResult<T>> {
+export async function post<T>(handler: Handler, route: string, body: unknown): Promise<StageResult<T>> {
   const res = await handler(new Request(`http://localhost${route}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ unlock: process.env[UNLOCK_ENV], ...(body as object) }) }));
   return (await res.json()) as StageResult<T>;
 }
 
 /** A replayed answer must never be recorded as a live one; `model: false` for a stage the route answers with no model (a gesture's program). */
-function live<T>(r: StageResult<T>, stage: string, model = true): Extract<StageResult<T>, { status: "done" }> {
+export function live<T>(r: StageResult<T>, stage: string, model = true): Extract<StageResult<T>, { status: "done" }> {
   if (r.status !== "done") throw new Error(`${stage}: ${r.status === "failed" ? r.message : r.status}`);
   if (r.warnings.some((w) => w.startsWith("replay"))) throw new Error(`${stage} answered from a replay fixture: is NEBIUS_API_KEY set?`);
   if (model && !r.ledger?.length) throw new Error(`${stage} made no model call`);
