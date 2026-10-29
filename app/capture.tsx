@@ -1,7 +1,9 @@
 "use client";
 
 /**
- * "Film yourself": the camera, a 3, 2, 1 countdown, an 8 s take, then Retake
+ * "Upload a clip": an MP4 or an iPhone .MOV, read before it is taken, so a
+ * clip this browser cannot decode (HEVC in Firefox, say) is refused on the
+ * spot with what to do, not later as a failed label. "Film yourself": the camera, a 3, 2, 1 countdown, an 8 s take, then Retake
  * or Use this clip, which hands the take to the flow like an upload. The take
  * stays in the browser; the flow sends only its 480-wide proxy to the model. Also
  * the unlock prompt for clips of your own (#35), asked once per tab, and what
@@ -9,6 +11,7 @@
  */
 import { useEffect, useReducer, useRef, useState } from "react";
 import { cameraError, COUNTDOWN_S, recordingType, step, TAKE_S, unsupported, type CaptureState } from "@/lib/capture/recorder";
+import { CLIP_ACCEPT, clipProblem } from "@/lib/vision/clip";
 import { isUnlockRefusal, UNLOCK_STORAGE_KEY, UNLOCK_WRONG } from "@/lib/unlock/messages";
 
 const sleep = (ms: number, signal: AbortSignal) =>
@@ -28,6 +31,55 @@ function recorderFor(media: MediaStream): MediaRecorder {
     }
   }
   return new MediaRecorder(media, options);
+}
+
+export function UploadClip({ onClip, disabled = false }: { onClip: (clip: File) => void; disabled?: boolean }) {
+  const [reading, setReading] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  /** the latest `disabled`: consent withdrawn while a file is read drops it */
+  const disabledNow = useRef(disabled);
+  useEffect(() => {
+    disabledNow.current = disabled;
+  }, [disabled]);
+  const pick = useRef(0);
+  useEffect(() => () => void pick.current++, []);
+
+  async function picked(file: File) {
+    const id = ++pick.current;
+    setProblem(null);
+    setReading(true);
+    const why = await clipProblem(file);
+    if (id !== pick.current) return;
+    setReading(false);
+    if (disabledNow.current) return;
+    if (why) setProblem(why);
+    else onClip(file);
+  }
+
+  const off = disabled || reading;
+  return (
+    <>
+      <label className={`rounded border border-dashed px-3 py-1.5 text-sm ${off ? "cursor-not-allowed opacity-40" : "cursor-pointer hover:bg-neutral-50"}`}>
+        {reading ? "Reading the clip…" : "Upload a clip"}
+        <input
+          type="file"
+          accept={CLIP_ACCEPT}
+          disabled={off}
+          className="sr-only"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = ""; // the same file, picked again after a fix, fires again
+            if (file) void picked(file);
+          }}
+        />
+      </label>
+      {problem && (
+        <p role="alert" className="w-full text-sm text-red-700">
+          {problem}
+        </p>
+      )}
+    </>
+  );
 }
 
 export function FilmYourself({ onClip, disabled = false }: { onClip: (take: Blob) => void; disabled?: boolean }) {

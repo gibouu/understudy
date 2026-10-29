@@ -17,7 +17,7 @@ import { gateNote } from "@/lib/unlock/messages";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
 import { rememberedLabel, rememberLabel } from "@/lib/vision/remembered";
 import { withGesturePaths } from "@/lib/vision/trace";
-import { FilmYourself, keepSampleToken, liveAuth, UnlockPrompt } from "./capture";
+import { FilmYourself, keepSampleToken, liveAuth, UnlockPrompt, UploadClip } from "./capture";
 import { GroundChips } from "./ground-chips";
 import { keep, keepCall, keeping, startSession } from "./keep";
 import { answeredBy, useModels, type Role } from "./models";
@@ -284,19 +284,7 @@ export function Flow() {
               {s.label}
             </button>
           ))}
-          <label className={`rounded border border-dashed px-3 py-1.5 text-sm ${consent ? "cursor-pointer hover:bg-neutral-50" : "cursor-not-allowed opacity-40"}`}>
-            Upload an MP4
-            <input
-              type="file"
-              accept="video/mp4"
-              disabled={!consent}
-              className="sr-only"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) choose(file, "");
-              }}
-            />
-          </label>
+          <UploadClip key={clip?.url} disabled={!consent} onClip={(file) => choose(file, "")} />
           <FilmYourself disabled={!consent} onClip={(take) => choose(take, "")} />
         </div>
         <label className="mt-3 flex items-start gap-2 text-sm text-neutral-700">

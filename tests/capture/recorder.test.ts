@@ -70,8 +70,8 @@ describe("what the page says when it cannot film", () => {
 
   it("names a missing camera API and a missing MediaRecorder, and points to upload", () => {
     expect(unsupported({ getUserMedia: fn, MediaRecorder: fn })).toBeNull();
-    expect(unsupported({ MediaRecorder: fn })).toMatch(/camera.*upload an MP4/);
-    expect(unsupported({ getUserMedia: fn })).toMatch(/cannot record video.*upload an MP4/);
+    expect(unsupported({ MediaRecorder: fn })).toMatch(/camera.*upload a clip/);
+    expect(unsupported({ getUserMedia: fn })).toMatch(/cannot record video.*upload a clip/);
   });
 
   it("tells a refused camera from a missing or busy one", () => {
@@ -80,7 +80,7 @@ describe("what the page says when it cannot film", () => {
     expect(cameraError(new DOMException("denied", "NotAllowedError"))).toMatch(/^The camera was refused/);
     expect(cameraError(err("NotFoundError"))).toMatch(/^No camera was found/);
     expect(cameraError(err("NotReadableError"))).toMatch(/another app/);
-    expect(cameraError(new Error("odd"))).toBe("The camera did not start (odd). You can still upload an MP4.");
-    for (const name of ["NotAllowedError", "NotFoundError", "NotReadableError", "Whatever"]) expect(cameraError(err(name))).toMatch(/upload an MP4\.$/);
+    expect(cameraError(new Error("odd"))).toBe("The camera did not start (odd). You can still upload a clip.");
+    for (const name of ["NotAllowedError", "NotFoundError", "NotReadableError", "Whatever"]) expect(cameraError(err(name))).toMatch(/upload a clip\.$/);
   });
 });
