@@ -5,7 +5,7 @@
  */
 import { ALL_FORMATS, BlobSource, BufferTarget, Input } from "mediabunny";
 import { VIDEO_PROXY } from "@/lib/providers/tokenfactory";
-import { problemOf, proxyConversion, verdictOf } from "@/lib/vision/clip";
+import { problemOf, setUpProxy } from "@/lib/vision/clip";
 
 export type Proxy = { video: string; duration_s: number; clip_sha256: string; bytes: number };
 
@@ -14,10 +14,9 @@ export async function makeProxy(clip: Blob): Promise<Proxy> {
   const duration_s = await input.computeDuration();
   if (duration_s > VIDEO_PROXY.maxSeconds) throw new Error(`the clip is ${Math.round(duration_s)} s; at most ${VIDEO_PROXY.maxSeconds} s`);
   const target = new BufferTarget();
-  const conversion = await proxyConversion(input, target);
-  const video = verdictOf(conversion);
+  const { conversion, video } = await setUpProxy(input, target);
   const codec = async () => (await input.getPrimaryVideoTrack())?.codec ?? null;
-  if (video !== "ok") throw new Error(problemOf({ bytes: clip.size, duration_s, codec: await codec(), video }) ?? "this browser cannot make the H.264 copy of the clip");
+  if (video !== "ok" || !conversion) throw new Error(problemOf({ bytes: clip.size, duration_s, codec: await codec(), video }) ?? "this browser cannot make the H.264 copy of the clip");
   try {
     await conversion.execute();
   } catch {

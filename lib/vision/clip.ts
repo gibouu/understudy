@@ -61,6 +61,20 @@ export function verdictOf(conversion: Conversion): VideoVerdict {
   return "unknown";
 }
 
+/**
+ * The proxy conversion set up on `input`, and its verdict. Setting it up may
+ * already decode a frame (when no resize is needed), so a decoder that throws
+ * there counts as one that cannot decode the clip.
+ */
+export async function setUpProxy(input: Input, target?: BufferTarget): Promise<{ conversion: Conversion | null; video: VideoVerdict }> {
+  try {
+    const conversion = await proxyConversion(input, target);
+    return { conversion, video: verdictOf(conversion) };
+  } catch {
+    return { conversion: null, video: "undecodable" };
+  }
+}
+
 /** The clip's facts. Throws when the file is not a container mediabunny reads. */
 export async function readClip(clip: Blob): Promise<ClipFacts> {
   const input = new Input({ source: new BlobSource(clip), formats: ALL_FORMATS });
@@ -68,7 +82,7 @@ export async function readClip(clip: Blob): Promise<ClipFacts> {
     const track = await input.getPrimaryVideoTrack();
     const codec = track?.codec ?? null;
     const duration_s = await input.computeDuration();
-    const video = track && codec ? verdictOf(await proxyConversion(input)) : "unknown";
+    const video = track && codec ? (await setUpProxy(input)).video : "unknown";
     return { bytes: clip.size, duration_s, codec, video };
   } finally {
     input.dispose();

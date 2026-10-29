@@ -8,7 +8,8 @@ import { makeProxy } from "@/lib/vision/proxy";
 import { CLIP_ACCEPT, clipProblem, MAX_CLIP_BYTES, problemOf, readClip, type ClipFacts } from "@/lib/vision/clip";
 
 // 2 s, 320 x 240, 15 fps ffmpeg test patterns in a QuickTime container, as an
-// iPhone writes them: H.264 ("Most Compatible") and HEVC tagged hvc1 (the default).
+// iPhone writes them: H.264 ("Most Compatible") and HEVC tagged hvc1 (the default);
+// hevc-480.mov is 1 s at 480 x 360, the proxy width, so it needs no resize.
 const fixture = (name: string) => new Blob([readFileSync(path.join(process.cwd(), "tests", "fixtures", "clip", name))]);
 
 /** WebCodecs as a browser would answer: Node has none, so each test says what decodes. */
@@ -93,9 +94,19 @@ describe("an iPhone .MOV, as makeProxy's own conversion judges it (set up, not r
     await expect(makeProxy(fixture("hevc.mov"))).rejects.toThrow(/cannot decode HEVC.*Most Compatible/);
   });
 
-  it("a decoder that says yes, then fails on the frames: makeProxy says the same, not the decoder's bare error", async () => {
+  /** A decoder that says yes, then fails on the first frame it is given; `calls.decode` counts the frames. */
+  function brokenDecoder() {
     webcodecs(() => true);
     const supported = (globalThis as unknown as { VideoDecoder: { isConfigSupported: unknown } }).VideoDecoder.isConfigSupported;
+    const calls = { decode: 0 };
+    vi.stubGlobal(
+      "EncodedVideoChunk",
+      class {
+        constructor(init: Record<string, unknown>) {
+          Object.assign(this, init);
+        }
+      },
+    );
     vi.stubGlobal(
       "VideoDecoder",
       class {
@@ -112,6 +123,7 @@ describe("an iPhone .MOV, as makeProxy's own conversion judges it (set up, not r
           this.state = "configured";
         }
         decode() {
+          calls.decode++;
           queueMicrotask(() => this.fail(new Error("Decoding error.")));
         }
         flush() {
@@ -123,6 +135,19 @@ describe("an iPhone .MOV, as makeProxy's own conversion judges it (set up, not r
         }
       },
     );
-    await expect(makeProxy(fixture("hevc.mov"))).rejects.toThrow(/cannot decode HEVC.*Most Compatible/);
+    return calls;
+  }
+
+  // 320 wide: resized, so the frames are decoded in execute(); 480 wide: no resize, the first frame is decoded while the conversion is set up
+  it.each(["hevc.mov", "hevc-480.mov"])("%s, a decoder that says yes then fails on the frames: the HEVC sentence, not the decoder's bare error", async (name) => {
+    const calls = brokenDecoder();
+    await expect(makeProxy(fixture(name))).rejects.toThrow(/cannot decode HEVC.*Most Compatible/);
+    expect(calls.decode).toBeGreaterThan(0);
+  });
+
+  it("the upload check says the same when setting up the conversion decodes the failing frame", async () => {
+    const calls = brokenDecoder();
+    expect(await clipProblem(fixture("hevc-480.mov"))).toMatch(/cannot decode HEVC/);
+    expect(calls.decode).toBeGreaterThan(0);
   });
 });
