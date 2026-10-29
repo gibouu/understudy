@@ -8,9 +8,8 @@
  * grid always runs. Replay (no key, ?replay=1, or no way past the spend
  * guard) answers from tests/fixtures/saboteur.json (lib/saboteur/replay.ts), the model's recorded
  * reply for this task's title, checked against the spec posted now; with no
- * recording for it, from the spec. The live calls count against the
- * variants route's ceiling (lib/unlock/cap.ts): both are one patching-model
- * call per click below the rehearsal.
+ * recording for it, from the spec. The live calls have their own ceiling per
+ * minute (lib/unlock/cap.ts, #193).
  */
 import { NextResponse } from "next/server";
 import { tokenFactory, wantsReplay } from "@/lib/providers/tokenfactory";
@@ -29,7 +28,7 @@ export async function POST(req: Request): Promise<NextResponse<StageResult<Sabot
   const spec = TaskSpec.safeParse(body?.spec);
   if (!spec.success) return NextResponse.json(failed(`invalid spec: ${spec.error.issues.slice(0, 3).map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`).join("; ")}`, false), { status: 400 });
 
-  const gate = wantsReplay(req) ? null : await liveGate("variants", body);
+  const gate = wantsReplay(req) ? null : await liveGate("saboteur", body);
   const client = gate?.live ? tokenFactory({ timeout: 20_000, maxRetries: 0 }) : null;
   if (!client) return NextResponse.json(explain(replay(spec.data), gate));
   // a failed answer still cost its calls: the page counts them from this

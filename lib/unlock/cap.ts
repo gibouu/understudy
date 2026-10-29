@@ -6,7 +6,8 @@
  * ceiling bounds one instance, not the deployment. It applies on Vercel
  * deployments only; local runs and tests are not counted.
  */
-export const LIVE_PER_MINUTE = { label: 8, compile: 40, notes: 20, variants: 12, ground: 8 } as const;
+/** reshoot: one Ultra call with thinking per click, about US$0.03 seen (up to about US$0.05 at full length); saboteur: one request for twelve scenarios (#193). */
+export const LIVE_PER_MINUTE = { label: 8, compile: 40, notes: 20, variants: 12, ground: 8, reshoot: 4, saboteur: 6 } as const;
 
 export type LiveRoute = keyof typeof LIVE_PER_MINUTE;
 
