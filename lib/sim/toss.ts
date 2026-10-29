@@ -30,7 +30,7 @@ export type Flight = {
   release: { t: number; xyz_mm: Vec3; v_mm_s: Vec3 };
   /** whether it came off the pads before that */
   parted: boolean;
-  /** the fastest any arm joint was asked to turn during the toss, rad/s */
+  /** the fastest any arm joint was asked to turn during the toss, run-up, coast and brake, rad/s (at most TOSS_JOINT_RAD_S) */
   peak_joint_rad_s: number;
   catch?: {
     step_id: string;
@@ -41,12 +41,14 @@ export type Flight = {
     /** how far the predicted path passes from the point the program aimed at, mm */
     aim_off_mm: number;
     /** how far the object really was from where it was predicted, at that moment, mm */
-    predicted_off_mm: number;
+    predicted_off_mm?: number;
     held: boolean;
     /** seconds after the predicted moment the grasp check held (negative: before it) */
     held_after_s?: number;
     /** the jaw angle they stopped at when they stopped, both on the object, but not where they had held it (rad) */
     shut_rad?: number;
+    /** it was already against the gripper when the jaws were to start closing: no catch was tried */
+    touching?: boolean;
   };
 };
 

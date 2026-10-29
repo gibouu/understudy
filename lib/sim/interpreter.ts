@@ -673,7 +673,11 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
                 for (let i = 0; i < ARM; i++) ctrl()[i] = windup[i] + (rates.qdot[i] * w * w) / (2 * ta) + lag[i] * ((rates.qdot[i] * w) / ta);
               } else {
                 const f = Math.max(0, 1 - u / tb);
-                const qd = throwRates(sim, v.map((x) => x * f) as Vec3, qref, spinWeight).qdot;
+                const asked = throwRates(sim, v.map((x) => x * f) as Vec3, qref, spinWeight).qdot;
+                // held to TOSS_JOINT_RAD_S here too: where keeping the line would ask more, the gripper slows down on it
+                const over = Math.max(...asked.map(Math.abs)) / TOSS_JOINT_RAD_S;
+                const qd = over > 1 ? asked.map((x) => x / over) : asked;
+                flight.peak_joint_rad_s = r1(Math.max(flight.peak_joint_rad_s, ...qd.map(Math.abs)));
                 qref = qref.map((q, i) => q + qd[i] * dt);
                 for (let i = 0; i < ARM; i++) ctrl()[i] = qref[i] + lag[i] * qd[i];
               }
@@ -747,6 +751,8 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             if (held) return fail({ failed_step_id: s.step_id, why: `catch: already holding ${held.body}` });
             const fl = released.get(name);
             if (!fl) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `catch: ${op.object} was not tossed in this run, so there is no path to meet it on` });
+            // still on the pads: it never flew, and closing on it again would be no catch
+            if (!fl.flight.parted) return fail({ failed_step_id: s.step_id, why: `catch: ${op.object} never came off the pads after the toss, so there is nothing to catch` });
             if (op.frame === op.object) return fail({ failed_step_id: s.step_id, failure_class: "spec_gap", why: `catch: the point to catch ${op.object} at is given in its own frame, which flies with it; name the world or a fixture` });
             // no point named: where the gripper is now, the hand that let go of it
             const heldSiteId = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, SO101_HELD_SITE);
@@ -838,10 +844,16 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
             let ok = false;
             /** the jaws stopped, both on the object (the grasp's own check), but not where they held it: shut on an edge, or on each other */
             let shut: number | null = null;
+            let touching = false;
             while (!ok && shut === null && t < pass.t + op.window_s - 1e-9) {
               const u = Math.min(1, (t - t0) / span);
               for (let i = 0; i < ARM; i++) ctrl()[i] = from[i] + (ik.q[i] - from[i]) * u;
               if (Number.isNaN(predictedOff) && t >= closeAt - 1e-9) {
+                // a catch closes on a free object: one already resting on a pad as the jaws start to close is not caught
+                if (!apart(sim, g)) {
+                  touching = true;
+                  break;
+                }
                 const p = vec(data.xpos, g.bodyId, 3);
                 const want = predict(fl.release, gravity, t);
                 predictedOff = Math.hypot(...p.map((v, i) => v - want[i])) / MM;
@@ -865,13 +877,14 @@ export function* run(sim: Sim, env: Environment, program: Program, mode: Mode, {
               t_predicted: r3(pass.t),
               xyz_mm: at.map((v) => r1(v / MM)) as Vec3,
               aim_off_mm: r1(pass.off_m / MM),
-              predicted_off_mm: r1(predictedOff),
+              ...(Number.isNaN(predictedOff) ? {} : { predicted_off_mm: r1(predictedOff) }),
               held: ok,
               ...(ok ? { held_after_s: r3(heldAfter) } : {}),
               ...(shut !== null ? { shut_rad: r3(shut) } : {}),
+              ...(touching ? { touching: true } : {}),
             };
-            const missed = shut !== null ? `missed: the jaws stopped at ${shut.toFixed(2)} rad, not on it as they held it (${fl.hold_rad.toFixed(2)} rad)` : `missed within ${op.window_s} s of the predicted moment`;
-            log.push(`${t.toFixed(2)} catch ${op.object}: ${ok ? `held, ${heldAfter.toFixed(3)} s after the predicted moment` : missed}; it was ${predictedOff.toFixed(1)} mm off its predicted path as the jaws began to close`);
+            const missed = touching ? "missed: it was already against the gripper as the jaws were to start closing" : shut !== null ? `missed: the jaws stopped at ${shut.toFixed(2)} rad, not on it as they held it (${fl.hold_rad.toFixed(2)} rad)` : `missed within ${op.window_s} s of the predicted moment`;
+            log.push(`${t.toFixed(2)} catch ${op.object}: ${ok ? `held, ${heldAfter.toFixed(3)} s after the predicted moment` : missed}${Number.isNaN(predictedOff) ? "" : `; it was ${predictedOff.toFixed(1)} mm off its predicted path as the jaws began to close`}`);
             break;
           }
           case "wait_until": {

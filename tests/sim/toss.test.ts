@@ -153,7 +153,7 @@ function band(spec: (dx: number, dy: number) => TaskSpec, program: Program, grav
 }
 
 /** measured on 29 October 2026 (docs/MEASUREMENTS.md section 17); a change that moves these says so there */
-const PINNED = { earth: 2, orbit: 0 };
+const PINNED = { earth: 8, orbit: 0 };
 
 describe("a toss and a catch, measured over a band of seeds (#159)", () => {
   const results: Record<string, { caught: number; of: number; wilson95: [number, number]; rows: Row[] }> = {};

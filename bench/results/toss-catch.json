@@ -1,10 +1,10 @@
 {
  "earth": {
-  "caught": 2,
+  "caught": 8,
   "of": 10,
   "wilson95": [
-   0.056680947980693314,
-   0.5098431532792765
+   0.49015684672072335,
+   0.9433190520193067
   ],
   "rows": [
    {
@@ -18,8 +18,7 @@
     "seed": 2,
     "dx": 1.4,
     "dy": -1.1,
-    "caught": false,
-    "why": "5.39 catch item: missed: the jaws stopped at -0.02 rad, not on it as they held it (0.03 rad); it was 1.5 mm off its predicted path as the jaws began to close",
+    "caught": true,
     "flight": {
      "step_id": "s1",
      "object": "item",
@@ -43,7 +42,7 @@
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 3.8,
+     "peak_joint_rad_s": 4,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.32,
@@ -52,10 +51,10 @@
        -12.8,
        296.5
       ],
-      "aim_off_mm": 21.7,
+      "aim_off_mm": 24.7,
       "predicted_off_mm": 1.5,
-      "held": false,
-      "shut_rad": -0.024
+      "held": true,
+      "held_after_s": 0.06
      }
     }
    },
@@ -81,13 +80,13 @@
        256.9
       ],
       "v_mm_s": [
-       49.8,
+       49.7,
        -76.1,
        910
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 3.9,
+     "peak_joint_rad_s": 4,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.325,
@@ -96,10 +95,10 @@
        -11.6,
        295.4
       ],
-      "aim_off_mm": 21.1,
+      "aim_off_mm": 24.1,
       "predicted_off_mm": 1.5,
       "held": true,
-      "held_after_s": 0.08
+      "held_after_s": 0.135
      }
     }
    },
@@ -114,8 +113,7 @@
     "seed": 5,
     "dx": 1.1,
     "dy": 1.6,
-    "caught": false,
-    "why": "5.39 catch item: missed: the jaws stopped at -0.04 rad, not on it as they held it (0.03 rad); it was 1.5 mm off its predicted path as the jaws began to close",
+    "caught": true,
     "flight": {
      "step_id": "s1",
      "object": "item",
@@ -139,7 +137,7 @@
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 3.8,
+     "peak_joint_rad_s": 4,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.315,
@@ -148,10 +146,10 @@
        -12.4,
        295.8
       ],
-      "aim_off_mm": 21,
+      "aim_off_mm": 24.8,
       "predicted_off_mm": 1.5,
-      "held": false,
-      "shut_rad": -0.045
+      "held": true,
+      "held_after_s": 0.065
      }
     }
    },
@@ -178,12 +176,12 @@
       ],
       "v_mm_s": [
        57.3,
-       -84.1,
+       -84.2,
        920.6
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 3.8,
+     "peak_joint_rad_s": 4,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.295,
@@ -192,10 +190,10 @@
        -12.7,
        296.6
       ],
-      "aim_off_mm": 21.5,
+      "aim_off_mm": 24.7,
       "predicted_off_mm": 1.5,
       "held": true,
-      "held_after_s": 0.165
+      "held_after_s": 0.065
      }
     }
    },
@@ -203,8 +201,7 @@
     "seed": 7,
     "dx": -2.9,
     "dy": -2.6,
-    "caught": false,
-    "why": "5.50 catch item: missed: the jaws stopped at -0.06 rad, not on it as they held it (0.01 rad); it was 2.0 mm off its predicted path as the jaws began to close",
+    "caught": true,
     "flight": {
      "step_id": "s1",
      "object": "item",
@@ -228,7 +225,7 @@
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 3.9,
+     "peak_joint_rad_s": 4,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.415,
@@ -237,10 +234,10 @@
        -17.5,
        304.2
       ],
-      "aim_off_mm": 21.4,
-      "predicted_off_mm": 2,
-      "held": false,
-      "shut_rad": -0.063
+      "aim_off_mm": 23.2,
+      "predicted_off_mm": 1.5,
+      "held": true,
+      "held_after_s": 0.06
      }
     }
    },
@@ -248,8 +245,7 @@
     "seed": 8,
     "dx": -2.1,
     "dy": 0.8,
-    "caught": false,
-    "why": "5.37 catch item: missed: the jaws stopped at -0.02 rad, not on it as they held it (0.03 rad); it was 1.5 mm off its predicted path as the jaws began to close",
+    "caught": true,
     "flight": {
      "step_id": "s1",
      "object": "item",
@@ -273,7 +269,7 @@
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 3.9,
+     "peak_joint_rad_s": 4,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.3,
@@ -282,10 +278,10 @@
        -12.9,
        297.1
       ],
-      "aim_off_mm": 21.3,
+      "aim_off_mm": 24.2,
       "predicted_off_mm": 1.5,
-      "held": false,
-      "shut_rad": -0.02
+      "held": true,
+      "held_after_s": 0.12
      }
     }
    },
@@ -293,8 +289,7 @@
     "seed": 9,
     "dx": -1.8,
     "dy": 2.1,
-    "caught": false,
-    "why": "5.37 catch item: missed: the jaws stopped at -0.03 rad, not on it as they held it (0.03 rad); it was 1.5 mm off its predicted path as the jaws began to close",
+    "caught": true,
     "flight": {
      "step_id": "s1",
      "object": "item",
@@ -318,7 +313,7 @@
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 3.8,
+     "peak_joint_rad_s": 4,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.295,
@@ -327,10 +322,10 @@
        -12.7,
        296
       ],
-      "aim_off_mm": 21.4,
+      "aim_off_mm": 25.1,
       "predicted_off_mm": 1.5,
-      "held": false,
-      "shut_rad": -0.031
+      "held": true,
+      "held_after_s": 0.065
      }
     }
    },
@@ -338,8 +333,7 @@
     "seed": 10,
     "dx": 0,
     "dy": 2.5,
-    "caught": false,
-    "why": "5.41 catch item: missed: the jaws stopped at -0.06 rad, not on it as they held it (0.03 rad); it was 1.5 mm off its predicted path as the jaws began to close",
+    "caught": true,
     "flight": {
      "step_id": "s1",
      "object": "item",
@@ -363,7 +357,7 @@
       ]
      },
      "parted": true,
-     "peak_joint_rad_s": 3.8,
+     "peak_joint_rad_s": 4,
      "catch": {
       "step_id": "s1",
       "t_predicted": 5.315,
@@ -372,10 +366,10 @@
        -12.4,
        295
       ],
-      "aim_off_mm": 21.1,
+      "aim_off_mm": 24.9,
       "predicted_off_mm": 1.5,
-      "held": false,
-      "shut_rad": -0.064
+      "held": true,
+      "held_after_s": 0.065
      }
     }
    }
@@ -465,7 +459,7 @@
     "dx": 2.5,
     "dy": -1,
     "caught": false,
-    "why": "timed out after 0.5 s: the pads are not both on item",
+    "why": "catch: item never came off the pads after the toss, so there is nothing to catch",
     "flight": {
      "step_id": "s1",
      "object": "item",
@@ -489,19 +483,7 @@
       ]
      },
      "parted": false,
-     "peak_joint_rad_s": 0.5,
-     "catch": {
-      "step_id": "s1",
-      "t_predicted": 6.694,
-      "xyz_mm": [
-       204.2,
-       89.8,
-       50.8
-      ],
-      "aim_off_mm": 4.3,
-      "predicted_off_mm": 21,
-      "held": false
-     }
+     "peak_joint_rad_s": 0.5
     }
    },
    {
@@ -560,7 +542,7 @@
     "dx": -2.9,
     "dy": -2.6,
     "caught": false,
-    "why": "timed out after 0.5 s: the pads are not both on item",
+    "why": "catch: item never came off the pads after the toss, so there is nothing to catch",
     "flight": {
      "step_id": "s1",
      "object": "item",
@@ -584,19 +566,7 @@
       ]
      },
      "parted": false,
-     "peak_joint_rad_s": 0.5,
-     "catch": {
-      "step_id": "s1",
-      "t_predicted": 6.822,
-      "xyz_mm": [
-       206.5,
-       89.8,
-       49.5
-      ],
-      "aim_off_mm": 6.5,
-      "predicted_off_mm": 16.8,
-      "held": false
-     }
+     "peak_joint_rad_s": 0.5
     }
    },
    {
