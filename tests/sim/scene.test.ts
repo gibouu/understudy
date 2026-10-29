@@ -126,6 +126,16 @@ describe("buildScene", () => {
     const corners = [-1, 1].flatMap((i) => [-1, 1].flatMap((j) => [-1, 1].map((k): [number, number, number] => [i * 40, j * 40, k * 20])));
     expect(Math.min(...corners.map((c) => w.cup.xyz_mm[2] + apply(w.cup.R, c)[2]))).toBeCloseTo(0, 6);
   });
+  it("lifts a cylinder container by the square box its footprint makes, not by its second size", () => {
+    const one = TaskSpec.parse({
+      ...spec,
+      objects: [{ id: "cup", name: "cup", shape: "cylinder", size_mm: [80, 40, 40], symmetry: "none", role: "obstacle", liquid_ml: 50, pose: { xyz_mm: [250, 0, 20] }, source: "vl#seg1" }],
+      steps: [],
+    });
+    const w = worldPoses(one, { cup: { axis: "x", deg: 30 } });
+    const corners = [-1, 1].flatMap((i) => [-1, 1].flatMap((j) => [-1, 1].map((k): [number, number, number] => [i * 40, j * 40, k * 20])));
+    expect(Math.min(...corners.map((c) => w.cup.xyz_mm[2] + apply(w.cup.R, c)[2]))).toBeCloseTo(0, 6);
+  });
   it("lays out an unposed parent before resolving its posed child", () => {
     const orphan = TaskSpec.parse({
       ...spec,

@@ -228,7 +228,7 @@ export function worldPoses(spec: TaskSpec, tilts: Record<string, Tilt> = {}, opt
     // children, posed in its frame, come with it)
     if (pose && tilt) {
       // measured on what the scene emits: containers and pockets are built as boxes whatever their shape
-      const built = open.has(id) || (o.role === "fixture" && builtAsPocket(spec, o)) ? { ...o, shape: "box" as const } : o;
+      const built = open.has(id) || (o.role === "fixture" && builtAsPocket(spec, o)) ? { ...o, shape: "box" as const, size_mm: [...footprintMm(o), heightMm(o)] as [number, number, number] } : o;
       pose.xyz_mm[2] += halfHeightMm(built, pose.R) - halfHeightMm(built, mul(R_level, rotZ(o.pose.yaw_deg)));
     }
     visiting.delete(id);
