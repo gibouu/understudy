@@ -54,6 +54,18 @@ describe("baselineProgram", () => {
     expect(ops.find((o) => o.op === "move_to")).toMatchObject({ approach: "front" });
   });
 
+  it("opens the hand in the person's own release step, not at the end of the carry", () => {
+    const steps = [
+      { id: "s1", verb: "grasp", object: "film", t_start_s: 0, t_end_s: 1, source: "vl#seg1" },
+      { id: "s2", verb: "move", object: "film", target: { fixture: "pocket", frame: "pillow" }, t_start_s: 1, t_end_s: 2, source: "vl#seg1" },
+      { id: "s3", verb: "release", object: "film", t_start_s: 2, t_end_s: 3, source: "vl#seg1" },
+    ];
+    const spec = TaskSpec.parse({ ...DEMO_SPEC, steps });
+    const b = baselineProgram(spec, spec);
+    if (!("program" in b)) throw new Error(b.why);
+    expect(b.program.steps.map((s) => s.ops.filter((o) => o.op === "release").length)).toEqual([0, 0, 1]);
+  });
+
   it("gives the reason when the scored spec lost a frame the label's steps use", () => {
     const scored = TaskSpec.parse({ ...DEMO_SPEC, objects: DEMO_SPEC.objects.map((o, i) => (i === 0 ? { ...o, id: "renamed" } : o)), steps: [] });
     expect(baselineProgram(DEMO_SPEC, scored)).toEqual({ why: expect.stringContaining("the scored spec has no") });

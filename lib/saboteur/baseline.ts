@@ -25,31 +25,29 @@ export function baselineProgram(label: TaskSpec, scored: TaskSpec): Baseline {
   let held: string | null = null;
   const steps: Program["steps"] = [];
   let moves = 0;
-  /** a container a later step pours is gripped from the front by that step, never taken from the top before it */
+  /** a container any step pours is gripped from the front at its centre, so the wrist can roll it over */
   const poured = new Set(label.steps.filter((s) => s.verb === "pour").map((s) => s.object));
 
+  /** The hand takes `id`, letting go of anything else first; nothing when it already holds it. */
   const take = (id: string): ProgramOp[] => {
     if (held === id) return [];
     const o = obj(id)!;
+    const grasp: ProgramOp = { op: "grasp", object: id, aperture_mm: Math.min(...footprintMm(o)) };
     const grip = Math.max(0, o.size_mm[2] / 2 - 8);
-    const ops: ProgramOp[] = [...(held ? [{ op: "release" } as const] : []), top(id, grip + 50), top(id, grip), { op: "grasp", object: id, aperture_mm: Math.min(...footprintMm(o)) }, top(id, 50)];
+    const ops: ProgramOp[] = [...(held ? [{ op: "release" } as const] : []), ...(poured.has(id) ? [front(id, 50), front(id, 0), grasp] : [top(id, grip + 50), top(id, grip), grasp, top(id, 50)])];
     held = id;
     return ops;
   };
 
-  for (const s of label.steps) {
+  for (const [i, s] of label.steps.entries()) {
     if (s.verb === "gesture") return { why: "a gesture moves nothing, so there is nothing to retarget onto the bench" };
     const id = s.object!;
     if (!obj(id)) return { why: `step ${s.id} handles ${id}, which the label has no object for` };
     const via: ProgramOp[] = s.via_points.map((v) => ({ op: "move_to", frame: v.frame, offset_mm: v.xyz_mm, approach: "top" }));
     if (s.verb === "pour") {
       if (!s.pour) return { why: `step ${s.id} pours with no angle in the label` };
-      const o = obj(id)!;
       const ops: ProgramOp[] = [
-        ...(held && held !== id ? [{ op: "release" } as const] : []),
-        front(id, 50),
-        front(id, 0),
-        { op: "grasp", object: id, aperture_mm: Math.min(...footprintMm(o)) },
+        ...take(id),
         ...via,
         { op: "tilt", deg: s.pour.tilt_deg, toward: s.pour.into, seconds: s.pour.tilt_s ?? 1.5 },
         { op: "tilt", deg: 0, seconds: s.pour.tilt_s ?? 1.5 },
@@ -68,15 +66,18 @@ export function baselineProgram(label: TaskSpec, scored: TaskSpec): Baseline {
       const surface = f.size_mm[2] / 2;
       const half = o.size_mm[2] / 2;
       const down = s.target.fixture === "pocket" ? -surface + Math.min(WALL_M / MM, surface) + half : surface + half + 1;
-      steps.push({ step_id: s.id, ops: [...take(id), ...via, top(f.id, surface + half + 20), top(f.id, down), { op: "release" }] });
-      held = null;
+      // the person let go in a step of its own: the hand opens there, not here
+      const next = label.steps[i + 1];
+      const later = next !== undefined && (next.verb === "release" || next.verb === "retract") && next.object === id;
+      steps.push({ step_id: s.id, ops: [...take(id), ...via, top(f.id, surface + half + 20), top(f.id, down), ...(later ? [] : [{ op: "release" } as const])] });
+      if (!later) held = null;
       moves++;
       continue;
     }
     if (s.verb === "place" || s.verb === "insert") return { why: `the label gives step ${s.id} nowhere to go: where it went was an answer` };
     // reach, grasp, move, release, retract with nowhere to go: the hand takes the object, or lets it go
     const lets = s.verb === "release" || s.verb === "retract";
-    steps.push({ step_id: s.id, ops: lets ? (held ? ((held = null), [{ op: "release" }]) : []) : poured.has(id) ? via : [...take(id), ...via] });
+    steps.push({ step_id: s.id, ops: lets ? (held ? ((held = null), [{ op: "release" }]) : []) : [...take(id), ...via] });
   }
   if (moves === 0) return { why: "the label has no step that puts an object somewhere" };
   const frames = new Set(["world", ...scored.objects.map((o) => o.id)]);
