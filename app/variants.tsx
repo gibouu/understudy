@@ -259,6 +259,8 @@ function VariantsFor({ spec, program }: { spec: TaskSpec; program: Program }) {
     if ("why" in r) return r.why;
     keep("answers", { variant: v.title, turn: nextTurn(v.spec), asks, changes: r.changes }, keeping());
     askedBy.current[v.id] = asking;
+    // a later suggestion of the variant as answered is this card too
+    offeredKeys.current.add(physicalKey(r.variant.spec));
     setOffered((xs) => xs.map((o) => (o.variant.id === v.id ? { ...o, variant: r.variant } : o)));
     void rehearse([r.variant]);
     return null;
