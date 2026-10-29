@@ -251,43 +251,46 @@ export function reachSphere(mujoco: MainModule, model: MjModel, data: MjData, si
   return reachBound(model, data, armIndex(model, site));
 }
 
-const bounds = new WeakMap<MjModel, Map<number, { pivot: Vec3; r: number } | null>>();
+/** Per model and site: whether the site hangs off the five IK joints alone (the structure does not change; poses and site offsets can). */
+const chains = new WeakMap<MjModel, Map<number, boolean>>();
 
 /**
  * The farthest the site can be from the pan joint's anchor in any pose: the sum of the distances from each IK
  * joint's anchor to the next and from the last to the site. Each of those is fixed in one body, so the triangle
- * inequality makes it a true bound. Null when the site does not hang off the five joints alone (another joint
- * between them would move it), so no target is ever ruled out by a guess. The pan anchor is fixed in the world.
+ * inequality makes it a true bound. Measured from `data` on every call, so a site the program moves (a grasp
+ * moves the held frame onto the object) is measured where it is. Null when the site does not hang off the five
+ * joints alone (another joint between them would move it), so no target is ever ruled out by a guess. The pan
+ * anchor is fixed in the world: no joint above it.
  */
 function reachBound(model: MjModel, data: MjData, arm: ArmIndex): { pivot: Vec3; r: number } | null {
-  let perSite = bounds.get(model);
-  if (!perSite) bounds.set(model, (perSite = new Map()));
-  if (perSite.has(arm.site)) return perSite.get(arm.site)!;
-  const parent = toNumbers(model.body_parentid);
-  const jntBody = toNumbers(model.jnt_bodyid);
-  const jntNum = toNumbers(model.body_jntnum);
-  const bodies = arm.joints.map((j) => jntBody[j]);
-  // walking up from the site's body: every jointed body met is the next IK joint's, each with that joint only
-  let ok = true;
-  let k = bodies.length - 1;
-  for (let b = toNumbers(model.site_bodyid)[arm.site]; b > 0 && ok; b = parent[b]) {
-    if (jntNum[b] === 0) continue;
-    if (k < 0 || b !== bodies[k] || jntNum[b] !== 1) ok = false;
-    k--;
+  let perSite = chains.get(model);
+  if (!perSite) chains.set(model, (perSite = new Map()));
+  let ok = perSite.get(arm.site);
+  if (ok === undefined) {
+    const parent = toNumbers(model.body_parentid);
+    const jntBody = toNumbers(model.jnt_bodyid);
+    const jntNum = toNumbers(model.body_jntnum);
+    const bodies = arm.joints.map((j) => jntBody[j]);
+    // walking up from the site's body: every jointed body met is the next IK joint's, each with that joint only
+    ok = true;
+    let k = bodies.length - 1;
+    for (let b = toNumbers(model.site_bodyid)[arm.site]; b > 0 && ok; b = parent[b]) {
+      if (jntNum[b] === 0) continue;
+      if (k < 0 || b !== bodies[k] || jntNum[b] !== 1) ok = false;
+      k--;
+    }
+    ok = ok && k === -1;
+    perSite.set(arm.site, ok);
   }
-  let out: { pivot: Vec3; r: number } | null = null;
-  if (ok && k === -1) {
-    // anchors and the site where they are now; the distances between them are the same in every pose
-    const xa = toNumbers(data.xanchor);
-    const sp = toNumbers(data.site_xpos);
-    const pts: Vec3[] = arm.joints.map((j) => [xa[3 * j], xa[3 * j + 1], xa[3 * j + 2]]);
-    pts.push([sp[3 * arm.site], sp[3 * arm.site + 1], sp[3 * arm.site + 2]]);
-    let r = 0;
-    for (let i = 1; i < pts.length; i++) r += norm(sub(pts[i], pts[i - 1]));
-    out = { pivot: pts[0], r };
-  }
-  perSite.set(arm.site, out);
-  return out;
+  if (!ok) return null;
+  // anchors and the site where they are now; the distances between them are the same in every pose
+  const xa = toNumbers(data.xanchor);
+  const sp = toNumbers(data.site_xpos);
+  const pts: Vec3[] = arm.joints.map((j) => [xa[3 * j], xa[3 * j + 1], xa[3 * j + 2]]);
+  pts.push([sp[3 * arm.site], sp[3 * arm.site + 1], sp[3 * arm.site + 2]]);
+  let r = 0;
+  for (let i = 1; i < pts.length; i++) r += norm(sub(pts[i], pts[i - 1]));
+  return { pivot: pts[0], r };
 }
 
 function descend(mujoco: MainModule, model: MjModel, data: MjData, arm: ArmIndex, target: Vec3, axis: Vec3, seed: number[]) {

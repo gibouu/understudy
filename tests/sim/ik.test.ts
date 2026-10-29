@@ -124,6 +124,19 @@ describe("IK on the SO-101 tip site", () => {
     expect(far).toBeLessThanOrEqual(sphere!.r + 1e-9);
     expect(far).toBeGreaterThan(0.9 * sphere!.r); // and not a loose one
   });
+  it("measures the sphere where the held frame is now: a grasp moves it", () => {
+    const sid = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE.value, SO101_HELD_SITE);
+    const sp = model.site_pos as Float64Array;
+    const saved = Array.from(sp.slice(3 * sid, 3 * sid + 3));
+    const before = reachSphere(mujoco, model, data, SO101_HELD_SITE)!.r;
+    try {
+      sp[3 * sid + 2] -= 0.06;
+      expect(reachSphere(mujoco, model, data, SO101_HELD_SITE)!.r).toBeGreaterThan(before + 0.01);
+    } finally {
+      sp.set(saved, 3 * sid);
+    }
+    expect(reachSphere(mujoco, model, data, SO101_HELD_SITE)!.r).toBeCloseTo(before, 12);
+  });
   it("calls a target beyond the arm's full length out of reach, and says how far short it falls", () => {
     const { pivot, r: R } = reachSphere(mujoco, model, data)!;
     const target: [number, number, number] = [pivot[0] + R + 0.1, pivot[1], pivot[2]];

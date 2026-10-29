@@ -191,6 +191,7 @@ const discRadiusMm = (o: SpecObject) => Math.hypot(...footprintMm(o)) / 2;
  */
 export function worldPoses(spec: TaskSpec, tilts: Record<string, Tilt> = {}, options: { partial?: boolean } = {}): Record<string, Pose3> {
   const byId = new Map(spec.objects.map((o) => [o.id, o]));
+  const open = Object.keys(tilts).length ? containerIds(spec) : new Set<string>();
   const out = dict<Pose3>();
   const skipped = new Set<string>();
   const visiting = new Set<string>();
@@ -222,9 +223,14 @@ export function worldPoses(spec: TaskSpec, tilts: Record<string, Tilt> = {}, opt
         pose = { xyz_mm: [p.xyz_mm[0] + t[0], p.xyz_mm[1] + t[1], p.xyz_mm[2] + t[2]], R: mul(p.R, R_local), yaw_deg: p.yaw_deg + o.pose.yaw_deg };
       }
     }
-    // a tilt turns the object about its centre, which would push a corner into whatever it stood on: raise it
-    // until its lowest point is where the untilted object's was (its children, posed in its frame, come with it)
-    if (pose && tilt) pose.xyz_mm[2] += Math.max(0, halfHeightMm(o, pose.R) - halfHeightMm(o, mul(R_level, rotZ(o.pose.yaw_deg))));
+    // a tilt turns the object about its centre, which would push a corner into whatever it stood on (or lift a
+    // tall cylinder off it): move it up or down until its lowest point is where the untilted object's was (its
+    // children, posed in its frame, come with it)
+    if (pose && tilt) {
+      // measured on what the scene emits: containers and pockets are built as boxes whatever their shape
+      const built = open.has(id) || (o.role === "fixture" && builtAsPocket(spec, o)) ? { ...o, shape: "box" as const } : o;
+      pose.xyz_mm[2] += halfHeightMm(built, pose.R) - halfHeightMm(built, mul(R_level, rotZ(o.pose.yaw_deg)));
+    }
     visiting.delete(id);
     if (pose) out[id] = pose;
     else skipped.add(id);
@@ -364,6 +370,15 @@ function geomSize(o: SpecObject): string {
 }
 
 /** Opening and floor of a fixture used as a pocket, or null; throws when it cannot be built. */
+/** whether buildScene builds this fixture as a pocket; one it cannot build throws there, not here */
+function builtAsPocket(spec: TaskSpec, o: SpecObject): boolean {
+  try {
+    return pocketFor(spec, o) !== null;
+  } catch {
+    return true;
+  }
+}
+
 function pocketFor(spec: TaskSpec, fixture: SpecObject): { inner_m: [number, number]; depth_m: number; floor_m: number } | null {
   const users = spec.steps.filter((s) => s.target?.fixture === "pocket" && s.target.frame === fixture.id);
   if (users.length === 0) return null;

@@ -94,7 +94,8 @@ describe("buildScene", () => {
     ["cylinder", [16, 16, 100], "y", 8],
     ["cylinder", [80, 80, 20], "x", 30],
     ["sphere", [30, 30, 30], "x", 20],
-  ] as const)("raises a tilted %s %j (%s %d deg) until its lowest point is back on the table", (shape, size_mm, axis, deg) => {
+    ["cylinder", [16, 16, 100], "x", 45],
+  ] as const)("moves a tilted %s %j (%s %d deg) until its lowest point is back on the table", (shape, size_mm, axis, deg) => {
     const one = TaskSpec.parse({
       ...spec,
       objects: [{ id: "thing", name: "thing", shape, size_mm, symmetry: "none", role: "obstacle", pose: { xyz_mm: [250, 0, size_mm[2] / 2], yaw_deg: 30 }, source: "vl#seg1" }],
@@ -104,7 +105,7 @@ describe("buildScene", () => {
     expect(lowest(worldPoses(one))).toBeCloseTo(0, 9);
     const tilted = worldPoses(one, { thing: { axis, deg } });
     expect(lowest(tilted)).toBeCloseTo(0, 9);
-    if (shape !== "sphere") expect(tilted.thing.xyz_mm[2]).toBeGreaterThan(size_mm[2] / 2);
+    if (shape !== "sphere") expect(tilted.thing.xyz_mm[2]).not.toBeCloseTo(size_mm[2] / 2, 3);
     // the same corner, found independently: every vertex of the box (or rim point of the cylinder), turned
     const pts: [number, number, number][] =
       shape === "box"
@@ -113,6 +114,17 @@ describe("buildScene", () => {
           ? Array.from({ length: 720 }, (_, n) => [-1, 1].map((k): [number, number, number] => [(size_mm[0] / 2) * Math.cos((n * Math.PI) / 360), (size_mm[0] / 2) * Math.sin((n * Math.PI) / 360), (k * size_mm[2]) / 2])).flat()
           : [];
     if (pts.length) expect(Math.min(...pts.map((p) => tilted.thing.xyz_mm[2] + apply(tilted.thing.R, p)[2]))).toBeCloseTo(0, 3);
+  });
+  it("lifts a container as the open box it is built as, whatever shape the spec gives it", () => {
+    const one = TaskSpec.parse({
+      ...spec,
+      objects: [{ id: "cup", name: "cup", shape: "cylinder", size_mm: [80, 80, 40], symmetry: "none", role: "obstacle", liquid_ml: 50, pose: { xyz_mm: [250, 0, 20], yaw_deg: 45 }, source: "vl#seg1" }],
+      steps: [],
+    });
+    const w = worldPoses(one, { cup: { axis: "x", deg: 5 } });
+    // the box's eight corners, turned: the lowest is on the table
+    const corners = [-1, 1].flatMap((i) => [-1, 1].flatMap((j) => [-1, 1].map((k): [number, number, number] => [i * 40, j * 40, k * 20])));
+    expect(Math.min(...corners.map((c) => w.cup.xyz_mm[2] + apply(w.cup.R, c)[2]))).toBeCloseTo(0, 6);
   });
   it("lays out an unposed parent before resolving its posed child", () => {
     const orphan = TaskSpec.parse({
