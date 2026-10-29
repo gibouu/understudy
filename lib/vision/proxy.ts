@@ -3,8 +3,9 @@
  * 4 fps H.264 MP4 with no audio (VIDEO_PROXY), as a data URI, plus the
  * clip's duration and SHA-256 so replay can find its recording.
  */
-import { ALL_FORMATS, BlobSource, BufferTarget, Conversion, Input, Mp4OutputFormat, Output } from "mediabunny";
+import { ALL_FORMATS, BlobSource, BufferTarget, Input } from "mediabunny";
 import { VIDEO_PROXY } from "@/lib/providers/tokenfactory";
+import { problemOf, setUpProxy } from "@/lib/vision/clip";
 
 export type Proxy = { video: string; duration_s: number; clip_sha256: string; bytes: number };
 
@@ -13,15 +14,15 @@ export async function makeProxy(clip: Blob): Promise<Proxy> {
   const duration_s = await input.computeDuration();
   if (duration_s > VIDEO_PROXY.maxSeconds) throw new Error(`the clip is ${Math.round(duration_s)} s; at most ${VIDEO_PROXY.maxSeconds} s`);
   const target = new BufferTarget();
-  const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target });
-  const conversion = await Conversion.init({
-    input,
-    output,
-    video: { width: VIDEO_PROXY.width, frameRate: VIDEO_PROXY.fps, codec: "avc" },
-    audio: { discard: true },
-  });
-  if (!conversion.isValid) throw new Error("this browser cannot encode the clip as H.264");
-  await conversion.execute();
+  const { conversion, video } = await setUpProxy(input, target);
+  const codec = async () => (await input.getPrimaryVideoTrack())?.codec ?? null;
+  if (video !== "ok" || !conversion) throw new Error(problemOf({ bytes: clip.size, duration_s, codec: await codec(), video }) ?? "this browser cannot make the H.264 copy of the clip");
+  try {
+    await conversion.execute();
+  } catch {
+    // the decoder said yes, then failed on the frames (a profile it cannot do, say): the same sentence as a refusal
+    throw new Error(problemOf({ bytes: clip.size, duration_s, codec: await codec(), video: "undecodable" }) ?? "this browser could not decode the clip");
+  }
   const bytes = new Uint8Array(target.buffer!);
   return {
     video: await dataUri(new Blob([bytes], { type: "video/mp4" })),

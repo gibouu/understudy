@@ -28,7 +28,7 @@ export type CaptureEvent =
   | { type: "fail"; message: string }
   | { type: "close" };
 
-export const EMPTY_TAKE = "The camera recorded nothing. Try again, or upload an MP4.";
+export const EMPTY_TAKE = "The camera recorded nothing. Try again, or upload a clip.";
 
 export function step(state: CaptureState, event: CaptureEvent): CaptureState {
   switch (event.type) {
@@ -69,8 +69,8 @@ export function recordingType(isTypeSupported: (type: string) => boolean): strin
 /** Why this page cannot record at all, or null when it can. */
 export function unsupported(env: { getUserMedia?: unknown; MediaRecorder?: unknown }): string | null {
   // getUserMedia is missing outside a secure context (plain http on another host) as well as in old browsers
-  if (typeof env.getUserMedia !== "function") return "This browser does not give this page a camera. You can still upload an MP4.";
-  if (typeof env.MediaRecorder !== "function") return "This browser cannot record video. You can still upload an MP4.";
+  if (typeof env.getUserMedia !== "function") return "This browser does not give this page a camera. You can still upload a clip.";
+  if (typeof env.MediaRecorder !== "function") return "This browser cannot record video. You can still upload a clip.";
   return null;
 }
 
@@ -81,18 +81,18 @@ export function cameraError(err: unknown): string {
     case "NotAllowedError":
     case "PermissionDeniedError":
     case "SecurityError":
-      return "The camera was refused. Allow it in the browser's site settings to film yourself, or upload an MP4.";
+      return "The camera was refused. Allow it in the browser's site settings to film yourself, or upload a clip.";
     case "NotFoundError":
     case "DevicesNotFoundError":
     case "OverconstrainedError":
-      return "No camera was found. You can still upload an MP4.";
+      return "No camera was found. You can still upload a clip.";
     case "NotReadableError":
     case "TrackStartError":
     case "AbortError":
-      return "The camera could not start; another app may be using it. You can still upload an MP4.";
+      return "The camera could not start; another app may be using it. You can still upload a clip.";
     default: {
       const detail = err instanceof Error && err.message ? err.message : name || String(err);
-      return `The camera did not start (${detail}). You can still upload an MP4.`;
+      return `The camera did not start (${detail}). You can still upload a clip.`;
     }
   }
 }

@@ -17,7 +17,7 @@ import { gateNote } from "@/lib/unlock/messages";
 import { clipSha256, makeProxy } from "@/lib/vision/proxy";
 import { rememberedLabel, rememberLabel } from "@/lib/vision/remembered";
 import { withGesturePaths } from "@/lib/vision/trace";
-import { FilmYourself, keepSampleToken, liveAuth, UnlockPrompt } from "./capture";
+import { FilmYourself, keepSampleToken, liveAuth, UnlockPrompt, UploadClip } from "./capture";
 import { GroundChips } from "./ground-chips";
 import { keep, keepCall, keeping, startSession } from "./keep";
 import { answeredBy, useModels, type Role } from "./models";
@@ -202,12 +202,16 @@ export function Flow() {
       if (id !== gen.current) return;
       if (!labelled) {
         step("label", "proxy");
-        // without a proxy the route can still answer from its recording of this clip
-        const body = await makeProxy(clip.blob).catch(async () => ({ clip_sha256: sha ?? (await clipSha256(clip.blob)) }));
+        // without a proxy the route can still answer from its recording of this clip; else the reason there is no proxy is shown
+        const unproxied = { why: "" };
+        const body = await makeProxy(clip.blob).catch(async (err) => ((unproxied.why = (err as Error).message), { clip_sha256: sha ?? (await clipSha256(clip.blob)) }));
         if (id !== gen.current) return;
         step("label", "watch");
         labelled = await post<TaskSpec>("/api/label", { ...body, hint: line });
         if (id !== gen.current) return;
+        // only a recording of this very clip stands in for the missing proxy (app/api/label/route.ts replay)
+        const thisClip = labelled.status === "done" && labelled.warnings.includes("replay: recorded answer for this clip");
+        if (unproxied.why && !thisClip) labelled = failed(unproxied.why);
         if (mine) void rememberLabel(mine, line, labelled);
       }
     }
@@ -284,19 +288,17 @@ export function Flow() {
               {s.label}
             </button>
           ))}
-          <label className={`rounded border border-dashed px-3 py-1.5 text-sm ${consent ? "cursor-pointer hover:bg-neutral-50" : "cursor-not-allowed opacity-40"}`}>
-            Upload an MP4
-            <input
-              type="file"
-              accept="video/mp4"
-              disabled={!consent}
-              className="sr-only"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) choose(file, "");
-              }}
-            />
-          </label>
+          <UploadClip
+            key={clip?.url}
+            disabled={!consent}
+            onPick={() => {
+              // the file being read is now the latest pick: a sample still loading must not replace it, nor it a later one
+              const id = ++pick.current;
+              return (file) => {
+                if (id === pick.current) choose(file, "");
+              };
+            }}
+          />
           <FilmYourself disabled={!consent} onClip={(take) => choose(take, "")} />
         </div>
         <label className="mt-3 flex items-start gap-2 text-sm text-neutral-700">
