@@ -24,7 +24,7 @@ export default async function Space() {
               <Link href={`/space/${sample.name}`} className="group grid overflow-hidden rounded-lg border-2 border-ink bg-card shadow-[7px_8px_0_var(--sun)] transition-transform hover:-translate-y-0.5 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
                 <div className="duotone aspect-[16/9] md:aspect-auto md:min-h-80">
                   {/* eslint-disable-next-line @next/next/no-img-element -- a still the recorder wrote; next/image would only resize it */}
-                  <img src={`/showcase/${sample.name}.jpg`} alt={`A frame from ${sample.label}`} className="h-full w-full object-cover md:absolute md:inset-0" />
+                  <img src={`/showcase/${sample.name}.jpg`} alt={`A frame from ${sample.label}`} width={960} height={540} loading="lazy" decoding="async" className="h-full w-full object-cover md:absolute md:inset-0" />
                 </div>
                 <div className="flex flex-col gap-3 p-5 sm:p-6">
                   <h2 className="display text-3xl font-semibold leading-tight text-ink-deep">{session.label.spec.title}</h2>

@@ -35,7 +35,7 @@ export default async function Home() {
           {first && (
             <div className="duotone aspect-[16/9]">
               {/* eslint-disable-next-line @next/next/no-img-element -- a still the recorder wrote; next/image would only resize it */}
-              <img src={`/showcase/${first.sample.name}.jpg`} alt={`A frame from ${first.sample.label}`} className="h-full w-full object-cover" />
+              <img src={`/showcase/${first.sample.name}.jpg`} alt={`A frame from ${first.sample.label}`} width={960} height={540} loading="lazy" decoding="async" className="h-full w-full object-cover" />
             </div>
           )}
           <div className="flex flex-1 flex-col gap-3 p-5 sm:p-6">

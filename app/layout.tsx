@@ -1,11 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Fraunces, JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import { JetBrains_Mono, Source_Serif_4 } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const fraunces = Fraunces({ variable: "--font-fraunces", subsets: ["latin"], axes: ["opsz", "SOFT", "WONK"] });
+// Fraunces (SIL OFL 1.1, github.com/undercasetype/Fraunces) only ever draws `.display`, which fixes
+// opsz 144, SOFT 60, WONK 0 (globals.css). The file is Google Fonts' latin Fraunces with those three axes pinned
+// and the weight axis kept (fontTools varLib.instancer: opsz=144 SOFT=60 WONK=0): the same glyphs, 37 KB instead of 122 KB.
+const fraunces = localFont({
+  src: "./fonts/fraunces-display.woff2",
+  variable: "--font-fraunces",
+  weight: "100 900",
+  adjustFontFallback: "Times New Roman",
+});
 const sourceSerif = Source_Serif_4({ variable: "--font-text", subsets: ["latin"], axes: ["opsz"] });
-const jetbrains = JetBrains_Mono({ variable: "--font-code", subsets: ["latin"] });
+// the mono face draws only program listings and ids further down a page: fetched when they show, not preloaded on every page
+const jetbrains = JetBrains_Mono({ variable: "--font-code", subsets: ["latin"], preload: false });
 
 export const metadata: Metadata = {
   title: "Understudy",

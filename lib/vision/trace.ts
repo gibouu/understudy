@@ -7,11 +7,12 @@
  * hand made it; the coordinates are measured here, never asked of a model.
  * Nothing leaves the browser.
  */
-import { ALL_FORMATS, BlobSource, CanvasSink, Input } from "mediabunny";
+import type { Input } from "mediabunny";
 import { scalePath } from "@/lib/sim/gesture";
 import { GESTURE_REACH_MM, type Step, type TaskSpec } from "@/lib/spec/schema";
 import { done, type StageResult } from "@/lib/spec/stage-result";
 import { startDetector } from "./detector";
+import { loadMediabunny } from "./clip";
 import { assembleFrame } from "./select";
 import type { TokenFrame } from "./types";
 import { armLength, busierHand, clipOrigin, handGaps, handSamples, sampleTimes } from "./hand";
@@ -30,6 +31,7 @@ export const needsTrace = (spec: TaskSpec) => spec.steps.some(untraced);
 export async function traceGestures(spec: TaskSpec, clip: Blob, onProgress?: (done: number, total: number) => void): Promise<{ spec: TaskSpec; warnings: string[] }> {
   const todo = spec.steps.filter(untraced);
   if (todo.length === 0) return { spec, warnings: [] };
+  const { ALL_FORMATS, BlobSource, Input } = await loadMediabunny();
   const input = new Input({ source: new BlobSource(clip), formats: ALL_FORMATS });
   const frames: TokenFrame[] = [];
   try {
@@ -77,6 +79,7 @@ async function sample(input: Input, todo: Step[], frames: TokenFrame[], onProgre
   const detector = await startDetector();
   try {
     detector.newRun();
+    const { CanvasSink } = await loadMediabunny();
     const sink = new CanvasSink(track, { width: TRACE_WIDTH });
     let k = 0;
     let last = -Infinity;
