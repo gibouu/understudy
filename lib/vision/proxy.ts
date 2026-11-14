@@ -3,13 +3,13 @@
  * 4 fps H.264 MP4 with no audio (VIDEO_PROXY), as a data URI, plus the
  * clip's duration and SHA-256 so replay can find its recording.
  */
-import { ALL_FORMATS, BlobSource, BufferTarget, Input } from "mediabunny";
 import { VIDEO_PROXY } from "@/lib/providers/tokenfactory";
-import { problemOf, setUpProxy } from "@/lib/vision/clip";
+import { loadMediabunny, problemOf, setUpProxy } from "@/lib/vision/clip";
 
 export type Proxy = { video: string; duration_s: number; clip_sha256: string; bytes: number };
 
 export async function makeProxy(clip: Blob): Promise<Proxy> {
+  const { ALL_FORMATS, BlobSource, BufferTarget, Input } = await loadMediabunny();
   const input = new Input({ source: new BlobSource(clip), formats: ALL_FORMATS });
   const duration_s = await input.computeDuration();
   if (duration_s > VIDEO_PROXY.maxSeconds) throw new Error(`the clip is ${Math.round(duration_s)} s; at most ${VIDEO_PROXY.maxSeconds} s`);

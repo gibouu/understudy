@@ -7,8 +7,14 @@
  * Firefox often give a .mov file no type at all. The verdict is the one
  * `makeProxy` will reach: the same conversion is set up, not run.
  */
-import { ALL_FORMATS, BlobSource, BufferTarget, Conversion, Input, Mp4OutputFormat, Output } from "mediabunny";
+import type { BufferTarget, Conversion, Input } from "mediabunny";
 import { VIDEO_PROXY } from "@/lib/providers/tokenfactory";
+
+/**
+ * mediabunny (about 1 MB of script) is loaded the first time a clip is read,
+ * not with the page: the samples and the showcase never need it.
+ */
+export const loadMediabunny = () => import("mediabunny");
 
 /** The file picker's filter. MIME types and extensions both, since a .mov may arrive with no type. */
 export const CLIP_ACCEPT = "video/mp4,video/quicktime,video/x-m4v,.mp4,.m4v,.mov";
@@ -17,8 +23,9 @@ export const CLIP_ACCEPT = "video/mp4,video/quicktime,video/x-m4v,.mp4,.m4v,.mov
 export const MAX_CLIP_BYTES = 1024 * 1024 * 1024;
 
 /** The proxy conversion (480 wide, 4 fps, H.264, no sound), set up on `input`; `makeProxy` executes it. */
-export function proxyConversion(input: Input, target: BufferTarget = new BufferTarget()): Promise<Conversion> {
-  const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target });
+export async function proxyConversion(input: Input, target?: BufferTarget): Promise<Conversion> {
+  const { BufferTarget, Conversion, Mp4OutputFormat, Output } = await loadMediabunny();
+  const output = new Output({ format: new Mp4OutputFormat({ fastStart: "in-memory" }), target: target ?? new BufferTarget() });
   return Conversion.init({
     input,
     output,
@@ -77,6 +84,7 @@ export async function setUpProxy(input: Input, target?: BufferTarget): Promise<{
 
 /** The clip's facts. Throws when the file is not a container mediabunny reads. */
 export async function readClip(clip: Blob): Promise<ClipFacts> {
+  const { ALL_FORMATS, BlobSource, Input } = await loadMediabunny();
   const input = new Input({ source: new BlobSource(clip), formats: ALL_FORMATS });
   try {
     const track = await input.getPrimaryVideoTrack();

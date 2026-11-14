@@ -4,7 +4,7 @@
  */
 import type { GroundingRecord } from "@/lib/export/grounding";
 import { clipSource } from "@/lib/export/source";
-import { buildExportZip, type ExportResult } from "@/lib/export/zip";
+import type { ExportResult } from "@/lib/export/zip";
 import { resample, type TraceFrame } from "@/lib/export/trace";
 import type { EpisodeRecord } from "@/lib/export/types";
 import type { GravityName, TaskSpec } from "@/lib/spec/schema";
@@ -72,6 +72,8 @@ export async function tourExport(session: Session, runs: TourRun[], grounding?: 
     instruction: task,
     frames: resample(r.trace, TOUR_FPS),
   }));
+  // the zip writer (parquet, fflate, the MP4 muxer) loads on the click, not with /demo
+  const { buildExportZip } = await import("@/lib/export/zip");
   return buildExportZip(
     {
       robot_type: "so101_follower",

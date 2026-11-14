@@ -12,6 +12,12 @@ const nextConfig: NextConfig = {
     "/api/variants": ["./public/showcase/*.json"],
     "/api/compile": ["./public/showcase/*.json"],
   },
+  // The simulator, MediaPipe and the sample clips are 2 to 7 MB each and change only with a dependency bump or a
+  // new recording; a day in the browser's cache spares a phone the round trip of revalidating each one on every visit.
+  async headers() {
+    const day = [{ key: "Cache-Control", value: "public, max-age=86400, must-revalidate" }];
+    return ["/mujoco/:path*", "/so101/:path*", "/mediapipe/:path*", "/samples/:name"].map((source) => ({ source, headers: day }));
+  },
   turbopack: {
     rules: {
       "*.css": {

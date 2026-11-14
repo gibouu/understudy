@@ -132,7 +132,7 @@ export function Tour({ sample, session }: { sample: Sample; session: Session }) 
         <ol className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-label="Steps">
           {steps.map((s, i) => (
             <li key={s.id}>
-              <button onClick={() => go(i)} className="group flex w-full flex-col gap-1.5 text-left" aria-current={i === at ? "step" : undefined} title={s.label}>
+              <button onClick={() => go(i)} className="group -my-2.5 flex w-full flex-col gap-1.5 py-2.5 text-left md:my-0 md:py-0" aria-current={i === at ? "step" : undefined} title={s.label}>
                 <span className="relative block h-2 overflow-hidden rounded-full bg-ink/15">
                   {i < at && <span className="absolute inset-y-0 left-0 w-full bg-ink" />}
                   {i === at && s.dwell !== undefined && (

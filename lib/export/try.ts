@@ -10,7 +10,7 @@ import { clipSource } from "@/lib/export/source";
 import { armFrame, EXPORT_FPS, sampleAt } from "@/lib/export/trace";
 import type { EpisodeRecord } from "@/lib/export/types";
 import type { DrawnFrames, EpisodeVideoEncoder } from "@/lib/export/video";
-import { buildExportZip, type ExportResult } from "@/lib/export/zip";
+import type { ExportResult } from "@/lib/export/zip";
 import { instruction } from "@/lib/showcase/tour";
 import type { Run } from "@/lib/showcase/session";
 import type { Rollout } from "@/lib/sim/interpreter";
@@ -166,6 +166,8 @@ export async function tryExport({ clip, hint, label, labelWarnings, fit, spec, p
         ...(pictures ? { video: { width: video!.encoder.width, height: video!.encoder.height, frames: pictures } } : {}),
       });
     }
+    // the zip writer (parquet, fflate, the MP4 muxer) loads on the click, not with /try
+    const { buildExportZip } = await import("@/lib/export/zip");
     return await buildExportZip(
       {
         robot_type: "so101_follower",
