@@ -1,6 +1,7 @@
 // What a page loads before anyone touches it (#229): the packages below are hundreds of kilobytes each and serve
 // one click (an uploaded clip, the export download), so the pages must reach them only through import().
-// Follows every static, non-type import from each page's entry modules, as the bundler does.
+// Follows every static, non-type import from each page's entry modules, as the bundler does. A line scan, not a
+// parser: it errs strict (an `import { type X } from "pkg"` counts as reaching pkg) and reads no require().
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -13,6 +14,8 @@ const PAGES: Record<string, string[]> = {
   "/demo": ["app/demo/page.tsx"],
   "/space": ["app/space/page.tsx"],
   "/space/[clip]": ["app/space/[clip]/page.tsx"],
+  // shown once a program passes; the encoder and the zip writer wait for its button
+  "/try's download section": ["app/try-download.tsx"],
 };
 
 /** `import x from "m"` and `export ... from "m"`, leaving out `import type` / `export type` (erased) */

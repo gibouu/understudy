@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import type { GroundingRecord } from "@/lib/export/grounding";
-import { drawFrames } from "@/lib/export/render";
 import { passingRuns, tryExport, type TryExportInput, type TryLog } from "@/lib/export/try";
-import { createBrowserVideoEncoder } from "@/lib/export/video";
 import type { Program, TaskSpec } from "@/lib/spec/schema";
 import { usePassed } from "./passed";
 
@@ -26,16 +24,20 @@ export function TryDownload({ clip, hint, label, labelWarnings, fit, spec, progr
     if (!program) return;
     setState("building");
     try {
-      let encoder: Awaited<ReturnType<typeof createBrowserVideoEncoder>> | undefined;
+      let encoder: Awaited<ReturnType<typeof import("@/lib/export/video").createBrowserVideoEncoder>> | undefined;
+      let drawFrames: typeof import("@/lib/export/render").drawFrames | undefined;
       let noVideo: string | undefined;
       if (video) {
         try {
-          encoder = await createBrowserVideoEncoder();
+          // the MP4 encoder and the frame renderer load on the click, not when this section shows
+          const [v, r] = await Promise.all([import("@/lib/export/video"), import("@/lib/export/render")]);
+          drawFrames = r.drawFrames;
+          encoder = await v.createBrowserVideoEncoder();
         } catch (err) {
           noVideo = (err as Error).message;
         }
       }
-      const { zip, paths, quality } = await tryExport({ clip, hint, label, labelWarnings, fit, spec, program, log, grounding, video: encoder ? { encoder, draw: (meta, frames) => drawFrames(meta, frames) } : undefined });
+      const { zip, paths, quality } = await tryExport({ clip, hint, label, labelWarnings, fit, spec, program, log, grounding, video: encoder && drawFrames ? { encoder, draw: drawFrames } : undefined });
       const url = URL.createObjectURL(new Blob([zip.slice().buffer], { type: "application/zip" }));
       const a = document.createElement("a");
       a.href = url;
